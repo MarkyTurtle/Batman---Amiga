@@ -18,6 +18,17 @@ I'll be standing on the shoulders of giants and any resources and code used in t
  - Action Reply MKIII - (Emulator ROMS)
  - VS Code (Windows and MAC)
 
+
+
+## Contents
+ - [Original Floppy Disk Images](./originalfloppies/README.md)
+ - [Raw Ripped Files](./rawrippedfiles/rippedfiles.md)
+ - Loader
+   - [Boot Loader](./loader/bootloader.md)
+   - [Game Loader](./loader/gameloader.md)
+
+
+
 ## Overview
 This exercise is not one of speed, but of learning. The intension is to spend more time disassembling parts of the code.
 
@@ -35,7 +46,9 @@ I'll be following the steps below, like all plans likely to change.
  - Disassemble the Racing Levels.
  - Disassemble the BatCave Level.
 
- ## Progress to Date
+
+
+## Progress to Date
 
 2024-03-28 - Uploaded ripped files on ADFs, Ripped files are 'IFF' files that are further processed/decrunched by the loader before relocated into memory. All files appear to have IFF headers apart from the the music file(s), not sure what format these are yet.
 
