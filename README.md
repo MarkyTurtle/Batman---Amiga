@@ -3,7 +3,7 @@ Batman The Movie, Amiga, 2 Disk Europe, Ocean
 
 This repo will contain the result of my attempt to reverse engineer the 2 Disk version of Batman The Movie for the Amiga. 
 
-This major inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Links to his resources shown below.
+This major inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Links to those resources shown below.
 
  - [Youtube](https://www.youtube.com/@HoffmanYouTube)
  - [Twitch](https://www.twitch.tv/djh0ffman)
