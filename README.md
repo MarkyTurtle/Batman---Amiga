@@ -43,3 +43,4 @@ I'll be following the steps below, like all plans likely to change.
 
 2024-03-26 - Up to this point I have successfully ripped the game loader, documented it and modified it sufficently to get the game to boot without the copy protection kicking in. I've decoded and disassembled the Rob Northen protection and spent some time understanding how it works. I need to upload these files to this repo.
 
+2024-03-25 - Spend quite a while stepping through and documenting the GameLoader (docs yet to be uploaded), also deocding the copy protection routines (early Rob Northen) trace vector decoder (again, docs to be uploaded)
