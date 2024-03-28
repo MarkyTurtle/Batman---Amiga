@@ -36,7 +36,9 @@ I'll be following the steps below, like all plans likely to change.
  - Disassemble the BatCave Level.
 
  ## Progress to Date
- 
+
+2024-03-28 - Uploaded ripped files on ADFs, Ripped files are 'IFF' files that are further processed/decrunched by the loader before relocated into memory. All files appear to have IFF headers apart from the the music file(s), not sure what format these are yet.
+
 2024-03-27 - I have ripped the raw files from both disks, need to upload to the repo.
 
 2024-03-26 - Up to this point I have successfully ripped the game loader, documented it and modified it sufficently to get the game to boot without the copy protection kicking in. I've decoded and disassembled the Rob Northen protection and spent some time understanding how it works. I need to upload these files to this repo.
