@@ -19,7 +19,7 @@ I'll be standing on the shoulders of giants and any resources and code used in t
  - VS Code (Windows and MAC)
 
 ## Overview
-This exercise is not one of speed, but of learning. I intend to spend more time than necessary disassembling parts of the code than necessary to just crack and pack up the disk again.
+This exercise is not one of speed, but of learning. The intension is to spend more time disassembling parts of the code.
 
 I was always impressed by the game and think it would be interesting to try to reverse engineer the Platform and Racing Levels to get an understanding of how they work. (We'll see if my interest level holds up).
 
