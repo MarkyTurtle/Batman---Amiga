@@ -10,17 +10,17 @@ The following descriptions are assumptions until proven otherwise. Checkout the 
  - titleprg.iff - title screen code.
  - code1.iff - Level 1 - Axis Chemicals Platformer
  - mapgr.iff - Level 1 - Graphics
- - batspr1.iff - Level 1 - Batman/Enemy Sprites
+ - batspr1.iff - Level 1/5 - Batman/Enemy Sprites
  - chem.iff - Level 1 - More Assets
  - code5.iff - Level 5 - Church Platformer
  - mapgr2.iff - Level 5 - Graphics
  - church.iff - Level 5 - More Assets
 
 ## Disk 2 - Files
- - code.iff - Level 2/4 - Batmobile (shared files on Level 2 & 4)
- - data.iff - Level 2/4 - Level Assets (shared files on Level 2 & 4)
+ - code.iff - Level 2/4 - Batmobile
+ - data.iff - Level 2/4 - Level Assets
  - data2.iff - Level 2 - Batmobile Level/Road Layout
- - music.iff - Level 2/4 (does not have IFF headers)(shared files on Level 2 & 4)
+ - music.iff - Level 2/4 (does not have IFF headers)
  - batcave.iff - Level 3 - Batcave Lab
  - data4.iff - - Level 4 - Batwing Level/Road Layout
  
