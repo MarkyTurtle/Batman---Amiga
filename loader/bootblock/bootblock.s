@@ -1,4 +1,33 @@
               
+; The Bootloader does the following:
+;       1) Initialises the System, and Resets Disk Registers
+;
+;       2) Relocates itself to $400
+;  
+;       3) Loads track 0 into memory at $800 to get file table
+;               a) The Filetable is located at $c00
+;                    - Entry 1 = 16 bytes Disk Name
+;                    - Entry 2 - 13 = File Entries (11 char name, 3 byte length, 2 byte start sector)
+;                       00000C00 4241 544D 414E 204D 4F56 4945 2020 2030  BATMAN MOVIE   0
+;                       00000C10 4241 544D 414E 2020 2020 2000 22DA 0016  BATMAN     ."...
+;                       00000C20 4C4F 4144 494E 4720 4946 4600 A0D6 0028  LOADING IFF....(
+;                       00000C30 5041 4E45 4C20 2020 4946 4600 289E 0079  PANEL   IFF.(..y
+;                       00000C40 5449 544C 4550 5247 4946 4601 63A0 008E  TITLEPRGIFF.c...
+;                       00000C50 5449 544C 4550 4943 4946 4600 CCF6 0140  TITLEPICIFF....@
+;                       00000C60 434F 4445 3120 2020 4946 4600 37BE 01A7  CODE1   IFF.7...
+;                       00000C70 4D41 5047 5220 2020 4946 4600 5620 01C3  MAPGR   IFF.V ..
+;                       00000C80 434F 4445 3520 2020 4946 4600 3A86 01EF  CODE5   IFF.:...
+;                       00000C90 4D41 5047 5232 2020 4946 4600 530C 020D  MAPGR2  IFF.S...
+;                       00000CA0 4241 5453 5052 3120 4946 4600 C4B6 0237  BATSPR1 IFF....7
+;                       00000CB0 4348 454D 2020 2020 4946 4600 F6C6 029A  CHEM    IFF.....
+;                       00000CC0 4348 5552 4348 2020 4946 4600 D904 0316  CHURCH  IFF.....
+;
+;       4) The game loader is then located from the table and loaded to $800
+;
+;       5) The file start address is pushed to the stack so RTS continues execution of 'BATMAN' game loader
+;
+
+
               section bootblock,code
 
 ;---------- Includes ----------
@@ -62,7 +91,7 @@ copymemory:
 
 
 
-            ;----------- Kill System & Relocate Boot Loader ------------
+            ;----------- Initialise the System & Relocate Boot Loader ------------
 initboot:
             lea.l   CUSTOM,A6                   ; Custom chips base
             lea.l   CIABPRB,A5                  ; The loader references CIAB from the PRB register
@@ -145,44 +174,58 @@ relocatedboot:
 
             BSR.W headstotrack0                 ; Step Drive Heads to Track 0
 
-            MOVE.L #$00000000,D0
-            LEA.L $00000800,A0
-            BSR.B loadfiletable
+            MOVE.L #$00000000,D0                ; Target Track
+            LEA.L $00000800,A0                  ; Decoded Read Buffer
+            BSR.B readdisk
 
-            MOVE.W $041E(A0),D0
-            MOVE.L #$00ffffff,D1
-            AND.L $041A(A0),D1
-            DIVU.W #$0200,D1
+            ; Read Game Loader details from File Table
+            ; Filetable address = $C00
+            ; Loader File Entry = $C10 (11 chars filename, 3 bytes file len, 2 byte start sector)
+            MOVE.W $041E(A0),D0                 ; D0 = start sector (address = $C1E, Value = #$16 (sector 22 = track 3)
+            MOVE.L #$00ffffff,D1                ; 24 bit mask
+            AND.L $041A(A0),D1                  ; D1 = 24 bit file length (address = $C1A, Value = #$22DA)
+            DIVU.W #$0200,D1                    ; D1 = Divide Length by Sector Size (512)
 
-            ADD.W D0,D1
-            EXT.L D0
-            DIVU.W #$000b,D0
-            MOVE.L D0,D2
-            SWAP.W D2
-            MULU.W #$0200,D2
-            PEA.L $0000(A0,D2)
-            EXT.L D1
-            DIVU.W #$000b,D1
-            SUB.W D0,D1
+            ADD.W D0,D1                         ; D1 = Add Start Sector to find last sector number to read in D1
+            EXT.L D0                            ; D0 = Sign extend start sector to clear crap out of high word
+            DIVU.W #$000b,D0                    ; D0 = Divide start sector number by 11 sectors per track to find start track
+            MOVE.L D0,D2                        ; D2 = Start Track to Read
+            SWAP.W D2                           ; Get Remainder Value (start sector in track) 
+            MULU.W #$0200,D2                    ; Multiply remainder by Sector Size (512)
 
-.loop
-            BSR.B loadfiletable 
-            ADDA.W #$1600,A0
-            ADD.W #$00000001,D0
-            DBF.W D1,.loop
-            OR.B #$ff,(A5)
-            AND.B #$f7,(A5)
-            OR.B #$ff,(A5)
-            MOVE.W #$0f00,$0180(A6)
-            MOVE.W #$7fff,$009A(A6)
-            RTS 
+            PEA.L $0000(A0,D2)                  ; Push Start of file address Offset onto the stack 
+                                                ;   - RTS Return Address below
+
+            EXT.L D1                            ; D1 = Sign Extend Last Sector Number to clear crap out of high word
+            DIVU.W #$000b,D1                    ; D1 = Divide Last Sector Number by 11 Sectors per track
+            SUB.W D0,D1                         ; D1 = Last Track - First Track = Number of Tracks to Read
+
+            ; D2 = Start Track
+            ; D1 = Number of Tracks + 1
+            ; (A7) = RTS return address
+.loadloop
+            BSR.B readdisk 
+            ADDA.W #$1600,A0                    ; Increment Decoded Load Address Buffer (5K per track read)
+            ADD.W #$00000001,D0                 ; Increment Current Track Number
+            DBF.W D1,.loadloop
+
+            OR.B #$ff,(A5)                      ; CIAB PRB - Deselect Motor, Deselect Drives
+            AND.B #$f7,(A5)                     ; CIAB PRB - Select Drive 0 (latch motor off)
+            OR.B #$ff,(A5)                      ; CIAB PRB - Deselect Motor, Deselect Drives
+
+            MOVE.W #$0f00,COLOR00(A6)           ; Set Background colour to RED
+            MOVE.W #$7fff,INTENA(A6)            ; Disable Interrupts
+
+            RTS                                 ; Return to address at top of stack (start of file loaded from disk)
+                                                ; Continue Execution at $800 - loaded game loader file 'BATMAN'
+
 
 
         ;---------------- load file table ------------------------
         ; -- IN: D0.l - Target Track
-        ; -- IN: A0.l - Read Buffer
+        ; -- IN: A0.l - Decoded Data Buffer
         ;
-loadfiletable:
+readdisk:
                 MOVEM.L D1/A0-A1,-(A7)
 .restart        MOVE.L #$00000007,D6                    ; Loop Counter (8 times)
 
@@ -195,8 +238,8 @@ loadfiletable:
                 BSR.W readtrack
 
                 LEA.L $0007c000,A0                      ; MFM Track Buffer
-                MOVEA.L $0004(A7),A1                    ; Decode Buffer (from saved A0 on stack)
-                BSR.W L00030278
+                MOVEA.L $0004(A7),A1                    ; Decoded Buffer Address (from saved A0 on stack)
+                BSR.W decodemfmbuffer                   ; A0 = MFM Track Buffer, A1 = Decoded Destination Buffer
 
                 BEQ.B L003017C
                 DBF.W D6,.retry
@@ -279,6 +322,7 @@ L00030210   TST.B D5
         ;-- IN: A0 = MFM Buffer
 readtrack:      
                 MOVEM.L D0/A0,-(A7)
+
 .waitdskrdy     BTST.B #$0005,-$0100(A4)        ; CIAA PRA - Test DSKRDY (Disk Ready) active low
                 BNE.B .waitdskrdy
 
@@ -302,7 +346,7 @@ readtrack:
                 AND.W INTREQR(A6),D0
                 BEQ.B .waitdskblk               ; Wait for DSKBLK interrupt by polling INTREQR
 
-                MOVE.W #$0010,$0096(A6)         ; Disable Disk DMA, DSKEN
+                MOVE.W #$0010,DMACON(A6)        ; Disable Disk DMA, DSKEN
                 MOVE.W #$4000,DSKLEN(A6)        ; Switch off Disk DMA (as per h/w ref)
 
                 MOVEM.L (A7)+,D0/A0
@@ -310,7 +354,13 @@ readtrack:
 
 
 
-L00030278 MOVEM.L D0-D2/A0,-(A7)
+        ;---------------- decode mfm buffer -----------------
+        ;-- IN: A0.l = MFM Disk Buffer
+        ;-- IN: A1.l = Decode Disk Buffer
+
+decodemfmbuffer:
+;L00030278 
+                MOVEM.L D0-D2/A0,-(A7)
           CLR.W D1
           MOVE.W #$19ff,D2
           SUBA.W #$001c,A7
@@ -448,9 +498,4 @@ disableInterrupts:
                 RTE 
 
 
-datablock:
-L000303b0   dc.l 0,0,0,0
-L000303c0   dc.l 0,0,0,0
-L000303d0   dc.l 0,0,0,0
-L000303e0   dc.l 0,0,0,0
-L000303f0   dc.l 0,0,0,0
+
