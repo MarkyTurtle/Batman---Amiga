@@ -129,24 +129,29 @@ initboot:
             ; code relocated by the 'copymemory' routine
             ; jmp to 000004ba continues execution here.
 relocatedboot:
-            LEA.L $0007c000,A7
-            LEA.L L000303b0(PC),A0
-            MOVE.L A0,$00000078
-            MOVE.W #$7fff,$009C(A6)
-            TST.B $0C00(A5)
-            MOVE.B #$83,$0C00(A5)
-            MOVE.W #$e000,$009A(A6)
-            OR.B #$ff,(A5)
-            AND.B #$7f,(A5)
+            LEA.L $0007c000,A7                  ;Set Stack 16K from top of memory
+            
+            LEA.L level6Handler(PC),A0          ; Address of Level 6 Interruipt Handler
+            MOVE.L A0,$00000078                 ; Level 6 Interrupt Vector - CIAB Level 6 (DiskIndex & Timers)
+            MOVE.W #$7fff,INTREQ(A6)            ; Clear Interrupt Request Bits
+            TST.B $0C00(A5)                     ; CIAB ICR - Clear Interrupt Flags by reading
 
-            AND.B #$f7,(A5)
-            BSR.W routine2
+            MOVE.B #$83,$0C00(A5)               ; CIAB ICR - Enable Timer A & Timer B Interrupts
+            MOVE.W #$e000,INTENA(A6)            ; Enable Interrupts - EXTER - CIAB Level 6 Interrupts        
+            OR.B #$ff,(A5)                      ; CIAB - Deselect Drive - Motor, Drives, Select Lower Head, Direction Ouutwards 
+            AND.B #$7f,(A5)                     ; CIAB - Motor On (active low)
+            AND.B #$f7,(A5)                     ; CIAB - Motor On (latched when drive selected), Drive 0 Select (active low)
+                                                ; h/w ref specifies a 500ms wait, or DSKRDY signal, not happening though.
+
+            BSR.W headstotrack0                 ; Step Drive Heads to Track 0
+
             MOVE.L #$00000000,D0
             LEA.L $00000800,A0
-            BSR.B routine1
-            MOVE.W $041E(A0),D0                ;$0000141e,D0
+            BSR.B loadfiletable
+
+            MOVE.W $041E(A0),D0
             MOVE.L #$00ffffff,D1
-            AND.L $041A(A0),D1               ;$0000141a,D1
+            AND.L $041A(A0),D1
             DIVU.W #$0200,D1
 
             ADD.W D0,D1
@@ -155,16 +160,16 @@ relocatedboot:
             MOVE.L D0,D2
             SWAP.W D2
             MULU.W #$0200,D2
-            PEA.L $0000(A0,D2)               ;$00001000
+            PEA.L $0000(A0,D2)
             EXT.L D1
             DIVU.W #$000b,D1
             SUB.W D0,D1
 
 .loop
-            BSR.B routine1                  ;== $0003014a
+            BSR.B loadfiletable 
             ADDA.W #$1600,A0
             ADD.W #$00000001,D0
-            DBF.W D1,.loop                    ; $00030124 (F)
+            DBF.W D1,.loop
             OR.B #$ff,(A5)
             AND.B #$f7,(A5)
             OR.B #$ff,(A5)
@@ -172,41 +177,63 @@ relocatedboot:
             MOVE.W #$7fff,$009A(A6)
             RTS 
 
-routine1:
-            MOVEM.L D1/A0-A1,-(A7)
-label1      MOVE.L #$00000007,D6
-L00030150   BTST.B #$0005,-$0100(A4)        ; == $00001458
-            BNE.B L00030150
-            BSR.B routine3
-label2      LEA.L $0007c000,A0
-            BSR.W L00030216
-            LEA.L $0007c000,A0
-            MOVEA.L $0004(A7),A1
-            BSR.W L00030278
 
-            BEQ.B L003017C
-            DBF.W D6,label2
-            BSR.B routine2
-            BRA.B label1
-L003017C    MOVEM.L (A7)+,D1/A0-A1
-            RTS 
+        ;---------------- load file table ------------------------
+        ; -- IN: D0.l - Target Track
+        ; -- IN: A0.l - Read Buffer
+        ;
+loadfiletable:
+                MOVEM.L D1/A0-A1,-(A7)
+.restart        MOVE.L #$00000007,D6                    ; Loop Counter (8 times)
 
-routine2:
-            MOVE.L D0,-(A7)
-            MOVE.W #$00a6,D7
-            CLR.W D0
-            BSR.B routine3
-            MOVE.L (A7)+,D0
-            RTS 
+.waitdskrdy     BTST.B #$0005,-$0100(A4)                ; CIAA PRA - Test DSKRDY (disk ready) bit
+                BNE.B .waitdskrdy                       ; Active Low DSKRDY signal
 
-routine3:
-            BSET.B #$0002,(A5)
-            BCLR.L #$0000,D7
-            BTST.L #$0000,D0
-            BEQ.B L000301A6
-            BCLR.B #$0002,(A5)
-            BSET.L #$0000,D7
-L000301A6   CMP.W D7,D0
+                BSR.B stepheadstotrack                  ; Step Heads to Track (D7.w = Current Track, D0.w = Target Track)
+
+.retry          LEA.L $0007c000,A0                      ; MFM Track Buffer
+                BSR.W readtrack
+
+                LEA.L $0007c000,A0                      ; MFM Track Buffer
+                MOVEA.L $0004(A7),A1                    ; Decode Buffer (from saved A0 on stack)
+                BSR.W L00030278
+
+                BEQ.B L003017C
+                DBF.W D6,.retry
+
+                BSR.B headstotrack0                     ; Step Heads to Track 0
+                BRA.B .restart
+
+L003017C        MOVEM.L (A7)+,D1/A0-A1
+                RTS 
+
+
+
+        ;------------- heads to track 0 ----------------
+        ;-- step the drive heads to track 0           --
+headstotrack0:
+                MOVE.L D0,-(A7)
+                MOVE.W #$00a6,D7                        ; Set high current track number
+                CLR.W D0                                ; Clear Target Track Number
+                BSR.B stepheadstotrack                  ; Step the drive heads to Target Track                              
+                MOVE.L (A7)+,D0
+                RTS 
+
+
+        ; ----------- step heads to track ----------------
+        ; --- IN: D7.w = current track
+        ; --- IN: D0.w = target track
+stepheadstotrack:
+            BSET.B #$0002,(A5)                          ; CIAB PRA - Set Disk Side Bit, 1 = lower head 
+            BCLR.L #$0000,D7                            ; set current track to even number 
+            BTST.L #$0000,D0                            ; Is target track is odd number?
+            BEQ.B arewethereyet                         ; No..
+targettrackisodd:                                       ; yes..
+            BCLR.B #$0002,(A5)                          ; CIAB PRA - Set Disk Side Bit. 0 = upper head
+            BSET.L #$0000,D7                            ; set current track to an odd number
+
+arewethereyet:
+            CMP.W D7,D0
             BEQ.B L000301EA
 
             BPL.B L000301C2
@@ -248,28 +275,40 @@ L00030210   TST.B D5
             RTS 
 
 
-L00030216 MOVEM.L D0/A0,-(A7)
-L0003021A BTST.B #$0005,-$0100(A4)          ;== $00001458
-          BNE.B L0003021A
-          MOVE.W #$4000,$0024(A6)           ;== $0044f024
-          MOVE.W #$8010,$0096(A6)           ;== $0044f096
-          MOVE.W #$7f00,$009e(A6)           ;== $0044f09e
-          MOVE.W #$9500,$009e(A6)           ;== $0044f09e
-          MOVE.W #$4489,$007e(A6)           ;== $0044f07e
-          MOVEA.L $0004(A7),A0
-          MOVE.W #$4489,(A0)+
-          MOVE.L A0,$0020(A6)               ;== $0044f020
-          MOVE.W #$0002,$009c(A6)           ;== $0044f09c
-          MOVE.W #$99ff,D0
-          MOVE.W D0,$0024(A6)               ;== $0044f024
-          MOVE.W D0,$0024(A6)               ;== $0044f024
-L0003025E MOVE.L #$00000002,D0
-          AND.W $001e(A6),D0
-          BEQ.B L0003025E
-          MOVE.W #$0010,$0096(A6)           ;== $0044f096
-          MOVE.W #$4000,$0024(A6)           ;== $0044f024
-          MOVEM.L (A7)+,D0/A0
-          RTS 
+        ;---------------- read track --------------------
+        ;-- IN: A0 = MFM Buffer
+readtrack:      
+                MOVEM.L D0/A0,-(A7)
+.waitdskrdy     BTST.B #$0005,-$0100(A4)        ; CIAA PRA - Test DSKRDY (Disk Ready) active low
+                BNE.B .waitdskrdy
+
+                MOVE.W #$4000,DSKLEN(A6)        ; Switch off Disk DMA (as per h/w ref)
+                MOVE.W #$8010,DMACON(A6)        ; Enable Disk DMA
+                MOVE.W #$7f00,ADKCON(A6)        ; Clear MFM Settings, PRECOMP, MFMPREC, UARTBRK, WORDSYNC, MSBSYNC, FAST
+                MOVE.W #$9500,ADKCON(A6)        ; Set MFM Settings, MFMPREC, WORDSYNC, FAST         
+                MOVE.W #$4489,DSKSYNC(A6)       ; Set standard DOS SYNC Mark $4489          
+                MOVEA.L $0004(A7),A0            ; Raw MFM Buffer from A0 stored on stack
+                MOVE.W #$4489,(A0)+             ; Insert Sync Mark into raw MFM Buffer (strange, maybe bug fix hack for decode routine?)
+                MOVE.L A0,DSKPT(A6)             ; Set MFM BUffer for DMA
+                MOVE.W #$0002,INTREQ(A6)        ; Clear DSKBLK (Disk Block Finished) Interrupt Flag 
+                MOVE.W #$99ff,D0                ; Disk DMA read settings (DMAEN, 13 bit read length)
+                                                ; read in 6655 words (maybe one less than requested)
+                                                ; read in 13310 bytes (maybe two less than requested)
+                                                ; read in 12Kb, DOS Track Size = ((1024 + header) * 11) + gap
+                MOVE.W D0,DSKLEN(A6)            ; Initiate Disk DMA (h/w ref - has to be written twice)
+                MOVE.W D0,DSKLEN(A6)            ; Initiate Disk DMA
+
+.waitdskblk     MOVE.L #$00000002,D0
+                AND.W INTREQR(A6),D0
+                BEQ.B .waitdskblk               ; Wait for DSKBLK interrupt by polling INTREQR
+
+                MOVE.W #$0010,$0096(A6)         ; Disable Disk DMA, DSKEN
+                MOVE.W #$4000,DSKLEN(A6)        ; Switch off Disk DMA (as per h/w ref)
+
+                MOVEM.L (A7)+,D0/A0
+                RTS 
+
+
 
 L00030278 MOVEM.L D0-D2/A0,-(A7)
           CLR.W D1
@@ -381,24 +420,35 @@ L000303A4 BTST.B #$000e,$0002(A6) ;== $0044f002
           RTS 
 
 
-L000303B0 MOVE.L D0,-(A7)
-          MOVE.W $001E(A6),D0
-          BTST.L #$000e,D0
-          BNE.B L000303D2 (F)
-          MOVE.B $0C00(A5),D0
-          BPL.B L000303C8 (T)
-          LSR.B #$00000001,D0
-          BCC.B L000303C8 (T)
-          ST.B D5 ;== $000303c8 (T)
-L000303C8 MOVE.W #$2000,$009C(A6) ;== $0044f09c
-          MOVE.L (A7)+,D0
-          RTE 
-L000303D2 MOVE.W #$4000,$009C(A6) ;== $0044f09c
-          MOVE.L (A7)+,D0
-          RTE 
+        ;------------- Level 6 Interrupt Handler -------------------
+        ;-- If a Timer A interrupt Occurs then Set D5.b = #$ff    --
+        ;-- Loader code uses D5 as flag to wait for CIAB timer A  --
+        ;-- wait for Disk Operations                              --
+level6Handler:
+                MOVE.L D0,-(A7)
+                MOVE.W INTREQR(A6),D0                           ;Interrupt Request Bits
+                BTST.L #$000e,D0                                ;Test INTEN Master/Enable Bit
+                BNE.B disableInterrupts                         ;Doubt that this is ever true - h/w ref states 'enable only/no request'
+
+                MOVE.B $0C00(A5),D0                             ;Read CIAB ICR - Interrupt Flags
+                BPL.B notourinterrupt                           ;MSB = 0 Then No Interrupt on CIAB
+
+                LSR.B #$00000001,D0                             ;Shift out Timer A Flag
+                BCC.B notourinterrupt                           ;Not Timer A Interrupt
+                ST.B D5                                         ;Is Timer A Interrupt
+
+notourinterrupt:
+                MOVE.W #$2000,$009C(A6) 
+                MOVE.L (A7)+,D0
+                RTE 
+
+disableInterrupts:
+                MOVE.W #$4000,INTREQ(A6)                        ; Clear INTEN Master/Enable Bit
+                MOVE.L (A7)+,D0
+                RTE 
 
 
-
+datablock:
 L000303b0   dc.l 0,0,0,0
 L000303c0   dc.l 0,0,0,0
 L000303d0   dc.l 0,0,0,0
