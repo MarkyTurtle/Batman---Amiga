@@ -49,7 +49,7 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
-2023-04-07 - Completed first draft of documenting the bootblock.s code.
+2023-04-07 - Completed first draft of documenting the [bootblock.s](./loader/bootblock/bootblock.s) code. 
 
 2024-04-05 - Almost finished documenting the Bootblock code (which builds in VSCode using the Amiga Assembly plug-in)
 
