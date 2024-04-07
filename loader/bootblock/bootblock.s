@@ -381,65 +381,85 @@ readtrack:
 
 
 
-        ;---------------- decode mfm buffer -----------------
-        ;-- IN: A0.l = MFM Disk Buffer
-        ;-- IN: A1.l = Decode Disk Buffer
-
+                ;---------------- decode mfm buffer -----------------
+                ;-- IN: A0.l = MFM Disk Buffer
+                ;-- IN: A1.l = Decode Disk Buffer
 decodemfmbuffer:
-;L00030278 
                 MOVEM.L D0-D2/A0,-(A7)
-          CLR.W D1
-          MOVE.W #$19ff,D2
-          SUBA.W #$001c,A7
-L00030286 CMP.W #$4489,(A0)+
-          DBEQ.W D2,L00030286
-          BNE.W L0003030C
-L00030292 CMP.W #$4489,(A0)+
-          DBNE.W D2,L00030292
-          BEQ.B L0003030C
-          SUBA.L #$00000002,A0
-          SUB.W #$00000001,D2
-L000302A0 MOVEM.L A0-A1,-(A7)
-          LEA.L $0008(A7),A1
-          MOVE.L #$0000001c,D0
-          BSR.W L00030332
-          MOVEM.L (A7)+,A0-A1
-          MOVE.L #$00000028,D0
-          BSR.B L00030312
-          CMP.L $0014(A7),D0
-          BNE.B L00030286
-          MOVE.B D7,D0
-          CMP.B $0001(A7),D0
-          BNE.B L0003030C
-          LEA.L $0038(A0),A0
-          MOVE.W #$0400,D0
-          BSR.B L00030312
-          CMP.L $0018(A7),D0
-          BNE.B L00030286
-          MOVE.B $0002(A7),D0
-          BSET.L D0,D1
-          MOVE.L A1,-(A7)
-          EXT.W D0
-          MULU.W #$0200,D0
-          ADDA.W D0,A1
-          MOVE.W #$0200,D0
-          BSR.B L00030358
-          MOVEA.L (A7)+,A1
-          CMP.W #$07ff,D1
-          BEQ.B L00030302
-          SUB.W #$021c,D2
-          SUB.B #$00000001,$0003(A7)        ;== $0044ffd3
-          BEQ.B L00030286 (T)
-          ADDA.L #$00000008,A0
-          SUB.W #$00000004,D2
-          BRA.B L000302A0 (T)
-L00030302 ADDA.W #$001c,A7
-          MOVEM.L (A7)+,D0-D2/A0
-          RTS 
+                CLR.W D1
+                MOVE.W #$19ff,D2                                ; #$2000 = 8192 Words (16K MFM Buffer)
+                SUBA.W #$001c,A7
+
+.L00030286       
+.findsyncloop   CMP.W #$4489,(A0)+                              ; Loop until find sync mark
+                DBEQ.W D2,.findsyncloop
+
+                BNE.W .endofbuffer
+
+.L00030292       
+.skipsyncloop   CMP.W #$4489,(A0)+
+                DBNE.W D2,.skipsyncloop
+
+                BEQ.B .endofbuffer
+
+                SUBA.L #$00000002,A0
+                SUB.W #$00000001,D2
+
+.L000302A0 
+                MOVEM.L A0-A1,-(A7)
+                LEA.L $0008(A7),A1
+                MOVE.L #$0000001c,D0
+                BSR.W L00030332
+                MOVEM.L (A7)+,A0-A1
+         
+                MOVE.L #$00000028,D0
+                BSR.B L00030312
+
+                CMP.L $0014(A7),D0
+                BNE.B .findsyncloop
+
+                MOVE.B D7,D0
+                CMP.B $0001(A7),D0
+                BNE.B .endofbuffer
+          
+                LEA.L $0038(A0),A0
+                MOVE.W #$0400,D0
+                BSR.B L00030312
+
+                CMP.L $0018(A7),D0
+                BNE.B .findsyncloop
+
+                MOVE.B $0002(A7),D0
+                BSET.L D0,D1
+                MOVE.L A1,-(A7)
+                EXT.W D0
+                MULU.W #$0200,D0
+                ADDA.W D0,A1
+                MOVE.W #$0200,D0
+                BSR.B L00030358
+                MOVEA.L (A7)+,A1
+
+                CMP.W #$07ff,D1
+                BEQ.B .L00030302
+                
+                SUB.W #$021c,D2
+
+                SUB.B #$00000001,$0003(A7)        ;== $0044ffd3
+                BEQ.B .findsyncloop
+
+                ADDA.L #$00000008,A0
+                SUB.W #$00000004,D2
+                BRA.B .L000302A0
+
+.L00030302 
+                ADDA.W #$001c,A7
+                MOVEM.L (A7)+,D0-D2/A0
+                RTS 
 
 ;L0003030C ANDSR.B #$00fb,SR
-L0003030C AND.B #$fb,CCR                ; Clear Z Flag
-          BRA.B L00030302 (T)
+;.L0003030C 
+.endofbuffer    AND.B #$fb,CCR                ; Clear Z Flag
+                BRA.B .L00030302
 
 L00030312 MOVEM.L D1-D2/A0,-(A7)
           LSR.W #$00000002,D0
