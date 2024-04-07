@@ -166,7 +166,7 @@ initboot:
                 ; code relocated by the 'copymemory' routine
                 ; jmp to 000004ba continues execution here.
 relocatedboot:
-                LEA.L $0007c000,A7                      ;Set Stack 16K from top of memory
+                LEA.L $0007c000,A7                      ; Set Stack 16K from top of memory
 
                 LEA.L level6Handler(PC),A0              ; Address of Level 6 Interruipt Handler
                 MOVE.L A0,$00000078                     ; Level 6 Interrupt Vector - CIAB Level 6 (DiskIndex & Timers)
@@ -250,13 +250,13 @@ readdisk:
                 MOVEA.L $0004(A7),A1                    ; Decoded Buffer Address (from saved A0 on stack)
                 BSR.W decodemfmbuffer                   ; A0 = MFM Track Buffer, A1 = Decoded Destination Buffer
 
-                BEQ.B L003017C
+                BEQ.B .exit                             ; decodemfmbuffer returns Z=1 on success.
                 DBF.W D6,.retry
 
                 BSR.B headstotrack0                     ; Step Heads to Track 0
                 BRA.B .restart
 
-L003017C        MOVEM.L (A7)+,D1/A0-A1
+.exit           MOVEM.L (A7)+,D1/A0-A1
                 RTS 
 
 
@@ -266,7 +266,7 @@ L003017C        MOVEM.L (A7)+,D1/A0-A1
                 ;-- step the drive heads to track 0           --
 headstotrack0:
                 MOVE.L D0,-(A7)
-                MOVE.W #$00a6,D7                        ; Set high current track number
+                MOVE.W #$00a6,D7                        ; Set high current track number = 166 (cylinder 83)
                 CLR.W D0                                ; Clear Target Track Number
                 BSR.B stepheadstotrack                  ; Step the drive heads to Target Track                              
                 MOVE.L (A7)+,D0
@@ -363,9 +363,10 @@ readtrack:
                 MOVE.L A0,DSKPT(A6)                     ; Set MFM BUffer for DMA
                 MOVE.W #$0002,INTREQ(A6)                ; Clear DSKBLK (Disk Block Finished) Interrupt Flag 
                 MOVE.W #$99ff,D0                        ; Disk DMA read settings (DMAEN, 13 bit read length)
+                                                        ; read in #$19ff words = 6655
                                                         ; read in 6655 words (maybe one less than requested)
                                                         ; read in 13310 bytes (maybe two less than requested)
-                                                        ; read in 12Kb, DOS Track Size = ((1024 + header) * 11) + gap
+                                                        ; read in 12Kb, DOS Track Size = ((1024 + 56 + 8) * 11) = 11968 + track gap
                 MOVE.W D0,DSKLEN(A6)                    ; Initiate Disk DMA (h/w ref - has to be written twice)
                 MOVE.W D0,DSKLEN(A6)                    ; Initiate Disk DMA
 
@@ -380,147 +381,215 @@ readtrack:
                 RTS 
 
 
+; Each Track contains 11 sectors on a normal DOS track.
+;
+; Each Track contains one track gap of varying length (less than one sector in size) 
+; which can occur inbetween any sector on the track.
+;
+; Each Sector begins with a Sector Header of 2 words (mfm encoded) sync marks
+;  - 0x4489, 0x4489
+;
+; The header is followed by the Admin Block of 56 bytes (mfm encoded), 28 bytes (decoded)
+; Admin Block/Sector Header (28 bytes decoded)
+; Offset        Data Field
+; 0             dc.b   FormatId         - 
+; 1             dc.b   TrackNumber      - current track number (even = bottom side, odd = top side)
+; 2             dc.b   SectorNumber     - current sector number (0 - 10)
+; 3             dc.b   SectorsToGap     - number of sectors until the track gap (1 - 11)
+; $4  - 4       dc.l   0,0,0,0          - 16 admin bytes (normally 0 for DOS Disk) can be used to store info
+; $14 - 20      dc.l   headerChecksum
+; $18 - 24      dc.l   dataChecksum
+;
+; Next is the 1024 bytes of mfm encoded data, 512 bytes decoded
+;  - The data is typically formatted as two blocks of 182 long words
+;  - Can also be stored as Odd/Even interleaved long words
+;
 
                 ;---------------- decode mfm buffer -----------------
                 ;-- IN: A0.l = MFM Disk Buffer
-                ;-- IN: A1.l = Decode Disk Buffer
+                ;-- IN: A1.l = Decode Buffer
+                ;-- IN: D7   = Current Track
+                ;-- OUT: Z=1 Success, Z=0 Failed
+                ;-- OUT: A1.l = End of Decode Buffer
 decodemfmbuffer:
                 MOVEM.L D0-D2/A0,-(A7)
-                CLR.W D1
-                MOVE.W #$19ff,D2                                ; #$2000 = 8192 Words (16K MFM Buffer)
-                SUBA.W #$001c,A7
-
-.L00030286       
-.findsyncloop   CMP.W #$4489,(A0)+                              ; Loop until find sync mark
+                CLR.W D1                                        ; Loaded Sectors BitMask
+                MOVE.W #$19ff,D2                                ; #$1A00 = 6656 Words (13K MFM Buffer)
+                SUBA.W #$001c,A7                                ; Allocate Space on the stack (14 words/28 bytes)
+                                                                ; Admin Block on the stack (28 bytes)
+.findsyncloop   CMP.W #$4489,(A0)+                              ; Loop until sync marks are found
                 DBEQ.W D2,.findsyncloop
 
-                BNE.W .endofbuffer
-
-.L00030292       
-.skipsyncloop   CMP.W #$4489,(A0)+
+                BNE.W .endofbuffer                              ; have we reached end of buffer?
+      
+.skipsyncloop   CMP.W #$4489,(A0)+                              ; Loop until skipped past sync marks
                 DBNE.W D2,.skipsyncloop
 
-                BEQ.B .endofbuffer
+                BEQ.B .endofbuffer                              ; have we reached end of buffer?
 
-                SUBA.L #$00000002,A0
-                SUB.W #$00000001,D2
-
-.L000302A0 
+                SUBA.L #$00000002,A0                            ; Correct MFM Buffer PTR (start of admin block)
+                SUB.W #$00000001,D2                             ; Should this be Add.w #$1 to the loop counter
+                                                                ; looks like a small bug to me which never/rarely manifests.
+.decodesector 
                 MOVEM.L A0-A1,-(A7)
-                LEA.L $0008(A7),A1
-                MOVE.L #$0000001c,D0
-                BSR.W L00030332
+                LEA.L $0008(A7),A1                              ; Admin Block decode buffer held on the stack
+                MOVE.L #$0000001c,D0                            ; Admin Block size = 28 bytes (decoded)
+                BSR.W decodeadminblock                          ; decode admin block
                 MOVEM.L (A7)+,A0-A1
          
-                MOVE.L #$00000028,D0
-                BSR.B L00030312
+                MOVE.L #$00000028,D0                            ; #$28 = 40 bytes of admin block
+                BSR.B checksum                                  ; Calculate admin block checksum
 
-                CMP.L $0014(A7),D0
-                BNE.B .findsyncloop
+                CMP.L $0014(A7),D0                              ; Compare Checksum with decoded checksum value 
+                BNE.B .findsyncloop                             ; If Bad Check Sum then Skip Sector Decoding
 
-                MOVE.B D7,D0
-                CMP.B $0001(A7),D0
-                BNE.B .endofbuffer
+                MOVE.B D7,D0                                    ; D7 = Current Track
+                CMP.B $0001(A7),D0                              ; Compare Current Track with Data Read from Disk
+                BNE.B .endofbuffer                              ; If not equal then jump to end
           
-                LEA.L $0038(A0),A0
-                MOVE.W #$0400,D0
-                BSR.B L00030312
+                LEA.L $0038(A0),A0                              ; #$38 = 56, skip to sector data (mfm encoded)
+                MOVE.W #$0400,D0                                ; 1024 bytes (encoded), 512 (decoded)
+                BSR.B checksum                                  ; Calculate data block checksum
 
-                CMP.L $0018(A7),D0
-                BNE.B .findsyncloop
+                CMP.L $0018(A7),D0                              ; Compare Checksum with decoded checksum value
+                BNE.B .findsyncloop                             ; If Bad Check Sum then Skip Sector Decoding
 
-                MOVE.B $0002(A7),D0
-                BSET.L D0,D1
+                MOVE.B $0002(A7),D0                             ; Get Sector Number from Admin Block
+                BSET.L D0,D1                                    ; Set Sector BitMask bit (0-10) - used to detect when all sectors have bene loaded.
+
                 MOVE.L A1,-(A7)
                 EXT.W D0
-                MULU.W #$0200,D0
-                ADDA.W D0,A1
-                MOVE.W #$0200,D0
-                BSR.B L00030358
+                MULU.W #$0200,D0                                ; Calculate Decode Buffer Address Offset for decoded data.
+                ADDA.W D0,A1                                    ; A1 = Decode Buffer Destination Address
+                MOVE.W #$0200,D0                                ; #$20 - 512 bytes to decode
+                BSR.B decodedatablock                           ; decode sector data block
                 MOVEA.L (A7)+,A1
 
-                CMP.W #$07ff,D1
-                BEQ.B .L00030302
-                
-                SUB.W #$021c,D2
+                CMP.W #$07ff,D1                                 ; #$7ff = bit mask value when all 11 sectors have been loaded
+                BEQ.B .cleanandexit                             ; all sectors loaded and decoded, so end decode loop
 
-                SUB.B #$00000001,$0003(A7)        ;== $0044ffd3
-                BEQ.B .findsyncloop
+                SUB.W #$021c,D2                                 ; decrement buffer loop counter by sector size + admin block
 
-                ADDA.L #$00000008,A0
-                SUB.W #$00000004,D2
-                BRA.B .L000302A0
+                SUB.B #$00000001,$0003(A7)                      ; subtract 1 from sectors until track gap value
+                BEQ.B .findsyncloop                             ; if no sectors left until the track gap then 
+                                                                ; need to search past the track gap to next sync mark
+                                                                ; for the next sector to decode.
 
-.L00030302 
-                ADDA.W #$001c,A7
+                ADDA.L #$00000008,A0                            ; if not at track gap then skip start of next 
+                                                                ; sector header sync marks 0x4489, 0x4489
+                SUB.W #$00000004,D2                             ; decrement buffer loop counter by 4 bytes skipped
+                BRA.B .decodesector                             ; decode next sector      
+
+.cleanandexit
+                ADDA.W #$001c,A7                                ; restore reserved stack space for sector admin block (28 bytes)
                 MOVEM.L (A7)+,D0-D2/A0
+                RTS                                             ; Return with Z = 1 to indicate success.
+
+                ;ANDSR.B #$00fb,SR 
+.endofbuffer    AND.B #$fb,CCR                                  ; Clear Z Flag to indicate an error.
+                BRA.B .cleanandexit
+
+
+                ;-------------------- checksum ------------------
+                ; --  IN: A0.l - encoded data buffer
+                ; --  IN: D0.l - number of bytes (40 bytes for header/admin block), (1024 bytes for data block)
+                ; -- OUT: D0.l - Check sum value
+checksum 
+                MOVEM.L D1-D2/A0,-(A7)
+                LSR.W #$00000002,D0             ; convert number of bytes to longword count
+                SUB.W #$00000001,D0             ; decrement loop counter (dbf loop)
+                MOVE.L #$00000000,D1            ; D1 = accumulated checksum value
+
+.decodeloop     MOVE.L (A0)+,D2                 ; next mfm encoded long word
+                EOR.L D2,D1                     ; exculsive or with accumulated value
+                DBF.W D0,.decodeloop            ; loop next value
+
+                AND.L #$55555555,D1             ; remove mfm clock bits
+                MOVE.L D1,D0                    ; set return value in D0.l
+                MOVEM.L (A7)+,D1-D2/A0
                 RTS 
 
-;L0003030C ANDSR.B #$00fb,SR
-;.L0003030C 
-.endofbuffer    AND.B #$fb,CCR                ; Clear Z Flag
-                BRA.B .L00030302
 
-L00030312 MOVEM.L D1-D2/A0,-(A7)
-          LSR.W #$00000002,D0
-          SUB.W #$00000001,D0
-          MOVE.L #$00000000,D1
-L0003031C MOVE.L (A0)+,D2
-          EOR.L D2,D1
-          DBF.W D0,L0003031C
-          AND.L #$55555555,D1
-          MOVE.L D1,D0
-          MOVEM.L (A7)+,D1-D2/A0
-          RTS 
-
-L00030332 MOVEM.L D1-D3,-(A7)
-          LSR.W #$00000002,D0
-          SUB.W #$00000001,D0
-          MOVE.L #$55555555,D1
-L00030340 MOVE.L (A0)+,D2
-          MOVE.L (A0)+,D3
-          AND.L D1,D2
-          AND.L D1,D3
-          ADD.L D2,D2
-          ADD.L D3,D2
-          MOVE.L D2,(A1)+
-          DBF.W D0,L00030340 (F)
-          MOVEM.L (A7)+,D1-D3
-          RTS 
+                ;--------------- decode admin block ---------------
+                ; -- IN: A0.l - encoded data buffer
+                ; -- IN: A1.l - decoded data buffer
+                ; -- IN: D0.l - number of bytes to decode (28 for header)
+decodeadminblock
+                MOVEM.L D1-D3,-(A7)
+                LSR.W #$00000002,D0             ; convert number of bytes to longword count
+                SUB.W #$00000001,D0             ; decrement loop counter (dbf loop)
+                MOVE.L #$55555555,D1            ; mfm clock bits mask
+.decodeloop     MOVE.L (A0)+,D2                 ; mfm encoded odd bits
+                MOVE.L (A0)+,D3                 ; mfm encoded even bits
+                AND.L D1,D2                     ; remove clock bits
+                AND.L D1,D3                     ; remove clock bits
+                ADD.L D2,D2                     ; shift odd bits << 1
+                ADD.L D3,D2                     ; combine even & odd bits
+                MOVE.L D2,(A1)+                 ; store decoded long in destination buffer
+                DBF.W D0,.decodeloop            ; loop and decode next long word
+                MOVEM.L (A7)+,D1-D3
+                RTS 
 
 
-L00030358 MOVE.L D1,-(A7)
-L0003035A BTST.B #$000e,$0002(A6) ;== $0044f002
-          BNE.B L0003035A
-          MOVE.L #$00000000,D1
-          MOVE.L D1,$0064(A6) ;== $0044f064
-          MOVE.L D1,$0060(A6) ;== $0044f060
-          MOVE.L #$ffffffff,$0044(A6) ;== $0044f044
-          MOVE.W #$5555,$0070(A6) ;== $0044f070
-          ADDA.W D0,A0
-          SUBA.L #$00000002,A0
-          MOVE.L A0,$0050(A6) ;== $0044f050
-          ADDA.W D0,A0
-          MOVE.L A0,$004C(A6)       ;== $0044f04c
-          ADDA.L #$00000002,A0
-          ADDA.W D0,A1
-          SUBA.W #$00000002,A1
-          MOVE.L A1,$0054(A6) ;== $0044f054
-          ADDA.W #$00000002,A1
-          MOVE.L #$1dd80002,$0040(A6) ;== $0044f040
-          LSL.W #$00000005,D0
-          ADD.W #$00000001,D0
-          MOVE.W D0,$0058(A6) ;== $0044f058
-L000303A4 BTST.B #$000e,$0002(A6) ;== $0044f002
-          BNE.B L000303A4 (F)
-          MOVE.L (A7)+,D1
-          RTS 
+                ;------------------------ decode data block ------------------------------
+                ; -- mfm decode with the blitter, performs a descending blit
+                ; -- merges encoded data from channels A & B, using C as a selector.
+                ; -- haven't worked out the exact minterms but that's what it 
+                ; -- appears to be doing to decode the mfm data into the decode buffer.
+                ; -- IN: A0.l - mfm encoded data
+                ; -- IN: A1.l - decoded data buffer
+                ; -- IN: D0.l - number of bytes to decode (512 for sector data)
+decodedatablock
+                MOVE.L D1,-(A7)
+
+.blitwait1      BTST.B #$000e,DMACONR(A6)               ; Test Blitter Busy Bit
+                BNE.B .blitwait1
+
+                MOVE.L #$00000000,D1
+                MOVE.L D1,BLTAMOD(A6)                   ; BLTAMOD & BLTDMOD = 0
+                MOVE.L D1,BLTCMOD(A6)                   ; BLTCMOD & BLTBMOD = 0
+                MOVE.L #$ffffffff,BLTAFWM(A6)           ; BLTAFWM & BLTALWM - First & Last word masks
+                MOVE.W #$5555,BLTCDAT(A6)               ; BLTCDAT
+
+                ; Set blitter a channel to end of odd mfm data block
+                ADDA.W D0,A0                            ; Add 512 bytes to mfm encoded buffer (start of even bits)
+                SUBA.L #$00000002,A0                    ; Sub 2 bytes (end of odd bits)
+                MOVE.L A0,BLTAPT(A6)                    ; Blitter A Channel Source Data
+
+                ; Set blitter b channel to end of even mfm data block
+                ADDA.W D0,A0                            ; Add 512 bytes to mfm encoded buffer (end of even bits)
+                MOVE.L A0,BLTBPT(A6)                    ; Blitter B Channel Source Data
+
+                ; Set blitter d channel to end of decoded data buffer
+                ADDA.L #$00000002,A0                    ; Add 2 bytes to mfm encoded buffer (end of data block)              
+                ADDA.W D0,A1                            ; Add 512 to decoded data buffer (end of decoded block)
+                SUBA.W #$00000002,A1                    ; Sub 2 bytes (last word of decoded data block)
+                MOVE.L A1,BLTDPT(A6)                    ; Blitter D Channel Dest Data 
+
+                ADDA.W #$00000002,A1                    ; Add 2 bytes (end of decoded data) 
+                                                        ; - restore pointer value to sensible value
+                ; set blitter operation & size
+                MOVE.L #$1dd80002,BLTCON0(A6)           ; BLTCON0 = #$1dd8 
+                                                        ; - Combine Channels A & B, using C as a selector to merge bits into the destination
+                                                        ; BLTCON1 = #$0002 - Descending mode blit
+                LSL.W #$00000005,D0                     ; Shift Number of bytes to blitheight bits 
+                                                        ;  - shifted one less than required so height is halved,
+                                                        ;  - $200 becomes $100 = 256 words 
+                ADD.W #$00000001,D0                     ; add one for the blit width (2 bytes)
+                MOVE.W D0,BLTSIZE(A6)                   ; BLTSIZE = 2 x 256 bytes = 512 bytes
+
+.blitwait2      BTST.B #$000e,DMACONR(A6)               ; Test Blitter Busy bit              
+                BNE.B .blitwait2                        ; wait for blit to complete.
+                                                        ; this wait appears to slow the loader down
+                                                        ; should only need to wait at the start of blitter set-up.
+                MOVE.L (A7)+,D1
+                RTS 
 
 
-        ;------------- Level 6 Interrupt Handler -------------------
-        ;-- If a Timer A interrupt Occurs then Set D5.b = #$ff    --
-        ;-- Loader code uses D5 as flag to wait for CIAB timer A  --
-        ;-- wait for Disk Operations                              --
+                ;------------- Level 6 Interrupt Handler -------------------
+                ;-- If a Timer A interrupt Occurs then Set D5.b = #$ff    --
+                ;-- Loader code uses D5 as flag to wait for CIAB timer A  --
+                ;-- wait for Disk Operations                              --
 level6Handler:
                 MOVE.L D0,-(A7)
                 MOVE.W INTREQR(A6),D0                           ;Interrupt Request Bits
@@ -535,7 +604,7 @@ level6Handler:
                 ST.B D5                                         ;Is Timer A Interrupt
 
 notourinterrupt:
-                MOVE.W #$2000,$009C(A6) 
+                MOVE.W #$2000,INTREQ(A6)                        ; clear EXTER - CIAB interrupt flag
                 MOVE.L (A7)+,D0
                 RTE 
 
