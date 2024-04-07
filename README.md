@@ -49,6 +49,8 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
+2023-04-07 - Completed first draft of documenting the bootblock.s code.
+
 2024-04-05 - Almost finished documenting the Bootblock code (which builds in VSCode using the Amiga Assembly plug-in)
 
 2024-03-28 - Uploaded ripped files on ADFs, Ripped files are 'IFF' files that are further processed/decrunched by the loader before relocated into memory. All files appear to have IFF headers apart from the the music file(s), not sure what format these are yet.
