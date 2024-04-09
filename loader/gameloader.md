@@ -1,5 +1,5 @@
 # Game Loader
-The game loader file is loaded by the bootblock.s into memory from $800 to $2400, The loader loads in 2 tracks of data from the disk, mfm decodes them at this address.
+The game loader file is loaded by the bootblock.s into memory from $800 to $3400, The loader loads in 2 tracks of data from the disk, mfm decodes them at this address.
 
 The file on disk is called "BATMAN" and can be seen as the first entry in the file table on disk 1 (located on sector 2 on track 0).
 
