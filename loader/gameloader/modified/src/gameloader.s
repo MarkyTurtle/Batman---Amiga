@@ -33,23 +33,23 @@
             ;--
             ;--         
 batman_start:
-                BRA.B  L0000081C                            ; Calls $0000081C - jmp_load_screen (addr: $00000800)
-                                                            ; This will get overwritten by the stack during loading
+                BRA.B  L0000081C                                ; Calls $0000081C - jmp_load_screen (addr: $00000800)
+                                                                ; This will get overwritten by the stack during loading
 
-                dc.w    $0000, $22BA, $0000, $0000          ; scrap memory (i think)
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000
+                dc.w    $0000, $22BA, $0000, $0000              ; scrap memory (i think)
+                dc.w    $0000, $0000, $0000, $0000  
+                dc.w    $0000, $0000, $0000, $0000  
+                dc.w    $0000   
 
-stack                                                       ; Top of Loader Stack, (re)set each time a game section is loaded. (addr:$0000081C) 
-jump_table                                                  ; Start of jump table for loading and executing the game sections. (addr:$0000081C)
-L0000081C       BRA.W  load_loading_screen                  ; Calls $00000838 - Load Loading Screen (instruction addr:$0000081C)
-L00000820       BRA.W  load_title_screen2                   ; Calls $00000948 - Load Title Screen2  (instruction addr:$00000820)
-L00000824       BRA.W  L000009C8
-L00000828       BRA.W  L00000A78
-L0000082C       BRA.W  L00000B28
-L00000830       BRA.W  L00000B90
-L00000834       BRA.W  L00000C40
+stack                                                           ; Top of Loader Stack, (re)set each time a game section is loaded. (addr:$0000081C) 
+jump_table                                                      ; Start of jump table for loading and executing the game sections. (addr:$0000081C)
+L0000081C       BRA.W  load_loading_screen                      ; Calls $00000838 - Load Loading Screen (instruction addr:$0000081C)
+L00000820       BRA.W  load_title_screen2                       ; Calls $00000948 - Load Title Screen2  (instruction addr:$00000820)
+L00000824       BRA.W  load_level1                              ; Calls $000009C8 - Load Level 1 - Axis Chemicals (instruction addr:$00000824)
+L00000828       BRA.W  load_level_2                             ; Calls $00000A78 - Load Level 2 - Bat Mobile (instruction addr:$00000829)
+L0000082C       BRA.W  load_level_3                             ; Calls $00000B28 - Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
+L00000830       BRA.W  load_level_4                             ; Calls $00000B90 - Load Level 4 - Batwing Parade (instruction addr:$00000830)
+L00000834       BRA.W  load_level_5                             ; Calls $00000C40 - Load Level 5 - Cathedral (instruction addr:$00000834)
 
 
 
@@ -59,14 +59,14 @@ L00000834       BRA.W  L00000C40
             ;---------------------- load loading screen ------------------------
             ;-- load the batman loading.iff and display it for 5 seconds.
             ;-- then, jump to load the title screen.
-load_loading_screen                                             ; (instruction addr $00000838)
-                LEA.L  stack,A7                                 ; Address $0000081C
-                BSR.W  init_system                              ; Calls $00001F26 - init_system
+load_loading_screen                                             ; relocated address: $00000838
+                LEA.L  stack,A7                                 ; stack address $0000081C
+                BSR.W  init_system                              ; calls $00001F26 - init_system
                 BSR.W  L00001B4A
                 MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
                 MOVE.L #$00002AD6,L00000CF0                     ; addr $02AD6 - address of disk file table
                 LEA.L  lp_loading_screen(PC),A0                 ; addr $008C8 - address of the load parameter block (files to load for the loading screen section)
-                BSR.W  loader                                   ; Calls $00000CFC - Load/Process files & Copy Protection
+                BSR.W  loader                                   ; calls $00000CFC - Load/Process files & Copy Protection
 
                 ; clear out color palette
                 LEA.L  CUSTOM,A6
@@ -96,12 +96,18 @@ load_loading_screen                                             ; (instruction a
                 BCS.B  .timerwait
                 BRA.B  load_title_screen1                       ; addr: $0000090E
 
+
 lp_loading_screen                                               ; loading screen load parameters - addr: $000008C8
-                dc.w $0020, $002E, $0000, $0000, $0000, $0000, $0000, $0000           ;. ..............
-                dc.w $002B, $0007, $C7FC, $0000, $0000, $0000, $0000, $0000           ;.+..............
-                dc.w $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030           ;BATMAN MOVIE   0
-                dc.w $4C4F, $4144, $494E, $4720, $4946, $4650, $414E, $454C           ;LOADING IFFPANEL
-                dc.w $2020, $2049, $4646                                              ;   IFF
+.diskname_offset    dc.w $0020
+.filename1_offset   dc.w $002E
+                    dc.l $00000000, $00000000, $00000000 
+.filename2_offset   dc.w $002B
+                    dc.l $0007C7FC, $00000000, $00000000
+.filename3_offset   dc.w $0000          
+.diskname           dc.b "BATMAN MOVIE   0"
+.filename1          dc.b "LOADING IFF"
+.filename2          dc.b "PANEL   IFF"
+
 
 
 
@@ -112,140 +118,177 @@ lp_loading_screen                                               ; loading screen
             ;-- called on first load, after the loading screen.
             ;-- 1) starts the title screen (without the end game joker laugh etc)
             ;-- 2) starts the title screen (with joket laugh)
-load_title_screen1                                          ; relocated address: $0000090E
-                LEA.L  stack,A7                             ; Stack Address $0000081C
-                BSR.W  init_system                          ; L00001F26
-                MOVE.L #$0007C7FC,ld_loadbuffer_top         ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-                MOVE.L #$00002AD6,L00000CF0                 ; addr $02AD6 - address of disk file table
-                LEA.L  lp_title_screen(PC),A0               ; Get title screen load parameters address
-                BSR.W  loader                               ; Calls $00000CFC - Load/Process files & Copy Protection
-                MOVE.W #$7fff,INTENA(A6)                    ; disable interrupts
-                MOVE.W #$1fff,DMACON(A6)                    ; disable all dma
-                MOVE.W #$2000,SR                            ; Set Supervisor Mode bit 
-                JMP    $0001c000                            ; Title Screen Start (on load)
+load_title_screen1                                              ; relocated address: $0000090E
+                LEA.L  stack,A7                                 ; stack address $0000081C
+                BSR.W  init_system                              ; L00001F26
+                MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+                MOVE.L #$00002AD6,L00000CF0                     ; addr $02AD6 - address of disk file table
+                LEA.L  lp_title_screen(PC),A0                   ; get title screen load parameters address
+                BSR.W  loader                                   ; calls $00000CFC - Load/Process files & Copy Protection
+                MOVE.W #$7fff,INTENA(A6)                        ; disable interrupts
+                MOVE.W #$1fff,DMACON(A6)                        ; disable all dma
+                MOVE.W #$2000,SR                                ; set supervisor mode bit 
+                JMP    $0001c000                                ; title screen start (on load)
 
 
-load_title_screen2                                          ; relocated address: $00000948
-                LEA.L  stack,A7                             ; Stack Address $0000081C
-                BSR.W  init_system                          ; L00001F26
-                MOVE.L #$0007C7FC,ld_loadbuffer_top         ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-                MOVE.L #$00002AD6,L00000CF0                 ; addr $02AD6 - address of disk file table
-                LEA.L  lp_title_screen(PC),A0               ; Get title screen load parameters address
-                BSR.W  loader                               ; Calls $00000CFC - Load/Process files & Copy Protection
-                MOVE.W #$7fff,INTENA(A6)                    ; disable interrupts
-                MOVE.W #$1fff,DMACON(A6)                    ; diable all dma
-                MOVE.W #$2000,SR                            ; Set supervisor Mode bit
-                JMP    $0001c004                            ; Title Screen Start (on end of a game)
+load_title_screen2                                              ; relocated address: $00000948
+                LEA.L  stack,A7                                 ; Stack Address $0000081C
+                BSR.W  init_system                              ; L00001F26
+                MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+                MOVE.L #$00002AD6,L00000CF0                     ; addr $02AD6 - address of disk file table
+                LEA.L  lp_title_screen(PC),A0                   ; get title screen load parameters address
+                BSR.W  loader                                   ; calls $00000CFC - Load/Process files & Copy Protection
+                MOVE.W #$7fff,INTENA(A6)                        ; disable interrupts
+                MOVE.W #$1fff,DMACON(A6)                        ; disable all dma
+                MOVE.W #$2000,SR                                ; set supervisor mode bit
+                JMP    $0001c004                                ; title screen start (on end of a game)
 
 
 
 lp_title_screen:                                                                    ; title screen loader parameters. addr: $00000982
-L00000982     dc.w   $0020, $002E, $0000, $3FFC, $0000, $0000, $0000, $0000         ;. ....?.........
-L00000992     dc.w   $002B, $0003, $F236, $0000, $0000, $0000, $0000, $0000         ;.+...6..........
-L000009A2     dc.w   $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030         ;BATMAN MOVIE   0
-L000009B2     dc.w   $5449, $544C, $4550, $5247, $4946, $4654, $4954, $4C45         ;TITLEPRGIFFTITLE
-L000009C2     dc.w   $5049, $4349, $4646                                            ;PICIFF
+                dc.w   $0020, $002E, $0000, $3FFC, $0000, $0000, $0000, $0000       ;. ....?.........
+                dc.w   $002B, $0003, $F236, $0000, $0000, $0000, $0000, $0000       ;.+...6..........
+                dc.w   $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030       ;BATMAN MOVIE   0
+                dc.w   $5449, $544C, $4550, $5247, $4946, $4654, $4954, $4C45       ;TITLEPRGIFFTITLE
+                dc.w   $5049, $4349, $4646                                          ;PICIFF
 
 
 
 
-L000009C8     LEA.L  stack,A7                                                       ; Address $0000081C
-L000009CC     BSR.W  init_system
-L000009D0     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-L000009DA     MOVE.L #$00002AD6,L00000CF0
-L000009E4     LEA.L  L00000A00(PC),A0
-L000009E8     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
-L000009EC     MOVE.W #$7fff,$009a(A6)
-L000009F2     MOVE.W #$1fff,$0096(A6)
-L000009F8     MOVE.W #$2000,SR
-L000009FC     JMP $00003000
-
-L00000A00     dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-L00000A10     dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-L00000A20     dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
-L00000A30     dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;............BATM
-L00000A40     dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445         ;AN MOVIE   0CODE
-L00000A50     dc.w   $3120, $2020, $4946, $464D, $4150, $4752, $2020, $2049         ;1   IFFMAPGR   I
-L00000A60     dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4845         ;FFBATSPR1 IFFCHE
-L00000A70     dc.w   $4D20, $2020, $2049, $4646                                     ;M    IFF
 
 
 
+            ;---------------------- load level1 - axis chemicals ------------------------
+load_level1                                                     ; relocated address: $000009C8
+            LEA.L  stack,A7                                     ; stack address $0000081C
+            BSR.W  init_system                                  ; L00001F26
+            MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+            MOVE.L #$00002AD6,L00000CF0                         ; addr $02AD6 - address of disk file table
+            LEA.L  lp_level_1(PC),A0                            ; get level 1 load parameters address
+            BSR.W  loader                                       ; calls $00000CFC - Load/Process files & Copy Protection
+            MOVE.W #$7fff,INTENA(A6)                            ; disable all interrupts
+            MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
+            MOVE.W #$2000,SR                                    ; set supervisor mode bit
+            JMP $00003000                                       ; level 1 start
 
-L00000A78     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000A7C     BSR.W  init_system                                                    ;L00001F26
-L00000A80     MOVE.L #$0007C7FC,ld_loadbuffer_top               ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-L00000A8A     MOVE.L #$00002AD6,L00000CF0
-L00000A94     LEA.L  L00000AB0(PC),A0
-L00000A98     BSR.W  loader                                     ; Calls $00000CFC - Load/Process files & Copy Protection
-L00000A9C     MOVE.W #$7fff,$009a(A6)
-L00000AA2     MOVE.W #$1fff,$0096(A6)
-L00000AA8     MOVE.W #$2000,SR
-L00000AAC     JMP $00003000
+lp_level_1                                                      ; level 1 loader parameters. addr: $00000A00
+            dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
+            dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
+            dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
+            dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;............BATM
+            dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445         ;AN MOVIE   0CODE
+            dc.w   $3120, $2020, $4946, $464D, $4150, $4752, $2020, $2049         ;1   IFFMAPGR   I
+            dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4845         ;FFBATSPR1 IFFCHE
+            dc.w   $4D20, $2020, $2049, $4646                                     ;M    IFF
 
-L00000AB0     dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-L00000AC0     dc.w   $0047, $0001, $FFFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-L00000AD0     dc.w   $0002, $A416, $0000, $0000, $0000, $0000, $0041, $0006         ;.............A..
-L00000AE0     dc.w   $8F7C, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;.|..........BATM
-L00000AF0     dc.w   $414E, $204D, $4F56, $4945, $2020, $2031, $434F, $4445         ;AN MOVIE   1CODE
-L00000B00     dc.w   $2020, $2020, $4946, $4644, $4154, $4120, $2020, $2049         ;    IFFDATA    I
-L00000B10     dc.w   $4646, $4441, $5441, $3220, $2020, $4946, $464D, $5553         ;FFDATA2   IFFMUS
-L00000B20     dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO
 
-L00000B28     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000B2C     BSR.W  init_system                                                    ;L00001F26
-L00000B30     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-L00000B3A     MOVE.L #$00002AD6,L00000CF0
-L00000B44     LEA.L  L00000B62(PC),A0
-L00000B48     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
-L00000B4C     MOVE.W #$7fff,$009a(A6)
-L00000B52     MOVE.W #$1fff,$0096(A6)
-L00000B58     MOVE.W #$2000,SR
-L00000B5C     JMP $0000d000
 
-L00000B62     dc.w   $0012, $0020, $0000, $3FFC, $0000, $0000, $0000, $0000         ;... ..?.........
-L00000B72     dc.w   $0000, $4241, $544D, $414E, $204D, $4F56, $4945, $2020         ;..BATMAN MOVIE  
-L00000B82     dc.w   $2031, $4241, $5443, $4156, $4520, $4946, $4600                ; 1BATCAVE IFF.
 
-L00000B90     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000B94     BSR.W  init_system                                                    ;L00001F26
-L00000B98     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-L00000BA2     MOVE.L #$00002AD6,L00000CF0
-L00000BAC     LEA.L  L00000BC8(PC),A0
-L00000BB0     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
-L00000BB4     MOVE.W #$7fff,$009a(A6)
-L00000BBA     MOVE.W #$1fff,$0096(A6)
-L00000BC0     MOVE.W #$2000,SR
-L00000BC4     JMP $00003002
 
-L00000BC8     dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-L00000BD8     dc.w   $0047, $0001, $FFFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-L00000BE8     dc.w   $0002, $A416, $0000, $0000, $0000, $0000, $0041, $0006         ;.............A..
-L00000BF8     dc.w   $8F7C, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;.|..........BATM
-L00000C08     dc.w   $414E, $204D, $4F56, $4945, $2020, $2031, $434F, $4445         ;AN MOVIE   1CODE
-L00000C18     dc.w   $2020, $2020, $4946, $4644, $4154, $4120, $2020, $2049         ;    IFFDATA    I
-L00000C28     dc.w   $4646, $4441, $5441, $3420, $2020, $4946, $464D, $5553         ;FFDATA4   IFFMUS
-L00000C38     dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO...a...
 
-L00000C40     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000C44     BSR.W  init_system                                                    ;L00001F26
-L00000C48     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-L00000C52     MOVE.L #$00002AD6,L00000CF0
-L00000C5C     LEA.L  L00000C78(PC),A0
-L00000C60     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
-L00000C64     MOVE.W #$7fff,$009a(A6)
-L00000C6A     MOVE.W #$1fff,$0096(A6)
-L00000C70     MOVE.W #$2000,SR
-L00000C74     JMP $00003000
 
-L00000C78     dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-L00000C88     dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-L00000C98     dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
-L00000CA8     dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;............BATM
-L00000CB8     dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445         ;AN MOVIE   0CODE
-L00000CC8     dc.w   $3520, $2020, $4946, $464D, $4150, $4752, $3220, $2049         ;5   IFFMAPGR2  I
-L00000CD8     dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4855         ;FFBATSPR1 IFFCHU
-L00000CE8     dc.w   $5243, $4820, $2049, $4646                                     ;RCH  IFF 
+            ;---------------------- load level 2 - bat mobile ------------------------
+load_level_2                                                    ; relocated address: $00000A78
+            LEA.L  stack,A7                                     ; stack address $0000081C
+            BSR.W  init_system                                  ; L00001F26
+            MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+            MOVE.L #$00002AD6,L00000CF0                         ; addr $02AD6 - address of disk file table
+            LEA.L  lp_level_2(PC),A0                            ; get level 2 load parameters address
+            BSR.W  loader                                       ; calls $00000CFC - Load/Process files & Copy Protection
+            MOVE.W #$7fff,INTENA(A6)                            ; disable all interrupts
+            MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
+            MOVE.W #$2000,SR                                    ; set supervisor mode bit
+            JMP $00003000                                       ; level 2 start
+
+lp_level_2                                                      ; level 2 loader parameters. addr: $00000AB0
+            dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
+            dc.w   $0047, $0001, $FFFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
+            dc.w   $0002, $A416, $0000, $0000, $0000, $0000, $0041, $0006         ;.............A..
+            dc.w   $8F7C, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;.|..........BATM
+            dc.w   $414E, $204D, $4F56, $4945, $2020, $2031, $434F, $4445         ;AN MOVIE   1CODE
+            dc.w   $2020, $2020, $4946, $4644, $4154, $4120, $2020, $2049         ;    IFFDATA    I
+            dc.w   $4646, $4441, $5441, $3220, $2020, $4946, $464D, $5553         ;FFDATA2   IFFMUS
+            dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO
+
+
+
+
+
+
+            ;---------------------- load level 3 - bat cave puzzle ------------------------
+load_level_3                                                    ; relocated address: $00000B28
+            LEA.L  stack,A7                                     ; stack address $0000081C
+            BSR.W  init_system                                  ; L00001F26
+            MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+            MOVE.L #$00002AD6,L00000CF0                         ; addr $02AD6 - address of disk file table
+            LEA.L  lp_level_3(PC),A0                            ; get level 3 load parameters address
+            BSR.W  loader                                       ; calls $00000CFC - Load/Process files & Copy Protection
+            MOVE.W #$7fff,INTENA(A6)                            ; disable all interrupts
+            MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
+            MOVE.W #$2000,SR                                    ; set supervisor mode bit
+            JMP $0000d000                                       ; level 3 start
+
+lp_level_3                                                      ; level 3 loader parameters. addr: $00000B62
+            dc.w   $0012, $0020, $0000, $3FFC, $0000, $0000, $0000, $0000         ;... ..?.........
+            dc.w   $0000, $4241, $544D, $414E, $204D, $4F56, $4945, $2020         ;..BATMAN MOVIE  
+            dc.w   $2031, $4241, $5443, $4156, $4520, $4946, $4600                ; 1BATCAVE IFF.
+
+
+
+
+
+
+            ;---------------------- load level 4 - batwing parade ------------------------
+load_level_4                                                    ; relocated address: $00000B90
+            LEA.L  stack,A7                                     ; stack address $0000081C
+            BSR.W  init_system                                  ; L00001F26
+            MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+            MOVE.L #$00002AD6,L00000CF0                         ; addr $02AD6 - address of disk file table
+            LEA.L  lp_level_4(PC),A0                            ; get level 4 load parameters address
+            BSR.W  loader                                       ; calls $00000CFC - Load/Process files & Copy Protection
+            MOVE.W #$7fff,INTENA(A6)                            ; disable all interrupts
+            MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
+            MOVE.W #$2000,SR                                    ; set supervisor mode bit
+            JMP $00003002                                       ; level 4 start
+
+lp_level_4                                                      ; level 4 loader parameters. addr: $00000BC8
+            dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
+            dc.w   $0047, $0001, $FFFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
+            dc.w   $0002, $A416, $0000, $0000, $0000, $0000, $0041, $0006         ;.............A..
+            dc.w   $8F7C, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;.|..........BATM
+            dc.w   $414E, $204D, $4F56, $4945, $2020, $2031, $434F, $4445         ;AN MOVIE   1CODE
+            dc.w   $2020, $2020, $4946, $4644, $4154, $4120, $2020, $2049         ;    IFFDATA    I
+            dc.w   $4646, $4441, $5441, $3420, $2020, $4946, $464D, $5553         ;FFDATA4   IFFMUS
+            dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO...a...
+
+
+
+
+
+
+
+            ;---------------------- load level 5 - cathedral  ------------------------
+load_level_5                                                    ; relocated address: $00000C40
+            LEA.L  stack,A7                                     ; stack address $0000081C
+            BSR.W  init_system                                  ; L00001F26
+            MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+            MOVE.L #$00002AD6,L00000CF0                         ; addr $02AD6 - address of disk file table
+            LEA.L  lp_level_5(PC),A0                            ; level 5 load parameters address
+            BSR.W  loader                                       ; calls $00000CFC - Load/Process files & Copy Protection
+            MOVE.W #$7fff,INTENA(A6)                            ; disable all interrupts
+            MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
+            MOVE.W #$2000,SR                                    ; set supervisor mode bit
+            JMP $00003000                                       ; level 5 start
+
+lp_level_5                                                      ; level 5 loader parameters. addr: $00000C78
+            dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
+            dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
+            dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
+            dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;............BATM
+            dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445         ;AN MOVIE   0CODE
+            dc.w   $3520, $2020, $4946, $464D, $4150, $4752, $3220, $2049         ;5   IFFMAPGR2  I
+            dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4855         ;FFBATSPR1 IFFCHU
+            dc.w   $5243, $4820, $2049, $4646                                     ;RCH  IFF 
 
 
 
@@ -257,7 +300,7 @@ L00000CE8     dc.w   $5243, $4820, $2049, $4646                                 
 
 
 
-                ;------------------------------ loader parameters ------------------------------
+                ;------------------------------ loader data/parameters ------------------------------
                 ;-- loader parameters and data store
                 ;-- starts at relocated address $00000CF0
                 ;-- $CF0 - File table address (disk directory)
@@ -266,16 +309,14 @@ L00000CE8     dc.w   $5243, $4820, $2049, $4646                                 
                 ;--        files are loaded below this address, kinda like a file stack
                 ;--        when all files are loaded they are then processed and relocated
                 ;--        also by the loader.
-                ;-- $CF8 - 
-ld_filetable                                                                        ; addr $00000CF0
-L00000CF0       dc.l   $00000000
+                ;-- $CF8 - Holds the File Table Memory Address Pointer (set in loader)
 
-ld_loadbuffer_top                                                                   ; addr $00000CF4
-                dc.l   $00000000                                                    ; ptr to load buffer end/top of memory (file are loaded below this address sequentially)
-L00000CF8     dc.W   $0000, $0000
-
-
-
+ld_filetable                                ; addr $00000CF0
+L00000CF0   dc.l   $00000000
+ld_loadbuffer_top                           ; addr $00000CF4
+            dc.l   $00000000                ; ptr to load buffer end/top of memory (file are loaded below this address sequentially)
+ld_filetable2                               ; addr $00000CF8
+            dc.l   $00000000                ; ptr to disk file table addess (disk directory, file names, length & start sectors)
 
 
 
@@ -289,26 +330,31 @@ L00000CF8     dc.W   $0000, $0000
                 ; IN: 00000CF4.l    - Top/end of Load buffer in memory ($7C7FC)
                 ; IN: 00000CF0.l    - Disk File Table Contents ($2AD6) for all loading sections.
                 ;
-loader                                                     ; relocated routine start Addr $00000CFC 
-L00000CFC       MOVEM.L D0-D7/A0-A6,-(A7)
-L00000D00       CLR.W   L00001B08
-L00000D06       MOVE.L  #$00002AD6,L00000CF8
-L00000D0E       MOVE.L  #$00002CD6,L00001AF2
-L00000D18       MOVE.L  #$000042D6,L00001AF6
-L00000D22       TST.W   (A0)
-L00000D24       BEQ.W   L00000D6E
-L00000D28       MOVEA.L A0,A1
-L00000D2A       ADDA.W  (A1)+,A0
-L00000D2C       MOVE.L  A1,-(A7)
-L00000D2E       BSR.W   L000015DE
-L00000D32       BEQ.B   L00000D38
-L00000D34       BSR.W   L000013B2
-L00000D38       MOVEA.L (A7),A0
-L00000D3A       LEA.L   $0007c7fc,A6
-L00000D40       CLR.W   L00001B08
-L00000D46       BSR.W   L00001652
-L00000D4A       MOVEA.L (A7)+,A0
+loader                                                      ; relocated routine start Addr $00000CFC 
+            MOVEM.L D0-D7/A0-A6,-(A7)
+            CLR.W   L00001B08                               ; clear 'load status' word
+            MOVE.L  #$00002AD6,ld_filetable2                ; store file table address
+            MOVE.L  #$00002CD6,ld_decoded_track_ptr         ; decoded track buffer address
+            MOVE.L  #$000042D6,ld_mfmencoded_track_ptr      ; mfm encoded track buffer address
+
+            TST.W   (A0)                                    ; test first load parameter value
+            BEQ.W   L00000D6E                               ; end load if = 0 - just check copy protection?
+
+L00000D28       MOVEA.L A0,A1                               ; copy file parameter block base address
+L00000D2A       ADDA.W  (A1)+,A0                            ; A0 = ptr to disk name string e.g. "BATMAN MOVIE   0"
+L00000D2C       MOVE.L  A1,-(A7)                            ; A1 = ptr to first filename structure.
+L00000D2E       BSR.W   L000015DE                           ; Load File Table $2AD6 & Check Disk Name
+L00000D32       BEQ.B   L00000D38                           ; Z = 1 - correct disk in the drive
+L00000D34       BSR.W   L000013B2                           ;       - else wait for correct disk to be inserted
+
+L00000D38       MOVEA.L (A7),A0                             ; A0 = ptr to first filename structure. (CCR not affected)
+L00000D3A       LEA.L   $0007c7fc,A6                        ; Top/End of loaded files buffer
+L00000D40       CLR.W   L00001B08                           ; clear 'load status' word
+
+L00000D46       BSR.W   load_file_entries                   ; call $00001652 - load files (A0 = first file entry)
+L00000D4A       MOVEA.L (A7)+,A0                            ; A0 = ptr to first filename structure. (CCR not affected)
 L00000D4C       BNE.B   L00000D6E
+
 L00000D4E       TST.W   (A0)
 L00000D50       BEQ.B   L00000D6E
 L00000D52       MOVE.L  A0,-(A7)
@@ -319,12 +365,15 @@ L00000D62       BSR.W   L000016E0
 L00000D66       MOVEA.L (A7)+,A0
 L00000D68       LEA.L   $000e(A0),A0
 L00000D6C       BRA.B   L00000D4E
+
 L00000D6E       MOVE.W  L00001AFC,D0
 L00000D74       BSR.W   L00001B7A
 L00000D78       LEA.L   $00bfd100,A0
+
 L00000D7E       CLR.W   L00002144
 L00000D84       TST.W   L00002144
 L00000D8A       BEQ.B   L00000D84
+
 L00000D8C       MOVE.B  #$00,$0900(A0)                                  ;0001972
 L00000D92       MOVE.B  #$00,$0800(A0)                                  ;0001872
 L00000D98       MOVE.B  #$00,$0700(A0)                                  ;0001772
@@ -1024,7 +1073,7 @@ L00001624       MOVE.L  #$0000000f,D0
 L00001626       CMPM.B  (A0)+,(A1)+
 L00001628       DBNE.W  D0,L00001626
 L0000162C       BNE.B   L0000163C
-L0000162E       MOVEA.L L00000CF8,A1
+L0000162E       MOVEA.L ld_filetable2,A1
 L00001632       MOVE.L  #$0000007b,D0
 L00001634       MOVE.L  (A0)+,(A1)+
 L00001636       DBF.W   D0,L00001634
@@ -1037,56 +1086,83 @@ L0000164A       TST.W   $00001B08
 L00001650       RTS 
 
 
-L00001652       MOVE.L  A0,-(A7)
-L00001654       TST.W   (A0)
-L00001656       BEQ.B   L000016D6
-L00001658       LEA.L   $000e(A0),A0
-L0000165C       BSR.B   L00001652
-L0000165E       BNE.B   L000016D6
-L00001660       MOVEA.L (A7),A0
-L00001662       ADDA.W  (A0),A0
-L00001664       MOVEA.L L00000CF8,A1
-L00001668       MOVE.L  #$0000001e,D0
-L0000166A       MOVEA.L A0,A2
-L0000166C       MOVEA.L A1,A3
-L0000166E       MOVE.L  #$0000000a,D1
-L00001670       CMPM.B  (A2)+,(A3)+
-L00001672       DBNE.W  D1,L00001670
-L00001676       BEQ.B   L0000168A
-L00001678       LEA.L   $0010(A1),A1
-L0000167C       DBF.W   D0,L0000166A
-L00001680       MOVE.W  #$0005,L00001B08
-L00001688       BRA.B   L000016D6
-L0000168A       MOVEA.L (A7),A0
-L0000168C       MOVE.L  $000a(A1),D2
-L00001690       AND.L   #$00ffffff,D2
-L00001696       MOVE.L  D2,$0006(A0)
-L0000169A       BEQ.B   L000016D6
-L0000169C       MOVE.W  $000e(A1),D1
-L000016A0       MOVE.L  D2,D0
-L000016A2       BTST.L  #$0000,D0
-L000016A6       BEQ.B   L000016AA
-L000016A8       ADD.L   #$00000001,D0
-L000016AA       SUBA.L  D0,A6
-L000016AC       MOVEA.L A6,A1
-L000016AE       MOVE.L  A6,$000a(A0)
-L000016B2       MOVE.W  D1,D0
-L000016B4       BSR.W   L00001B0A
-L000016B8       BNE.B   L000016D6
-L000016BA       MOVE.L  #$00000200,D0
-L000016C0       CMP.L   D0,D2
-L000016C2       BCC.B   L000016C6
-L000016C4       MOVE.L  D2,D0
-L000016C6       SUB.L   D0,D2
-L000016C8       SUB.W   #$00000001,D0
-L000016CA       MOVE.B  (A0)+,(A1)+
-L000016CC       DBF.W   D0,L000016CA
-L000016D0       ADD.W   #$00000001,D1
-L000016D2       TST.L   D2
-L000016D4       BNE.B   L000016B2
-L000016D6       MOVEA.L (A7)+,A0
-L000016D8       TST.W   $00001B08
-L000016DE       RTS 
+                ;------------------------ load file entries ------------------------
+                ;-- loads files in to memory, starting at top of memory $7C7FC
+                ;-- loads files from load parameter block, starting with the
+                ;-- last file in the structure.
+                ;--
+                ;-- so, the last file is loaded at $7C7FC - filelen,
+                ;--   , the next file is loaded at $7C7FC - filelen - filelen,
+                ;--   , and so on, until all files are loaded in from disk.
+                ;--
+                ;-- parameters:
+                ;-- IN: A0 = Entry to first file to load in the file list.
+                ;--
+load_file_entries                                       ; this routine's relocated address: $00001652
+                MOVE.L  A0,-(A7)                        ; store address to file entry
+                TST.W   (A0)                            ; if end of file entries?
+                BEQ.B   .exit                           ;  - then exit - $000016D6
+                LEA.L   $000e(A0),A0                    ;  - else calc address of next file entry in list
+                BSR.B   load_file_entries               ;     & recursive call to self. addr $00001652 
+                BNE.B   .exit                           ; if 'load status' is not equal 0 then exit. addr $000016D6
+
+.prep_table_search
+                MOVEA.L (A7),A0                         ; A0 = ptr for file entry
+                ADDA.W  (A0),A0                         ; A0 = ptr to file name string to find in disk file table (disk directory)
+                MOVEA.L ld_filetable2,A1                ; A1 = file table (disk directory)
+                MOVE.L  #$0000001e,D0                   ; D0 = loop counter 30 + 1
+
+.file_table_loop   
+                MOVEA.L A0,A2                           ; A2 = copy ptr to to file name - $0000166A 
+                MOVEA.L A1,A3                           ; A3 = copy ptr to file table
+
+.compare_filename                                       ; relocated address: $0000166E
+                MOVE.L  #$0000000a,D1                   ; D1 = loop counter 10 + 1 (filenames are 11 characters long)
+.file_loop      CMPM.B  (A2)+,(A3)+                     ; compare file name character with file table entry. addr $00001670
+                DBNE.W  D1,.file_loop                   ; loop next file name character
+                BEQ.B   .filefound                      ; file table entry found....
+
+.L00001678       LEA.L   $0010(A1),A1                   ; increment to start of next file table entry
+.L0000167C       DBF.W   D0,.file_table_loop            ; decrement file table search loop
+
+.L00001680       MOVE.W  #$0005,L00001B08               ; set 'load status' = 5 - file not found
+.L00001688       BRA.B   .exit                          ; L000016D6
+
+                ; file table entry has been found
+.filefound                                              ; relocated address: $0000168A 
+.L0000168A       MOVEA.L (A7),A0                        ; File Entry to load
+.L0000168C       MOVE.L  $000a(A1),D2                   ; Get File Length (and last character of filename) from file table (disk directory)
+.L00001690       AND.L   #$00ffffff,D2                  ; 24 bit file length mask
+.L00001696       MOVE.L  D2,$0006(A0)                   ; Save File length into Level Load Parameters table entry (2nd long word)
+.L0000169A       BEQ.B   .exit                          ; If file length is 0 then exit.
+
+.L0000169C       MOVE.W  $000e(A1),D1
+.L000016A0       MOVE.L  D2,D0
+.L000016A2       BTST.L  #$0000,D0
+.L000016A6       BEQ.B   .L000016AA
+.L000016A8       ADD.L   #$00000001,D0
+.L000016AA       SUBA.L  D0,A6
+.L000016AC       MOVEA.L A6,A1
+.L000016AE       MOVE.L  A6,$000a(A0)
+.L000016B2       MOVE.W  D1,D0
+.L000016B4       BSR.W   L00001B0A
+.L000016B8       BNE.B   .L000016D6
+.L000016BA       MOVE.L  #$00000200,D0
+.L000016C0       CMP.L   D0,D2
+.L000016C2       BCC.B   .L000016C6
+.L000016C4       MOVE.L  D2,D0
+.L000016C6       SUB.L   D0,D2
+.L000016C8       SUB.W   #$00000001,D0
+.L000016CA       MOVE.B  (A0)+,(A1)+
+.L000016CC       DBF.W   D0,.L000016CA
+.L000016D0       ADD.W   #$00000001,D1
+.L000016D2       TST.L   D2
+.L000016D4       BNE.B   .L000016B2
+
+.exit
+.L000016D6       MOVEA.L (A7)+,A0
+.L000016D8       TST.W   L00001B08                          ; test 'load status' and exit.
+.L000016DE       RTS 
 
 
 L000016E0       MOVEM.L D0/A0,-(A7)
@@ -1479,11 +1555,15 @@ L00001AE8       DBF.W   D7,L00001A9A
 L00001AEC       ADDA.W  D6,A7
 L00001AEE       RTS 
 
-L00001AF0       dc.w    $0000 
-L00001AF2       dc.w    $0000                                   ;OR.B #$00,D0
-L00001AF4       dc.w    $0000 
-L00001AF6       dc.w    $0000                                   ;OR.B #$00,D0
-L00001AF8       dc.w    $0000, $0000                            ;OR.B #$00,D0
+L00001AF0       dc.w    $0000
+
+ld_decoded_track_ptr
+               dc.l    $00000000                        ; relocated address: $00001AF2
+   
+ld_mfmencoded_track_ptr                             
+L00001AF6       dc.l    $00000000
+
+L00001AFA       dc.w    $0000                            ;OR.B #$00,D0
 L00001AFC       dc.w    $0000, $0000                            ;OR.B #$00,D0
 L00001B00       dc.b    $00
 L00001B01       dc.b    $00
@@ -1505,7 +1585,7 @@ L00001B24       MOVEA.L $00001af2,A0
 L00001B28       BSR.W   L00001CBC
 L00001B2C       BNE.B   L00001B40
 L00001B2E       ST.B    L00001AF0
-L00001B32       MOVEA.L L00001AF2,A0
+L00001B32       MOVEA.L ld_decoded_track_ptr,A0                 ; decoded track buffer address.
 L00001B36       MULU.W  #$0200,D1
 L00001B3A       ADDA.L  D1,A0
 L00001B3C       CLR.W   L00001B08
@@ -1613,7 +1693,7 @@ L00001CD8       BTST.B  #$0005,$00bfe001
 L00001CE0       BNE.B   L00001CD2
 L00001CE2       BSR.W   L00001BC8
 L00001CE6       MOVE.W  #$0001,L00001B08
-L00001CEC       MOVEA.L L00001AF6,A0
+L00001CEC       MOVEA.L ld_mfmencoded_track_ptr,A0                  ; mfm encoded track buffer
 L00001CF0       BSR.W   L00001D36
 L00001CF4       BEQ.B   L00001D1C
 L00001CF6       MOVE.W  #$0002,L00001B08
