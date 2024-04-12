@@ -2,98 +2,159 @@
 ;---------- Includes ----------
               INCDIR      "include"
               INCLUDE     "hw.i"
-              INCLUDE     "funcdef.i"
-              INCLUDE     "exec/exec_lib.i"
-              INCLUDE     "graphics/graphics_lib.i"
-              INCLUDE     "hardware/cia.i"
+              ;INCLUDE     "funcdef.i"
+              ;INCLUDE     "exec/exec_lib.i"
+              ;INCLUDE     "graphics/graphics_lib.i"
+              ;INCLUDE     "hardware/cia.i"
 ;---------- Const ----------
 
+
+
+
+
+                section BATMAN,code_c
+
+
+
+
+            ;------------------------- BATMAN entry point --------------------------
+            ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
+            ;-- immediately calls the 'load_loading_screen' jump table entry.
+            ;--
+            ;-- $2AD6   - The disk file table, held on 3rd sector of track 0, loaded in to this address.
+            ;--         - See documentation on the File Table structure: 
+            ;--
+            ;-- $7C7FC  - The top/end address of the load buffer,
+            ;--           The loader loads files into memory in blocks below this address.
+            ;--           e.g. the titlepic.iff raw file is loaded into $6FB06 and ends at $7C7FC - Length $CCF6
+            ;--                the titleprg.iff raw file is loaded into $59766 and ends at $6FB05 - Length 163A0
+            ;--           Once the files are loaded, the loader then processes the iff files and relocates
+            ;--           them in memory etc.
+            ;--
+            ;--         
 batman_start:
-L00000800     BRA.B  L0000081C                                               ; Entry point from end of bootblock.s $800
+                BRA.B  L0000081C                            ; Calls $0000081C - jmp_load_screen (addr: $00000800)
+                                                            ; This will get overwritten by the stack during loading
 
-L00000802     dc.w   $0000, $22BA, $0000, $0000, $0000, $0000, $0000, $0000
-L00000812     dc.w   $0000, $0000, $0000, $0000, $0000
+                dc.w    $0000, $22BA, $0000, $0000          ; scrap memory (i think)
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000
 
-stack:
-L0000081C     BRA.W  L00000838                                               ; Do Loading Screen
-L00000820     BRA.W  L00000948
-L00000824     BRA.W  L000009C8
-L00000828     BRA.W  L00000A78
-L0000082C     BRA.W  L00000B28
-L00000830     BRA.W  L00000B90
-L00000834     BRA.W  L00000C40
+stack                                                       ; Top of Loader Stack, (re)set each time a game section is loaded. (addr:$0000081C) 
+jump_table                                                  ; Start of jump table for loading and executing the game sections. (addr:$0000081C)
+L0000081C       BRA.W  load_loading_screen                  ; Calls $00000838 - Load Loading Screen (instruction addr:$0000081C)
+L00000820       BRA.W  load_title_screen2                   ; Calls $00000948 - Load Title Screen2  (instruction addr:$00000820)
+L00000824       BRA.W  L000009C8
+L00000828       BRA.W  L00000A78
+L0000082C       BRA.W  L00000B28
+L00000830       BRA.W  L00000B90
+L00000834       BRA.W  L00000C40
 
-L00000838     LEA.L  stack,A7                                                       ; Address $0000081C
-L0000083C     BSR.W  L00001F26
-L00000840     BSR.W  L00001B4A
-L00000844     MOVE.L #$0007c7fc,L00000CF4
-L0000084E     MOVE.L #$00002ad6,L00000CF0
-L00000858     LEA.L  L000008C8(PC),A0
-L0000085C     BSR.W  L00000CFC
-L00000860     LEA.L  CUSTOM,A6
-L00000866     LEA.L  COLOR00(A6),A0
-L0000086A     MOVE.L #$0000001f,D0
-L0000086C     CLR.W (A0)+
-L0000086E     DBF.W D0,L0000086C
 
-L00000872     MOVE.W #$0000,$0108(A6)
-L00000878     MOVE.W #$0000,$010a(A6)
-L0000087E     MOVE.W #$0038,$0092(A6)
-L00000884     MOVE.W #$00d0,$0094(A6)
-L0000088A     MOVE.W #$2c81,$008e(A6)
-L00000890     MOVE.W #$2cc1,$0090(A6)
-L00000896     MOVE.W #$5200,$0100(A6)
-L0000089C     LEA.L  L00001490(PC),A0
-L000008A0     MOVE.L A0,$0080(A6)
-L000008A4     LEA.L  L00001538(PC),A0
-L000008A8     MOVE.L A0,$0084(A6)
-L000008AC     MOVE.W A0,$008a(A6)
-L000008B0     MOVE.W #$8180,$0096(A6)
-L000008B6     CLR.W  L0000223A
-L000008BC     CMP.W  #$00fa,L0000223A
-L000008C4     BCS.B  L000008BC
-L000008C6     BRA.B  L0000090E
 
-L000008C8     dc.w $0020, $002E, $0000, $0000, $0000, $0000, $0000, $0000           ;. ..............
-L000008D8     dc.w $002B, $0007, $C7FC, $0000, $0000, $0000, $0000, $0000           ;.+..............
-L000008E8     dc.w $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030           ;BATMAN MOVIE   0
-L000008F8     dc.w $4C4F, $4144, $494E, $4720, $4946, $4650, $414E, $454C           ;LOADING IFFPANEL
-L00000908     dc.w $2020, $2049, $4646                                              ;   IFF
 
-L0000090E     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000912     BSR.W  L00001F26
-L00000916     MOVE.L #$0007c7fc,L00000CF4
-L00000920     MOVE.L #$00002ad6,L00000CF0
-L0000092A     LEA.L  L00000982(PC),A0
-L0000092E     BSR.W  L00000CFC
-L00000932     MOVE.W #$7fff,$009a(A6)
-L00000938     MOVE.W #$1fff,$0096(A6)
-L0000093E     MOVE.W #$2000,SR                                                      ; *** CHECK THIS ****
-L00000942     JMP    $0001c000                                                      ; Title Screen Start (on load)
 
-L00000948     LEA.L  stack,A7                                                       ; Address $0000081C
-L0000094C     BSR.W  L00001F26
-L00000950     MOVE.L #$0007c7fc,L00000CF4
-L0000095A     MOVE.L #$00002ad6,L00000CF0
-L00000964     LEA.L  L00000982(PC),A0
-L00000968     BSR.W  L00000CFC
-L0000096C     MOVE.W #$7fff,$009a(A6)
-L00000972     MOVE.W #$1fff,$0096(A6)
-L00000978     MOVE.W #$2000,SR
-L0000097C     JMP    $0001c004                                                      ; Title Screen Start (on end game)
 
+            ;---------------------- load loading screen ------------------------
+            ;-- load the batman loading.iff and display it for 5 seconds.
+            ;-- then, jump to load the title screen.
+load_loading_screen                                             ; (instruction addr $00000838)
+                LEA.L  stack,A7                                 ; Address $0000081C
+                BSR.W  init_system                              ; Calls $00001F26 - init_system
+                BSR.W  L00001B4A
+                MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+                MOVE.L #$00002AD6,L00000CF0                     ; addr $02AD6 - address of disk file table
+                LEA.L  lp_loading_screen(PC),A0                 ; addr $008C8 - address of the load parameter block (files to load for the loading screen section)
+                BSR.W  loader                                   ; Calls $00000CFC - Load/Process files & Copy Protection
+
+                ; clear out color palette
+                LEA.L  CUSTOM,A6
+                LEA.L  COLOR00(A6),A0
+                MOVE.L #$0000001f,D0                            ; loop counter = 31 + 1
+.clearloop      CLR.W (A0)+                                     ; Clear Colour Pallete Registers (instruction addr $0000086C)
+                DBF.W D0,.clearloop
+
+                ; display loading screen (5 seconds)
+                MOVE.W #$0000,BPL1MOD(A6)                       ; clear bit-plane modulos
+                MOVE.W #$0000,BPL2MOD(A6)                       ; clear bit-plane modulos
+                MOVE.W #$0038,DDFSTRT(A6)                       ; standard data fetch start for low-res 320 wide screen
+                MOVE.W #$00d0,DDFSTOP(A6)                       ; startard data fetch stop for low-res 320 wide screen
+                MOVE.W #$2c81,DIWSTRT(A6)                       ; standard window start position for 320x256 pal screen
+                MOVE.W #$2cc1,DIWSTOP(A6)                       ; standard window end position for 320x256 pal screen
+                MOVE.W #$5200,BPLCON0(A6)                       ; 5 bit-planes, COLOR_ON = 1
+                LEA.L  copper_list(PC),A0                       ; Get Copper List 1 address. addr: $00001490
+                MOVE.L A0,COP1LC(A6)                            ; Set Copper 1 Pointer
+                LEA.L  copper_endwait(PC),A0                    ; Get Copper List 2 address. addr: $00001538
+                MOVE.L A0,COP2LC(A6)                            ; Set copper 2 Pointer
+                MOVE.W A0,COPJMP2(A6)                           ; Strobe COPJMP2 to run empty list, will revert to copper 1 on next frame.
+                MOVE.W #$8180,DMACON(A6)                        ; Enable DMA - BPLEN, COPEN
+ 
+                                                                ; display loading screen for 5 seconds.
+                CLR.W  ciab_tb_20ms_tick                        ; reset CIAB Timer B, ticker count
+.timerwait      CMP.W  #$00fa,ciab_tb_20ms_tick                 ; wait for 250 x 20 ms = 5,000ms - L0000223A
+                BCS.B  .timerwait
+                BRA.B  load_title_screen1                       ; addr: $0000090E
+
+lp_loading_screen                                               ; loading screen load parameters - addr: $000008C8
+                dc.w $0020, $002E, $0000, $0000, $0000, $0000, $0000, $0000           ;. ..............
+                dc.w $002B, $0007, $C7FC, $0000, $0000, $0000, $0000, $0000           ;.+..............
+                dc.w $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030           ;BATMAN MOVIE   0
+                dc.w $4C4F, $4144, $494E, $4720, $4946, $4650, $414E, $454C           ;LOADING IFFPANEL
+                dc.w $2020, $2049, $4646                                              ;   IFF
+
+
+
+
+
+
+            ;---------------------- load title screen 1 & 2------------------------
+            ;-- called on first load, after the loading screen.
+            ;-- 1) starts the title screen (without the end game joker laugh etc)
+            ;-- 2) starts the title screen (with joket laugh)
+load_title_screen1                                          ; relocated address: $0000090E
+                LEA.L  stack,A7                             ; Stack Address $0000081C
+                BSR.W  init_system                          ; L00001F26
+                MOVE.L #$0007C7FC,ld_loadbuffer_top         ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+                MOVE.L #$00002AD6,L00000CF0                 ; addr $02AD6 - address of disk file table
+                LEA.L  lp_title_screen(PC),A0               ; Get title screen load parameters address
+                BSR.W  loader                               ; Calls $00000CFC - Load/Process files & Copy Protection
+                MOVE.W #$7fff,INTENA(A6)                    ; disable interrupts
+                MOVE.W #$1fff,DMACON(A6)                    ; disable all dma
+                MOVE.W #$2000,SR                            ; Set Supervisor Mode bit 
+                JMP    $0001c000                            ; Title Screen Start (on load)
+
+
+load_title_screen2                                          ; relocated address: $00000948
+                LEA.L  stack,A7                             ; Stack Address $0000081C
+                BSR.W  init_system                          ; L00001F26
+                MOVE.L #$0007C7FC,ld_loadbuffer_top         ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+                MOVE.L #$00002AD6,L00000CF0                 ; addr $02AD6 - address of disk file table
+                LEA.L  lp_title_screen(PC),A0               ; Get title screen load parameters address
+                BSR.W  loader                               ; Calls $00000CFC - Load/Process files & Copy Protection
+                MOVE.W #$7fff,INTENA(A6)                    ; disable interrupts
+                MOVE.W #$1fff,DMACON(A6)                    ; diable all dma
+                MOVE.W #$2000,SR                            ; Set supervisor Mode bit
+                JMP    $0001c004                            ; Title Screen Start (on end of a game)
+
+
+
+lp_title_screen:                                                                    ; title screen loader parameters. addr: $00000982
 L00000982     dc.w   $0020, $002E, $0000, $3FFC, $0000, $0000, $0000, $0000         ;. ....?.........
 L00000992     dc.w   $002B, $0003, $F236, $0000, $0000, $0000, $0000, $0000         ;.+...6..........
 L000009A2     dc.w   $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030         ;BATMAN MOVIE   0
 L000009B2     dc.w   $5449, $544C, $4550, $5247, $4946, $4654, $4954, $4C45         ;TITLEPRGIFFTITLE
 L000009C2     dc.w   $5049, $4349, $4646                                            ;PICIFF
 
+
+
+
 L000009C8     LEA.L  stack,A7                                                       ; Address $0000081C
-L000009CC     BSR.W  L00001F26
-L000009D0     MOVE.L #$0007c7fc,L00000CF4
-L000009DA     MOVE.L #$00002ad6,L00000CF0
+L000009CC     BSR.W  init_system
+L000009D0     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+L000009DA     MOVE.L #$00002AD6,L00000CF0
 L000009E4     LEA.L  L00000A00(PC),A0
-L000009E8     BSR.W  L00000CFC
+L000009E8     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
 L000009EC     MOVE.W #$7fff,$009a(A6)
 L000009F2     MOVE.W #$1fff,$0096(A6)
 L000009F8     MOVE.W #$2000,SR
@@ -108,12 +169,15 @@ L00000A50     dc.w   $3120, $2020, $4946, $464D, $4150, $4752, $2020, $2049     
 L00000A60     dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4845         ;FFBATSPR1 IFFCHE
 L00000A70     dc.w   $4D20, $2020, $2049, $4646                                     ;M    IFF
 
+
+
+
 L00000A78     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000A7C     BSR.W  L00001F26
-L00000A80     MOVE.L #$0007c7fc,L00000CF4
-L00000A8A     MOVE.L #$00002ad6,L00000CF0
+L00000A7C     BSR.W  init_system                                                    ;L00001F26
+L00000A80     MOVE.L #$0007C7FC,ld_loadbuffer_top               ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+L00000A8A     MOVE.L #$00002AD6,L00000CF0
 L00000A94     LEA.L  L00000AB0(PC),A0
-L00000A98     BSR.W  L00000CFC
+L00000A98     BSR.W  loader                                     ; Calls $00000CFC - Load/Process files & Copy Protection
 L00000A9C     MOVE.W #$7fff,$009a(A6)
 L00000AA2     MOVE.W #$1fff,$0096(A6)
 L00000AA8     MOVE.W #$2000,SR
@@ -129,11 +193,11 @@ L00000B10     dc.w   $4646, $4441, $5441, $3220, $2020, $4946, $464D, $5553     
 L00000B20     dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO
 
 L00000B28     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000B2C     BSR.W  L00001F26
-L00000B30     MOVE.L #$0007c7fc,L00000CF4
-L00000B3A     MOVE.L #$00002ad6,L00000CF0
+L00000B2C     BSR.W  init_system                                                    ;L00001F26
+L00000B30     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+L00000B3A     MOVE.L #$00002AD6,L00000CF0
 L00000B44     LEA.L  L00000B62(PC),A0
-L00000B48     BSR.W  L00000CFC
+L00000B48     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
 L00000B4C     MOVE.W #$7fff,$009a(A6)
 L00000B52     MOVE.W #$1fff,$0096(A6)
 L00000B58     MOVE.W #$2000,SR
@@ -144,11 +208,11 @@ L00000B72     dc.w   $0000, $4241, $544D, $414E, $204D, $4F56, $4945, $2020     
 L00000B82     dc.w   $2031, $4241, $5443, $4156, $4520, $4946, $4600                ; 1BATCAVE IFF.
 
 L00000B90     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000B94     BSR.W  L00001F26
-L00000B98     MOVE.L #$0007c7fc,L00000CF4
-L00000BA2     MOVE.L #$00002ad6,L00000CF0
+L00000B94     BSR.W  init_system                                                    ;L00001F26
+L00000B98     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+L00000BA2     MOVE.L #$00002AD6,L00000CF0
 L00000BAC     LEA.L  L00000BC8(PC),A0
-L00000BB0     BSR.W  L00000CFC
+L00000BB0     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
 L00000BB4     MOVE.W #$7fff,$009a(A6)
 L00000BBA     MOVE.W #$1fff,$0096(A6)
 L00000BC0     MOVE.W #$2000,SR
@@ -164,11 +228,11 @@ L00000C28     dc.w   $4646, $4441, $5441, $3420, $2020, $4946, $464D, $5553     
 L00000C38     dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO...a...
 
 L00000C40     LEA.L  stack,A7                                                       ; Address $0000081C
-L00000C44     BSR.W  L00001F26
-L00000C48     MOVE.L #$0007c7fc,L00000CF4
-L00000C52     MOVE.L #$00002ad6,L00000CF0
+L00000C44     BSR.W  init_system                                                    ;L00001F26
+L00000C48     MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
+L00000C52     MOVE.L #$00002AD6,L00000CF0
 L00000C5C     LEA.L  L00000C78(PC),A0
-L00000C60     BSR.W  L00000CFC
+L00000C60     BSR.W  loader                                 ; Calls $00000CFC - Load/Process files & Copy Protection
 L00000C64     MOVE.W #$7fff,$009a(A6)
 L00000C6A     MOVE.W #$1fff,$0096(A6)
 L00000C70     MOVE.W #$2000,SR
@@ -182,18 +246,55 @@ L00000CB8     dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445     
 L00000CC8     dc.w   $3520, $2020, $4946, $464D, $4150, $4752, $3220, $2049         ;5   IFFMAPGR2  I
 L00000CD8     dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4855         ;FFBATSPR1 IFFCHU
 L00000CE8     dc.w   $5243, $4820, $2049, $4646                                     ;RCH  IFF 
-L00000CF0     dc.w   $0000 
-L00000CF2     dc.w   $0000
-L00000CF4     dc.w   $0000
-L00000CF6     dc.w   $0000 
+
+
+
+
+
+                ;----------------------------------------------------------------------------------------------------
+                ; GAME LOADER & FILE PROCESSOR/RELOCATOR
+                ;----------------------------------------------------------------------------------------------------
+
+
+
+                ;------------------------------ loader parameters ------------------------------
+                ;-- loader parameters and data store
+                ;-- starts at relocated address $00000CF0
+                ;-- $CF0 - File table address (disk directory)
+                ;-- $CF2 - 
+                ;-- $CF4 - Top/End of Loaded Files Buffer 
+                ;--        files are loaded below this address, kinda like a file stack
+                ;--        when all files are loaded they are then processed and relocated
+                ;--        also by the loader.
+                ;-- $CF8 - 
+ld_filetable                                                                        ; addr $00000CF0
+L00000CF0       dc.l   $00000000
+
+ld_loadbuffer_top                                                                   ; addr $00000CF4
+                dc.l   $00000000                                                    ; ptr to load buffer end/top of memory (file are loaded below this address sequentially)
 L00000CF8     dc.W   $0000, $0000
 
-loader
+
+
+
+
+
+                ;---------------------------------- loader ---------------------------------------
+                ;-- the main call made to load a game section into memory.
+                ;-- loads and decodes files into memory buffer, then processes the files and
+                ;-- relocates them, finally hands off to the copy protection.
+                ;-- the copy protection man-handles the stack to return to the called of loader()
+                ;--
+                ; IN: A0            - load parameter block base address.
+                ; IN: 00000CF4.l    - Top/end of Load buffer in memory ($7C7FC)
+                ; IN: 00000CF0.l    - Disk File Table Contents ($2AD6) for all loading sections.
+                ;
+loader                                                     ; relocated routine start Addr $00000CFC 
 L00000CFC       MOVEM.L D0-D7/A0-A6,-(A7)
 L00000D00       CLR.W   L00001B08
-L00000D06       MOVE.L  #$00002ad6,L00000CF8
-L00000D0E       MOVE.L  #$00002cd6,L00001AF2
-L00000D18       MOVE.L  #$000042d6,L00001AF6
+L00000D06       MOVE.L  #$00002AD6,L00000CF8
+L00000D0E       MOVE.L  #$00002CD6,L00001AF2
+L00000D18       MOVE.L  #$000042D6,L00001AF6
 L00000D22       TST.W   (A0)
 L00000D24       BEQ.W   L00000D6E
 L00000D28       MOVEA.L A0,A1
@@ -747,7 +848,7 @@ L000013B0       RTS
 L000013B2       MOVE.L  A0,-(A7)
 L000013B4       LEA.L   L00002334(PC),A0
 L000013B8       LEA.L   $00007700,A1
-L000013BE       LEA.L   L000014B8(PC),A2
+L000013BE       LEA.L   copper_colours(PC),A2                       ; Get copper bitplane display colours. addr $000014B8
 L000013C2       BSR.W   L0000153C
 L000013C6       LEA.L   L00002254(PC),A0
 L000013CA       MOVEA.L (A7),A1
@@ -779,9 +880,9 @@ L00001430       MOVE.W  #$00d0,$0094(A6)
 L00001436       MOVE.W  #$4481,$008e(A6)
 L0000143C       MOVE.W  #$0cc1,$0090(A6)
 L00001442       MOVE.W  #$4200,$0100(A6)
-L00001448       LEA.L   L00001490(PC),A0
+L00001448       LEA.L   copper_list(PC),A0
 L0000144C       MOVE.L  A0,$0080(A6)
-L00001450       LEA.L   L00001538(PC),A0
+L00001450       LEA.L   copper_endwait(PC),A0                        ; addr: $00001538
 L00001454       MOVE.L  A0,$0084(A6)
 L00001458       MOVE.W  A0,$008a(A6)
 L0000145C       MOVE.W  #$8180,$0096(A6)
@@ -798,19 +899,39 @@ L0000148C       MOVEA.L (A7)+,A0
 L0000148E       RTS 
 
 
-L00001490       dc.w    $00E0, $0000, $00E2, $7700, $00E4, $0000, $00E6, $9F00                  ;......w.........
-L000014A0       dc.w    $00E8, $0000, $00EA, $C700, $00EC, $0000, $00EE, $EF00                  ;................
-L000014B0       dc.w    $00F0, $0001, $00F2, $1700
-L000014B8       dc.w    $0180, $0000, $0182, $0000              ;................
-L000014C0       dc.w    $0184, $0000, $0186, $0000, $0188, $0000, $018A, $0000          ;................
-L000014D0       dc.w    $018C, $0000, $018E, $0000, $0190, $0000, $0192, $0000          ;................
-L000014E0       dc.w    $0194, $0000, $0196, $0000, $0198, $0000, $019A, $0000          ;................
-L000014F0       dc.w    $019C, $0000, $019E, $0000, $01A0, $0000, $01A2, $0000          ;................
-L00001500       dc.w    $01A4, $0000, $01A6, $0000, $01A8, $0000, $01AA, $0000          ;................
-L00001510       dc.w    $01AC, $0000, $01AE, $0000, $01B0, $0000, $01B2, $0000          ;................
-L00001520       dc.w    $01B4, $0000, $01B6, $0000, $01B8, $0000, $01BA, $0000          ;................
-L00001530       dc.w    $01BC, $0000, $01BE, $0000
-L00001538       dc.w    $FFFF, $FFFE                            
+
+
+
+                    ;------------------- loader copper list -------------------------
+                    ; used to display change disk screen & loading picture
+
+copper_list     ; copper-list - set bitplane pointers -  relocated address $00001490
+                dc.w    BPL1PTH, $0000                      ; bit-plane 1 ptr
+                dc.w    BPL1PTL, $7700              
+                dc.w    BPL2PTH, $0000                      ; bit-plane 2 ptr
+                dc.w    BPL2PTL, $9F00
+                dc.w    BPL3PTH, $0000                      ; bit-plane 3 ptr
+                dc.w    BPL3PTL, $C700
+                dc.w    BPL4PTH, $0000                      ; bit-plane 4 ptr
+                dc.w    BPL4PTL, $EF00
+                dc.w    BPL5PTH, $0001                      ; bit-plane 5 ptr
+                dc.w    BPL5PTL, $1700        
+copper_colours  ; copper-list - set bitplane colour pallette - relocated address: $000014B8
+                dc.w    COLOR00, $0000, COLOR01, $0000, COLOR02, $0000, COLOR03, $0000
+                dc.w    COLOR04, $0000, COLOR05, $0000, COLOR06, $0000, COLOR07, $0000
+                dc.w    COLOR08, $0000, COLOR09, $0000, COLOR10, $0000, COLOR11, $0000
+                dc.w    COLOR12, $0000, COLOR13, $0000, COLOR14, $0000, COLOR15, $0000
+                dc.w    COLOR16, $0000, COLOR17, $0000, COLOR18, $0000, COLOR19, $0000
+                dc.w    COLOR20, $0000, COLOR21, $0000, COLOR22, $0000, COLOR23, $0000
+                dc.w    COLOR24, $0000, COLOR25, $0000, COLOR26, $0000, COLOR27, $0000
+                dc.w    COLOR28, $0000, COLOR29, $0000, COLOR30, $0000, COLOR31, $0000       
+copper_endwait  ; copper-list - copper end - relocated address: $00001538
+                ; also used to set second copper list address to an empty copper list.
+                dc.w    $FFFF, $FFFE                            
+
+
+
+
 
 
 L0000153C       MOVEM.L D0-D1/D7/A0-A3,-(A7)
@@ -1246,7 +1367,7 @@ L000019CE       SUB.L   D1,(A7)
 L000019D0       DIVU.W  #$0003,D0
 L000019D4       BEQ.B   L00001A02
 L000019D6       SUB.W   #$00000001,D0
-L000019D8       LEA.L   L000014B8(PC),A1
+L000019D8       LEA.L   copper_colours(PC),A1                            ; get bit-place display colours. addr $000014B8
 L000019DC       MOVE.L  #$00000000,D1
 L000019DE       MOVE.L  #$00000000,D2
 L000019E0       MOVE.B  (A0)+,D2
@@ -1652,6 +1773,7 @@ L00001F1E       MOVE.L  D1,D0
 L00001F20       MOVEM.L (A7)+,D1-D2/A0
 L00001F24       RTS 
 
+init_system                                                             ;L00001F26
 L00001F26       LEA.L   $00dff000,A6
 L00001F2C       LEA.L   $00bfd100,A5
 L00001F32       LEA.L   $00bfe101,A4
@@ -1867,8 +1989,10 @@ L0000222E       SUB.W   #$00000001,L00001B04
 L00002232       ADD.W   #$00000001,L0000223A
 L00002238       RTS 
 
+ciab_tb_20ms_tick       ; CIAB - TIMER B - Underflow counter, increments every 20ms                
+L0000223A       dc.w $0000 
 
-L0000223A       dc.w $0000, $3033, $0000
+L0000223C       dc.w $3033, $0000
 L00002240       dc.w $00F0, $0002, $000F, $0F0D, $0000, $0000, $000F, $0F0D             ;................
 L00002250       dc.w $0000, $0070 
 L00002254       dc.w $F007, $0FF8, $0FF8, $F007, $F0F7, $08F8             ;...p............
@@ -2166,5 +2290,7 @@ L000033D0       dc.w $000B, $0400, $0310, $2000, $00E8, $4700, $00E0, $FE00     
 L000033E0       dc.w $0D01, $8001, $8000, $0340, $1C00, $0380, $0402, $10FB             ;.......@........
 L000033F0       dc.w $0000, $04FA, $0000, $30FA, $0001, $0180, $FE00, $0360             ;......0........`
 
+
+batman_end:                                                                             ; end of 'BATMAN' file
 
 
