@@ -16,7 +16,6 @@
 
 
 
-
             ;------------------------- BATMAN entry point --------------------------
             ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
             ;-- immediately calls the 'load_loading_screen' jump table entry.
@@ -98,15 +97,30 @@ load_loading_screen                                             ; relocated addr
 
 
 lp_loading_screen                                               ; loading screen load parameters - addr: $000008C8
-.diskname_offset    dc.w $0020
-.filename1_offset   dc.w $002E
-                    dc.l $00000000, $00000000, $00000000 
-.filename2_offset   dc.w $002B
-                    dc.l $0007C7FC, $00000000, $00000000
-.filename3_offset   dc.w $0000          
-.diskname           dc.b "BATMAN MOVIE   0"
-.filename1          dc.b "LOADING IFF"
-.filename2          dc.b "PANEL   IFF"
+                ; Disk Name (offset from here)
+.diskname_offset    dc.w    $0020
+                ; File Entry to load
+                ;       0 - 2 Bytes - File Name Offset (from here)
+                ;       2 - 4 bytes - File reloacation address
+                ;       6 - 4 bytes - File Length Stored below from file table
+                ;       a - 4 bytes - File Load Address stored below
+.file1_name_offset  dc.w    $002E
+.file1_reloc_addr   dc.l    $00000000
+.file1_byte_length  dc.l    $00000000
+.file1_loadbuf_addr dc.l    $00000000 
+                ; File Entry to load
+                ;       0 - 2 Bytes - File Name Offset (from here)
+                ;       2 - 4 bytes - File reloacation address
+                ;       6 - 4 bytes - File Length Stored below from file table
+                ;       a - 4 bytes - File Load Address stored below
+.file2_name_offset  dc.w    $002B
+.file2_reloc_addr   dc.l    $0007C7FC
+.file2_byte_length  dc.l    $00000000
+.file2_loadbuf_addr dc.l    $00000000
+.filename3_offset   dc.w    $0000          
+.diskname           dc.b    "BATMAN MOVIE   0"
+.filename1          dc.b    "LOADING IFF"
+.filename2          dc.b    "PANEL   IFF"
 
 
 
@@ -1097,7 +1111,8 @@ L00001650       RTS
                 ;--
                 ;-- parameters:
                 ;-- IN: A0 = Entry to first file to load in the file list.
-                ;--
+                ;-- IN: A6 = Top of load file buffer - (initially 0007C7FC) -grows downwards with each file loaded
+                ;
 load_file_entries                                       ; this routine's relocated address: $00001652
                 MOVE.L  A0,-(A7)                        ; store address to file entry
                 TST.W   (A0)                            ; if end of file entries?
@@ -1122,45 +1137,63 @@ load_file_entries                                       ; this routine's relocat
                 DBNE.W  D1,.file_loop                   ; loop next file name character
                 BEQ.B   .filefound                      ; file table entry found....
 
-.L00001678       LEA.L   $0010(A1),A1                   ; increment to start of next file table entry
-.L0000167C       DBF.W   D0,.file_table_loop            ; decrement file table search loop
+                LEA.L   $0010(A1),A1                   ; increment to start of next file table entry
+                DBF.W   D0,.file_table_loop            ; decrement file table search loop
 
-.L00001680       MOVE.W  #$0005,L00001B08               ; set 'load status' = 5 - file not found
-.L00001688       BRA.B   .exit                          ; L000016D6
+                MOVE.W  #$0005,L00001B08               ; set 'load status' = 5 - file not found
+                BRA.B   .exit                          ; L000016D6
+
 
                 ; file table entry has been found
+                ; A0 = File Entry to load
+                ;       0 - 2 Bytes - File Name Offset
+                ;       2 - 4 bytes - File reloacation address
+                ;       6 - 4 bytes - File Length Stored below from file table
+                ;       a - 4 bytes - File Load Address stored below
+                ; A3 = File Table Entry
+                ;       - 11 characters = filename
+                ;       - 3 bytes = 24 bit file length
+                ;       - 2 bytes = start sector number
 .filefound                                              ; relocated address: $0000168A 
 .L0000168A       MOVEA.L (A7),A0                        ; File Entry to load
 .L0000168C       MOVE.L  $000a(A1),D2                   ; Get File Length (and last character of filename) from file table (disk directory)
-.L00001690       AND.L   #$00ffffff,D2                  ; 24 bit file length mask
-.L00001696       MOVE.L  D2,$0006(A0)                   ; Save File length into Level Load Parameters table entry (2nd long word)
+.L00001690       AND.L   #$00ffffff,D2                  ; D2 = 24 bit file length mask
+.L00001696       MOVE.L  D2,$0006(A0)                   ; Save File length into Level Load Parameters current file entry (2nd long word)
 .L0000169A       BEQ.B   .exit                          ; If file length is 0 then exit.
 
-.L0000169C       MOVE.W  $000e(A1),D1
-.L000016A0       MOVE.L  D2,D0
-.L000016A2       BTST.L  #$0000,D0
-.L000016A6       BEQ.B   .L000016AA
-.L000016A8       ADD.L   #$00000001,D0
-.L000016AA       SUBA.L  D0,A6
-.L000016AC       MOVEA.L A6,A1
-.L000016AE       MOVE.L  A6,$000a(A0)
-.L000016B2       MOVE.W  D1,D0
-.L000016B4       BSR.W   L00001B0A
-.L000016B8       BNE.B   .L000016D6
-.L000016BA       MOVE.L  #$00000200,D0
-.L000016C0       CMP.L   D0,D2
+.L0000169C       MOVE.W  $000e(A1),D1                   ; D1 = start sector of file on disk
+.L000016A0       MOVE.L  D2,D0                          ; D2,D0 = File Length in Bytes
+
+.L000016A2       BTST.L  #$0000,D0                      ; Is file odd byte length?
+.L000016A6       BEQ.B   .L000016AA                     ; no... no padding required
+.L000016A8       ADD.L   #$00000001,D0                  ; yes.. add extra byte to make file length even
+
+.L000016AA       SUBA.L  D0,A6                          ; Subtract File Length from current top of file buffer memory (file load address into buffer)
+.L000016AC       MOVEA.L A6,A1                          ; A1, A6 = file load address in to memory buffer
+.L000016AE       MOVE.L  A6,$000a(A0)                   ; store file load address into level load file entry table.
+
+.load_loop
+.L000016B2       MOVE.W  D1,D0                          ; D0, D1 = start sector on disk
+.L000016B4       BSR.W   L00001B0A                      ; track/part track from disk (a6,a1 = load address, d1,d0 = start sector, a0 = file entry) routine address: $00001B0A
+
+.L000016B8       BNE.B   .L000016D6                     ; Z = 0 = error
+
+.L000016BA       MOVE.L  #$00000200,D0                  ; d0 = 512
+.L000016C0       CMP.L   D0,D2                          ; compare d2 with file length (d2 = number of bytes remaining?)
 .L000016C2       BCC.B   .L000016C6
-.L000016C4       MOVE.L  D2,D0
-.L000016C6       SUB.L   D0,D2
-.L000016C8       SUB.W   #$00000001,D0
+
+.L000016C4       MOVE.L  D2,D0                          ; copy bytes remaining into d0
+.L000016C6       SUB.L   D0,D2                          ; clear d2
+.L000016C8       SUB.W   #$00000001,D0                  ; decrement bytes remaining by 1
 .L000016CA       MOVE.B  (A0)+,(A1)+
 .L000016CC       DBF.W   D0,.L000016CA
-.L000016D0       ADD.W   #$00000001,D1
-.L000016D2       TST.L   D2
-.L000016D4       BNE.B   .L000016B2
 
+.L000016D0       ADD.W   #$0001,D1                      ; Add 1 to track number
+.L000016D2       TST.L   D2                             ; If bytes remaining
+.L000016D4       BNE.B   .L000016B2                     ; yes... load next track/part track
+                                                        ; no.... exit
 .exit
-.L000016D6       MOVEA.L (A7)+,A0
+.L000016D6       MOVEA.L (A7)+,A0                           ; A0 = entry to first file entry to load (restored from stack)
 .L000016D8       TST.W   L00001B08                          ; test 'load status' and exit.
 .L000016DE       RTS 
 
@@ -1555,41 +1588,58 @@ L00001AE8       DBF.W   D7,L00001A9A
 L00001AEC       ADDA.W  D6,A7
 L00001AEE       RTS 
 
-L00001AF0       dc.w    $0000
+                even
+ld_load_status                                          ; set to true when track loaded into buffer.
+L00001AF0       dc.b    $00,$00
 
 ld_decoded_track_ptr
                dc.l    $00000000                        ; relocated address: $00001AF2
    
 ld_mfmencoded_track_ptr                             
-L00001AF6       dc.l    $00000000
+L00001AF6       dc.l    $00000000   
 
-L00001AFA       dc.w    $0000                            ;OR.B #$00,D0
-L00001AFC       dc.w    $0000, $0000                            ;OR.B #$00,D0
-L00001B00       dc.b    $00
-L00001B01       dc.b    $00
-L00001B02       dc.w    $0001                            ;OR.B #$01,D0
-L00001B04       dc.w    $0000 
-L00001B06       dc.w    $0000                           ;OR.B #$00,D0
+L00001AFA       dc.w    $0000                           
+L00001AFC       dc.w    $0000, $0000                            
+L00001B00       dc.b    $00                             
+L00001B01       dc.b    $00                             
+L00001B02       dc.w    $0001                           
+L00001B04       dc.w    $0000                           ; CIAB Timer B - 20 millisecond count down timer tick 
+L00001B06       dc.w    $0000                           
 L00001B08       dc.w    $0000
 
+
+
+                ; ----------------------------- load track/file from disk --------------------------------
+                ; load file from disk (a6,a1 = load address, d1,d0 = start sector, a0 = file entry)
+                ; -- IN: D0.w - Start Sector of File
+                ; -- 
+                ; -- OUT: A0.L = Start of data in track buffer
+                ; - used state:
+                ; -- $1B00.W        - Current Selected Drive's track number
+                ; -- $1AF2.L        -
+load_file                                           ; relocated routine address $00001B0A
 L00001B0A       MOVEM.L D0-D1,-(A7)
-L00001B0E       EXT.L   D0
-L00001B10       DIVU.W  #$000b,D0
-L00001B14       MOVE.L  D0,D1
-L00001B16       SWAP.W  D1
-L00001B18       TST.B   L00001AF0
+L00001B0E       EXT.L   D0                          ; sign extend sector number to 32 bits (clear high word crap) 
+L00001B10       DIVU.W  #$000b,D0                   ; d0 = start track number, divide start sector by 11 sectors per track.
+L00001B14       MOVE.L  D0,D1                       ; copy result 
+L00001B16       SWAP.W  D1                          ; D1.w = remining sectors (if first track is not all sectors)
+L00001B18       TST.B   L00001AF0                   ; test file/track loaded status flag (set to true when track is loaded into memory)
 L00001B1C       BEQ.B   L00001B24
-L00001B1E       CMP.W   $00001b00,D0
-L00001B22       BEQ.B   L00001B32
-L00001B24       MOVEA.L $00001af2,A0
-L00001B28       BSR.W   L00001CBC
-L00001B2C       BNE.B   L00001B40
-L00001B2E       ST.B    L00001AF0
-L00001B32       MOVEA.L ld_decoded_track_ptr,A0                 ; decoded track buffer address.
-L00001B36       MULU.W  #$0200,D1
-L00001B3A       ADDA.L  D1,A0
-L00001B3C       CLR.W   L00001B08
-L00001B40       TST.W   L00001B08
+
+L00001B1E       CMP.W   $00001b00,D0                ; D0 = start track, test current drive track number with required start track
+L00001B22       BEQ.B   L00001B32                   ; if equal, track already loaded and decocded?
+
+L00001B24       MOVEA.L ld_decoded_track_ptr,A0     ; Track Decoded Buffer Address. addr: $00001AF2
+L00001B28       BSR.W   L00001CBC                   ; Load Track into Buffer (d0 = track number, d1 = remaining sectors if not whole track)
+L00001B2C       BNE.B   L00001B40                   ; Z = 0 - error occurred?
+L00001B2E       ST.B    L00001AF0                   ; set file/track loaded status byte to $FF (true)
+
+L00001B32       MOVEA.L ld_decoded_track_ptr,A0     ; decoded track buffer address.
+L00001B36       MULU.W  #$0200,D1                   ; D1 = 512 x remaining sectors (bytes per sector)
+L00001B3A       ADDA.L  D1,A0                       ; Increment A0 by remaining sectors from whole tracks
+L00001B3C       CLR.W   L00001B08                   ; Clear Load Status = succcess
+
+L00001B40       TST.W   L00001B08                   ; Test Load Status Z = 1 - success
 L00001B44       MOVEM.L (A7)+,D0-D1
 L00001B48       RTS 
 
@@ -1683,45 +1733,68 @@ L00001CB0       BTST.B  #$0002,L0000209A
 L00001CB8       BEQ.B   L00001CB0
 L00001CBA       RTS 
 
-L00001CBC       MOVEM.L D1/A0-A1,-(A7)
-L00001CC0       MOVE.W  #$0020,L00001B06
-L00001CC6       MOVE.W  #$0001,L00001B08
-L00001CCC       MOVE.W  #$0032,L00001B04
-L00001CD2       TST.W   L00001B04
-L00001CD6       BEQ.B   L00001D0E
-L00001CD8       BTST.B  #$0005,$00bfe001
-L00001CE0       BNE.B   L00001CD2
-L00001CE2       BSR.W   L00001BC8
-L00001CE6       MOVE.W  #$0001,L00001B08
-L00001CEC       MOVEA.L ld_mfmencoded_track_ptr,A0                  ; mfm encoded track buffer
-L00001CF0       BSR.W   L00001D36
-L00001CF4       BEQ.B   L00001D1C
-L00001CF6       MOVE.W  #$0002,L00001B08
-L00001CFC       MOVEA.L $00001AF6,A0
-L00001D00       MOVEA.L $0004(A7),A1
-L00001D04       BSR.W   L00001DD0
-L00001D08       BNE.B   L00001D1C
-L00001D0A       CLR.W   L00001B08
-L00001D0E       MOVEM.L (A7)+,D1/A0-A1
-L00001D12       LEA.L   $1600(A0),A0
-L00001D16       TST.W   L00001B08
-L00001D1A       RTS 
 
-L00001D1C       MOVE.W  L00001B06,D1
-L00001D20       SUB.W   #$00000001,D1
-L00001D22       MOVE.W  D1,L00001B06
-L00001D26       BEQ.B   L00001D0E
-L00001D28       AND.W   #$0007,D1
-L00001D2C       BNE.B   L00001CE6
-L00001D2E       BSR.W   L00001BAE
-L00001D32       BEQ.B   L00001CE2
-L00001D34       BRA.B   L00001D0E
+                ; --------------------- load tracks ---------------
+                ; -- IN: D0.W - start track
+                ; -- IN: D1.w - number of sectors (if not full track,  i.e. first read might start half way though track)
+                ; -- IN: A0.L - decoded data buffer
+                ; -- used state:
+                ; --  $1AF6.L - Raw mfm buffer address
+                ; --  $1B04.W - CIAB TimeB 20ms Timer Tick Counter
+                ; --  $1B06.W - retry count
+                ; --  $1B08.W - Load Status
+                ; --  $ 
+L00001CBC       MOVEM.L D1/A0-A1,-(A7)
+                MOVE.W  #$0020,L00001B06
+                MOVE.W  #$0001,L00001B08
+
+                MOVE.W  #$0032,L00001B04                           ; init timer ticks for wait = 50 x 20 = 1000 milliseconds (Disk RDY timeout)
+.drv_rdy_loop   TST.W   L00001B04                                   ; addr: $00001CD2
+                BEQ.B   .exit                                      ; if the counter is somehow hit 0 then exit. $00001D0E
+                BTST.B  #$0005,$00bfe001                           ; test RDY bit (active low) of CIAA PRA (disk status byte)
+                BNE.B   .drv_rdy_loop                              ; drive not ready yet. $00001CD2
+
+.retrystep      BSR.W   L00001BC8                                  ; step heads to track addr: $00001CE2
+.retryread      MOVE.W  #$0001,L00001B08                           ; set load status value   addr: $00001CE6
+
+                MOVEA.L ld_mfmencoded_track_ptr,A0                 ; mfm encoded track buffer
+                BSR.W   L00001D36                                  ; read raw track 
+                BEQ.B   .load_error                                ; Z = 1 then error? jump addr: $00001D1C
+
+                MOVE.W  #$0002,L00001B08                           ; update load status
+                MOVEA.L $00001AF6,A0                               ; A0 = raw mfm buffer address
+                MOVEA.L $0004(A7),A1                               ; A1 = decoded buffer address
+                BSR.W   L00001DD0                                  ; decode track
+                BNE.B   .load_error                                ; Z = 0 then error? jump addr: $00001D1C
+                CLR.W   L00001B08                                  ; clear load status
+
+.exit
+                MOVEM.L (A7)+,D1/A0-A1
+                LEA.L   $1600(A0),A0                               ; increment decoded data buffer pointer
+                TST.W   L00001B08                                  ; test load status z = 1 = success
+                RTS 
+
+.load_error
+                SUB.W   #$0001,D1                                   ; decrement retry count                               
+                MOVE.W  D1,L00001B06                                ; update retry count
+                BEQ.B   .exit                                        ; retry count = 0, then exit $00001D0E
+                MOVE.W  L00001B06,D1                                ; D1 = retry count
+                AND.W   #$0007,D1                                   ; clamp retry to 7
+                BNE.B   .retryread                                  ; if retry  +ve then retry, addr: $00001CE6
+                BSR.W   L00001BAE                                   ; step heads to track 0 (maybe select next drive - unsure need to check)
+                BEQ.B   .retrystep                                  ; retry with step to track L00001CE2
+                BRA.B   .exit                                       ; jump to exit $00001D0E
+
+
+                ;------------------ read raw track ---------------
+read_track                                                          ; relocated address: $00001D36
 L00001D36       MOVEM.L D0/A0,-(A7)
-L00001D3A       MOVE.W  #$0005,L00001B04
+L00001D3A       MOVE.W  #$0005,L00001B04                            ; CIAB Timer B 20ms timer ticks = 5 * 20 = 100ms (drive ready timeout value)
 L00001D40       TST.W   L00001B04
 L00001D44       BEQ.W   L00001DCA
 L00001D48       BTST.B  #$0005,$00bfe001
 L00001D50       BNE.B   L00001D40
+
 L00001D52       MOVE.W  #$4000,$00dff024
 L00001D5A       MOVE.W  #$8010,$00dff096
 L00001D62       MOVE.W  #$7f00,$00dff09e
@@ -1743,9 +1816,13 @@ L00001DB4       BEQ.B   L00001DA6
 L00001DB6       MOVE.W  #$0010,$00dff096
 L00001DBE       MOVE.W  #$4000,$00dff024
 L00001DC6       TST.W   L00001B04
+
 L00001DCA       MOVEM.L (A7)+,D0/A0
 L00001DCE       RTS
 
+                ;--------------------- decode mfm track buffer ----------------------
+                ; IN: A0.L - mfm track buffer
+                ; IN: A1.L - decoded track buffer address
 L00001DD0       MOVEM.L D0-D1/D5-D7/A0,-(A7)
 L00001DD4       MOVE.B  D0,D7
 L00001DD6       CLR.W   D6
