@@ -91,7 +91,7 @@ load_loading_screen                                             ; relocated addr
  
                                                                 ; display loading screen for 5 seconds.
                 CLR.W  ciab_tb_20ms_tick                        ; reset CIAB Timer B, ticker count
-.timerwait      CMP.W  #$00fa,ciab_tb_20ms_tick                 ; wait for 250 x 20 ms = 5,000ms - L0000223A
+.timerwait      CMP.W  #$00fa,ciab_tb_20ms_tick                 ; wait for 250 x 20 ms = 5,000ms - $0000223A
                 BCS.B  .timerwait
                 BRA.B  load_title_screen1                       ; addr: $0000090E
 
@@ -346,7 +346,7 @@ ld_filetable2                               ; addr $00000CF8
                 ;
 loader                                                      ; relocated routine start Addr $00000CFC 
             MOVEM.L D0-D7/A0-A6,-(A7)
-            CLR.W   L00001B08                               ; clear 'load status' word
+            CLR.W   ld_load_status                          ; $00001B08 ; clear 'load status' word
             MOVE.L  #$00002AD6,ld_filetable2                ; store file table address
             MOVE.L  #$00002CD6,ld_decoded_track_ptr         ; decoded track buffer address
             MOVE.L  #$000042D6,ld_mfmencoded_track_ptr      ; mfm encoded track buffer address
@@ -363,7 +363,7 @@ L00000D34       BSR.W   L000013B2                           ;       - else wait 
 
 L00000D38       MOVEA.L (A7),A0                             ; A0 = ptr to first filename structure. (CCR not affected)
 L00000D3A       LEA.L   $0007c7fc,A6                        ; Top/End of loaded files buffer
-L00000D40       CLR.W   L00001B08                           ; clear 'load status' word
+L00000D40       CLR.W   ld_load_status                      ; $00001B08 ; clear 'load status' word
 
 L00000D46       BSR.W   load_file_entries                   ; call $00001652 - load files (A0 = first file entry)
 L00000D4A       MOVEA.L (A7)+,A0                            ; A0 = ptr to first filename structure. (CCR not affected)
@@ -380,19 +380,19 @@ L00000D66       MOVEA.L (A7)+,A0
 L00000D68       LEA.L   $000e(A0),A0
 L00000D6C       BRA.B   L00000D4E
 
-L00000D6E       MOVE.W  L00001AFC,D0
-L00000D74       BSR.W   L00001B7A
+L00000D6E       MOVE.W  ld_drive_number,D0                  ;$00001AFC
+L00000D74       BSR.W   drive_motor_off                     ;$00001B7A
 L00000D78       LEA.L   $00bfd100,A0
 
-L00000D7E       CLR.W   L00002144
-L00000D84       TST.W   L00002144
+L00000D7E       CLR.W   frame_counter                       ; $00002144
+L00000D84       TST.W   frame_counter                       ; $00002144
 L00000D8A       BEQ.B   L00000D84
 
 L00000D8C       MOVE.B  #$00,$0900(A0)                                  ;0001972
 L00000D92       MOVE.B  #$00,$0800(A0)                                  ;0001872
 L00000D98       MOVE.B  #$00,$0700(A0)                                  ;0001772
-L00000D9E       CLR.W   L00002144
-L00000DA4       TST.W   L00002144
+L00000D9E       CLR.W   frame_counter                                   ; $00002144
+L00000DA4       TST.W   frame_counter                                   ; $00002144
 L00000DAA       BEQ.B   L00000DA4
 L00000DAC       MOVE.L  #$00000000,D0
 L00000DAE       MOVE.B  $0900(A0),D0                                    ;00001972
@@ -896,9 +896,9 @@ L0000139A       RTE                                                 ; Return to 
 
 
 L0000139C       MOVE.L  #$00000000,D0
-L0000139E       MOVE.W  #$0001,$00001b08
+L0000139E       MOVE.W  #$0001,ld_load_status                       ; $00001b08 ; set load status
 L000013A6       MOVEM.L (A7)+,D0-D7/A0-A6
-L000013AA       TST.W   $00001b08
+L000013AA       TST.W   ld_load_status                              ; $00001b08 ; test load status
 L000013B0       RTS 
 
                 ;----------------- end of copy protection routines ----------------------
@@ -949,8 +949,8 @@ L00001450       LEA.L   copper_endwait(PC),A0                        ; addr: $00
 L00001454       MOVE.L  A0,$0084(A6)
 L00001458       MOVE.W  A0,$008a(A6)
 L0000145C       MOVE.W  #$8180,$0096(A6)
-L00001462       CLR.W   L0000223A
-L00001468       CMP.W   #$0032,L0000223A
+L00001462       CLR.W   ciab_tb_20ms_tick                           ; $0000223A
+L00001468       CMP.W   #$0032,ciab_tb_20ms_tick                    ; $0000223A
 L00001470       BCS.B   L00001468
 L00001472       MOVEA.L (A7),A0
 L00001474       BSR.W   L000015DE
@@ -1066,38 +1066,50 @@ L000015DA       MOVE.L  (A7)+,D0
 L000015DC       RTS 
 
 
-L000015DE       MOVE.L  A0,-(A7)
-L000015E0       MOVE.W  #$0004,L00001AFC
-L000015E8       MOVE.W  #$0005,L00001B08
-L000015F0       MOVE.W  L00001AFC,D0
-L000015F6       SUB.W   #$00000001,D0
-L000015F8       BMI.W   L00001648
-L000015FC       BTST.B  D0,$00001afb
-L00001602       BEQ.B   L000015F6
-L00001604       MOVE.W  D0,$00001AFC
-L0000160A       BSR.W   L00001B68
-L0000160E       BSR.W   L00001BAE
-L00001612       BNE.B   L0000163C
-L00001614       SF.B    $00001AF0
-L0000161A       MOVE.L  #$00000002,D0
-L0000161C       BSR.W   L00001B0A
-L00001620       BNE.B   L0000163C
-L00001622       MOVEA.L (A7),A1
-L00001624       MOVE.L  #$0000000f,D0
-L00001626       CMPM.B  (A0)+,(A1)+
-L00001628       DBNE.W  D0,L00001626
-L0000162C       BNE.B   L0000163C
-L0000162E       MOVEA.L ld_filetable2,A1
-L00001632       MOVE.L  #$0000007b,D0
-L00001634       MOVE.L  (A0)+,(A1)+
-L00001636       DBF.W   D0,L00001634
-L0000163A       BRA.B   L00001648
-L0000163C       MOVE.W  $00001AFC,D0
-L00001642       BSR.W   L00001B7A
-L00001646       BRA.B   L000015E8 (T)
-L00001648       MOVEA.L (A7)+,A0
-L0000164A       TST.W   $00001B08
-L00001650       RTS 
+
+
+                ;--------------------------- check disk --------------------------
+                ; -- IN: A0 - ptr to diskname string
+                ;
+init_disk                                                       ; relocated address $000015DE
+L000015DE       MOVE.L  A0,-(A7)                                ; A0 = ptr to disk name string
+                MOVE.W  #$0004,ld_drive_number                  ; $00001AFC ; $1AFC - drive number?
+.L000015E8      MOVE.W  #$0005,ld_load_status                   ; $00001B08 ; set loader status
+                MOVE.W  ld_drive_number,D0                      ; $00001AFC,D0 ; D0.w - drive number (initial value = 4)
+.L000015F6      SUB.W   #$00000001,D0                           ; decrement by 1 (initial value = 3)
+                BMI.W   .exit                                   ;   jmp $00001648 
+
+.L000015FC       BTST.B  D0,ld_drive_bits_byte                  ; $00001AFB ; Bit field of available disk drives (initial check bit 3)
+.L00001602       BEQ.B   .L000015F6                             ; If Drive is not available then loop next drive. (count from 3 to 0)
+
+.L00001604       MOVE.W  D0,ld_drive_number                     ; $00001AFC ; store available drive number.
+
+.L0000160A       BSR.W   drive_motor_on                         ; Drive Motor On: routine addr: $00001B68
+.L0000160E       BSR.W   L00001BAE
+
+.L00001612       BNE.B   .L0000163C
+.L00001614       SF.B    ld_track_status                        ; $00001AF0
+.L0000161A       MOVE.L  #$00000002,D0
+.L0000161C       BSR.W   L00001B0A
+.L00001620       BNE.B   .L0000163C
+.L00001622       MOVEA.L (A7),A1
+.L00001624       MOVE.L  #$0000000f,D0
+.L00001626       CMPM.B  (A0)+,(A1)+
+.L00001628       DBNE.W  D0,.L00001626
+.L0000162C       BNE.B   .L0000163C
+.L0000162E       MOVEA.L ld_filetable2,A1
+.L00001632       MOVE.L  #$0000007b,D0
+.L00001634       MOVE.L  (A0)+,(A1)+
+.L00001636       DBF.W   D0,.L00001634
+.L0000163A       BRA.B   .exit                                  ; bra $00001648
+.L0000163C       MOVE.W  ld_drive_number,D0                     ; $00001AFC
+.L00001642       BSR.W   drive_motor_off                        ; L00001B7A
+.L00001646       BRA.B   .L000015E8
+
+.exit
+                MOVEA.L (A7)+,A0                                ; relocated address $00001648
+                TST.W   ld_load_status                          ; $00001B08 ; test load status ( z = 1 - success )
+                RTS 
 
 
                 ;------------------------ load file entries ------------------------
@@ -1137,11 +1149,11 @@ load_file_entries                                       ; this routine's relocat
                 DBNE.W  D1,.file_loop                   ; loop next file name character
                 BEQ.B   .filefound                      ; file table entry found....
 
-                LEA.L   $0010(A1),A1                   ; increment to start of next file table entry
-                DBF.W   D0,.file_table_loop            ; decrement file table search loop
+                LEA.L   $0010(A1),A1                    ; increment to start of next file table entry
+                DBF.W   D0,.file_table_loop             ; decrement file table search loop
 
-                MOVE.W  #$0005,L00001B08               ; set 'load status' = 5 - file not found
-                BRA.B   .exit                          ; L000016D6
+                MOVE.W  #$0005,ld_load_status           ; $00001B08 ; set 'load status' = 5 - file not found
+                BRA.B   .exit                           ; $000016D6
 
 
                 ; file table entry has been found
@@ -1193,8 +1205,8 @@ load_file_entries                                       ; this routine's relocat
 .L000016D4       BNE.B   .L000016B2                     ; yes... load next track/part track
                                                         ; no.... exit
 .exit
-.L000016D6       MOVEA.L (A7)+,A0                           ; A0 = entry to first file entry to load (restored from stack)
-.L000016D8       TST.W   L00001B08                          ; test 'load status' and exit.
+.L000016D6       MOVEA.L (A7)+,A0                       ; A0 = entry to first file entry to load (restored from stack)
+.L000016D8       TST.W   ld_load_status                 ; $00001B08 ; test 'load status' and exit.
 .L000016DE       RTS 
 
 
@@ -1406,7 +1418,7 @@ L00001906       MOVEM.L (A7)+,D0/A0
 L0000190A       RTS 
 
 
-L0000190C       MOVEA.L $00000cf0,A2
+L0000190C       MOVEA.L L00000CF0,A2
 L00001910       MOVEM.L D0/A2,-(A7)
 L00001914       MOVE.L  #$0000000f,D1
 L00001916       MOVE.W  (A0)+,D2
@@ -1588,24 +1600,50 @@ L00001AE8       DBF.W   D7,L00001A9A
 L00001AEC       ADDA.W  D6,A7
 L00001AEE       RTS 
 
+
+
+
+                ;----------------------- loader variables/state ----------------------
+                ;-- relocated address: $00001AF0
                 even
-ld_load_status                                          ; set to true when track loaded into buffer.
-L00001AF0       dc.b    $00,$00
+ld_track_status                                             
+                dc.b    $00                                 ; set to true when track loaded into buffer. $00001AF0
+
+ld_unused_byte
+                dc.b    $00
 
 ld_decoded_track_ptr
-               dc.l    $00000000                        ; relocated address: $00001AF2
+                dc.l    $00000000                           ; relocated address: $00001AF2
    
 ld_mfmencoded_track_ptr                             
-L00001AF6       dc.l    $00000000   
+                dc.l    $00000000                           ; relocated address: $00001AF6
 
-L00001AFA       dc.w    $0000                           
-L00001AFC       dc.w    $0000, $0000                            
-L00001B00       dc.b    $00                             
-L00001B01       dc.b    $00                             
-L00001B02       dc.w    $0001                           
-L00001B04       dc.w    $0000                           ; CIAB Timer B - 20 millisecond count down timer tick 
-L00001B06       dc.w    $0000                           
-L00001B08       dc.w    $0000
+ld_drive_bits_word                                          
+                dc.b    $00                                 ; Available drives bit field as a word: $00001AFA
+ld_drive_bits_byte                                          
+                dc.b    $00                                 ; Available drives bit field as a byte: $00001AFB
+
+ld_drive_number                         
+                dc.w    $0000                               ; relocated address: $00001AFC 
+
+ld_unused_word1 
+                dc.w    $0000                               ; relocated address: $00001AFE 
+
+ld_track_number_word                                        ; The current track number as a word. $00001B00                       
+                dc.b    $00                             
+ld_track_number_byte                                        ; The current track number as a byte. $00001B01
+                dc.b    $00 
+
+ld_unused_word2         
+                dc.w    $0001                               ; relocated address: $00001B02 
+
+ld_ciab_20ms_countdown                         
+                dc.w    $0000                               ; relocated address: $00001B04 - CIAB Timer B - 20 millisecond count down timer tick
+
+L00001B06       dc.w    $0000
+
+ld_load_status
+                dc.w    $0000                               ; relocated address: $00001B08
 
 
 
@@ -1623,23 +1661,23 @@ L00001B0E       EXT.L   D0                          ; sign extend sector number 
 L00001B10       DIVU.W  #$000b,D0                   ; d0 = start track number, divide start sector by 11 sectors per track.
 L00001B14       MOVE.L  D0,D1                       ; copy result 
 L00001B16       SWAP.W  D1                          ; D1.w = remining sectors (if first track is not all sectors)
-L00001B18       TST.B   L00001AF0                   ; test file/track loaded status flag (set to true when track is loaded into memory)
+L00001B18       TST.B   ld_track_status             ; $00001AF0 ; test file/track loaded status flag (set to true when track is loaded into memory)
 L00001B1C       BEQ.B   L00001B24
 
-L00001B1E       CMP.W   $00001b00,D0                ; D0 = start track, test current drive track number with required start track
+L00001B1E       CMP.W   ld_track_number_word,D0     ; $00001B00 - D0 = start track, test current drive track number with required start track
 L00001B22       BEQ.B   L00001B32                   ; if equal, track already loaded and decocded?
 
 L00001B24       MOVEA.L ld_decoded_track_ptr,A0     ; Track Decoded Buffer Address. addr: $00001AF2
 L00001B28       BSR.W   L00001CBC                   ; Load Track into Buffer (d0 = track number, d1 = remaining sectors if not whole track)
 L00001B2C       BNE.B   L00001B40                   ; Z = 0 - error occurred?
-L00001B2E       ST.B    L00001AF0                   ; set file/track loaded status byte to $FF (true)
+L00001B2E       ST.B    ld_track_status             ; $00001AF0 ; set file/track loaded status byte to $FF (true)
 
 L00001B32       MOVEA.L ld_decoded_track_ptr,A0     ; decoded track buffer address.
 L00001B36       MULU.W  #$0200,D1                   ; D1 = 512 x remaining sectors (bytes per sector)
 L00001B3A       ADDA.L  D1,A0                       ; Increment A0 by remaining sectors from whole tracks
-L00001B3C       CLR.W   L00001B08                   ; Clear Load Status = succcess
+L00001B3C       CLR.W   ld_load_status              ; $00001B08 ; Clear Load Status = succcess
 
-L00001B40       TST.W   L00001B08                   ; Test Load Status Z = 1 - success
+L00001B40       TST.W   ld_load_status              ; $00001B08 ; Test Load Status Z = 1 - success
 L00001B44       MOVEM.L (A7)+,D0-D1
 L00001B48       RTS 
 
@@ -1652,63 +1690,103 @@ L00001B48       RTS
 L00001B4A       MOVE.L  #$00000003,D0
 L00001B4C       MOVE.L  #$00000000,D1
 L00001B4E       MOVEM.L D0-D1,-(A7)
-L00001B52       BSR.B   L00001B96
+L00001B52       BSR.B   select_drive                    ;L00001B96
 L00001B54       BSR.B   L00001BAE
 L00001B56       MOVEM.L (A7)+,D0-D1
 L00001B5A       BNE.B   L00001B5E
 L00001B5C       BSET.L  D0,D1
 L00001B5E       SUB.W   #$00000001,D0
 L00001B60       BPL.B   L00001B4E
-L00001B62       MOVE.W  D1,$00001afa
-L00001B66       BRA.B   L00001B8C
-L00001B68       BCLR.B  #$0007,$00bfd100
-L00001B70       BCLR.B  #$0007,$00bfd100
-L00001B78       BRA.B   L00001B96
-L00001B7A       BSET.B  #$0007,$00bfd100
-L00001B82       BSET.B  #$0007,$00bfd100
-L00001B8A       BSR.B   L00001B96
-L00001B8C       OR.B    #$78,$00bfd100
-L00001B94       RTS 
+L00001B62       MOVE.W  D1,ld_drive_bits_word                   ;$00001afa
+L00001B66       BRA.B   deselect_all_drives                  ; jmp to $00001B8C
 
-L00001B96       MOVE.L  D1,-(A7)
-L00001B98       OR.B    #$78,$00bfd100
-L00001BA0       MOVE.B  D0,D1
-L00001BA2       ADD.B   #$00000003,D1
-L00001BA4       BCLR.B  D1,$00bfd100
-L00001BAA       MOVE.L  (A7)+,D1
-L00001BAC       RTS 
 
-L00001BAE       MOVE.W  #$0004,L00001B08
-L00001BB4       MOVEM.L D0,-(A7)
-L00001BB8       MOVE.W  #$00a6,L00001B00
-L00001BBE       CLR.W   D0
+
+                ;---------------- drive motor on -------------------------
+                ; -- selects and latches on the current drive
+                ; -- IN: D0 = current drive number (0-3)
+drive_motor_on                                              ; relocated address: $00001B68
+                BCLR.B  #$0007,$00bfd100                    ; CIAB PRB  - clear /MTR bit (active low)
+                BCLR.B  #$0007,$00bfd100                    ; CIAB PRB  - clear /MTR bit (active low)
+                BRA.B   select_drive                        ; routine addr: $00001B96
+
+
+
+                ;---------------- drive motor off -------------------------
+                ; -- selects and latches off the current drive
+                ; -- ends by deselecting all drives.
+                ; -- IN: D0 = current drive number (0-3)
+drive_motor_off                                             ; relocated address: $00001B7A
+                BSET.B  #$0007,$00bfd100
+                BSET.B  #$0007,$00bfd100
+                BSR.B   select_drive                        ; routine addr: $00001B96
+
+
+
+                ;---------------- deselect all drives ---------------------
+deselect_all_drives                                         ; routine addr: $00001B8C
+                OR.B    #$78,$00bfd100                      ; Deselect all drives (active low)
+                RTS 
+
+
+
+                ;------------------ select drive ----------------------------
+                ; -- selects the current drive, used to latch motor on/off
+                ; -- called from: drive_motor_on
+                ; -- IN: D0 = current drive number (0-3)
+select_drive                                                ; relocated address: $00001B96
+                MOVE.L  D1,-(A7)                            ; store D1.L
+                OR.B    #$78,$00bfd100                      ; Deselect all drives (active low)
+                MOVE.B  D0,D1                               ; D0 = current drive number
+                ADD.B   #$00000003,D1                       ; Shift drive number bits
+                BCLR.B  D1,$00bfd100                        ; Clear current drive select bit - active low (latch motor on/off state)
+                MOVE.L  (A7)+,D1                            ; restore D1.L
+                RTS 
+
+
+                ;-------------------- seek track 0 ---------------------------
+                ;-- reset drive heads to track 0 of currently selected drive
+                ;
+seek_track0                                                 ; relocated address: $00001BAE
+L00001BAE       MOVE.W  #$0004,ld_load_status               ; $00001B08 ; set loader status (4 = step heads)
+L00001BB4       MOVEM.L D0,-(A7)                            ; save D0.L
+L00001BB8       MOVE.W  #$00a6,ld_track_number_word         ; $00001B00 ; Current Track = 168 (cylinder 84)
+L00001BBE       CLR.W   D0                                  ; clear target track D0.W
 L00001BC0       BSR.B   L00001BC8
-L00001BC2       MOVEM.L (A7)+,D0
+L00001BC2       MOVEM.L (A7)+,D0                            ; restore D0.l
 L00001BC6       RTS 
 
-L00001BC8       BSET.B  #$0002,$00bfd100
-L00001BD0       BCLR.B  #$0000,L00001B01
+                ;------------------- seek to track----------------------------
+                ;-- seek heads of the current drive to the required track
+                ;-- sets heads to the correct cylinder and selects top/bottom
+                ;-- head as required for odd/even track number
+                ;-- even number (0,2,4,6...) uses bottom of the disk
+                ;--
+                ;-- IN: D0.W - required track number
+seek_to_track
+L00001BC8       BSET.B  #$0002,$00bfd100                        ; select bottom side
+L00001BD0       BCLR.B  #$0000,ld_track_number_byte             ; $00001B01
 L00001BD6       BTST.L  #$0000,D0
 L00001BDA       BEQ.B   L00001BEA
 L00001BDC       BCLR.B  #$0002,$00bfd100
-L00001BE4       BSET.B  #$0000,L00001B01
-L00001BEA       CMP.W   $00001B00,D0
+L00001BE4       BSET.B  #$0000,ld_track_number_byte             ; $00001B01
+L00001BEA       CMP.W   ld_track_number_word,D0                 ; $00001B00
 L00001BEE       BEQ.B   L00001C5E
 L00001BF0       BPL.B   L00001C18
 L00001BF2       BSET.B  #$0001,$00bfd100
 L00001BFA       BTST.B  #$0004,$00bfe001
 L00001C02       BEQ.B   L00001C12
 L00001C04       BSR.B   L00001C68
-L00001C06       SUB.W   #$00000002,L00001B00
-L00001C0A       CMP.W   L00001B00,D0
+L00001C06       SUB.W   #$00000002,ld_track_number_word         ; $00001B00
+L00001C0A       CMP.W   ld_track_number_word,D0                 ; $00001B00
 L00001C0E       BNE.B   L00001BFA
 L00001C10       BRA.B   L00001C2C
-L00001C12       CLR.W   $00001b00
+L00001C12       CLR.W   ld_track_number_word                    ; $00001b00
 L00001C16       BRA.B   L00001C2C
 L00001C18       BCLR.B  #$0001,$00bfd100
 L00001C20       BSR.B   L00001C68
-L00001C22       ADD.W   #$00000002,L00001B00
-L00001C26       CMP.W   L00001B00,D0
+L00001C22       ADD.W   #$00000002,ld_track_number_word         ; $00001B00
+L00001C26       CMP.W   ld_track_number_word,D0                 ; $00001B00
 L00001C2A       BNE.B   L00001C20
 L00001C2C       MOVE.B  #$00,$00bfde00
 L00001C34       MOVE.B  #$f4,$00bfd400
@@ -1727,7 +1805,7 @@ L00001C80       BCLR.B  #$0000,$00bfd100
 L00001C88       BCLR.B  #$0000,$00bfd100
 L00001C90       BCLR.B  #$0000,$00bfd100
 L00001C98       BSET.B  #$0000,$00bfd100
-L00001CA0       BCLR.B  #$0002,$0000209a
+L00001CA0       BCLR.B  #$0002,L0000209A
 L00001CA8       MOVE.B  #$19,$00bfde00
 L00001CB0       BTST.B  #$0002,L0000209A
 L00001CB8       BEQ.B   L00001CB0
@@ -1746,38 +1824,38 @@ L00001CBA       RTS
                 ; --  $ 
 L00001CBC       MOVEM.L D1/A0-A1,-(A7)
                 MOVE.W  #$0020,L00001B06
-                MOVE.W  #$0001,L00001B08
+                MOVE.W  #$0001,ld_load_status                       ; $00001B08 ; set load status
 
-                MOVE.W  #$0032,L00001B04                           ; init timer ticks for wait = 50 x 20 = 1000 milliseconds (Disk RDY timeout)
-.drv_rdy_loop   TST.W   L00001B04                                   ; addr: $00001CD2
-                BEQ.B   .exit                                      ; if the counter is somehow hit 0 then exit. $00001D0E
-                BTST.B  #$0005,$00bfe001                           ; test RDY bit (active low) of CIAA PRA (disk status byte)
-                BNE.B   .drv_rdy_loop                              ; drive not ready yet. $00001CD2
+                MOVE.W  #$0032,ld_ciab_20ms_countdown               ; $00001B04 ; init timer ticks for wait = 50 x 20 = 1000 milliseconds (Disk RDY timeout)
+.drv_rdy_loop   TST.W   ld_ciab_20ms_countdown                      ; $00001B04 ; addr: $00001CD2
+                BEQ.B   .exit                                       ; if the counter is somehow hit 0 then exit. $00001D0E
+                BTST.B  #$0005,$00bfe001                            ; test RDY bit (active low) of CIAA PRA (disk status byte)
+                BNE.B   .drv_rdy_loop                               ; drive not ready yet. $00001CD2
 
-.retrystep      BSR.W   L00001BC8                                  ; step heads to track addr: $00001CE2
-.retryread      MOVE.W  #$0001,L00001B08                           ; set load status value   addr: $00001CE6
+.retrystep      BSR.W   L00001BC8                                   ; step heads to track addr: $00001CE2
+.retryread      MOVE.W  #$0001,ld_load_status                       ; $00001B08 ; set load status value   addr: $00001CE6
 
-                MOVEA.L ld_mfmencoded_track_ptr,A0                 ; mfm encoded track buffer
-                BSR.W   L00001D36                                  ; read raw track 
-                BEQ.B   .load_error                                ; Z = 1 then error? jump addr: $00001D1C
+                MOVEA.L ld_mfmencoded_track_ptr,A0                  ; mfm encoded track buffer
+                BSR.W   L00001D36                                   ; read raw track 
+                BEQ.B   .load_error                                 ; Z = 1 then error? jump addr: $00001D1C
 
-                MOVE.W  #$0002,L00001B08                           ; update load status
-                MOVEA.L $00001AF6,A0                               ; A0 = raw mfm buffer address
-                MOVEA.L $0004(A7),A1                               ; A1 = decoded buffer address
-                BSR.W   L00001DD0                                  ; decode track
-                BNE.B   .load_error                                ; Z = 0 then error? jump addr: $00001D1C
-                CLR.W   L00001B08                                  ; clear load status
+                MOVE.W  #$0002,ld_load_status                       ; $00001B08 ; update load status
+                MOVEA.L ld_mfmencoded_track_ptr,A0                  ; $00001AF6 ; A0 = raw mfm buffer address
+                MOVEA.L $0004(A7),A1                                ; A1 = decoded buffer address
+                BSR.W   L00001DD0                                   ; decode track
+                BNE.B   .load_error                                 ; Z = 0 then error? jump addr: $00001D1C
+                CLR.W   ld_load_status                              ; $00001B08 ; clear load status
 
 .exit
                 MOVEM.L (A7)+,D1/A0-A1
-                LEA.L   $1600(A0),A0                               ; increment decoded data buffer pointer
-                TST.W   L00001B08                                  ; test load status z = 1 = success
+                LEA.L   $1600(A0),A0                                ; increment decoded data buffer pointer
+                TST.W   ld_load_status                              ; $00001B08 ; test load status z = 1 = success
                 RTS 
 
 .load_error
                 SUB.W   #$0001,D1                                   ; decrement retry count                               
                 MOVE.W  D1,L00001B06                                ; update retry count
-                BEQ.B   .exit                                        ; retry count = 0, then exit $00001D0E
+                BEQ.B   .exit                                       ; retry count = 0, then exit $00001D0E
                 MOVE.W  L00001B06,D1                                ; D1 = retry count
                 AND.W   #$0007,D1                                   ; clamp retry to 7
                 BNE.B   .retryread                                  ; if retry  +ve then retry, addr: $00001CE6
@@ -1789,8 +1867,8 @@ L00001CBC       MOVEM.L D1/A0-A1,-(A7)
                 ;------------------ read raw track ---------------
 read_track                                                          ; relocated address: $00001D36
 L00001D36       MOVEM.L D0/A0,-(A7)
-L00001D3A       MOVE.W  #$0005,L00001B04                            ; CIAB Timer B 20ms timer ticks = 5 * 20 = 100ms (drive ready timeout value)
-L00001D40       TST.W   L00001B04
+L00001D3A       MOVE.W  #$0005,ld_ciab_20ms_countdown               ; $00001B04 ; CIAB Timer B 20ms timer ticks = 5 * 20 = 100ms (drive ready timeout value)
+L00001D40       TST.W   ld_ciab_20ms_countdown                      ; $00001B04
 L00001D44       BEQ.W   L00001DCA
 L00001D48       BTST.B  #$0005,$00bfe001
 L00001D50       BNE.B   L00001D40
@@ -1807,15 +1885,15 @@ L00001D88       MOVE.W  #$0002,$00dff09c
 L00001D90       MOVE.W  #$99ff,D0
 L00001D94       MOVE.W  D0,$00dff024
 L00001D9A       MOVE.W  D0,$00dff024
-L00001DA0       MOVE.W  #$0032,L00001B04
-L00001DA6       TST.W   L00001B04
+L00001DA0       MOVE.W  #$0032,ld_ciab_20ms_countdown               ; $00001B04
+L00001DA6       TST.W   ld_ciab_20ms_countdown                      ; $00001B04
 L00001DAA       BEQ.B   L00001DB6
 L00001DAC       MOVE.L  #$00000002,D0
 L00001DAE       AND.W   $00dff01e,D0
 L00001DB4       BEQ.B   L00001DA6
 L00001DB6       MOVE.W  #$0010,$00dff096
 L00001DBE       MOVE.W  #$4000,$00dff024
-L00001DC6       TST.W   L00001B04
+L00001DC6       TST.W   ld_ciab_20ms_countdown                      ; $00001B04
 
 L00001DCA       MOVEM.L (A7)+,D0/A0
 L00001DCE       RTS
@@ -2017,9 +2095,9 @@ L00002090       MOVE.W  #$2000,SR
 L00002094       RTS 
 
 
-L0002096        dc.w    $0000, $0000                            ;OR.B #$00,D0
+L00002096       dc.w    $0000, $0000                            ;
+L0000209A       dc.w    $1F00
 
-L0000209A       MOVE.B  D0,-(A7)
 L0000209C       MOVE.L  D0,-(A7)
 L0000209E       MOVE.W  $00dff01e,D0
 L000020A4       BTST.L  #$0002,D0
@@ -2062,7 +2140,7 @@ L0000211A       MOVE.W  #$0040,$00dff09c
 L00002122       MOVE.L  (A7)+,D0
 L00002124       RTE 
 
-L00002126       ADD.W   #$00000001,L00002144
+L00002126       ADD.W   #$00000001,frame_counter            ; $00002144
 L0000212C       MOVE.W  #$0020,$00dff09c
 L00002134       MOVE.L  (A7)+,D0
 L00002136       RTE 
@@ -2071,7 +2149,8 @@ L00002138       MOVE.W  #$0010,$00dff09c
 L00002140       MOVE.L  (A7)+,D0
 L00002142       RTE 
 
-L00002144       dc.w    $0000                                   ;OR.B #$00,D0
+frame_counter
+                dc.w    $0000                               ; relocated address: $00002144                                 
 
 L00002146       MOVE.L  D0,-(A7)
 L00002148       MOVE.W  $00dff01e,D0
@@ -2131,23 +2210,23 @@ L000021F8       BCC.B   L00002202
 L000021FA       MOVE.B  #$00,$00bfee01
 L00002202       LSR.B   #$00000003,D0
 L00002204       BCC.B   L00002226
-L00002206       BSET.B  #$0003,$0000209a
+L00002206       BSET.B  #$0003,L0000209A
 L0000220C       BNE.B   L00002226
-L0000220E       BSET.B  #$0004,$0000209A
+L0000220E       BSET.B  #$0004,L0000209A
 L00002214       BNE.B   L00002226
 L00002216       MOVE.W  #$da00,D0
 L0000221A       MOVE.W  D0,$00dff024
 L00002220       MOVE.W  D0,$00dff024
 L00002226       RTS 
 
-L00002228       TST.W   L00001B04
+L00002228       TST.W   ld_ciab_20ms_countdown                          ; $00001B04
 L0000222C       BEQ.B   L00002232
-L0000222E       SUB.W   #$00000001,L00001B04
-L00002232       ADD.W   #$00000001,L0000223A
+L0000222E       SUB.W   #$0001,ld_ciab_20ms_countdown                   ; $00001B04
+L00002232       ADD.W   #$00000001,ciab_tb_20ms_tick                    ; $0000223A
 L00002238       RTS 
 
-ciab_tb_20ms_tick       ; CIAB - TIMER B - Underflow counter, increments every 20ms                
-L0000223A       dc.w $0000 
+ciab_tb_20ms_tick                                                       ; $0000223A ; CIAB - TIMER B - Underflow counter, increments every 20ms                
+                dc.w $0000 
 
 L0000223C       dc.w $3033, $0000
 L00002240       dc.w $00F0, $0002, $000F, $0F0D, $0000, $0000, $000F, $0F0D             ;................
