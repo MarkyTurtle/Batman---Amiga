@@ -8,8 +8,9 @@
               ;INCLUDE     "hardware/cia.i"
 ;---------- Const ----------
 
-
-
+;status flags for variable $0000209A.B
+DSKBLK_FINISHED equ $0                                  ; set by level 1 interrupt handler but unused.
+BLIT_FINISHED   equ $1                                  ; set by level 3 interrupt handler but unused.
 
 
                 section BATMAN,code_c
@@ -61,7 +62,7 @@ L00000834       BRA.W  load_level_5                             ; Calls $00000C4
 load_loading_screen                                             ; relocated address: $00000838
                 LEA.L  stack,A7                                 ; stack address $0000081C
                 BSR.W  init_system                              ; calls $00001F26 - init_system
-                BSR.W  L00001B4A
+                BSR.W  detect_available_drives                  ; calls $00001B4A - detect which disk drives are connected
                 MOVE.L #$0007C7FC,ld_loadbuffer_top             ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
                 MOVE.L #$00002AD6,L00000CF0                     ; addr $02AD6 - address of disk file table
                 LEA.L  lp_loading_screen(PC),A0                 ; addr $008C8 - address of the load parameter block (files to load for the loading screen section)
@@ -1603,6 +1604,7 @@ L00001AEE       RTS
 
 
 
+
                 ;----------------------- loader variables/state ----------------------
                 ;-- relocated address: $00001AF0
                 even
@@ -1647,6 +1649,7 @@ ld_load_status
 
 
 
+
                 ; ----------------------------- load track/file from disk --------------------------------
                 ; load file from disk (a6,a1 = load address, d1,d0 = start sector, a0 = file entry)
                 ; -- IN: D0.w - Start Sector of File
@@ -1684,21 +1687,30 @@ L00001B48       RTS
 
 
 
+                ;--------------------------- detect available drives -----------------------------
+                ; creates a bit field of available drives at relocated address $00001afa.W
+                ; each bit in the field 0-3 represent whether a drive exists (1 = drive detected)
+                ;
+detect_available_drives                                     ; relocated address: $00001B4A 
+                MOVE.L  #$00000003,D0
+                MOVE.L  #$00000000,D1
 
+.detect_loop                                                ; relocated address: $00001B4E
+                MOVEM.L D0-D1,-(A7)
+                BSR.B   select_drive                        ; $00001B96
+                BSR.B   seek_track0                         ; $00001BAE
+                MOVEM.L (A7)+,D0-D1
+                BNE.B   .check_next_drive                   ; if drive not available then skip to check next drive: bne $00001B5E
 
+                BSET.L  D0,D1                               ; Set Available Drive Flag
 
-L00001B4A       MOVE.L  #$00000003,D0
-L00001B4C       MOVE.L  #$00000000,D1
-L00001B4E       MOVEM.L D0-D1,-(A7)
-L00001B52       BSR.B   select_drive                    ;L00001B96
-L00001B54       BSR.B   L00001BAE
-L00001B56       MOVEM.L (A7)+,D0-D1
-L00001B5A       BNE.B   L00001B5E
-L00001B5C       BSET.L  D0,D1
-L00001B5E       SUB.W   #$00000001,D0
-L00001B60       BPL.B   L00001B4E
-L00001B62       MOVE.W  D1,ld_drive_bits_word                   ;$00001afa
-L00001B66       BRA.B   deselect_all_drives                  ; jmp to $00001B8C
+.check_next_drive
+                SUB.W   #$00000001,D0                       ; decrement drive number:  relocated addr: $00001B5E
+                BPL.B   .detect_loop 
+
+                MOVE.W  D1,ld_drive_bits_word               ; store detected drives bit field: $00001afa
+                BRA.B   deselect_all_drives                 ; end and clean up: jmp to $00001B8C
+
 
 
 
@@ -1709,6 +1721,7 @@ drive_motor_on                                              ; relocated address:
                 BCLR.B  #$0007,$00bfd100                    ; CIAB PRB  - clear /MTR bit (active low)
                 BCLR.B  #$0007,$00bfd100                    ; CIAB PRB  - clear /MTR bit (active low)
                 BRA.B   select_drive                        ; routine addr: $00001B96
+
 
 
 
@@ -1723,10 +1736,12 @@ drive_motor_off                                             ; relocated address:
 
 
 
+
                 ;---------------- deselect all drives ---------------------
 deselect_all_drives                                         ; routine addr: $00001B8C
                 OR.B    #$78,$00bfd100                      ; Deselect all drives (active low)
                 RTS 
+
 
 
 
@@ -1744,6 +1759,8 @@ select_drive                                                ; relocated address:
                 RTS 
 
 
+
+
                 ;-------------------- seek track 0 ---------------------------
                 ;-- reset drive heads to track 0 of currently selected drive
                 ;
@@ -1755,6 +1772,9 @@ L00001BBE       CLR.W   D0                                  ; clear target track
 L00001BC0       BSR.B   L00001BC8
 L00001BC2       MOVEM.L (A7)+,D0                            ; restore D0.l
 L00001BC6       RTS 
+
+
+
 
                 ;------------------- seek to track----------------------------
                 ;-- seek heads of the current drive to the required track
@@ -1812,6 +1832,8 @@ L00001CB8       BEQ.B   L00001CB0
 L00001CBA       RTS 
 
 
+
+
                 ; --------------------- load tracks ---------------
                 ; -- IN: D0.W - start track
                 ; -- IN: D1.w - number of sectors (if not full track,  i.e. first read might start half way though track)
@@ -1864,6 +1886,8 @@ L00001CBC       MOVEM.L D1/A0-A1,-(A7)
                 BRA.B   .exit                                       ; jump to exit $00001D0E
 
 
+
+
                 ;------------------ read raw track ---------------
 read_track                                                          ; relocated address: $00001D36
 L00001D36       MOVEM.L D0/A0,-(A7)
@@ -1897,6 +1921,8 @@ L00001DC6       TST.W   ld_ciab_20ms_countdown                      ; $00001B04
 
 L00001DCA       MOVEM.L (A7)+,D0/A0
 L00001DCE       RTS
+
+
 
                 ;--------------------- decode mfm track buffer ----------------------
                 ; IN: A0.L - mfm track buffer
@@ -2008,18 +2034,28 @@ L00001F1E       MOVE.L  D1,D0
 L00001F20       MOVEM.L (A7)+,D1-D2/A0
 L00001F24       RTS 
 
+
+
+
+                ;--------------------------- init system --------------------------------
+                ;-- 
 init_system                                                             ;L00001F26
 L00001F26       LEA.L   $00dff000,A6
 L00001F2C       LEA.L   $00bfd100,A5
 L00001F32       LEA.L   $00bfe101,A4
+
 L00001F38       MOVE.L  #$00000000,D0
+
 L00001F3A       MOVE.W  #$7fff,$009a(A6)
 L00001F40       MOVE.W  #$1fff,$0096(A6)
 L00001F46       MOVE.W  #$7fff,$009a(A6)
+
 L00001F4C       LEA.L   L00001F58(PC),A0
 L00001F50       MOVE.L  A0,$00000080
 L00001F54       MOVEA.L A7,A0
+
 L00001F56       TRAP    #$00000000
+
 L00001F58       MOVEA.L A0,A7
 L00001F5A       MOVE.W  #$0200,$0100(A6)
 L00001F60       MOVE.W  D0,$0102(A6)
@@ -2030,16 +2066,21 @@ L00001F72       MOVE.L  D0,$0040(A6)
 L00001F76       MOVE.W  #$0041,$0058(A6)
 L00001F7C       MOVE.W  #$8340,$0096(A6)
 L00001F82       MOVE.W  #$7fff,$009e(A6)
+
 L00001F88       MOVE.L  #$00000007,D1
 L00001F8A       LEA.L   $0140(A6),A0
+
 L00001F8E       MOVE.W  D0,(A0)
 L00001F90       ADDA.L  #$00000008,A0
 L00001F92       DBF.W   D1,L00001F8E
+
 L00001F96       MOVE.L  #$00000003,D1
 L00001F98       LEA.L   $00a8(A6),A0
+
 L00001F9C       MOVE.W  D0,(A0)
 L00001F9E       LEA.L   $0010(A0),A0
 L00001FA2       DBF.W   D1,L00001F9C
+
 L00001FA6       MOVE.B  #$7f,$0c00(A4)
 L00001FAC       MOVE.B  D0,$0d00(A4)
 L00001FB0       MOVE.B  D0,$0e00(A4)
@@ -2054,25 +2095,33 @@ L00001FD4       MOVE.B  #$c0,-$0100(A5)
 L00001FDA       MOVE.B  #$c0,$0100(A5)
 L00001FE0       MOVE.B  #$ff,(A5)
 L00001FE4       MOVE.B  #$ff,$0200(A5)
+
 L00001FEA       LEA.L   L00002070(PC),A0
 L00001FEE       MOVE.L  #$00000000,D0
 L00001FF0       SUB.L   A0,D0
-L00001FF2       MOVE.L  D0,$0026(A0)
-L00001FF6       MOVE.L  A0,$00000004
-L00001FFA       LEA.L   L0000209C(PC),A0
-L00001FFE       MOVE.L  A0,$00000064
-L00002002       LEA.L   L000020DA(PC),A0
-L00002006       MOVE.L  A0,$00000068
-L0000200A       LEA.L   L00002100(PC),A0
-L0000200E       MOVE.L  A0,$0000006c
-L00002012       LEA.L   L00002146(PC),A0
-L00002016       MOVE.L  A0,$00000070
-L0000201A       LEA.L   L0000215C(PC),A0
-L0000201E       MOVE.L  A0,$00000074
-L00002022       LEA.L   L00002182(PC),A0
-L00002026       MOVE.L  A0,$00000078
+L00001FF2       MOVE.L  D0,$0026(A0)                                    ; set value of addr $00002096 to $FFFFDF90 below this routine.
+L00001FF6       MOVE.L  A0,$00000004                                    ; A0 = $2070 ;This is an odd one($4.w is the reset PC counter)
+
+L00001FFA       LEA.L   level1_interrupt_handler(PC),A0                 ; relocated addr: $0000209C
+L00001FFE       MOVE.L  A0,$00000064                                    ; Level 1 Interrupt Vector
+
+L00002002       LEA.L   L000020DA(PC),A0                                ; relocated addr: $000020DA
+L00002006       MOVE.L  A0,$00000068                                    ; Level 2 Interrupt Vector
+
+L0000200A       LEA.L   level3_interrupt_handler(PC),A0                 ; relocated addr: $00002100
+L0000200E       MOVE.L  A0,$0000006c                                    ; Level 3 Interrupt Vector
+
+L00002012       LEA.L   L00002146(PC),A0                                ; relocated addr: $00002146
+L00002016       MOVE.L  A0,$00000070                                    ; Level 4 Interrupt Vector
+
+L0000201A       LEA.L   L0000215C(PC),A0                                ; relocated addr: $0000215C
+L0000201E       MOVE.L  A0,$00000074                                    ; Level 5 Interrupt Vector
+
+L00002022       LEA.L   L00002182(PC),A0                                ; relocated addr: $00002182
+L00002026       MOVE.L  A0,$00000078                                    ; Level 6 Interrupt Vector
+
 L0000202A       MOVE.W  #$ff00,$0034(A6)
-L00002030       MOVE.W  D0,$0036(A6)
+L00002030       MOVE.W  D0,$0036(A6)                                    ; D0.L = $FFFFDF90
 L00002034       OR.B    #$ff,(A5)
 L00002038       AND.B   #$87,(A5)
 L0000203C       AND.B   #$87,(A5)
@@ -2083,7 +2132,7 @@ L00002050       MOVE.B  #$11,$0e00(A4)
 L00002056       MOVE.B  #$91,$0500(A5)
 L0000205C       MOVE.B  #$00,$0600(A5)
 L00002062       MOVE.B  #$00,$0e00(A5)
-L00002068       MOVE.B  #$1f,L0000209A
+L00002068       MOVE.B  #$1f,L0000209A                                  ; %00011111 - set 5 flags
 L00002070       MOVE.W  #$7fff,$009c(A6)
 L00002076       TST.B   $0c00(A4)
 L0000207A       MOVE.B  #$8a,$0c00(A4)
@@ -2095,27 +2144,43 @@ L00002090       MOVE.W  #$2000,SR
 L00002094       RTS 
 
 
-L00002096       dc.w    $0000, $0000                            ;
-L0000209A       dc.w    $1F00
+L00002096       dc.w    $0000, $0000                            ; Set to the value $FFFFDF90 by init_system above
 
-L0000209C       MOVE.L  D0,-(A7)
-L0000209E       MOVE.W  $00dff01e,D0
-L000020A4       BTST.L  #$0002,D0
-L000020A8       BNE.B   L000020CE
-L000020AA       BTST.L  #$0001,D0
-L000020AE       BNE.B   L000020BC
-L000020B0       MOVE.W  #$0001,$00dff09c
-L000020B8       MOVE.L  (A7)+,D0
-L000020BA       RTE 
 
-L000020BC       BSET.B  #$0000,L0000209A
-L000020C2       MOVE.W  #$0002,$00dff09C
-L000020CA       MOVE.L  (A7)+,D0
-L000020CC       RTE 
 
-L000020CE       MOVE.W  #$0004,$00dff09c
-L000020D6       MOVE.L  (A7)+,D0
-L000020D8       RTE 
+
+
+interrupt_flags_byte                                            ; relocated addr: $0000209A
+L0000209A       dc.b    $1F
+L0000209B       dc.b    $00
+
+                ;---------------- level 1 interrupt handler --------------
+level1_interrupt_handler                                        ; relocated addr: $0000209C
+                MOVE.L  D0,-(A7)
+                MOVE.W  $00dff01e,D0                            ; Read INTREQR
+
+                BTST.L  #$0002,D0                               ; SOFT - Software Interrupt
+                BNE.B   .level1_soft                            ; if SOFT = 1 then jmp $000020CE
+
+                BTST.L  #$0001,D0                               ; DSKBLK - Disk Block Finished
+                BNE.B   .level_dskblk                           ; if DSKBLK = 1 then jmp $000020BC
+.level1_tbe
+                MOVE.W  #$0001,$00dff09c                        ; Clear TBE serial port interrupt
+                MOVE.L  (A7)+,D0
+                RTE 
+.level_dskblk
+                BSET.B  #DSKBLK_FINISHED,L0000209A
+                MOVE.W  #$0002,$00dff09C                        ; Clear DSKBLK interrupt
+                MOVE.L  (A7)+,D0
+                RTE 
+.level1_soft
+                MOVE.W  #$0004,$00dff09c                        ; Clear SOFT Interrupt
+                MOVE.L  (A7)+,D0
+                RTE 
+
+
+
+
 
 L000020DA       MOVE.L  D0,-(A7)
 L000020DC       MOVE.B  $00bfed01,D0
@@ -2129,28 +2194,41 @@ L000020F4       MOVE.W  #$0008,$00dff09c
 L000020FC       MOVE.L  (A7)+,D0
 L000020FE       RTE 
 
+
+
+
+                ;---------------- level 3 interrupt handler --------------
+level3_interrupt_handler                                                    ; relocated address: $00002100
 L00002100       MOVE.L  D0,-(A7)
-L00002102       MOVE.W  $00dff01e,D0
-L00002108       BTST.L  #$0004,D0
-L0000210C       BNE.B   L00002138
-L0000210E       BTST.L  #$0005,D0
-L00002112       BNE.B   L00002126
-L00002114       BSET.B  #$0001,L0000209A
-L0000211A       MOVE.W  #$0040,$00dff09c
+L00002102       MOVE.W  $00dff01e,D0                    ; Read INTREQR
+L00002108       BTST.L  #$0004,D0                       ; COPER - Copper Interrupt
+L0000210C       BNE.B   level3_coper                    ; if COPER bit = 1 then jmp $00002138
+
+L0000210E       BTST.L  #$0005,D0                       ; VERTB - Vertical Blank Interrupt
+L00002112       BNE.B   level3_vertb                    ; if VERTB bit = 1 then jmp $00002126
+
+L00002114       BSET.B  #BLIT_FINISHED,L0000209A        ; Set Bitter Finished Flag in $0000209A
+L0000211A       MOVE.W  #$0040,$00dff09c                ; Clear Blitter Interrupt bit
 L00002122       MOVE.L  (A7)+,D0
 L00002124       RTE 
 
-L00002126       ADD.W   #$00000001,frame_counter            ; $00002144
-L0000212C       MOVE.W  #$0020,$00dff09c
+level3_vertb                                            ; relocated address: $00002126
+L00002126       ADD.W   #$0001,frame_counter            ; increase frame counter variable - $00002144
+L0000212C       MOVE.W  #$0020,$00dff09c                ; clear VERTB interrupt bit
 L00002134       MOVE.L  (A7)+,D0
 L00002136       RTE 
 
-L00002138       MOVE.W  #$0010,$00dff09c
-L00002140       MOVE.L  (A7)+,D0
-L00002142       RTE 
+level3_coper                                            ; relocated address: $00002138
+L00002138       MOVE.W  #$0010,$00dff09c                ; clear COPER interrupt bit
+L00002140       MOVE.L  (A7)+,D0                            
+L00002142       RTE                                     ; exit level 3 interrupt handler
 
 frame_counter
-                dc.w    $0000                               ; relocated address: $00002144                                 
+                dc.w    $0000                           ; relocated address: $00002144                                 
+
+
+
+
 
 L00002146       MOVE.L  D0,-(A7)
 L00002148       MOVE.W  $00dff01e,D0
