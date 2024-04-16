@@ -38,7 +38,7 @@ BLIT_FINISHED   equ $1                                  ; set by level 3 interru
 ;            jmp     $800.l
 
 
-            org     $800
+            ;org     $800
 
             ;------------------------- BATMAN entry point --------------------------
             ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
@@ -2272,24 +2272,37 @@ L00002176       MOVE.W  #$1000,$00dff09c
 L0000217E       MOVE.L  (A7)+,D0
 L00002180       RTE 
 
+
+
+
+                ;------------------- level 6 interrupt handler -----------------
+                ;-- handle level 6 interrupts,
+                ;-- If not a CIAB (EXTER) Interrupt then just clear the INTREQ bits
+                ;-- else call 'level6_ciab' sub routine to handle Timer/FLG interrupts
+                ;
+level6_interrupt_handler                                        ; relocated address $00002182
 L00002182       MOVE.L  D0,-(A7)
-L00002184       MOVE.W  $00dff01e,D0
-L0000218A       BTST.L  #$000e,D0
-L0000218E       BNE.B   L000021B4
-L00002190       MOVE.B  $00bfdd00,D0
-L00002196       BPL.B   L000021A8
-L00002198       BSR.W   L000021EC
-L0000219C       MOVE.W  #$2000,$00dff09c
-L000021A4       MOVE.L  (A7)+,D0
-L000021A6       RTE 
+                MOVE.W  $00dff01e,D0                            ; read INTREQR
+                BTST.L  #$000e,D0                               ; bit 14 INTEN - Master Interrupt (enable only)
+                BNE.B   .inten_int                              ; if INTEN then jmp $000021B4
+.chk_ciab_int
+                MOVE.B  $00bfdd00,D0                            ; CIAB ICR - Interrupt Control Register (reading clears it also)                            
+                BPL.B   .not_ciab_int                           ; if MSB = 0 then not a CIAB interrupt, jmp $000021A8
+.is_ciab_int
+                BSR.W   level6_ciab                             ; routine addr: $000021EC
+                MOVE.W  #$2000,$00dff09c                        ; clear EXTERN - external interrupt (CIAB FLG)
+                MOVE.L  (A7)+,D0
+                RTE 
+.not_ciab_int
+                MOVE.W  #$2000,$00dff09c                        ; clear EXTERN - external interrupt (CIAB FLG)
+                MOVE.L  (A7)+,D0
+                RTE 
+.inten_int
+                MOVE.W  #$4000,$00dff09c                        ; Clear INTEN Bit 14 of INTREQ (strange as not an interrupt request bit)
+                MOVE.L  (A7)+,D0
+                RTE 
 
-L000021A8       MOVE.W  #$2000,$00dff09c
-L000021B0       MOVE.L  (A7)+,D0
-L000021B2       RTE 
 
-L000021B4       MOVE.W  #$4000,$00dff09c
-L000021BC       MOVE.L  (A7)+,D0
-L000021BE       RTE 
 
 L000021C0       LSR.B   #$00000002,D0
 L000021C2       BCC.B   L000021C8
@@ -2303,27 +2316,47 @@ L000021DE       MOVE.B  #$19,$00bfdf00
 L000021E6       MOVEM.L (A7)+,D1-D2/A0
 L000021EA       RTS 
 
-L000021EC       LSR.B   #$00000001,D0
-L000021EE       BCC.B   L000021F6
-L000021F0       BSET.B  #$0002,L0000209A
-L000021F6       LSR.B   #$00000001,D0
-L000021F8       BCC.B   L00002202
-L000021FA       MOVE.B  #$00,$00bfee01
-L00002202       LSR.B   #$00000003,D0
-L00002204       BCC.B   L00002226
-L00002206       BSET.B  #$0003,L0000209A
-L0000220C       BNE.B   L00002226
-L0000220E       BSET.B  #$0004,L0000209A
-L00002214       BNE.B   L00002226
-L00002216       MOVE.W  #$da00,D0
-L0000221A       MOVE.W  D0,$00dff024
-L00002220       MOVE.W  D0,$00dff024
-L00002226       RTS 
+
+
+                ;------------------------------- level 6 CIAB -----------------------------
+                ;-- Handles CIAB Level 6 Interrupt, called from Level 6 Interrupt Handler
+                ;--
+                ;-- If TimerA interrupt then set Timer A Interupt Flag
+                ;-- If TimerB interrupt then set CIAA CRA (Control Register A) (Keyboard Ack?)
+                ;-- If FLG Interrupt and Interrupt_flags_Byte Bits 3 & 4 are 0 then 
+                ;--        -- Initiate a 6.5K DMA disk write
+                ;--        -- Sets Interrupt_flags_Byte Bits 3 & 4 to 1
+level6_ciab                                                 ; relocated address: $000021EC
+                LSR.B   #$01,D0                             ; shift out Timer A interrupt bit
+                BCC.B   .chk_timerB_int                     ; Not a Timer A interrupt, jmp $000021F6 
+.timerA_int
+                BSET.B  #$02,L0000209A                      ; Set Timer A Interrupt Flag
+.chk_timerB_int
+                LSR.B   #$01,D0                             ; shift out Timer B interrupt bit
+                BCC.B   .chk_flg_int                        ; Not a Timer B interrupt, jmp $00002202
+.timerB_int
+                MOVE.B  #$00,$00bfee01                      ; CIAA CRA; SPMODE = 0 (input), INMODE = 0, RUNMODE = 0 (continuous), OUTMODE = 0 (pulse), PBON = 0, START = 0 (Timer A stop) 
+.chk_flg_int
+                LSR.B   #$03,D0                             ; shift out FLG interrupt bit
+                BCC.B   .exit                               ; Not a FLG interrupt (DSKINDEX) then jmp $00002226 (exit)
+.dskindex1_int
+                BSET.B  #$03,L0000209A                      ; Set DSKINDEX1 Interrupt Flag1
+                BNE.B   .exit                               ; if DSKINDEX1 was 1, then jmp $00002226 (exit)
+.dskindex2_int
+                BSET.B  #$04,L0000209A                      ; set DSKINDEX2 Interrupt Flag2 (if dskindex1 was 0)
+                BNE.B   .exit                               ; if DSKINDEX2 was 1, then jmp $00002226 (exit)
+.dsk_write
+                MOVE.W  #$da00,D0                           ; $DA00 - DMAEN = 1, WRITE = 1, LENGTH = $1A00 (6656 bytes - 6.5K) 
+                MOVE.W  D0,$00dff024                        ; Set value twice to enable disk DMA
+                MOVE.W  D0,$00dff024                        ; 
+.exit
+                RTS 
+
 
 L00002228       TST.W   ld_ciab_20ms_countdown                          ; $00001B04
 L0000222C       BEQ.B   L00002232
 L0000222E       SUB.W   #$0001,ld_ciab_20ms_countdown                   ; $00001B04
-L00002232       ADD.W   #$00000001,ciab_tb_20ms_tick                    ; $0000223A
+L00002232       ADD.W   #$0001,ciab_tb_20ms_tick                        ; $0000223A
 L00002238       RTS 
 
 ciab_tb_20ms_tick                                                       ; $0000223A ; CIAB - TIMER B - Underflow counter, increments every 20ms                
