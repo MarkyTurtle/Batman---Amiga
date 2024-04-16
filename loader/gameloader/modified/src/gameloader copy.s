@@ -12,32 +12,29 @@
 
 
 
-                ;section BATMAN,code_c
+                section BATMAN,code_c
 
 
-;relocate_loader
-;            lea $dff000,a6
-;            move.w  #$7fff,INTENA(a6)
-;            move.w  #$7fff,DMACON(a6)
-;            move.w  #$7fff,INTREQ(a6)
-;            lea batman_start,a0
-;            lea batman_end,a1
-;            lea $800.l,a2
-;
-;.reloc_loop
-;            move.w  (a0)+,(a2)+
-;            move.w  (a2),$dff180
-;            cmp.l   a0,a1
-;            bne.s   .reloc_loop
-;.mouse_wait
-;            Add.w   #$1,d0
-;            move.w  d0,$dff180
-;            btst    #$6,$bfe001
-;            bne.s   .mouse_wait
-;            jmp     $800.l
+relocate_loader
+            lea $dff000,a6
+            move.w  #$7fff,INTENA(a6)
+            move.w  #$7fff,DMACON(a6)
+            move.w  #$7fff,INTREQ(a6)
+            lea batman_start,a0
+            lea batman_end,a1
+            lea $800.l,a2
 
-
-            org     $800
+.reloc_loop
+            move.w  (a0)+,(a2)+
+            move.w  (a2),$dff180
+            cmp.l   a0,a1
+            bne.s   .reloc_loop
+.mouse_wait
+            Add.w   #$1,d0
+            move.w  d0,$dff180
+            btst    #$6,$bfe001
+            bne.s   .mouse_wait
+            jmp     $800.l
 
             ;------------------------- BATMAN entry point --------------------------
             ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
@@ -76,7 +73,7 @@ L00000834       BRA.W  load_level_5                             ; Calls $00000C4
 
 
 
-                
+
 
             ;---------------------- load loading screen ------------------------
             ;-- load the batman loading.iff and display it for 5 seconds.
