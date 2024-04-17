@@ -2189,7 +2189,7 @@ L00001FF6       MOVE.L  A0,$00000004                                    ; A0 = $
 L00001FFA       LEA.L   level1_interrupt_handler(PC),A0                 ; relocated addr: $0000209C
 L00001FFE       MOVE.L  A0,$00000064                                    ; Level 1 Interrupt Vector
 
-L00002002       LEA.L   level1_interrupt_handler(PC),A0                 ; relocated addr: $000020DA
+L00002002       LEA.L   level2_interrupt_handler(PC),A0                 ; relocated addr: $000020DA
 L00002006       MOVE.L  A0,$00000068                                    ; Level 2 Interrupt Vector
 
 L0000200A       LEA.L   level3_interrupt_handler(PC),A0                 ; relocated addr: $00002100
