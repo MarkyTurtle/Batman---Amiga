@@ -11,9 +11,10 @@
 ;status flags for variable $0000209A.B
 DSKBLK_FINISHED equ $0                                  ; set by level 1 interrupt handler but unused.
 BLIT_FINISHED   equ $1                                  ; set by level 3 interrupt handler but unused.
+DISK_INDEX1     equ $3                                  ; set by level 6 interrupt handler (disk write trigger - both must be set to 0 & CIAB FLG interrupt)
+DISK_INDEX2     equ $4                                  ; set by level 6 interrupt handler (disk write trigger - both must be set to 0 & CIAB FLG interrupt)
 
-
-                ;section BATMAN,code_c
+                    section BATMAN,code_c
 
 
 ;relocate_loader
@@ -2128,19 +2129,19 @@ L00001FF6       MOVE.L  A0,$00000004                                    ; A0 = $
 L00001FFA       LEA.L   level1_interrupt_handler(PC),A0                 ; relocated addr: $0000209C
 L00001FFE       MOVE.L  A0,$00000064                                    ; Level 1 Interrupt Vector
 
-L00002002       LEA.L   L000020DA(PC),A0                                ; relocated addr: $000020DA
+L00002002       LEA.L   level1_interrupt_handler(PC),A0                 ; relocated addr: $000020DA
 L00002006       MOVE.L  A0,$00000068                                    ; Level 2 Interrupt Vector
 
 L0000200A       LEA.L   level3_interrupt_handler(PC),A0                 ; relocated addr: $00002100
 L0000200E       MOVE.L  A0,$0000006c                                    ; Level 3 Interrupt Vector
 
-L00002012       LEA.L   L00002146(PC),A0                                ; relocated addr: $00002146
+L00002012       LEA.L   level4_interrupt_handler(PC),A0                 ; relocated addr: $00002146
 L00002016       MOVE.L  A0,$00000070                                    ; Level 4 Interrupt Vector
 
-L0000201A       LEA.L   L0000215C(PC),A0                                ; relocated addr: $0000215C
+L0000201A       LEA.L   level5_interrupt_handler(PC),A0                 ; relocated addr: $0000215C
 L0000201E       MOVE.L  A0,$00000074                                    ; Level 5 Interrupt Vector
 
-L00002022       LEA.L   L00002182(PC),A0                                ; relocated addr: $00002182
+L00002022       LEA.L   level6_interrupt_handler(PC),A0                 ; relocated addr: $00002182
 L00002026       MOVE.L  A0,$00000078                                    ; Level 6 Interrupt Vector
 
 L0000202A       MOVE.W  #$ff00,$0034(A6)
@@ -2177,7 +2178,12 @@ interrupt_flags_byte                                            ; relocated addr
 L0000209A       dc.b    $1F
 L0000209B       dc.b    $00
 
-                ;---------------- level 1 interrupt handler --------------
+                ;-------------------------- level 1 interrupt handler --------------------------
+                ;-- handler for level 1 interrupts as follows:-
+                ;-- if SOFT (software) then clear SOFT bit in INTREQ.
+                ;-- if TBE (serial) then clear TBE bit in INTREQ.
+                ;-- if DSKBLK (diskblock) then set DSKBLK_FINISHED bit in Interrupt_flags_Byte
+                ;-- 
 level1_interrupt_handler                                        ; relocated addr: $0000209C
                 MOVE.L  D0,-(A7)
                 MOVE.W  $00dff01e,D0                            ; Read INTREQR
@@ -2192,7 +2198,7 @@ level1_interrupt_handler                                        ; relocated addr
                 MOVE.L  (A7)+,D0
                 RTE 
 .level_dskblk
-                BSET.B  #DSKBLK_FINISHED,L0000209A
+                BSET.B  #DSKBLK_FINISHED,interrupt_flags_byte   ; var addr: $0000209A
                 MOVE.W  #$0002,$00dff09C                        ; Clear DSKBLK interrupt
                 MOVE.L  (A7)+,D0
                 RTE 
@@ -2204,73 +2210,91 @@ level1_interrupt_handler                                        ; relocated addr
 
 
 
+                ;-------------------------- level 2 interrupt handler --------------------------
+                ;-- handler for level 1 interrupts as follows:-
 
-L000020DA       MOVE.L  D0,-(A7)
-L000020DC       MOVE.B  $00bfed01,D0
-L000020E2       BPL.B   L000020F4
-L000020E4       BSR.W   L000021C0
-L000020E8       MOVE.W  #$0008,$00dff09c
-L000020F0       MOVE.L  (A7)+,D0
-L000020F2       RTE 
+level2_interrupt_handler                                        ; relocated address: $000020DA
+                MOVE.L  D0,-(A7)
+                MOVE.B  $00bfed01,D0                            ; CIAA ICR, clears on read
+                BPL.B   .not_ciaa_int                           ; MSB = 0 then not a CIAA interrupt, jmp $000020F4
+.is_ciaa_int
+                BSR.W   ciaa_interrupt_handler                  ; routine addr: $000021C0
+                MOVE.W  #$0008,$00dff09c                        ; Clear PORTS bit of INTREQ
+                MOVE.L  (A7)+,D0
+                RTE 
+.not_ciaa_int
+                MOVE.W  #$0008,$00dff09c
+                MOVE.L  (A7)+,D0
+                RTE 
 
-L000020F4       MOVE.W  #$0008,$00dff09c
-L000020FC       MOVE.L  (A7)+,D0
-L000020FE       RTE 
 
 
 
-
-                ;---------------- level 3 interrupt handler --------------
-level3_interrupt_handler                                                    ; relocated address: $00002100
-L00002100       MOVE.L  D0,-(A7)
-L00002102       MOVE.W  $00dff01e,D0                    ; Read INTREQR
-L00002108       BTST.L  #$0004,D0                       ; COPER - Copper Interrupt
-L0000210C       BNE.B   level3_coper                    ; if COPER bit = 1 then jmp $00002138
-
-L0000210E       BTST.L  #$0005,D0                       ; VERTB - Vertical Blank Interrupt
-L00002112       BNE.B   level3_vertb                    ; if VERTB bit = 1 then jmp $00002126
-
-L00002114       BSET.B  #BLIT_FINISHED,L0000209A        ; Set Bitter Finished Flag in $0000209A
-L0000211A       MOVE.W  #$0040,$00dff09c                ; Clear Blitter Interrupt bit
-L00002122       MOVE.L  (A7)+,D0
-L00002124       RTE 
-
-level3_vertb                                            ; relocated address: $00002126
-L00002126       ADD.W   #$0001,frame_counter            ; increase frame counter variable - $00002144
-L0000212C       MOVE.W  #$0020,$00dff09c                ; clear VERTB interrupt bit
-L00002134       MOVE.L  (A7)+,D0
-L00002136       RTE 
-
-level3_coper                                            ; relocated address: $00002138
-L00002138       MOVE.W  #$0010,$00dff09c                ; clear COPER interrupt bit
-L00002140       MOVE.L  (A7)+,D0                            
-L00002142       RTE                                     ; exit level 3 interrupt handler
+                ;----------------------- level 3 interrupt handler -------------------------
+                ;-- level 3 interrupt handler, operates as follows:-
+                ;-- if COPER (copper) interrupt then clear COPER bit in INTREQ
+                ;-- if VERTB (vertical blank) then increment frame_counter variable
+                ;-- if BLIT (blit finished) then set BLIT_FINISHED bit of interrupt_flags_byte
+                ;--
+level3_interrupt_handler                                        ; relocated address: $00002100
+                MOVE.L  D0,-(A7)
+                MOVE.W  $00dff01e,D0                            ; Read INTREQR
+                BTST.L  #$0004,D0                               ; COPER - Copper Interrupt
+                BNE.B   .is_coper                               ; if COPER bit = 1 then jmp $00002138
+.chk_vertb      
+                BTST.L  #$0005,D0                               ; VERTB - Vertical Blank Interrupt
+                BNE.B   .is_vertb                               ; if VERTB bit = 1 then jmp $00002126
+.blt_finished
+                BSET.B  #BLIT_FINISHED,interrupt_flags_byte     ; Set Bitter Finished Flag in $0000209A
+                MOVE.W  #$0040,$00dff09c                        ; Clear Blitter Interrupt bit
+                MOVE.L  (A7)+,D0
+                RTE 
+.is_vertb                                                       ; relocated address: $00002126
+                ADD.W   #$0001,frame_counter                    ; increase frame counter variable - $00002144
+                MOVE.W  #$0020,$00dff09c                        ; clear VERTB interrupt bit
+                MOVE.L  (A7)+,D0
+                RTE 
+.is_coper                                                       ; relocated address: $00002138
+                MOVE.W  #$0010,$00dff09c                        ; clear COPER interrupt bit
+                MOVE.L  (A7)+,D0                            
+                RTE                                             ; exit level 3 interrupt handler
 
 frame_counter
-                dc.w    $0000                           ; relocated address: $00002144                                 
+                dc.w    $0000                                   ; relocated address: $00002144                                 
 
 
 
 
+                ;----------------------- level 4 interrupt handler -----------------------
+                ;-- handles level 4 interrupts as follows:-
+                ;-- if audio interrupt occurs on any channel then clear the interrupt bit
+                ;--
+level4_interrupt_handler                                        ; relocated address: $00002146
+                MOVE.L  D0,-(A7)
+                MOVE.W  $00dff01e,D0                            ; Read INTREQR
+                AND.W   #$0780,D0                               ; mask out interrupt bits, leaving aud0-aud3
+                MOVE.W  D0,$00dff09a                            ; clear aud0-aud3 interrupt in INTREQ
+                MOVE.L  (A7)+,D0
+                RTE 
 
-L00002146       MOVE.L  D0,-(A7)
-L00002148       MOVE.W  $00dff01e,D0
-L0000214E       AND.W   #$0780,D0
-L00002152       MOVE.W  D0,$00dff09a
-L00002158       MOVE.L  (A7)+,D0
-L0000215A       RTE 
 
-L0000215C       MOVE.L  D0,-(A7)
-L0000215E       MOVE.W  $00dff01e,D0
-L00002164       BTST.L  #$000c,D0
-L00002168       BNE.B   L00002176
-L0000216A       MOVE.W  #$0800,$00dff09c
-L00002172       MOVE.L  (A7)+,D0
-L00002174       RTE 
 
-L00002176       MOVE.W  #$1000,$00dff09c
-L0000217E       MOVE.L  (A7)+,D0
-L00002180       RTE 
+
+                ;----------------------- level 5 interrupt handler -----------------------
+                ; handle level 5 interrupts by just clearing their bits in INTREQ
+level5_interrupt_handler
+                MOVE.L  D0,-(A7)
+                MOVE.W  $00dff01e,D0
+                BTST.L  #$000c,D0                                   
+                BNE.B   .is_dsksyn                          ; if DSKSYN then jmp $00002176
+.is_rbf
+                MOVE.W  #$0800,$00dff09c                    ; clear RBF - Serial port buffer receive in INREQ
+                MOVE.L  (A7)+,D0
+                RTE 
+.is_dsksyn
+                MOVE.W  #$1000,$00dff09c                    ; clear DSKSYN bit in INTREQ
+                MOVE.L  (A7)+,D0
+                RTE 
 
 
 
@@ -2281,7 +2305,7 @@ L00002180       RTE
                 ;-- else call 'level6_ciab' sub routine to handle Timer/FLG interrupts
                 ;
 level6_interrupt_handler                                        ; relocated address $00002182
-L00002182       MOVE.L  D0,-(A7)
+                MOVE.L  D0,-(A7)
                 MOVE.W  $00dff01e,D0                            ; read INTREQR
                 BTST.L  #$000e,D0                               ; bit 14 INTEN - Master Interrupt (enable only)
                 BNE.B   .inten_int                              ; if INTEN then jmp $000021B4
@@ -2303,18 +2327,27 @@ L00002182       MOVE.L  D0,-(A7)
                 RTE 
 
 
+                ;------------------- ciaa 6 interrupt handler -----------------
+                ; called from level2 interrupt handler when the interrupt was
+                ; generated by the CIAA chip.
+                ; IN: D0.b = CIAA ICR value (interrupt bits)
+ciaa_interrupt_handler                                          ; relocated address $000021C0
+                LSR.B   #$00000002,D0                           ; shift out Timer B bit 2
+                BCC.B   .chk_sp_int                             ; if not TimerB interrupt, jmp $000021C8
+.is_timerA
+                BSR.W   level2_ciaa_timerA                      ; relocated address: $00002228
+.chk_sp_int
+                LSR.B   #$00000002,D0                           ; shift out SP bit bit 4 (kbd serial port full/empty)
+                BCC.B   .exit                                   ; not SP interrupt, jmp $000021EA               
+.is_sp_int
+                MOVEM.L D1-D2/A0,-(A7)                          ; keyboard shenanigans????, maybe an ack signal back to keyboard, old code, D1 read then later restored
+                MOVE.B  $00bfec01,D1                            ; D1 = serial data register (keyboard)
+                MOVE.B  #$40,$00bfee01                          ; CIAA CRA (control reg), SSPMODE = 1 - Serial Port CNT is shift source
+                MOVE.B  #$19,$00bfdf00                          ; CIAB CRB (control reg), RUNMODE = 1 (oneshot), START = 1 (Timer B), LOAD = 1 (force load)
+                MOVEM.L (A7)+,D1-D2/A0
+.exit
+                RTS 
 
-L000021C0       LSR.B   #$00000002,D0
-L000021C2       BCC.B   L000021C8
-L000021C4       BSR.W   L00002228
-L000021C8       LSR.B   #$00000002,D0
-L000021CA       BCC.B   L000021EA
-L000021CC       MOVEM.L D1-D2/A0,-(A7)
-L000021D0       MOVE.B  $00bfec01,D1
-L000021D6       MOVE.B  #$40,$00bfee01
-L000021DE       MOVE.B  #$19,$00bfdf00
-L000021E6       MOVEM.L (A7)+,D1-D2/A0
-L000021EA       RTS 
 
 
 
@@ -2340,10 +2373,10 @@ level6_ciab                                                 ; relocated address:
                 LSR.B   #$03,D0                             ; shift out FLG interrupt bit
                 BCC.B   .exit                               ; Not a FLG interrupt (DSKINDEX) then jmp $00002226 (exit)
 .dskindex1_int
-                BSET.B  #$03,L0000209A                      ; Set DSKINDEX1 Interrupt Flag1
+                BSET.B  #DISK_INDEX1,interrupt_flags_byte   ; Set DSKINDEX1 Interrupt Flag1, var addr: $0000209A
                 BNE.B   .exit                               ; if DSKINDEX1 was 1, then jmp $00002226 (exit)
 .dskindex2_int
-                BSET.B  #$04,L0000209A                      ; set DSKINDEX2 Interrupt Flag2 (if dskindex1 was 0)
+                BSET.B  #DISK_INDEX2,interrupt_flags_byte   ; set DSKINDEX2 Interrupt Flag2 (if dskindex1 was 0), var addr: $0000209A
                 BNE.B   .exit                               ; if DSKINDEX2 was 1, then jmp $00002226 (exit)
 .dsk_write
                 MOVE.W  #$da00,D0                           ; $DA00 - DMAEN = 1, WRITE = 1, LENGTH = $1A00 (6656 bytes - 6.5K) 
@@ -2353,14 +2386,27 @@ level6_ciab                                                 ; relocated address:
                 RTS 
 
 
-L00002228       TST.W   ld_ciab_20ms_countdown                          ; $00001B04
-L0000222C       BEQ.B   L00002232
-L0000222E       SUB.W   #$0001,ld_ciab_20ms_countdown                   ; $00001B04
-L00002232       ADD.W   #$0001,ciab_tb_20ms_tick                        ; $0000223A
-L00002238       RTS 
+
+
+               ;--------------------------------- level 2 CIAA Timer A -----------------------------
+               ;-- called from ciaa_interrupt_handler to handle CIAA TimerA interrupts as follows:-
+               ;-- decrement then ld_ciab_20ms_countdown counter, clamping it at 0
+               ;-- increment the ciab_tb_20ms_tick, no clamping so will eventually overflow
+               ;--
+level2_ciaa_timerA                                                      ; relocated address: $00002228
+                TST.W   ld_ciab_20ms_countdown                          ; $00001B04
+                BEQ.B   .increment_counter                              ; if countdown is 0 then skip decrement, jmp $00002232
+.decrement_counter
+                SUB.W   #$0001,ld_ciab_20ms_countdown                   ; $00001B04
+.increment_counter
+                ADD.W   #$0001,ciab_tb_20ms_tick                        ; $0000223A
+                RTS 
 
 ciab_tb_20ms_tick                                                       ; $0000223A ; CIAB - TIMER B - Underflow counter, increments every 20ms                
                 dc.w $0000 
+
+
+
 
 L0000223C       dc.w $3033, $0000
 L00002240       dc.w $00F0, $0002, $000F, $0F0D, $0000, $0000, $000F, $0F0D             ;................
