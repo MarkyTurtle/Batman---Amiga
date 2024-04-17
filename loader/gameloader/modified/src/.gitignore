@@ -1,0 +1,5 @@
+**/*.o
+uae/dh0/gameloader
+.DS_Store
+bin
+.vscode/settin
