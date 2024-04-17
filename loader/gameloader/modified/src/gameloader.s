@@ -11,6 +11,7 @@
 ;status flags for variable $0000209A.B
 DSKBLK_FINISHED equ $0                                  ; set by level 1 interrupt handler but unused.
 BLIT_FINISHED   equ $1                                  ; set by level 3 interrupt handler but unused.
+TIMERA_FINISHED equ $2
 DISK_INDEX1     equ $3                                  ; set by level 6 interrupt handler (disk write trigger - both must be set to 0 & CIAB FLG interrupt)
 DISK_INDEX2     equ $4                                  ; set by level 6 interrupt handler (disk write trigger - both must be set to 0 & CIAB FLG interrupt)
 
@@ -1835,9 +1836,9 @@ L00001C2A       BNE.B   L00001C20
 L00001C2C       MOVE.B  #$00,$00bfde00
 L00001C34       MOVE.B  #$f4,$00bfd400
 L00001C3C       MOVE.B  #$29,$00bfd500
-L00001C44       BCLR.B  #$0002,L0000209A
+L00001C44       BCLR.B  #TIMERA_FINISHED,interrupt_flags_byte   ;$0000209A
 L00001C4C       MOVE.B  #$19,$00bfde00
-L00001C54       BTST.B  #$0002,L0000209A
+L00001C54       BTST.B  #TIMERA_FINISHED,interrupt_flags_byte   ;$0000209A
 L00001C5C       BEQ.B   L00001C54
 L00001C5E       BTST.B  #$0004,$00bfe001
 L00001C66       RTS 
@@ -1849,9 +1850,9 @@ L00001C80       BCLR.B  #$0000,$00bfd100
 L00001C88       BCLR.B  #$0000,$00bfd100
 L00001C90       BCLR.B  #$0000,$00bfd100
 L00001C98       BSET.B  #$0000,$00bfd100
-L00001CA0       BCLR.B  #$0002,L0000209A
+L00001CA0       BCLR.B  #TIMERA_FINISHED,interrupt_flags_byte   ;$0000209A
 L00001CA8       MOVE.B  #$19,$00bfde00
-L00001CB0       BTST.B  #$0002,L0000209A
+L00001CB0       BTST.B  #TIMERA_FINISHED,interrupt_flags_byte   ;$0000209A
 L00001CB8       BEQ.B   L00001CB0
 L00001CBA       RTS 
 
@@ -2156,7 +2157,7 @@ L00002050       MOVE.B  #$11,$0e00(A4)
 L00002056       MOVE.B  #$91,$0500(A5)
 L0000205C       MOVE.B  #$00,$0600(A5)
 L00002062       MOVE.B  #$00,$0e00(A5)
-L00002068       MOVE.B  #$1f,L0000209A                                  ; %00011111 - set 5 flags
+L00002068       MOVE.B  #$1f,interrupt_flags_byte                       ; $0000209A  ; %00011111 - set 5 flags
 L00002070       MOVE.W  #$7fff,$009c(A6)
 L00002076       TST.B   $0c00(A4)
 L0000207A       MOVE.B  #$8a,$0c00(A4)
@@ -2175,7 +2176,7 @@ L00002096       dc.w    $0000, $0000                            ; Set to the val
 
 
 interrupt_flags_byte                                            ; relocated addr: $0000209A
-L0000209A       dc.b    $1F
+                dc.b    $1F
 L0000209B       dc.b    $00
 
                 ;-------------------------- level 1 interrupt handler --------------------------
@@ -2363,7 +2364,7 @@ level6_ciab                                                 ; relocated address:
                 LSR.B   #$01,D0                             ; shift out Timer A interrupt bit
                 BCC.B   .chk_timerB_int                     ; Not a Timer A interrupt, jmp $000021F6 
 .timerA_int
-                BSET.B  #$02,L0000209A                      ; Set Timer A Interrupt Flag
+                BSET.B  #$02,interrupt_flags_byte           ; Set Timer A Interrupt Flag
 .chk_timerB_int
                 LSR.B   #$01,D0                             ; shift out Timer B interrupt bit
                 BCC.B   .chk_flg_int                        ; Not a Timer B interrupt, jmp $00002202
