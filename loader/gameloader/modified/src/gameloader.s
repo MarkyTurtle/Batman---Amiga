@@ -381,14 +381,15 @@ loader                                                      ; relocated routine 
             MOVE.L  #$000042D6,ld_mfmencoded_track_ptr      ; mfm encoded track buffer address
 
             TST.W   (A0)                                    ; test first load parameter value
-            BEQ.W   L00000D6E                               ; end load if = 0 - just check copy protection?
+            BEQ.W   end_load_files                          ; end load if = 0 - just check copy protection? ; jmp $00000D6E 
 
-L00000D28       MOVEA.L A0,A1                               ; copy file parameter block base address
-L00000D2A       ADDA.W  (A1)+,A0                            ; A0 = ptr to disk name string e.g. "BATMAN MOVIE   0"
-L00000D2C       MOVE.L  A1,-(A7)                            ; A1 = ptr to first filename structure.
-L00000D2E       BSR.W   L000015DE                           ; Load File Table $2AD6 & Check Disk Name
-L00000D32       BEQ.B   L00000D38                           ; Z = 1 - correct disk in the drive
-L00000D34       BSR.W   L000013B2                           ;       - else wait for correct disk to be inserted
+.check_disk
+            MOVEA.L A0,A1                                   ; copy file parameter block base address
+            ADDA.W  (A1)+,A0                                ; A0 = ptr to disk name string e.g. "BATMAN MOVIE   0"
+            MOVE.L  A1,-(A7)                                ; A1 = ptr to first filename structure.
+            BSR.W   L000015DE                               ; Load File Table $2AD6 & Check Disk Name
+            BEQ.B   L00000D38                               ; Z = 1 - correct disk in the drive
+            BSR.W   L000013B2                               ;       - else wait for correct disk to be inserted
 
 L00000D38       MOVEA.L (A7),A0                             ; A0 = ptr to first filename structure. (CCR not affected)
 L00000D3A       LEA.L   $0007c7fc,A6                        ; Top/End of loaded files buffer
@@ -396,10 +397,10 @@ L00000D40       CLR.W   ld_load_status                      ; $00001B08 ; clear 
 
 L00000D46       BSR.W   load_file_entries                   ; call $00001652 - load files (A0 = first file entry)
 L00000D4A       MOVEA.L (A7)+,A0                            ; A0 = ptr to first filename structure. (CCR not affected)
-L00000D4C       BNE.B   L00000D6E
+L00000D4C       BNE.B   end_load_files                      ; Z=0 - error, jmp $00000D6E
 
 L00000D4E       TST.W   (A0)
-L00000D50       BEQ.B   L00000D6E
+L00000D50       BEQ.B   end_load_files                      ; Test First File Entry data value, if null jmp $00000D6E
 L00000D52       MOVE.L  A0,-(A7)
 L00000D54       MOVE.L  $0002(A0),L00000CF0
 L00000D5A       MOVE.L  $0006(A0),D0
@@ -409,10 +410,12 @@ L00000D66       MOVEA.L (A7)+,A0
 L00000D68       LEA.L   $000e(A0),A0
 L00000D6C       BRA.B   L00000D4E
 
-L00000D6E       MOVE.W  ld_drive_number,D0                  ;$00001AFC
+end_load_files                                              ; relocated address: $00000D6E
+                MOVE.W  ld_drive_number,D0                  ;$00001AFC
 L00000D74       BSR.W   drive_motor_off                     ;$00001B7A
 L00000D78       LEA.L   $00bfd100,A0
 
+                                              
 L00000D7E       CLR.W   frame_counter                       ; $00002144
 L00000D84       TST.W   frame_counter                       ; $00002144
 L00000D8A       BEQ.B   L00000D84
@@ -1100,44 +1103,56 @@ L000015DC       RTS
 
 
 
-                ;--------------------------- check disk --------------------------
+                ;--------------------------- load file table --------------------------
+                ;-- Checks the disk name and loads the file table for the disk name
+                ;-- passed in here.
                 ; -- IN: A0 - ptr to diskname string
                 ;
-init_disk                                                       ; relocated address $000015DE
+                ;-- State:
+                ;-- #$00002CD6,ld_decoded_track_ptr
+                ;-- #$000042D6,ld_mfmencoded_track_ptr
+                ;-- #$00002AD6,ld_filetable2
+                ;--
+load_filetable                                                  ; relocated address $000015DE
 L000015DE       MOVE.L  A0,-(A7)                                ; A0 = ptr to disk name string
                 MOVE.W  #$0004,ld_drive_number                  ; $00001AFC ; $1AFC - drive number?
-.L000015E8      MOVE.W  #$0005,ld_load_status                   ; $00001B08 ; set loader status
+.select_next_drive
+                MOVE.W  #$0005,ld_load_status                   ; $00001B08 ; set loader status
                 MOVE.W  ld_drive_number,D0                      ; $00001AFC,D0 ; D0.w - drive number (initial value = 4)
-.L000015F6      SUB.W   #$00000001,D0                           ; decrement by 1 (initial value = 3)
-                BMI.W   .exit                                   ;   jmp $00001648 
+.select_loop    SUB.W   #$00000001,D0                           ; decrement by 1 (initial value = 3)
+                BMI.W   .exit                                   ; no drives left available, jmp $00001648 
+                BTST.B  D0,ld_drive_bits_byte                   ; $00001AFB ; Bit field of available disk drives (initial check bit 3)
+                BEQ.B   .select_loop                            ; $000015F6 ; If Drive is not available then loop next drive. (count from 3 to 0)
 
-.L000015FC       BTST.B  D0,ld_drive_bits_byte                  ; $00001AFB ; Bit field of available disk drives (initial check bit 3)
-.L00001602       BEQ.B   .L000015F6                             ; If Drive is not available then loop next drive. (count from 3 to 0)
+.select_drive   MOVE.W  D0,ld_drive_number                      ; $00001AFC ; store available drive number.
 
-.L00001604       MOVE.W  D0,ld_drive_number                     ; $00001AFC ; store available drive number.
-
-.L0000160A       BSR.W   drive_motor_on                         ; Drive Motor On: routine addr: $00001B68
-.L0000160E       BSR.W   seek_track0                            ; calls $00001BAE
-
-.L00001612       BNE.B   .L0000163C
-.L00001614       SF.B    ld_track_status                        ; $00001AF0
-.L0000161A       MOVE.L  #$00000002,D0
-.L0000161C       BSR.W   load_decode_track                      ; calls $00001B0A
-.L00001620       BNE.B   .L0000163C
-.L00001622       MOVEA.L (A7),A1
-.L00001624       MOVE.L  #$0000000f,D0
-.L00001626       CMPM.B  (A0)+,(A1)+
-.L00001628       DBNE.W  D0,.L00001626
-.L0000162C       BNE.B   .L0000163C
-.L0000162E       MOVEA.L ld_filetable2,A1
-.L00001632       MOVE.L  #$0000007b,D0
-.L00001634       MOVE.L  (A0)+,(A1)+
-.L00001636       DBF.W   D0,.L00001634
-.L0000163A       BRA.B   .exit                                  ; bra $00001648
-.L0000163C       MOVE.W  ld_drive_number,D0                     ; $00001AFC
-.L00001642       BSR.W   drive_motor_off                        ; L00001B7A
-.L00001646       BRA.B   .L000015E8
-
+.init_drive
+                BSR.W   drive_motor_on                          ; Drive Motor On: routine addr: $00001B68
+                BSR.W   seek_track0                             ; calls $00001BAE
+                BNE.B   .error                                  ; z = 0, error so jmp $0000163C
+.load_filetable
+                SF.B    ld_track_status                         ; $00001AF0
+                MOVE.L  #$00000002,D0                           ; Sector Number of File Table
+                BSR.W   load_decode_track                       ; calls $00001B0A
+                BNE.B   .error                                  ; Z = 0, error so jmp $0000163C
+.chk_diskname
+                MOVEA.L (A7),A1                                 ; A1 = diskname pointer; A0 = loaded data address
+                MOVE.L  #$0000000f,D0                           ; DiskName = 16 bytes
+.diskname_loop
+                CMPM.B  (A0)+,(A1)+                             ; compare disk name characters
+                DBNE.W  D0,.diskname_loop                       ; disk name check loop $L00001626
+                BNE.B   .error                                  ; final CCR check, if not equal, jmp $0000163C
+.filetable_copy
+                MOVEA.L ld_filetable2,A1                        ; get file table address
+                MOVE.L  #$0000007b,D0                           ; loop counter 123 + 1 (124 x 4 = 496). 496/16 = 31 (Max number of file table entries?)
+.copy_loop
+                MOVE.L  (A0)+,(A1)+                             ; copy file table data 
+                DBF.W   D0,.copy_loop                           ; $00001634 ; loop for 124 long words
+                BRA.B   .exit                                   ; bra $00001648
+.error
+                MOVE.W  ld_drive_number,D0                      ; $00001AFC
+                BSR.W   drive_motor_off                         ; L00001B7A
+                BRA.B   .select_next_drive                      ; try again with the next available disk drive, jmp $000015E8
 .exit
                 MOVEA.L (A7)+,A0                                ; relocated address $00001648
                 TST.W   ld_load_status                          ; $00001B08 ; test load status ( z = 1 - success )
@@ -1713,7 +1728,7 @@ L00001B1E       CMP.W   ld_track_number_word,D0     ; $00001B00 - D0 = start tra
 L00001B22       BEQ.B   L00001B32                   ; if equal, track already loaded and decocded?
 
 L00001B24       MOVEA.L ld_decoded_track_ptr,A0     ; Track Decoded Buffer Address. addr: $00001AF2
-L00001B28       BSR.W   load_raw_track              ; calls $00001CBC ; Load Track into Buffer (d0 = track number, d1 = remaining sectors if not whole track)
+L00001B28       BSR.W   load_mfm_track              ; calls $00001CBC ; Load Track into Buffer (d0 = track number, d1 = remaining sectors if not whole track)
 L00001B2C       BNE.B   L00001B40                   ; Z = 0 - error occurred
 L00001B2E       ST.B    ld_track_status             ; $00001AF0 ; set file/track loaded status byte to $FF (true)
 
@@ -1736,7 +1751,6 @@ L00001B48       RTS
 detect_available_drives                                     ; relocated address: $00001B4A 
                 MOVE.L  #$00000003,D0
                 MOVE.L  #$00000000,D1
-
 .detect_loop                                                ; relocated address: $00001B4E
                 MOVEM.L D0-D1,-(A7)
                 BSR.B   select_drive                        ; $00001B96
@@ -1745,7 +1759,6 @@ detect_available_drives                                     ; relocated address:
                 BNE.B   .check_next_drive                   ; if drive not available then skip to check next drive: bne $00001B5E
 
                 BSET.L  D0,D1                               ; Set Available Drive Flag (bits 0-3)
-
 .check_next_drive
                 SUB.W   #$0001,D0                           ; decrement drive number:  relocated addr: $00001B5E
                 BPL.B   .detect_loop 
@@ -1898,7 +1911,7 @@ step_heads                                                      ; relocated addr
 
 
 
-                ; --------------------- load raw track ---------------
+                ; -------------------------- load mfm track -------------------------
                 ; -- IN: D0.W - start track
                 ; -- IN: D1.w - number of sectors (if not full track,  i.e. first read might start half way though track)
                 ; -- IN: A0.L - decoded data buffer
@@ -1907,7 +1920,7 @@ step_heads                                                      ; relocated addr
                 ; --  $1B04.W - CIAB TimeB 20ms Timer Tick Counter
                 ; --  $1B06.W - retry count
                 ; --  $1B08.W - Load Status 
-load_raw_track
+load_mfm_track
                 MOVEM.L D1/A0-A1,-(A7)
                 MOVE.W  #$0020,L00001B06                            ; #$20 = 32
                 MOVE.W  #$0001,ld_load_status                       ; $00001B08 ; set load status
@@ -1922,13 +1935,13 @@ load_raw_track
 .retryread      MOVE.W  #$0001,ld_load_status                       ; $00001B08 ; set load status value   addr: $00001CE6
 
                 MOVEA.L ld_mfmencoded_track_ptr,A0                  ; mfm encoded track buffer
-                BSR.W   read_track                                  ; $00001D36 ; read raw track 
+                BSR.W   dma_read_track                              ; $00001D36 ; read track using harware DMA 
                 BEQ.B   .load_error                                 ; Z = 1 then error (timeout) jump addr: $00001D1C
 
                 MOVE.W  #$0002,ld_load_status                       ; $00001B08 ; update load status
                 MOVEA.L ld_mfmencoded_track_ptr,A0                  ; $00001AF6 ; A0 = raw mfm buffer address
                 MOVEA.L $0004(A7),A1                                ; A1 = decoded buffer address
-                BSR.W   L00001DD0                                   ; decode track
+                BSR.W   decode_mfm_buffer                           ; calls $00001DD0 ; decode track to address
                 BNE.B   .load_error                                 ; Z = 0 then error? jump addr: $00001D1C
                 CLR.W   ld_load_status                              ; $00001B08 ; clear load status
 .exit
@@ -1951,10 +1964,10 @@ load_raw_track
 
 
 
-                ;---------------------- read raw track ------------------------
+                ;-------------------------- dma read track --------------------------
                 ;-- IN: A0.L - MFM Track Buffer
                 ;-- OUT: Z=0 - success, Z=1 - timeout
-read_track                                                          ; relocated address: $00001D36
+dma_read_track                                                          ; relocated address: $00001D36
                 MOVEM.L D0/A0,-(A7)
                 MOVE.W  #$0005,ld_ciab_20ms_countdown               ; $00001B04 ; CIAB Timer B 20ms timer ticks = 5 * 20 = 100ms (drive ready timeout value)
 .drive_ready_loop
@@ -1998,6 +2011,7 @@ read_track                                                          ; relocated 
                 ;--------------------- decode mfm track buffer ----------------------
                 ; IN: A0.L - mfm track buffer
                 ; IN: A1.L - decoded track buffer address
+decode_mfm_buffer
 L00001DD0       MOVEM.L D0-D1/D5-D7/A0,-(A7)
 L00001DD4       MOVE.B  D0,D7
 L00001DD6       CLR.W   D6
