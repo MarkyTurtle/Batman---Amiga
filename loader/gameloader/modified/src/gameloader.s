@@ -361,7 +361,6 @@ lp_level_5                                                      ; level 5 loader
                 ;--        when all files are loaded they are then processed and relocated
                 ;--        also by the loader.
                 ;-- $CF8 - Holds the File Table Memory Address Pointer (set in loader)
- 
 ld_relocate_addr                                ; addr $00000CF0 - file relocation address (misused by code external to the loader)
                 dc.l   $00000000
 ld_loadbuffer_top                               ; addr $00000CF4
@@ -382,7 +381,7 @@ ld_filetable                                    ; addr $00000CF8
                 ; IN: 00000CF4.l    - Top/end of Load buffer in memory ($7C7FC)
                 ; IN: 00000CF0.l    - (** SET BUT UNUSED **) Disk File Table Contents ($2AD6) for all loading sections.
                 ;
-loader                                                         ; relocated routine start Addr $00000CFC 
+loader                                                          ; relocated routine start Addr $00000CFC 
                 MOVEM.L D0-D7/A0-A6,-(A7)
                 CLR.W   ld_load_status                          ; $00001B08 ; clear 'load status' word
                 MOVE.L  #$00002AD6,ld_filetable                 ; store file table address
@@ -409,7 +408,7 @@ loader                                                         ; relocated routi
 
 .process_files_loop
                 TST.W   (A0)                                    ; A0 = ptr to 1st file entry loaded. Test for file to process
-                BEQ.B   end_load_files                          ; Test First File Entry data value, if null jmp $00000D6E
+                BEQ.B   .end_load_files                          ; Test First File Entry data value, if null jmp $00000D6E
                 MOVE.L  A0,-(A7)
                 MOVE.L  $0002(A0),ld_relocate_addr              ; $00000CF0 = file relocation address (from file entry table)
                 MOVE.L  $0006(A0),D0
@@ -419,13 +418,12 @@ loader                                                         ; relocated routi
                 LEA.L   $000e(A0),A0
                 BRA.B   .process_files_loop                     ; jmp $00000D4E ; process next file
 
-end_load_files                                                  ; relocated address: $00000D6E
+.end_load_files                                                  ; relocated address: $00000D6E
                 MOVE.W  ld_drive_number,D0                      ; $00001AFC
                 BSR.W   drive_motor_off                         ; calls $00001B7A
                 LEA.L   $00bfd100,A0                            ; CIAB PRB - as a base register
 
-
-.vbwait1                                                       ; Vertical Blank Wait 1                                           
+.vbwait1                                                        ; Vertical Blank Wait 1                                           
                 CLR.W   frame_counter                           ; Clear frame counter
 .wait_frame1
                 TST.W   frame_counter                           ; Compare Frame Counter with 0
@@ -434,7 +432,6 @@ end_load_files                                                  ; relocated addr
                 MOVE.B  #$00,$0900(A0)                          ; CIAB - Clear TODHI 
                 MOVE.B  #$00,$0800(A0)                          ; CIAB - Clear TODMID
                 MOVE.B  #$00,$0700(A0)                          ; CIAB - Clear TODLOW
-
 
 .vbwait2                                                        ; Vertical Blank Wait 2
                 CLR.W   frame_counter                           ; $00002144
@@ -449,9 +446,13 @@ end_load_files                                                  ; relocated addr
                 ASL.L   #$00000008,D0                           ; CIAB - shift bits
                 MOVE.B  $0700(A0),D0                            ; CIAB - Read TODLOW
  
-                CMP.L   #$00000115,D0                           ; Compare value in TOD with 115 (115 scan lines, TOD tick is synced to Horizontal Sync)
+                CMP.L   #$00000115,D0                           ; Compare value in TOD with #$115 (277 scan lines, TOD tick is synced to Horizontal Sync)
 .infinite_loop
                 BCS.B   .infinite_loop                          ; A check for execution speed between .vbwait1 & .vbwait2
+                                                                ; or the number of scan lines (maybe fail for NTSC?)
+                                                                ; infinite loop if D0 < 277 
+                                                                ;    - PAL 312.5 scanlines
+                                                                ;    - NTSC 262.5 scan lines
 
                 BRA.W   copy_protection_init1                   ; instruction addr: $00000DC6 - jump to copy protection $00000E82                   
 
@@ -977,30 +978,45 @@ L000013B0       RTS                                                 ; return fro
 
 
 
+
+
+
+
                 ;---------------------- wrong disk in the drive -------------------------
+                ;-- IN: A0.l - ptr to disk name
+                ;--
+wait_for_correct_disk                                               ; relocated address $000013B2
 L000013B2       MOVE.L  A0,-(A7)
-L000013B4       LEA.L   L00002334(PC),A0
+L000013B4       LEA.L   L00002334(PC),A0                            ; Disk logo?
 L000013B8       LEA.L   $00007700,A1
 L000013BE       LEA.L   copper_colours(PC),A2                       ; Get copper bitplane display colours. addr $000014B8
 L000013C2       BSR.W   L0000153C
+
 L000013C6       LEA.L   L00002254(PC),A0
 L000013CA       MOVEA.L (A7),A1
 L000013CC       CMP.B   #$30,$000f(A1)
 L000013D2       BEQ.B   L000013D8
+
 L000013D4       LEA.L   $0070(A0),A0
 L000013D8       LEA.L   $00007700,A1
 L000013DE       ADDA.W  #$1643,A1
-L000013E2       MOVE.L  #$0000000d,D0
+L000013E2       MOVE.L  #$0000000d,D0                               ; 13 + 1 - loop counter
+
 L000013E4       MOVE.B  (A0)+,$0000(A1)
 L000013E8       MOVE.B  (A0)+,$0001(A1)
+
 L000013EC       MOVE.B  (A0)+,$2800(A1)
 L000013F0       MOVE.B  (A0)+,$2801(A1)
+
 L000013F4       MOVE.B  (A0)+,$5000(A1)
 L000013F8       MOVE.B  (A0)+,$5001(A1)
+
 L000013FC       MOVE.B  (A0)+,$7800(A1)
 L00001400       MOVE.B  (A0)+,$7801(A1)
+
 L00001404       SUBA.W  #$0028,A1
 L00001408       DBF.W   D0,L000013E4
+
 L0000140C       LEA.L   $00dff000,A6
 L00001412       LEA.L   $0180(A6),A0
 L00001416       MOVE.L  #$0000001f,D0
@@ -1066,18 +1082,23 @@ copper_endwait  ; copper-list - copper end - relocated address: $00001538
 
 
 
-
+;A0 = Logo?
+;A1 = $7700
+;A2 = Copper List Colours
 L0000153C       MOVEM.L D0-D1/D7/A0-A3,-(A7)
-L00001540       MOVE.B  (A0)+,D0
-L00001542       CMP.B   #$03,D0
+L00001540       MOVE.B  (A0)+,D0                        ; get first data byte
+L00001542       CMP.B   #$03,D0                         
 L00001546       BCS.B   L0000154A
+
 L00001548       ADDA.L  #$00000004,A0
-L0000154A       MOVE.L  #$0000000f,D0
+
+L0000154A       MOVE.L  #$0000000f,D0                   ; 15 + 1 loop counter
 L0000154C       ADDA.W  #$00000002,A2
 L0000154E       MOVE.B  (A0)+,(A2)+
 L00001550       MOVE.B  (A0)+,(A2)+
-L00001552       LSL.W   -$0002(A2)
+L00001552       LSL.W   -$0002(A2)                      ; correct colours by multiplying them by 2
 L00001556       DBF.W   D0,L0000154C
+
 L0000155A       MOVE.B  (A0)+,D7
 L0000155C       ASL.W   #$00000008,D7
 L0000155E       MOVE.B  (A0)+,D7
@@ -2577,10 +2598,11 @@ L000022F0       dc.w $0FC0, $F73F, $F80F, $0430, $07F0, $FBCF, $FCC7, $03C8     
 L00002300       dc.w $0338, $FCF7, $FF3B, $00FC, $00C4, $FF3B, $E1CB, $1E2C             ;.8...;.....;...,
 L00002310       dc.w $1E34, $E1DB, $E013, $11C4, $1FFC, $EE3B, $EC0B, $1C04             ;.4.........;....
 L00002320       dc.w $13FC, $EFFB, $F7F7, $0FF8, $0808, $F7F7, $F80F, $07F0             ;................
-
 L00002330       dc.w $07F0, $F80F
-L00002334       dc.w $0000, $0000, $0200, $1301, $2402, $3503             ;............$.5.
 
+
+disk_logo
+L00002334       dc.w $0000, $0000, $0200, $1301, $2402, $3503                           ;........$.5.
 L00002340       dc.w $4602, $2203, $3304, $4405, $5505, $2006, $3007, $4007             ;F.".3.D.U. .0.@.
 L00002350       dc.w $5007, $6106, $6601, $6B03, $0900, $04D4, $FC02, $0702             ;P.a.f.k.........
 L00002360       dc.w $0202, $FF02, $FF0D, $FD0B, $FF04, $2B05, $0702, $59FD             ;..........+...Y.
