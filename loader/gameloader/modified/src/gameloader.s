@@ -1115,9 +1115,10 @@ L00001568       BMI.B   exit                            ; if index is negative t
 L0000156A       LEA.L   $1f40(A1),A3                    ; A3 = $7700 + $1f40 = $9640 - ($1f40 - 8000) (8000/40 = 200 - could be bitplane size) 
 
 outer_loop
-L0000156E       MOVE.B  (A0)+,D0
-L00001570       BMI.B   L00001584
-L00001572       BEQ.B   L00001596
+L0000156E       MOVE.B  (A0)+,D0                        ; get source byte of data
+L00001570       BMI.B   L00001584                       ; if byte is negative (MSB=1), then this is a counter value, jmp $001584 
+
+L00001572       BEQ.B   L00001596 
 L00001574       CMP.B   #$01,D0
 L00001578       BNE.B   L000015A0
 L0000157A       MOVE.B  (A0)+,D0
@@ -1125,13 +1126,15 @@ L0000157C       ASL.W   #$00000008,D0
 L0000157E       MOVE.B  (A0)+,D0
 L00001580       SUB.W   #$00000002,D7
 L00001582       BRA.B   L00001588
-L00001584       NEG.B   D0
-L00001586       EXT.W   D0
-L00001588       SUB.W   #$00000001,D0
+
+.make_positive                                          ; make +ve and sign extend to word (high byte = 00)
+L00001584       NEG.B   D0                              ; make byte positive.
+L00001586       EXT.W   D0                              ; make high byte of word #$00
+L00001588       SUB.W   #$00000001,D0                   ; subtract 1 from the counter
 
 .loop
-                MOVE.B  (A2)+,(A1)+
-                MOVE.B  (A2)+,(A1)+
+                MOVE.B  (A2)+,(A1)+                     ; copy source byte data (gfx?) to dest a1 ($7700 first interation)
+                MOVE.B  (A2)+,(A1)+                     ; copy source byte data (gfx?) to dest a1 ($7700 first interation)
 
                 BSR.B   L000015BC
 
@@ -1162,18 +1165,25 @@ L000015B6       MOVEM.L (A7)+,D0-D1/D7/A0-A3
 L000015BA       RTS 
 
 
+; d0 = loop counter
+; A1 = destinaiton address buffer e.g. $7700
+; A3 = another address buffer e.g.     $9640 ($7700 + $1F40)
+; is this some kind of interleaved graphics conversion routine?????
 L000015BC       MOVE.L  D0,-(A7)
-L000015BE       LEA.L   $0026(A1),A1
-L000015C2       MOVE.L  A1,D0
-L000015C4       SUB.L   A3,D0
-L000015C6       BCS.B   L000015DA
-L000015C8       SUBA.W  #$1f3e,A1
-L000015CC       CMP.W   #$0026,D0
-L000015D0       BCS.B   L000015DA
-L000015D2       SUBA.W  #$d828,A1
-L000015D6       LEA.L   $1f40(A1),A3
-L000015DA       MOVE.L  (A7)+,D0
-L000015DC       RTS 
+L000015BE       LEA.L   $0026(A1),A1        ; add 38 to destination address (40 + previously copied word) - scanline 320 wide screen
+L000015C2       MOVE.L  A1,D0               ; copy destination address to D0.L
+L000015C4       SUB.L   A3,D0               ; subtract higher address from lower address
+L000015C6       BCS.B   .exit               ; if A3 > A1, jmp $00015DA
+
+                SUBA.W  #$1f3e,A1           ; update pointer back to 2nd word of source data
+                CMP.W   #$0026,D0           ; if 38 > D0 then exit
+                BCS.B   .exit               ; $000015DA
+
+                SUBA.W  #$d828,A1           ; else
+                LEA.L   $1f40(A1),A3        ; next bitplane??
+.exit
+                MOVE.L  (A7)+,D0
+                RTS 
 
 
 
