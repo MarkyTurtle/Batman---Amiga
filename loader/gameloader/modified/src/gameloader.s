@@ -388,7 +388,7 @@ loader                                                          ; relocated rout
                 MOVE.L  #$00002CD6,ld_decoded_track_ptr         ; decoded track buffer address
                 MOVE.L  #$000042D6,ld_mfmencoded_track_ptr      ; mfm encoded track buffer address
                 TST.W   (A0)                                    ; test first load parameter value
-                BEQ.W   end_load_files                          ; end load if = 0 - just check copy protection? ; jmp $00000D6E 
+                BEQ.W   .end_load_files                         ; end load if = 0 - just check copy protection? ; jmp $00000D6E 
 
 .check_disk
                 MOVEA.L A0,A1                                   ; copy file parameter block base address
@@ -404,7 +404,7 @@ loader                                                          ; relocated rout
                 CLR.W   ld_load_status                          ; $00001B08 ; clear 'load status' word
                 BSR.W   load_file_entries                       ; call $00001652 - load files (A0 = first file entry)
                 MOVEA.L (A7)+,A0                                ; A0 = ptr to first filename structure. (CCR not affected)
-                BNE.B   end_load_files                          ; Z=0 - error, jmp $00000D6E
+                BNE.B   .end_load_files                         ; Z=0 - error, jmp $00000D6E
 
 .process_files_loop
                 TST.W   (A0)                                    ; A0 = ptr to 1st file entry loaded. Test for file to process
@@ -413,7 +413,7 @@ loader                                                          ; relocated rout
                 MOVE.L  $0002(A0),ld_relocate_addr              ; $00000CF0 = file relocation address (from file entry table)
                 MOVE.L  $0006(A0),D0
                 MOVEA.L $000a(A0),A0
-                BSR.W   process_files                           ; call $000016E0
+                BSR.W   process_file                            ; call $000016E0
                 MOVEA.L (A7)+,A0
                 LEA.L   $000e(A0),A0
                 BRA.B   .process_files_loop                     ; jmp $00000D4E ; process next file
@@ -1086,27 +1086,35 @@ copper_endwait  ; copper-list - copper end - relocated address: $00001538
 ;A1 = $7700
 ;A2 = Copper List Colours
 L0000153C       MOVEM.L D0-D1/D7/A0-A3,-(A7)
-L00001540       MOVE.B  (A0)+,D0                        ; get first data byte
-L00001542       CMP.B   #$03,D0                         
-L00001546       BCS.B   L0000154A
+                MOVE.B  (A0)+,D0                        ; get first data byte
+                CMP.B   #$03,D0                         ; if first data byte == #3 then skip adding #4 to the address (a hack??)                 
+                BCS.B   .skip_add_addr                  ; if 03 > D0.b then skip add instucrion (what's the significance of #$03??)
+.add_addr
+                ADDA.L  #$00000004,A0                   ; add 4 bytes to the address pointer
+.skip_add_addr
+                MOVE.L  #$0000000f,D0                   ; 15 + 1 loop counter (16 colours)
+.set_colour_loop
+                ADDA.W  #$00000002,A2
+                MOVE.B  (A0)+,(A2)+
+                MOVE.B  (A0)+,(A2)+
+                LSL.W   -$0002(A2)                      ; correct colours by multiplying them by 2
+                DBF.W   D0,.set_colour_loop             ; $0000154C - set 16 of 32 copper colour registers.
 
-L00001548       ADDA.L  #$00000004,A0
+                ; get a word from logo data into d7 (why byte by byte - maybe worried about odd address location?)
+L0000155A       MOVE.B  (A0)+,D7                        ; set d7 with low byte value
+L0000155C       ASL.W   #$00000008,D7                   ; shift d7 into high byte
+L0000155E       MOVE.B  (A0)+,D7                        ; set d7 with high byte value
+                ; d7 - used as an index into the data
 
-L0000154A       MOVE.L  #$0000000f,D0                   ; 15 + 1 loop counter
-L0000154C       ADDA.W  #$00000002,A2
-L0000154E       MOVE.B  (A0)+,(A2)+
-L00001550       MOVE.B  (A0)+,(A2)+
-L00001552       LSL.W   -$0002(A2)                      ; correct colours by multiplying them by 2
-L00001556       DBF.W   D0,L0000154C
+L00001560       ADDA.L  #$00000002,A0                   ; skip next word in data structure
 
-L0000155A       MOVE.B  (A0)+,D7
-L0000155C       ASL.W   #$00000008,D7
-L0000155E       MOVE.B  (A0)+,D7
-L00001560       ADDA.L  #$00000002,A0
-L00001562       LEA.L   $00(A0,D7.W),A2
-L00001566       SUB.W   #$00000001,D7
-L00001568       BMI.B   L000015B6
-L0000156A       LEA.L   $1f40(A1),A3
+L00001562       LEA.L   $00(A0,D7.W),A2                 ; D7 is an index into the data, A2 = new data pointer
+L00001566       SUB.W   #$0001,D7                       ; decrement index.
+L00001568       BMI.B   exit                            ; if index is negative then exit, jmp $000015B6
+
+L0000156A       LEA.L   $1f40(A1),A3                    ; A3 = $7700 + $1f40 = $9640 - ($1f40 - 8000) (8000/40 = 200 - could be bitplane size) 
+
+outer_loop
 L0000156E       MOVE.B  (A0)+,D0
 L00001570       BMI.B   L00001584
 L00001572       BEQ.B   L00001596
@@ -1120,11 +1128,17 @@ L00001582       BRA.B   L00001588
 L00001584       NEG.B   D0
 L00001586       EXT.W   D0
 L00001588       SUB.W   #$00000001,D0
-L0000158A       MOVE.B  (A2)+,(A1)+
-L0000158C       MOVE.B  (A2)+,(A1)+
-L0000158E       BSR.B   L000015BC
-L00001590       DBF.W   D0,L0000158A
+
+.loop
+                MOVE.B  (A2)+,(A1)+
+                MOVE.B  (A2)+,(A1)+
+
+                BSR.B   L000015BC
+
+                DBF.W   D0,.loop                                ; $0000158A
+
 L00001594       BRA.B   L000015B2
+
 L00001596       MOVE.B  (A0)+,D0
 L00001598       ASL.W   #$00000008,D0
 L0000159A       MOVE.B  (A0)+,D0
@@ -1135,10 +1149,15 @@ L000015A2       SUB.W   #$00000001,D0
 L000015A4       MOVE.B  (A2)+,D1
 L000015A6       ASL.W   #$00000008,D1
 L000015A8       MOVE.B  (A2)+,D1
-L000015AA       MOVE.W  D1,(A1)+
-L000015AC       BSR.B   L000015BC
-L000015AE       DBF.W   D0,L000015AA
-L000015B2       DBF.W   D7,L0000156E
+
+.loop2
+                MOVE.W  D1,(A1)+
+                BSR.B   L000015BC
+                DBF.W   D0,.loop2                               ; $000015AA
+
+L000015B2       DBF.W   D7,outer_loop                          ; $0000156E
+
+exit
 L000015B6       MOVEM.L (A7)+,D0-D1/D7/A0-A3
 L000015BA       RTS 
 
@@ -1321,7 +1340,7 @@ load_file_entries                                       ; this routine's relocat
 
                 ;--------------------- processs files ----------------------
                 ; process/relocate loaded files into memory
-process_files                                       ; relocated address: $000016E0
+process_file                                        ; relocated address: $000016E0
                 MOVEM.L D0/A0,-(A7)
 L000016E4       TST.L   D0
 L000016E6       BEQ.B   L00001704
@@ -1549,7 +1568,7 @@ L00001930       MOVE.B  D3,(A2)+
 L00001932       SUB.L   #$00000001,D0
 L00001934       BNE.B   L00001918
 L00001936       MOVEM.L (A7)+,D0/A0
-L0000193A       BRA.W   process_files                   ; recursively calls $000016E0
+L0000193A       BRA.W   process_file                    ; recursively calls $000016E0
 L0000193E       TST.L   D0
 L00001940       BEQ.B   L0000194C
 L00001942       MOVE.L  (A0)+,D1
