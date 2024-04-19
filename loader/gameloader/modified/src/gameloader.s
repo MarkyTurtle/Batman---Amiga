@@ -990,7 +990,7 @@ L000013B2       MOVE.L  A0,-(A7)
 L000013B4       LEA.L   L00002334(PC),A0                            ; Disk logo?
 L000013B8       LEA.L   $00007700,A1
 L000013BE       LEA.L   copper_colours(PC),A2                       ; Get copper bitplane display colours. addr $000014B8
-L000013C2       BSR.W   L0000153C
+L000013C2       BSR.W   unpack_disk_logo                            ; calls $0000153C
 
 L000013C6       LEA.L   L00002254(PC),A0
 L000013CA       MOVEA.L (A7),A1
@@ -1081,16 +1081,21 @@ copper_endwait  ; copper-list - copper end - relocated address: $00001538
 
 
 
-
-;A0 = Logo?
-;A1 = $7700
-;A2 = Copper List Colours
-L0000153C       MOVEM.L D0-D1/D7/A0-A3,-(A7)
+                ;----------------------- unpack disk logo -------------------------
+                ;-- unpack the insert disk image into memory buffer for later use
+                ;-- appears to implement a basic compression supporting the
+                ;-- insertion of repeating word values to reconstruct the image.
+                ;-- *** needs more work to understand fully ***
+                ;-- IN: A0 = Compressed Logo
+                ;-- IN: A1 = $7700 - Uncompressed logo buffer
+                ;-- IN: A2 = Copper List Colours
+                ;--
+unpack_disk_logo:
+                MOVEM.L D0-D1/D7/A0-A3,-(A7)
                 MOVE.B  (A0)+,D0                        ; get first data byte
-                CMP.B   #$03,D0                         ; if first data byte == #3 then skip adding #4 to the address (a hack??)                 
-                BCS.B   .skip_add_addr                  ; if 03 > D0.b then skip add instucrion (what's the significance of #$03??)
-.add_addr
-                ADDA.L  #$00000004,A0                   ; add 4 bytes to the address pointer
+                CMP.B   #$03,D0                         ; compare the first data byte with the value #3                  
+                BCS.B   .skip_add_addr                  ; if D0.b < #03 then skip add instruction (what's the significance of #$03??)
+.add_addr       ADDA.L  #$00000004,A0                   ; else, add 4 bytes to the address pointer
 .skip_add_addr
                 MOVE.L  #$0000000f,D0                   ; 15 + 1 loop counter (16 colours)
 .set_colour_loop
@@ -1100,69 +1105,78 @@ L0000153C       MOVEM.L D0-D1/D7/A0-A3,-(A7)
                 LSL.W   -$0002(A2)                      ; correct colours by multiplying them by 2
                 DBF.W   D0,.set_colour_loop             ; $0000154C - set first 16 of 32 copper colour registers.
 
-                ; get a word from logo data into d7 (why byte by byte - maybe worried about odd address location?)
-L0000155A       MOVE.B  (A0)+,D7                        ; set d7 with low byte value
-L0000155C       ASL.W   #$00000008,D7                   ; shift d7 into high byte
-L0000155E       MOVE.B  (A0)+,D7                        ; set d7 with high byte value
-                ; d7 - used as an index into the data
+                ; get next word from logo data into d7 
+                MOVE.B  (A0)+,D7                        ; set d7 with low byte value
+                ASL.W   #$00000008,D7                   ; shift d7 into high byte
+                MOVE.B  (A0)+,D7                        ; set d7 with high byte value
 
-L00001560       ADDA.L  #$00000002,A0                   ; skip next word in data structure
+                ADDA.L  #$00000002,A0                   ; skip next word in data structure
 
-L00001562       LEA.L   $00(A0,D7.W),A2                 ; D7 is an index into the data, A2 = new data pointer
-L00001566       SUB.W   #$0001,D7                       ; decrement index.
-L00001568       BMI.B   exit                            ; if index is negative then exit, jmp $000015B6
+                LEA.L   $00(A0,D7.W),A2                 ; D7 is an index into the logo data, A2 = new data pointer
+                SUB.W   #$0001,D7                       ; decrement index.
+                BMI.B   .exit                           ; if index is negative then exit, jmp $000015B6
 
-L0000156A       LEA.L   $1f40(A1),A3                    ; A3 = $7700 + $1f40 = $9640 - ($1f40 - 8000) (8000/40 = 200 - could be bitplane size) 
+                LEA.L   $1f40(A1),A3                    ; A3 = $7700 + $1f40 = $9640 - ($1f40 - 8000) (8000/40 = 200 - could be bitplane size) 
 
-outer_loop
-L0000156E       MOVE.B  (A0)+,D0                        ; get source byte of data
-L00001570       BMI.B   L00001584                       ; if byte is negative (MSB=1), then this is a counter value, jmp $001584 
+  
+                ; basic unpacker replacing repeating values
+                ; d7 = outer loop counter
+                ; a0/a2 = source logo data
+                ; a1/a3 = dest logo data
+.outer_loop
+                MOVE.B  (A0)+,D0                        ; get command byte
+                BMI.B   .copy_multiple_words            ; if byte < 0,  jmp $001584  (copy x words from source -> dest) 
+                BEQ.B   .copy_repeating_word            ; if byte == 0, jmp $0001596 (insert x repeating words -> dest)                                                      
+                CMP.B   #$01,D0                             
+                BNE.B   .copy_one_word                  ; if byte == 1, jmp $00015A0 (copy 1 word from source -> dest)
+.copy_multiple_words2
+                MOVE.B  (A0)+,D0                        ; else (copy large number of words from source -> dest)
+                ASL.W   #$00000008,D0
+                MOVE.B  (A0)+,D0
+                SUB.W   #$00000002,D7                   ; subtract 2 from outer loop counter
+                BRA.B   .copy_bytes                     
+.copy_multiple_words                                    ; copy multiple words from source to destination
+                NEG.B   D0                              ; make counter positive.
+                EXT.W   D0                              ; make counter positive word.
 
-L00001572       BEQ.B   L00001596 
-L00001574       CMP.B   #$01,D0
-L00001578       BNE.B   L000015A0
-L0000157A       MOVE.B  (A0)+,D0
-L0000157C       ASL.W   #$00000008,D0
-L0000157E       MOVE.B  (A0)+,D0
-L00001580       SUB.W   #$00000002,D7
-L00001582       BRA.B   L00001588
-
-.make_positive                                          ; make +ve and sign extend to word (high byte = 00)
-L00001584       NEG.B   D0                              ; make byte positive.
-L00001586       EXT.W   D0                              ; make high byte of word #$00
-L00001588       SUB.W   #$00000001,D0                   ; subtract 1 from the counter
-
-.loop
+.copy_bytes     ; d0 = .loop1 counter, d7 = .outer_loop counter
+                SUB.W   #$0001,D0                      ; subtract 1 from the counter
+.loop1
                 MOVE.B  (A2)+,(A1)+                     ; copy source byte data (gfx?) to dest a1 ($7700 first interation)
                 MOVE.B  (A2)+,(A1)+                     ; copy source byte data (gfx?) to dest a1 ($7700 first interation)
-
                 BSR.B   L000015BC
+                DBF.W   D0,.loop1                                ; $0000158A
 
-                DBF.W   D0,.loop                                ; $0000158A
+                BRA.B   .next_outer_loop
 
-L00001594       BRA.B   L000015B2
 
-L00001596       MOVE.B  (A0)+,D0
-L00001598       ASL.W   #$00000008,D0
-L0000159A       MOVE.B  (A0)+,D0
-L0000159C       SUB.W   #$00000002,D7
-L0000159E       BRA.B   L000015A2
-L000015A0       EXT.W   D0
-L000015A2       SUB.W   #$00000001,D0
-L000015A4       MOVE.B  (A2)+,D1
-L000015A6       ASL.W   #$00000008,D1
-L000015A8       MOVE.B  (A2)+,D1
+.copy_repeating_word
+                MOVE.B  (A0)+,D0
+                ASL.W   #$00000008,D0
+                MOVE.B  (A0)+,D0                        ; d0 = repeat count
+                SUB.W   #$00000002,D7                   ; d7 = outer loop count
+                BRA.B   .get_repeating_value        
+.copy_one_word
+                EXT.W   D0                              ; d0 = 1, extend to word 
 
-.loop2
-                MOVE.W  D1,(A1)+
+.get_repeating_value
+                SUB.W   #$0001,D0                       ; decrement loop counter
+                MOVE.B  (A2)+,D1
+                ASL.W   #$00000008,D1
+                MOVE.B  (A2)+,D1                        ; D1 = repeating word value
+
+.repeating_word_loop
+                MOVE.W  D1,(A1)+                        ; copy repeating word to destination address
                 BSR.B   L000015BC
-                DBF.W   D0,.loop2                               ; $000015AA
+                DBF.W   D0,.repeating_word_loop         ; $000015AA
 
-L000015B2       DBF.W   D7,outer_loop                          ; $0000156E
+.next_outer_loop
+                DBF.W   D7,.outer_loop                          ; $0000156E
 
-exit
-L000015B6       MOVEM.L (A7)+,D0-D1/D7/A0-A3
-L000015BA       RTS 
+.exit
+                MOVEM.L (A7)+,D0-D1/D7/A0-A3
+                RTS 
+
 
 
 ; d0 = loop counter
@@ -1184,6 +1198,8 @@ L000015C6       BCS.B   .exit               ; if A3 > A1, jmp $00015DA
 .exit
                 MOVE.L  (A7)+,D0
                 RTS 
+
+
 
 
 
