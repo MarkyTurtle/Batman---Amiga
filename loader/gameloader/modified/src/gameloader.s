@@ -1098,7 +1098,7 @@ L0000153C       MOVEM.L D0-D1/D7/A0-A3,-(A7)
                 MOVE.B  (A0)+,(A2)+
                 MOVE.B  (A0)+,(A2)+
                 LSL.W   -$0002(A2)                      ; correct colours by multiplying them by 2
-                DBF.W   D0,.set_colour_loop             ; $0000154C - set 16 of 32 copper colour registers.
+                DBF.W   D0,.set_colour_loop             ; $0000154C - set first 16 of 32 copper colour registers.
 
                 ; get a word from logo data into d7 (why byte by byte - maybe worried about odd address location?)
 L0000155A       MOVE.B  (A0)+,D7                        ; set d7 with low byte value
