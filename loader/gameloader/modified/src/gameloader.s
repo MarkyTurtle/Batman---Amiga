@@ -1132,7 +1132,7 @@ unpack_disk_logo:
 .loop1
                 MOVE.B  (A2)+,(A1)+                     ; copy source byte data (gfx?) to dest a1 ($7700 first interation)
                 MOVE.B  (A2)+,(A1)+                     ; copy source byte data (gfx?) to dest a1 ($7700 first interation)
-                BSR.B   L000015BC
+                BSR.B   update_dest_bitplane_ptr        ; call $000015BC
                 DBF.W   D0,.loop1                                ; $0000158A
 
                 BRA.B   .next_outer_loop
@@ -1155,7 +1155,7 @@ unpack_disk_logo:
 
 .repeating_word_loop
                 MOVE.W  D1,(A1)+                        ; copy repeating word to destination address
-                BSR.B   L000015BC
+                BSR.B   update_dest_bitplane_ptr        ; $000015BC
                 DBF.W   D0,.repeating_word_loop         ; $000015AA
 
 .next_outer_loop
@@ -1166,23 +1166,39 @@ unpack_disk_logo:
                 RTS 
 
 
+                ; ------------------------ update destination bitplane pointers -------------------------
+                ; Best I can make out is that the source data might bbe arranged in columns and not
+                ; scanlines, this routine appears to be increasing the destination pointer by one
+                ; scanline on each loop. This implies that the disk image is being reconstructed
+                ; one column at a time, from  left to right and top to bottom of the screen.
+                ; (maybe some Atari ST bullshit format? who knows, maybe i'm just wrong.)
+                ;
+                ; Data seems to be unpacked one bitplane at a time. When the destination address reached the
+                ; bottom of a column, then the ptr is updated to the top of the next column by subtracting
+                ; the size of the bitplane-2 from the current address #$1f3e.
+                ;
+                ; When the end of the last column is reached then a large ptr adjustment is made, by subtracting
+                ; 55336 bytes from the destination ptr (this leads me to believe that i'm missing something here
+                ; because thats a bit number (almost 64K))
+                ;
+                ; d0 = loop counter
+                ; A1 = destinaiton address buffer e.g. $7700
+                ; A3 = another address buffer e.g.     $9640 ($7700 + $1F40)
+                ;
+update_dest_bitplane_ptr                                    ; relocated routine address: $000015BC
+                MOVE.L  D0,-(A7)
+                LEA.L   $0026(A1),A1        ; add 38 to destination address (40 + previously copied word) - scanline 320 wide screen
+                MOVE.L  A1,D0               ; copy destination address to D0.L
+                SUB.L   A3,D0               ; subtract start of next bitplane address from lower address
+                BCS.B   .exit               ; if not at end of current bitplane yet then exit
 
-; d0 = loop counter
-; A1 = destinaiton address buffer e.g. $7700
-; A3 = another address buffer e.g.     $9640 ($7700 + $1F40)
-; is this some kind of interleaved graphics conversion routine?????
-L000015BC       MOVE.L  D0,-(A7)
-L000015BE       LEA.L   $0026(A1),A1        ; add 38 to destination address (40 + previously copied word) - scanline 320 wide screen
-L000015C2       MOVE.L  A1,D0               ; copy destination address to D0.L
-L000015C4       SUB.L   A3,D0               ; subtract higher address from lower address
-L000015C6       BCS.B   .exit               ; if A3 > A1, jmp $00015DA
-
+.reset_dest_column                          ; jump to top of next bitplane column
                 SUBA.W  #$1f3e,A1           ; update pointer back to 2nd word of source data
-                CMP.W   #$0026,D0           ; if 38 > D0 then exit
-                BCS.B   .exit               ; $000015DA
-
-                SUBA.W  #$d828,A1           ; else
-                LEA.L   $1f40(A1),A3        ; next bitplane??
+                CMP.W   #$0026,D0           ; #$26 = 38, test which column of data was just completed.
+                BCS.B   .exit               ; If not last column of bitplane image data then exit. $000015DA
+.next_bitplane
+                SUBA.W  #$d828,A1           ; else (reset destination ptr 55336 bytes (thats a lot))
+                LEA.L   $1f40(A1),A3        ; Increase boundary limit to start of next highest bitplane.
 .exit
                 MOVE.L  (A7)+,D0
                 RTS 
@@ -2395,8 +2411,9 @@ level1_interrupt_handler                                        ; relocated addr
 
 
                 ;-------------------------- level 2 interrupt handler --------------------------
-                ;-- handler for level 1 interrupts as follows:-
-
+                ;-- handler for level 2 interrupts as follows:-
+                ;-- pretty much handles the 20ms timer ticks counters,
+                ;-- ignores and clears off other level 2 interrupts
 level2_interrupt_handler                                        ; relocated address: $000020DA
                 MOVE.L  D0,-(A7)
                 MOVE.B  $00bfed01,D0                            ; CIAA ICR, clears on read
@@ -2407,7 +2424,7 @@ level2_interrupt_handler                                        ; relocated addr
                 MOVE.L  (A7)+,D0
                 RTE 
 .not_ciaa_int
-                MOVE.W  #$0008,$00dff09c
+                MOVE.W  #$0008,$00dff09c                        ; Clear PORTS bit of INTREQ
                 MOVE.L  (A7)+,D0
                 RTE 
 
@@ -2513,8 +2530,8 @@ level6_interrupt_handler                                        ; relocated addr
 
 
 
-                ;------------------- ciaa 6 interrupt handler -----------------
-                ; called from level2 interrupt handler when the interrupt was
+                ;--------------------- ciaa interrupt handler ----------------------
+                ; called from level 2 interrupt handler when the interrupt was
                 ; generated by the CIAA chip.
                 ; IN: D0.b = CIAA ICR value (interrupt bits)
 ciaa_interrupt_handler                                          ; relocated address $000021C0
