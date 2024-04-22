@@ -21,29 +21,7 @@ DISK_INDEX2     equ $4                                  ; set by level 6 interru
                     section BATMAN,code_c
 
 
-;relocate_loader
-;            lea $dff000,a6
-;            move.w  #$7fff,INTENA(a6)
-;            move.w  #$7fff,DMACON(a6)
-;            move.w  #$7fff,INTREQ(a6)
-;            lea batman_start,a0
-;            lea batman_end,a1
-;            lea $800.l,a2
-;
-;.reloc_loop
-;            move.w  (a0)+,(a2)+
-;            move.w  (a2),$dff180
-;            cmp.l   a0,a1
-;            bne.s   .reloc_loop
-;.mouse_wait
-;            Add.w   #$1,d0
-;            move.w  d0,$dff180
-;            btst    #$6,$bfe001
-;            bne.s   .mouse_wait
-;            jmp     $800.l
-
-
-            ;org     $800
+                    org $800
 
                 ;------------------------- BATMAN entry point --------------------------
                 ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
@@ -987,65 +965,75 @@ L000013B0       RTS                                                 ; return fro
                 ;--
 wait_for_correct_disk                                               ; relocated address $000013B2
 L000013B2       MOVE.L  A0,-(A7)
-L000013B4       LEA.L   L00002334(PC),A0                            ; Disk logo?
-L000013B8       LEA.L   $00007700,A1
-L000013BE       LEA.L   copper_colours(PC),A2                       ; Get copper bitplane display colours. addr $000014B8
-L000013C2       BSR.W   unpack_disk_logo                            ; calls $0000153C
+                LEA.L   L00002334(PC),A0                            ; Disk logo?
+                LEA.L   $00007700,A1
+                LEA.L   copper_colours(PC),A2                       ; Get copper bitplane display colours. addr $000014B8
 
-L000013C6       LEA.L   L00002254(PC),A0
-L000013CA       MOVEA.L (A7),A1
-L000013CC       CMP.B   #$30,$000f(A1)
-L000013D2       BEQ.B   L000013D8
+.set_background_disk_image
+                BSR.W   unpack_disk_logo                            ; calls $0000153C
+                
+.set_disk1_or_2
+                LEA.L   L00002254(PC),A0                            ; A0 = Image Data ptr for the number '1'
+                MOVEA.L (A7),A1                                     ; A1 = Get Disk Name string ptr
+                CMP.B   #$30,$000f(A1)                              ; #$30 = '0' - Check if disk number at end of disk name is '0' 
+                BEQ.B   .copy_disk_number                           ; if '0' continue to copy number to disk  image, jmp $000013D8
+.disk_2
+                LEA.L   $0070(A0),A0                                ; A0 = Updated Image Data ptr for the number 2
 
-L000013D4       LEA.L   $0070(A0),A0
-L000013D8       LEA.L   $00007700,A1
-L000013DE       ADDA.W  #$1643,A1
-L000013E2       MOVE.L  #$0000000d,D0                               ; 13 + 1 - loop counter
+.copy_disk_number
+                LEA.L   $00007700,A1                                ; A1 = 
+                ADDA.W  #$1643,A1
+                MOVE.L  #$0000000d,D0                               ; 13 + 1 - loop counter (14 scan lines high x 16 pixels wide)
+.disk_number_loop
+                MOVE.B  (A0)+,$0000(A1)                             ; Bitplane 1
+                MOVE.B  (A0)+,$0001(A1)
+                MOVE.B  (A0)+,$2800(A1)                             ; Bitplane 2
+                MOVE.B  (A0)+,$2801(A1)
+                MOVE.B  (A0)+,$5000(A1)                             ; Bitplane 3
+                MOVE.B  (A0)+,$5001(A1)
+                MOVE.B  (A0)+,$7800(A1)                             ; Bitplane 4
+                MOVE.B  (A0)+,$7801(A1)
+                SUBA.W  #$0028,A1                                   ; Increase base bitplane ptr offset by 40 bytes (320 pixels = one scan line)
+                DBF.W   D0,.disk_number_loop
 
-L000013E4       MOVE.B  (A0)+,$0000(A1)
-L000013E8       MOVE.B  (A0)+,$0001(A1)
+.display_insert_disk
+                LEA.L   $00dff000,A6                                ; A6 = custom base
+                LEA.L   COLOR00(A6),A0                              ; A0 = colour 00 register
+                MOVE.L  #$0000001f,D0                               ; 31 + 1 - loop counter
+.clear_loop
+                CLR.W   (A0)+                                       ; Clear Colopur Register (CLR not good to use on Write only Custom Chip Register)
+                DBF.W   D0,.clear_loop                              ; clear pallete loop, $00001418 (no need as copper will refresh colours at top of each frame)
 
-L000013EC       MOVE.B  (A0)+,$2800(A1)
-L000013F0       MOVE.B  (A0)+,$2801(A1)
+.set_up_display
+                MOVE.W  #$0000,BPL1MOD(A6)                          ; Bitplane Modulo 0 
+                MOVE.W  #$0000,BPL2MOD(A6)                          ; Bitplane Modulo 1
+                MOVE.W  #$0038,DDFSTRT(A6)                          ; Bitplane Data DMA Fetch Start
+                MOVE.W  #$00d0,DDFSTOP(A6)                          ; Bitplane Data DMA Fetch Stop
+                MOVE.W  #$4481,DIWSTRT(A6)                          ; Display Window Start
+                MOVE.W  #$0cc1,DIWSTOP(A6)                          ; Display Window Stop
+                MOVE.W  #$4200,$0100(A6)                            ; 4 bitplane display, Color On, (16 colour display)
+                LEA.L   copper_list(PC),A0                          ; A0 = Copper List 1 Address
+                MOVE.L  A0,$0080(A6)                                ; Set Copper List 1 
+                LEA.L   copper_endwait(PC),A0                       ; A0 = Copper List 2 Address (End Wait) addr: $00001538
+                MOVE.L  A0,$0084(A6)                                ; Set Copper List 2
+                MOVE.W  A0,$008a(A6)                                ; Strobe Copper Jump 2 - Force Copper to execute copper 2 (will revert to copper 1 on next frame)
+                MOVE.W  #$8180,$0096(A6)                          ; Enable Copper & Bitplane DMA
+.disk_wait_loop
+                CLR.W   ciab_tb_20ms_tick                           ; reset 20ms timer tick counter
+.timer_wait_loop
+                CMP.W   #$0032,ciab_tb_20ms_tick                    ; #$ = 50 (50 x 20 = 1000ms) 1 second wait loop
+                BCS.B   .timer_wait_loop                            ; busy wait for 1 second
 
-L000013F4       MOVE.B  (A0)+,$5000(A1)
-L000013F8       MOVE.B  (A0)+,$5001(A1)
-
-L000013FC       MOVE.B  (A0)+,$7800(A1)
-L00001400       MOVE.B  (A0)+,$7801(A1)
-
-L00001404       SUBA.W  #$0028,A1
-L00001408       DBF.W   D0,L000013E4
-
-L0000140C       LEA.L   $00dff000,A6
-L00001412       LEA.L   $0180(A6),A0
-L00001416       MOVE.L  #$0000001f,D0
-L00001418       CLR.W   (A0)+
-L0000141A       DBF.W   D0,L00001418
-L0000141E       MOVE.W  #$0000,$0108(A6)
-L00001424       MOVE.W  #$0000,$010a(A6)
-L0000142A       MOVE.W  #$0038,$0092(A6)
-L00001430       MOVE.W  #$00d0,$0094(A6)
-L00001436       MOVE.W  #$4481,$008e(A6)
-L0000143C       MOVE.W  #$0cc1,$0090(A6)
-L00001442       MOVE.W  #$4200,$0100(A6)
-L00001448       LEA.L   copper_list(PC),A0
-L0000144C       MOVE.L  A0,$0080(A6)
-L00001450       LEA.L   copper_endwait(PC),A0                        ; addr: $00001538
-L00001454       MOVE.L  A0,$0084(A6)
-L00001458       MOVE.W  A0,$008a(A6)
-L0000145C       MOVE.W  #$8180,$0096(A6)
-L00001462       CLR.W   ciab_tb_20ms_tick                           ; $0000223A
-L00001468       CMP.W   #$0032,ciab_tb_20ms_tick                    ; $0000223A
-L00001470       BCS.B   L00001468
-L00001472       MOVEA.L (A7),A0
-L00001474       BSR.W   load_filetable                              ; calls $000015DE
-L00001478       BNE.B   L00001462
-L0000147A       LEA.L   $00dff000,A6
-L00001480       MOVE.W  #$0200,$0100(A6)
-L00001486       MOVE.W  #$0180,$0096(A6)
-L0000148C       MOVEA.L (A7)+,A0
-L0000148E       RTS 
+                MOVEA.L (A7),A0                                     ; Disk Name String Ptr
+                BSR.W   load_filetable                              ; Load the Disk File Table, calls $000015DE
+                BNE.B   .disk_wait_loop                             ; Z = 0, then not correct disk in the drive
+.clear_display
+                LEA.L   $00dff000,A6
+                MOVE.W  #$0200,$0100(A6)                            ; BPLCON = 0 bitplanes display (switch off all bitplane DMA channels)
+                MOVE.W  #$0180,$0096(A6)                          ; disbale copper & bitplane DMA
+.exit                
+                MOVEA.L (A7)+,A0                                    ; restore A0 = disk name string ptr
+                RTS 
 
 
 
