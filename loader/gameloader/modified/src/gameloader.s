@@ -388,9 +388,9 @@ loader                                                          ; relocated rout
                 TST.W   (A0)                                    ; A0 = ptr to 1st file entry loaded. Test for file to process
                 BEQ.B   .end_load_files                          ; Test First File Entry data value, if null jmp $00000D6E
                 MOVE.L  A0,-(A7)
-                MOVE.L  $0002(A0),ld_relocate_addr              ; $00000CF0 = file relocation address (from file entry table)
-                MOVE.L  $0006(A0),D0
-                MOVEA.L $000a(A0),A0
+                MOVE.L  $0002(A0),ld_relocate_addr              ; $00000CF0 = ld_relocate_addr, file relocation address (from file entry table)
+                MOVE.L  $0006(A0),D0                            ; D0 = File Length
+                MOVEA.L $000a(A0),A0                            ; A0 = File Address
                 BSR.W   process_file                            ; call $000016E0
                 MOVEA.L (A7)+,A0
                 LEA.L   $000e(A0),A0
@@ -1179,7 +1179,7 @@ unpack_disk_logo:
                 ;
                 ; When the end of the last column is reached then a large ptr adjustment is made, by subtracting
                 ; 55336 bytes from the destination ptr (this leads me to believe that i'm missing something here
-                ; because thats a bit number (almost 64K))
+                ; because thats a big number (almost 64K))
                 ;
                 ; d0 = loop counter
                 ; A1 = destinaiton address buffer e.g. $7700
@@ -1368,82 +1368,171 @@ load_file_entries                                       ; this routine's relocat
 
 
 
-                ;--------------------- processs files ----------------------
-                ; process/relocate loaded files into memory
-process_file                                        ; relocated address: $000016E0
+                ;------------------------------- processs files ----------------------------------------
+                ;-- process/relocate loaded files into memory,
+                ;-- files have 'iff' extensions, even the executables (which i'm not familiar with)
+                ;-- These routines process the iff files, skipping through their internal structure
+                ;-- and copying their contents to the required memory destination locations.
+                ;--
+                ;-- Lots of drilling down through the file structures and faffing around - bear with me caller...
+                ;-- 
+                ;-- IN: ld_relocate_addr
+                ;-- D0 = File Length/remaining bytes
+                ;-- A0 = File Address      
+process_file                                            ; relocated address: $000016E0
                 MOVEM.L D0/A0,-(A7)
-L000016E4       TST.L   D0
-L000016E6       BEQ.B   L00001704
-L000016E8       CMP.L   #$0000000c,D0
-L000016EE       BCS.B   L00001702
-L000016F0       MOVE.L  (A0),D1
-L000016F2       CMP.L   #$464f524d,D1
-L000016F8       BEQ.B   L0000171C
-L000016FA       CMP.L   #$43415420,D1
-L00001700       BEQ.B   L0000171C
-L00001702       BSR.B   L0000170A
-L00001704       MOVEM.L (A7)+,D0/A0
-L00001708       RTS 
+                TST.L   D0                              ; test file length
+                BEQ.B   .exit_process_file              ; if file is 0 bytes in length then jmp $00001704
+                CMP.L   #$0000000c,D0                   ; compare file length with len of 12 bytes
+                BCS.B   .relocate_small                 ; if file len < 12 bytes then rolocate_small number of bytes $00001702
+
+                MOVE.L  (A0),D1                         ; D1 = Iff Header Id Word
+                CMP.L   #'FORM',D1                      ; Test for 'FORM' header - #$464f524d,D1
+                BEQ.B   process_form_or_cat             ; jmp $0000171C
+                CMP.L   #'CAT ',D1                      ; Test for 'CAT ' header - #$43415420,D1
+                BEQ.B   process_form_or_cat             ; jmp $0000171C
+
+.relocate_small
+                BSR.B   relocate__bytes                 ; calls $0000170A
+
+.exit_process_file
+                MOVEM.L (A7)+,D0/A0
+                RTS 
 
 
-L0000170A       MOVEA.L ld_relocate_addr,A1                     ; $00000CF0
-L0000170E       ASR.L   #$00000001,D0
-L00001710       MOVE.W  (A0)+,(A1)+
-L00001712       SUB.L   #$00000001,D0
-L00001714       BNE.B   L00001710
-L00001716       MOVE.L  A1,ld_relocate_addr                     ; $00000CF0
-L0000171A       RTS
 
 
-L0000171C       TST.L   D0
-L0000171E       BEQ.B   L0000172A
-L00001720       MOVE.L  (A0)+,D1
-L00001722       SUB.L   #$00000004,D0
-L00001724       BSR.W   L00001730
-L00001728       BRA.B   L0000171C
-L0000172A       MOVEM.L (A7)+,D0/A0
-L0000172E       RTS
+                ;----------------------------- relocate bytes -----------------------------
+                ;-- copy bytes from source addr to a destination address (ld_relocate_addr)
+                ;-- IN: A0 = source addr
+                ;-- IN: D0 = number of bytes
+                ;-- IN: ld_relocate_addr = dest addr
+                ;
+                ;-- OUT: A0 = incremented by number of words copied
+                ;-- OUT: D0 = 0
+                ;-- OUT: ld_relocate_addr = incrememented by number of words copied
+                ;
+relocate__bytes                                             ; relocated address: $0000170A
+                MOVEA.L ld_relocate_addr,A1                 ; A1 = destination address, $00000CF0
+                ASR.L   #$00000001,D0                       ; D0 = divide bytes by 2, copy words
+.relocate_loop
+                MOVE.W  (A0)+,(A1)+
+                SUB.L   #$00000001,D0
+                BNE.B   .relocate_loop                          ; loop until D0 = 0, jmp $00001710
+                MOVE.L  A1,ld_relocate_addr                     ; update destination ptr $00000CF0
+                RTS
 
 
-L00001730       CMP.L   #$464f524d,D1
-L00001736       BEQ.W   L00001766
-L0000173A       CMP.L   #$43415420,D1
-L00001740       BEQ.W   L00001748
-L00001744       CLR.L   D0
-L00001746       RTS 
 
 
-L00001748       MOVEM.L D0/A0,-(A7)
-L0000174C       MOVE.L  (A0)+,D0
-L0000174E       MOVE.L  D0,D1
-L00001750       BTST.L  #$0000,D1
-L00001754       BEQ.B   L00001758
-L00001756       ADD.L   #$00000001,D1
-L00001758       ADD.L   #$00000004,D1
-L0000175A       ADD.L   D1,$0004(A7)
-L0000175E       SUB.L   D1,(A7)
-L00001760       ADDA.L  #$00000004,A0
-L00001762       SUB.L   #$00000004,D0
-L00001764       BRA.B   L0000171C
-L00001766       MOVEM.L D0/A0,-(A7)
-L0000176A       MOVE.L  (A0)+,D0
-L0000176C       MOVE.L  D0,D1
-L0000176E       BTST.L  #$0000,D1
-L00001772       BEQ.B   L00001776
-L00001774       ADD.L   #$00000001,D1
-L00001776       ADD.L   #$00000004,D1
-L00001778       ADD.L   D1,$0004(A7)
-L0000177C       SUB.L   D1,(A7)
-L0000177E       MOVE.L  (A0)+,D1
-L00001780       SUB.L   #$00000004,D0
-L00001782       CMP.L   #$20202020,D1
-L00001788       BEQ.W   L000017A6
-L0000178C       CMP.L   #$48554646,D1
-L00001792       BEQ.W   L00001816
-L00001796       CMP.L   #$494c424d,D1
-L0000179C       BEQ.W   L0000193E
-L000017A0       MOVEM.L (A7)+,D0/A0
-L000017A4       RTS 
+                ;-------------------------- process form or cat ------------------------
+                ;-- Process the 'FORM' or 'CAT ' chunk of the iff file.
+                ;-- IN: A0 = start of chunk (ptr to ID)
+                ;-- IN: D0 = File Length/remaining bytes
+                ;-- IN: ld_relocate_addr = dest addr
+                ;
+process_form_or_cat
+                TST.L   D0                              ; Test file length/bytes remaining
+                BEQ.B   .exit_process_file              ; if end of file then .exit_process_file, jmp $0000172A
+                MOVE.L  (A0)+,D1                        ; D1 = header id
+                SUB.L   #$00000004,D0                   ; subtract 4 bytes from remaining file length
+                BSR.W   iff_form_or_cat                 ; calls $00001730
+                BRA.B   process_form_or_cat             ; loop to process form or cat, jmp $0000171C
+
+.exit_process_file
+                MOVEM.L (A7)+,D0/A0
+                RTS                                     ; *** THIS RTS exits process_file or recursive call ***
+
+
+
+
+                ;------------------------- iff form or cat -------------------------
+                ;-- Another routine for processing 'FORM' or 'CAT' this time as a 
+                ;-- more reusable sub routine.
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_form_or_cat
+                CMP.L   #'FORM',D1                      ; Test for 'FORM' header Id, #$464f524d
+                BEQ.W   iff_form                        ; jmp $00001766
+                CMP.L   #'CAT ',D1                      ; Test for 'CAT ' header Id, #$43415420
+                BEQ.W   iff_cat                         ; jmp $00001748
+                CLR.L   D0
+                RTS 
+
+
+
+
+                ;-------------------------- iff cat --------------------------------
+                ;-- process 'CAT ' chunk, appears to skip any chunks with the 'CAT ' Id
+                ;-- updates the address pointer and remaining bytes held on the stack.
+                ;--
+                ;-- preserves remaining bytes & start address on stack
+                ;--
+                ;-- This looks nasty because it's pushing to
+                ;-- the stack and not popping before jumping out of here.
+                ;-- potential for all sorts of stack problems and corruption.
+                ;-- it makes recursive calls to 'process_form_or_cat'.
+                ;-- 
+                ;-- IN: A0 = start of data chuck id
+                ;-- IN: D0 = file length/remaining bytes
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+iff_cat                                                 ; relocate address $00001748
+                MOVEM.L D0/A0,-(A7)                     ; save remaining bytes/chunk address ptr
+                MOVE.L  (A0)+,D0                        ; D0 = chunk length
+                MOVE.L  D0,D1                           ; D1 = chunk length
+
+                BTST.L  #$0000,D1                       ; test if odd/even
+                BEQ.B   .is_even                        ; if is even, jmp $00001758
+                ADD.L   #$00000001,D1                   ; else add pad byte to length
+.is_even
+                ADD.L   #$00000004,D1                   ; add header id length to block length
+                ADD.L   D1,$0004(A7)                    ; increase address on stack to point to end of block.
+                SUB.L   D1,(A7)                         ; subtract length from remaining bytes held on stack.
+
+                ADDA.L  #$00000004,A0                   ; skip long word
+                SUB.L   #$00000004,D0                   ; subtract long from remaining bytes 
+
+                BRA.B   process_form_or_cat             ; jmp to $0000171C
+
+
+
+
+                ;------------------------- iff form -----------------------------
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_form                                                ; relocated addr $00001766
+                MOVEM.L D0/A0,-(A7)
+                MOVE.L  (A0)+,D0                        ; D0 = chunk length in bytes
+                MOVE.L  D0,D1                           ; D1 = chunk length in bytes
+                BTST.L  #$0000,D1                       ; test even/odd
+                BEQ.B   .is_even                        ; is an even length, jmp $00001776
+                ADD.L   #$00000001,D1                   ; is odd, add pad byte
+.is_even
+                ADD.L   #$00000004,D1                   ; add 4 bytes to data length (header id)
+                ADD.L   D1,$0004(A7)                    ; increment address ptr on stack to end of data block.
+                SUB.L   D1,(A7)                         ; subtract block length from, remaining byte length on stack.
+
+                MOVE.L  (A0)+,D1                        ; D1 = get next long word
+                SUB.L   #$00000004,D0                   ; D0 = subtract 4 bytes from remaining byte count
+                CMP.L   #'    ',D1                      ; check Id '    ' (spaces) #$20202020,D1
+                BEQ.W   L000017A6
+                CMP.L   #'HUFF',D1                      ; check Id 'HUFF' #$48554646,D1
+                BEQ.W   L00001816
+                CMP.L   #'ILBM',D1                      ; check Id 'ILBM' #$494c424d,D1
+                BEQ.W   L0000193E
+
+.iff_form_exit
+                MOVEM.L (A7)+,D0/A0
+                RTS 
+
+
 
 
 L000017A6       TST.L   D0
@@ -1457,9 +1546,9 @@ L000017B8       RTS
 
 
 L000017BA       CMP.L   #$464f524d,D1
-L000017C0       BEQ.B   L00001766
+L000017C0       BEQ.B   iff_form                            ; jmp $00001766
 L000017C2       CMP.L   #$43415420,D1
-L000017C8       BEQ.W   L00001748
+L000017C8       BEQ.W   iff_cat                             ; jmp $00001748
 L000017CC       CMP.L   #$424f4459,D1
 L000017D2       BEQ.W   L000017F4
 L000017D6       MOVEM.L D0/A0,-(A7)
@@ -1484,7 +1573,7 @@ L00001802       ADD.L   #$00000001,D1
 L00001804       ADD.L   #$00000004,D1
 L00001806       ADD.L   D1,$0004(A7)
 L0000180A       SUB.L   D1,(A7)
-L0000180C       BSR.W   L0000170A
+L0000180C       BSR.W   relocate__bytes                     ; A0 = source addr, D0 = number of bytes, ld_relocate_addr = dest addr, calls $0000170A
 L00001810       MOVEM.L (A7)+,D0/A0
 L00001814       RTS 
 
@@ -1515,9 +1604,9 @@ L00001854       RTS
 
 
 L00001856       CMP.L   #$464f524d,D1
-L0000185C       BEQ.W   L00001766
+L0000185C       BEQ.W   iff_form                        ; jmp $00001766
 L00001860       CMP.L   #$43415420,D1
-L00001866       BEQ.W   L00001748
+L00001866       BEQ.W   iff_cat                         ; jmp $00001748
 L0000186A       CMP.L   #$53495a45,D1
 L00001870       BEQ.W   L000018A6
 L00001874       CMP.L   #$434f4445,D1
@@ -1610,9 +1699,9 @@ L00001950       RTS
 
 
 L00001952       CMP.L   #$464f524d,D1
-L00001958       BEQ.W   L00001766
+L00001958       BEQ.W   iff_form                        ; jmp $00001766
 L0000195C       CMP.L   #$43415420,D1
-L00001962       BEQ.W   L00001748
+L00001962       BEQ.W   iff_cat                         ; jmp $00001748
 L00001966       CMP.L   #$434d4150,D1
 L0000196C       BEQ.W   L000019B8
 L00001970       CMP.L   #$424d4844,D1
