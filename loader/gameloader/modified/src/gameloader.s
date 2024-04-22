@@ -1368,6 +1368,41 @@ load_file_entries                                       ; this routine's relocat
 
 
 
+
+
+
+
+
+
+
+
+
+
+                ;----------------------------------------------------------------------------------------------------
+                ;----------------------------------------------------------------------------------------------------
+                ; PROCESS LOADED FILES
+                ;----------------------------------------------------------------------------------------------------
+                ;----------------------------------------------------------------------------------------------------
+                ; Code to navigate and prcocess the loaded 'iff' formatted files. 
+                ; It also provides a mechanism for copying non iff files to a relocated address.
+                ; Much of the code is focused
+                ; on navigating through the IFF structure until the code finds the 'chunks' containing the data
+                ; of interest.
+                ; The code appears spagetti-like, much duplication and some recursion, modification of stack
+                ; values, quite untidy and difficult to follow the stack push and pops.
+                ; Supprised there's no stack issues as some routines push values on the stack and then jump or bsr
+                ; off into other routines. Obviously it must work, but could be massively refactored.
+                ; maybe done in a rush?? who knows... 
+                ;----------------------------------------------------------------------------------------------------
+                ; Code files processed in - iff_inner_huff_chunk - TODO: reaseach HUFF, SIZE, CODE & TREE chunks
+                ; Images processed in - iff_ilbm_chunk
+                ;
+
+
+
+
+
+
                 ;------------------------------- processs files ----------------------------------------
                 ;-- process/relocate loaded files into memory,
                 ;-- files have 'iff' extensions, even the executables (which i'm not familiar with)
@@ -1496,7 +1531,7 @@ iff_cat                                                 ; relocate address $0000
                 ADDA.L  #$00000004,A0                   ; skip long word
                 SUB.L   #$00000004,D0                   ; subtract long from remaining bytes 
 
-                BRA.B   process_form_or_cat             ; jmp to $0000171C
+                BRA.B   process_form_or_cat             ; jmp to $0000171C, find next FORM/CAT to process
 
 
 
@@ -1522,11 +1557,11 @@ iff_form                                                ; relocated addr $000017
                 MOVE.L  (A0)+,D1                        ; D1 = get next long word
                 SUB.L   #$00000004,D0                   ; D0 = subtract 4 bytes from remaining byte count
                 CMP.L   #'    ',D1                      ; check Id '    ' (spaces) #$20202020,D1
-                BEQ.W   L000017A6
+                BEQ.W   iff_blank_chunk                 ; call $000017A6
                 CMP.L   #'HUFF',D1                      ; check Id 'HUFF' #$48554646,D1
-                BEQ.W   L00001816
+                BEQ.W   iff_huff_chunk                  ; jmp $00001816
                 CMP.L   #'ILBM',D1                      ; check Id 'ILBM' #$494c424d,D1
-                BEQ.W   L0000193E
+                BEQ.W   iff_ilbm_chunk                  ; jmp $0000193E
 
 .iff_form_exit
                 MOVEM.L (A7)+,D0/A0
@@ -1535,36 +1570,68 @@ iff_form                                                ; relocated addr $000017
 
 
 
-L000017A6       TST.L   D0
-L000017A8       BEQ.B   L000017B4
-L000017AA       MOVE.L  (A0)+,D1
-L000017AC       SUB.L   #$00000004,D0
-L000017AE       BSR.W   L000017BA
-L000017B2       BRA.B   L000017A6
-L000017B4       MOVEM.L (A7)+,D0/A0
-L000017B8       RTS 
+                ;------------------------- iff blank chunk -----------------------------
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_blank_chunk
+                TST.L   D0                        ; test remaining bytes value
+                BEQ.B   .exit_blank_chink       ; if Remaining bytes = 0, jmp $000017B4
+                MOVE.L  (A0)+,D1                ; D1 = chunk length (bytes)
+                SUB.L   #$00000004,D0           ; D0 = subtract 4 bytes (chunk len) from remaining bytes
+                BSR.W   iff_inner_blank_chunk   ; calls $000017BA
+                BRA.B   iff_blank_chunk         ; loop, process rest of chunk, jmp $000017A6
+
+.exit_blank_chink
+                MOVEM.L (A7)+,D0/A0
+                RTS 
 
 
-L000017BA       CMP.L   #$464f524d,D1
-L000017C0       BEQ.B   iff_form                            ; jmp $00001766
-L000017C2       CMP.L   #$43415420,D1
-L000017C8       BEQ.W   iff_cat                             ; jmp $00001748
-L000017CC       CMP.L   #$424f4459,D1
-L000017D2       BEQ.W   L000017F4
-L000017D6       MOVEM.L D0/A0,-(A7)
-L000017DA       MOVE.L  (A0)+,D0
-L000017DC       MOVE.L  D0,D1
-L000017DE       BTST.L  #$0000,D1
-L000017E2       BEQ.B   L000017E6
-L000017E4       ADD.L   #$00000001,D1
-L000017E6       ADD.L   #$00000004,D1
-L000017E8       ADD.L   D1,$0004(A7)
-L000017EC       SUB.L   D1,(A7)
-L000017EE       MOVEM.L (A7)+,D0/A0
-L000017F2       RTS 
+
+                ;------------------------- iff inner blank chunk -----------------------------
+                ;-- process '   ' (blank chunk id), process any 'FORM','CAT ','BODY' chunks
+                ;-- that may reside inside it, or skip the chunk is other type.
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_inner_blank_chunk                                       ; relocated address $000017BA
+                CMP.L   #'FORM',D1                          ; #$464f524d,D1
+                BEQ.B   iff_form                            ; jmp $00001766
+                CMP.L   #'CAT ',D1                          ; #$43415420,D1
+                BEQ.W   iff_cat                             ; jmp $00001748
+                CMP.L   #'BODY',D1                          ; #$424f4459,D1
+                BEQ.W   iff_body                            ; jmp $000017F4
+.iff_inner_blank
+                MOVEM.L D0/A0,-(A7)                         ; store current remaining bytes/buffer address on stack
+                MOVE.L  (A0)+,D0                            ; D0 = chunk length
+                MOVE.L  D0,D1                               ; D1 = chunk length
+                BTST.L  #$0000,D1                           ; test length
+                BEQ.B   .is_even                            ; if is even, jmp $000017E6
+.is_odd                
+                ADD.L   #$00000001,D1                       ; if is odd, add pad byte to length
+.is_even
+                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk length
+                ADD.L   D1,$0004(A7)                        ; add chunk length to data buffer pointer on stack
+                SUB.L   D1,(A7)                             ; subtract chunk length from remaining bytes on stack
+
+                MOVEM.L (A7)+,D0/A0                         ; restore buffer pointer and remaining bytes from stack
+                RTS 
 
 
-L000017F4       MOVEM.L D0/A0,-(A7)
+
+
+                ;------------------------- iff body -----------------------------
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_body                                                    ; relocated address $000017F4
+                MOVEM.L D0/A0,-(A7)
 L000017F8       MOVE.L  (A0)+,D0
 L000017FA       MOVE.L  D0,D1
 L000017FC       BTST.L  #$0000,D1
@@ -1578,122 +1645,231 @@ L00001810       MOVEM.L (A7)+,D0/A0
 L00001814       RTS 
 
 
-L00001816       CLR.L   -(A7)
-L00001818       CLR.L   -(A7)
-L0000181A       CLR.L   -(A7)
-L0000181C       MOVE.L  A6,-(A7)
-L0000181E       MOVEA.L A7,A6
-L00001820       TST.L   D0
-L00001822       BEQ.B   L0000182E
-L00001824       MOVE.L  (A0)+,D1
-L00001826       SUB.L   #$00000004,D0
-L00001828       BSR.W   L00001856
-L0000182C       BRA.B   L00001820
-L0000182E       TST.L   $0004(A6)
-L00001832       BEQ.B   L0000184A
-L00001834       TST.L   $0008(A6)
-L00001838       BEQ.B   L0000184A
-L0000183A       TST.L   $000c(A6)
-L0000183E       BEQ.B   L0000184A
-L00001840       MOVEM.L $0004(A6),D0/A0-A1
-L00001846       BSR.W   L0000190C
-L0000184A       MOVEA.L (A7)+,A6
-L0000184C       LEA.L   $000c(A7),A7
-L00001850       MOVEM.L (A7)+,D0/A0
-L00001854       RTS 
 
 
-L00001856       CMP.L   #$464f524d,D1
-L0000185C       BEQ.W   iff_form                        ; jmp $00001766
-L00001860       CMP.L   #$43415420,D1
-L00001866       BEQ.W   iff_cat                         ; jmp $00001748
-L0000186A       CMP.L   #$53495a45,D1
-L00001870       BEQ.W   L000018A6
-L00001874       CMP.L   #$434f4445,D1
-L0000187A       BEQ.W   L000018C8
-L0000187E       CMP.L   #$54524545,D1
-L00001884       BEQ.W   L000018EA
-L00001888       MOVEM.L D0/A0,-(A7)
-L0000188C       MOVE.L  (A0)+,D0
-L0000188E       MOVE.L  D0,D1
-L00001890       BTST.L  #$0000,D1
-L00001894       BEQ.B   L00001898
-L00001896       ADD.L   #$00000001,D1
-L00001898       ADD.L   #$00000004,D1
-L0000189A       ADD.L   D1,$0004(A7)
-L0000189E       SUB.L   D1,(A7)
-L000018A0       MOVEM.L (A7)+,D0/A0
-L000018A4       RTS 
+                ;------------------------- iff huff chunk -----------------------------
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_huff_chunk
+                ; create 3 long words storage on the stack                             
+                CLR.L   -(A7)                   ; SIZE Long Word 
+                CLR.L   -(A7)                   ; CODE source address ptr
+                CLR.L   -(A7)                   ; TREE source address ptr
+
+                MOVE.L  A6,-(A7)                ; store A6 on stack
+                MOVEA.L A7,A6                   ; A6 = stack base ptr
+
+.huff_block_loop
+                TST.L   D0                      ; test remaining bytes/len
+                BEQ.B   .huff_block_end         ; if = 0 jmp $0000182E       
+                MOVE.L  (A0)+,D1                ; D1 = inner block id
+                SUB.L   #$00000004,D0           ; D0 = subtract 4 bytes from remaining length
+                BSR.W   iff_inner_huff_chunk    ; calls $00001856
+                BRA.B   .huff_block_loop        ; loop jmp $00001820
+
+.huff_block_end
+                TST.L   $0004(A6)
+                BEQ.B   .huff_block_exit        ; jmp $0000184A
+                TST.L   $0008(A6)
+                BEQ.B   .huff_block_exit        ; jmp $0000184A
+                TST.L   $000c(A6)
+                BEQ.B   .huff_block_exit        ; jmp $0000184A
+                MOVEM.L $0004(A6),D0/A0-A1      ; D0 = Code Size, A1 = Code Address, A2 = Tree Address
+                BSR.W   iff_process_code        ; call $0000190C
+
+.huff_block_exit
+                MOVEA.L (A7)+,A6                ; restore a6 from stack
+                LEA.L   $000c(A7),A7            ; deallocate stack 3 long words
+                MOVEM.L (A7)+,D0/A0
+                RTS 
 
 
-L000018A6       MOVEM.L D0/A0,-(A7)
-L000018AA       MOVE.L  (A0)+,D0
-L000018AC       MOVE.L  D0,D1
-L000018AE       BTST.L  #$0000,D1
-L000018B2       BEQ.B   L000018B6
-L000018B4       ADD.L   #$00000001,D1
-L000018B6       ADD.L   #$00000004,D1
-L000018B8       ADD.L   D1,$0004(A7)
-L000018BC       SUB.L   D1,(A7)
-L000018BE       MOVE.L  (A0)+,$0004(A6)
-L000018C2       MOVEM.L (A7)+,D0/A0
-L000018C6       RTS 
 
 
-L000018C8       MOVEM.L D0/A0,-(A7)
-L000018CC       MOVE.L  (A0)+,D0
-L000018CE       MOVE.L  D0,D1
-L000018D0       BTST.L  #$0000,D1
-L000018D4       BEQ.B   L000018D8
-L000018D6       ADD.L   #$00000001,D1
-L000018D8       ADD.L   #$00000004,D1
-L000018DA       ADD.L   D1,$0004(A7)
-L000018DE       SUB.L   D1,(A7)
-L000018E0       MOVE.L  A0,$0008(A6)
-L000018E4       MOVEM.L (A7)+,D0/A0
-L000018E8       RTS 
+                ;------------------------- iff inner huff chunk -----------------------------
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_inner_huff_chunk
+                CMP.L   #'FORM',D1                      ; #$464f524d,D1
+                BEQ.W   iff_form                        ; jmp $00001766
+                CMP.L   #'CAT ',D1                      ; #$43415420,D1
+                BEQ.W   iff_cat                         ; jmp $00001748
+                CMP.L   #'SIZE',D1                      ; #$53495a45,D1
+                BEQ.W   iff_size                        ; jmp $000018A6
+                CMP.L   #'CODE',D1                      ; #$434f4445,D1
+                BEQ.W   iff_code                        ; jmp $000018C8
+                CMP.L   #'TREE',D1                      ; #$54524545,D1
+                BEQ.W   iff_tree                        ; jmp $000018EA
+.iff_skip_other_id
+                MOVEM.L D0/A0,-(A7)                     ; store address ptr/remaining bytes on stack
+                MOVE.L  (A0)+,D0                        ; D0 = chunk length
+                MOVE.L  D0,D1                           ; D1 = chunk length
+                BTST.L  #$0000,D1                       ; test odd/even
+                BEQ.B   .is_even                        ; if even then $00001898
+.is_odd
+                ADD.L   #$00000001,D1                   ; if odd, add 1 pad bytes
+.is_even
+                ADD.L   #$00000004,D1                   ; add 4 to chunk length
+                ADD.L   D1,$0004(A7)                    ; add chunk length to address ptr on stack
+                SUB.L   D1,(A7)                         ; subtract chunk length from remaining bytes on stack
+.iff_skip_exit
+                MOVEM.L (A7)+,D0/A0
+                RTS 
 
 
-L000018EA       MOVEM.L D0/A0,-(A7)
-L000018EE       MOVE.L  (A0)+,D0
-L000018F0       MOVE.L  D0,D1
-L000018F2       BTST.L  #$0000,D1
-L000018F6       BEQ.B   L000018FA
-L000018F8       ADD.L   #$00000001,D1
-L000018FA       ADD.L   #$00000004,D1
-L000018FC       ADD.L   D1,$0004(A7)
-L00001900       SUB.L   D1,(A7)
-L00001902       MOVE.L  A0,$000c(A6)
-L00001906       MOVEM.L (A7)+,D0/A0
-L0000190A       RTS 
 
 
-L0000190C       MOVEA.L ld_relocate_addr,A2                 ; $00000CF0
-L00001910       MOVEM.L D0/A2,-(A7)
-L00001914       MOVE.L  #$0000000f,D1
-L00001916       MOVE.W  (A0)+,D2
-L00001918       MOVEA.L A1,A3
-L0000191A       ADD.W   D2,D2
-L0000191C       BCC.B   L00001920
-L0000191E       ADDA.W  #$00000002,A3
-L00001920       DBF.W   D1,L00001928
-L00001924       MOVE.L  #$0000000f,D1
-L00001926       MOVE.W  (A0)+,D2
-L00001928       MOVE.W  (A3),D3
-L0000192A       BMI.B   L00001930
-L0000192C       ADDA.W  D3,A3
-L0000192E       BRA.B   L0000191A
-L00001930       MOVE.B  D3,(A2)+
-L00001932       SUB.L   #$00000001,D0
-L00001934       BNE.B   L00001918
-L00001936       MOVEM.L (A7)+,D0/A0
-L0000193A       BRA.W   process_file                    ; recursively calls $000016E0
-L0000193E       TST.L   D0
+                ;------------------------- iff size -----------------------------
+                ;-- store the SIZE of the code block in stack storage allocated
+                ;-- in iff_huff_chunk() above.
+                ;--
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: A6 = Stack Storage (3 long words)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_size                                                    ; relocated size $000018A6
+                MOVEM.L D0/A0,-(A7)                         ; save remaining bytes/address ptr on stack
+                MOVE.L  (A0)+,D0                            ; D0 = chunk len bytes
+                MOVE.L  D0,D1                               ; D1 = chunk len bytes
+                BTST.L  #$0000,D1                           ; test if len odd/even
+                BEQ.B   .is_even                            ; if even jmp $000018B6
+.is_odd
+                ADD.L   #$00000001,D1                       ; if odd then add 1 pad bytes to len
+.is_even
+                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk len 
+                ADD.L   D1,$0004(A7)                        ; add chunk len to address ptr on stack
+                SUB.L   D1,(A7)                             ; subtract chunk len from remaining bytes on stack
+
+                MOVE.L  (A0)+,$0004(A6)                     ; **** store SIZE **** Long word in first Longword on stack
+
+                MOVEM.L (A7)+,D0/A0                         ; restore updated remaining bytes/address ptr from stack
+                RTS 
+
+
+
+                ;------------------------- iff code -------------------------------
+                ;-- store the address of the CODE block in stack storage allocated
+                ;-- in iff_huff_chunk() above.
+                ;--
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: A6 = Stack Storage (3 long words)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_code                                                    ; relocated address $000018C8
+                MOVEM.L D0/A0,-(A7)                         ; save remaining bytes/address ptr on stack
+                MOVE.L  (A0)+,D0                            ; D0 = chunk len
+                MOVE.L  D0,D1                               ; D1 = chunk len
+                BTST.L  #$0000,D1                           ; test odd/even
+                BEQ.B   .is_even                            ; if is even, jmp $000018D8
+.is_odd
+                ADD.L   #$00000001,D1                       ; if is odd, add 1 pad byte to chunk len
+.is_even
+                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk len
+                ADD.L   D1,$0004(A7)                        ; add chunk len to address ptr on stack
+                SUB.L   D1,(A7)                             ; subtract chunk len from remaining bytes on stack
+
+                MOVE.L  A0,$0008(A6)                        ; **** store current buffer address - CODE - address in 2nd longword on stack **** 
+
+                MOVEM.L (A7)+,D0/A0                         ; restore updated remaining bytes/address ptr from stack
+                RTS 
+
+
+
+
+                ;------------------------- iff tree -------------------------------
+                ;-- store the address of the TREE block in stack storage allocated
+                ;-- in iff_huff_chunk() above.
+                ;--
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: A6 = Stack Storage (3 long words)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_tree                                                    ; relocated address $000018EA
+                MOVEM.L D0/A0,-(A7)
+                MOVE.L  (A0)+,D0                            ; D0 = chunk len
+                MOVE.L  D0,D1                               ; D1 = chunk len
+                BTST.L  #$0000,D1                           ; test odd/even chunk len
+                BEQ.B   .is_even                            ; is even, jmp $000018FA
+.is_odd
+                ADD.L   #$00000001,D1                       ; is odd, add 1 pad byte to chunk len
+.is_even
+                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk len
+                ADD.L   D1,$0004(A7)                        ; update address ptr on stack
+                SUB.L   D1,(A7)                             ; subtract chunk len from remaining bytes on stack
+
+                MOVE.L  A0,$000c(A6)                        ; **** store current buffer address - TREE - address in 3rd longword on stack ****
+
+                MOVEM.L (A7)+,D0/A0                         ; restore updated remaining bytes/address ptr from stack
+                RTS 
+
+
+
+
+                ;------------------------- iff process code -------------------------------
+                ;-- process iff code block, this is unfamiliar to me, unsure what data
+                ;-- structures and values are held in the CODE & TREE blocks.
+                ;-- research required.
+                ;--
+                ;-- what data exists in the CODE & TREE sections
+                ;-- IN: D0 = SIZE
+                ;-- IN: A0 = CODE address ptr
+                ;-- IN: A1 = TREE address ptr
+iff_process_code
+                MOVEA.L ld_relocate_addr,A2                 ; A2 = code relocation address, from file entry $00000CF0
+                MOVEM.L D0/A2,-(A7)                         ; store remaining bytes/address ptr on stack
+.init
+                MOVE.L  #$0000000f,D1                       ; D1 = 15 + 1 counter
+                MOVE.W  (A0)+,D2                            ; D2 = next value from CODE block
+.decode_loop
+                MOVEA.L A1,A3                               ; A3 = copy of tree ptr
+.inner_loop
+                ADD.W   D2,D2                               ; D2 = D2 x 2
+                BCC.B   .not_overflow                       ; no overflow, jmp $00001920
+.is_overflow
+                ADDA.W  #$00000002,A3                       ; is overflow, increment TREE ptr by 1 word
+.not_overflow
+                DBF.W   D1,.process_byte                    ; decrement D1 (15 + 1), branch $00001928
+.code_loop_reset
+                MOVE.L  #$0000000f,D1                       ; D1 = reset counter 15 + 1
+                MOVE.W  (A0)+,D2                            ; D2 = next value from CODE block
+.process_byte
+                MOVE.W  (A3),D3                             ; D3 = current word from TREE block ptr
+                BMI.B   .store_reloc_byte                   ; if low byte of TREE value < 0 (bit 8 = 1), jmp $00001930                             
+                ADDA.W  D3,A3                               ; else D3 is an offset, add to TREE block ptr
+                BRA.B   .inner_loop                         ; loop, jmp $0000191A
+.store_reloc_byte
+                MOVE.B  D3,(A2)+                            ; **** store TREE byte value in relocated address buffer
+                SUB.L   #$00000001,D0                       ; decrement SIZE by 1
+                BNE.B   .decode_loop                        ; loop while SIZE > 0, jmp $00001918
+.end_iff_process_code
+                MOVEM.L (A7)+,D0/A0                         ; restore remaining bytes/address ptr on stack
+                BRA.W   process_file                        ; jump back to start process file. (not recursively) $000016E0
+                                                            ; process remaining chunks in the file?
+
+
+
+
+
+iff_ilbm_chunk
+                TST.L   D0
 L00001940       BEQ.B   L0000194C
 L00001942       MOVE.L  (A0)+,D1
 L00001944       SUB.L   #$00000004,D0
 L00001946       BSR.W   L00001952
-L0000194A       BRA.B   L0000193E
+L0000194A       BRA.B   iff_ilbm_chunk                  ; $0000193E
+
 L0000194C       MOVEM.L (A7)+,D0/A0
 L00001950       RTS
 
@@ -1738,7 +1914,7 @@ L000019CE       SUB.L   D1,(A7)
 L000019D0       DIVU.W  #$0003,D0
 L000019D4       BEQ.B   L00001A02
 L000019D6       SUB.W   #$00000001,D0
-L000019D8       LEA.L   copper_colours(PC),A1                            ; get bit-place display colours. addr $000014B8
+L000019D8       LEA.L   copper_colours(PC),A1                            ; get bit-plane display colours. addr $000014B8
 L000019DC       MOVE.L  #$00000000,D1
 L000019DE       MOVE.L  #$00000000,D2
 L000019E0       MOVE.B  (A0)+,D2
@@ -1843,7 +2019,7 @@ L00001AD2       MOVEA.L A2,A4
 L00001AD4       MOVE.W  D4,D2
 L00001AD6       MOVE.W  (A3)+,(A4)+
 L00001AD8       DBF.W   D2,L00001AD6
-L00001ADC       ADDA.W #$2800,A2
+L00001ADC       ADDA.W  #$2800,A2
 L00001AE0       DBF.W   D3,L00001AA0
 L00001AE4       ADDA.W  #$0028,A1
 L00001AE8       DBF.W   D7,L00001A9A
