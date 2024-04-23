@@ -1394,7 +1394,12 @@ load_file_entries                                       ; this routine's relocat
                 ; off into other routines. Obviously it must work, but could be massively refactored.
                 ; maybe done in a rush?? who knows... 
                 ;----------------------------------------------------------------------------------------------------
-                ; Code files processed in - iff_inner_huff_chunk - TODO: reaseach HUFF, SIZE, CODE & TREE chunks
+                ; Code files processed in - iff_inner_huff_chunk 
+                ;                         - Best Guess, Huffman Endoded Chunk, (Googled, can't find any info) contains...
+                ;                         - ID = 'HUFF', sub chunks/blocks
+                ;                                        - ID = 'SIZE'
+                ;                                        - ID = 'CODE'
+                ;                                        - ID = 'TREE'
                 ; Images processed in - iff_ilbm_chunk
                 ;
 
@@ -1648,6 +1653,16 @@ L00001814       RTS
 
 
                 ;------------------------- iff huff chunk -----------------------------
+                ;-- Can't fins any information regarding a 'HUFF' chunk id for IFF
+                ;-- files, after having a think about it.
+                ;--
+                ;-- My best guess would be that it's a Huffman Encoded chunk that
+                ;-- Consists of a SIZE, TREE, and CODE block.
+                ;--
+                ;-- May come back to this at some point in the future to decode
+                ;-- but i'll probably just use the existing code to decode the 
+                ;-- data and then forget about this.
+                ;--
                 ;-- IN: A0 = start of data chunk (chunk len)
                 ;-- IN: D0 = file length/bytes remaining
                 ;-- IN: D1 = chunk id
