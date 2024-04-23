@@ -1401,6 +1401,8 @@ load_file_entries                                       ; this routine's relocat
                 ;                                        - ID = 'CODE'
                 ;                                        - ID = 'TREE'
                 ; Images processed in - iff_ilbm_chunk
+                ;                           - Colours are stored at adress $000014B8 (copper_colours) registers of loader copper list.
+                ;                           - Bitmap Header Address is stored in location: $00001A08 (bitmap_header_address)
                 ;
 
 
@@ -1877,169 +1879,311 @@ iff_process_code
 
 
 
-iff_ilbm_chunk
-                TST.L   D0
-L00001940       BEQ.B   L0000194C
-L00001942       MOVE.L  (A0)+,D1
-L00001944       SUB.L   #$00000004,D0
-L00001946       BSR.W   L00001952
-L0000194A       BRA.B   iff_ilbm_chunk                  ; $0000193E
-
-L0000194C       MOVEM.L (A7)+,D0/A0
-L00001950       RTS
 
 
-L00001952       CMP.L   #$464f524d,D1
-L00001958       BEQ.W   iff_form                        ; jmp $00001766
-L0000195C       CMP.L   #$43415420,D1
-L00001962       BEQ.W   iff_cat                         ; jmp $00001748
-L00001966       CMP.L   #$434d4150,D1
-L0000196C       BEQ.W   L000019B8
-L00001970       CMP.L   #$424d4844,D1
-L00001976       BEQ.W   L00001A0C
-L0000197A       CMP.L   #$424f4459,D1
-L00001980       BEQ.W   L00001A32
-L00001984       CMP.L   #$47524142,D1
-L0000198A       BEQ.B   L0000199A
-L0000198C       CMP.L   #$44455354,D1
-L00001992       BEQ.B   L0000199A
-L00001994       CMP.L   #$43414d47,D1
-L0000199A       MOVEM.L D0/A0,-(A7)
-L0000199E       MOVE.L  (A0)+,D0
-L000019A0       MOVE.L  D0,D1
-L000019A2       BTST.L  #$0000,D1
-L000019A6       BEQ.B   L000019AA
-L000019A8       ADD.L   #$00000001,D1
-L000019AA       ADD.L   #$00000004,D1
-L000019AC       ADD.L   D1,$0004(A7)
-L000019B0       SUB.L   D1,(A7)
-L000019B2       MOVEM.L (A7)+,D0/A0
-L000019B6       RTS 
+                ;------------------------- iff ilbm chunk -------------------------------
+                ;-- Process interleaved Bitmap chunk
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_ilbm_chunk                                          ; relocated address $0000193E
+                TST.L   D0                              ; test any bytes remaining
+                BEQ.B   .end_ilbm_chunk                 ; if no, then exit, jmp $0000194C
+                MOVE.L  (A0)+,D1
+                SUB.L   #$00000004,D0
+                BSR.W   iff_inner_ilbm_chunks           ; calls $00001952
+                BRA.B   iff_ilbm_chunk                  ; $0000193E
+.end_ilbm_chunk
+                MOVEM.L (A7)+,D0/A0
+                RTS
 
 
-L000019B8       MOVEM.L D0/A0,-(A7)
-L000019BC       MOVE.L  (A0)+,D0
-L000019BE       MOVE.L  D0,D1
-L000019C0       BTST.L  #$0000,D1
-L000019C4       BEQ.B   L000019C8
-L000019C6       ADD.L   #$00000001,D1
-L000019C8       ADD.L   #$00000004,D1
-L000019CA       ADD.L   D1,$0004(A7)
-L000019CE       SUB.L   D1,(A7)
-L000019D0       DIVU.W  #$0003,D0
-L000019D4       BEQ.B   L00001A02
-L000019D6       SUB.W   #$00000001,D0
-L000019D8       LEA.L   copper_colours(PC),A1                            ; get bit-plane display colours. addr $000014B8
-L000019DC       MOVE.L  #$00000000,D1
-L000019DE       MOVE.L  #$00000000,D2
-L000019E0       MOVE.B  (A0)+,D2
-L000019E2       LSR.W   #$00000004,D2
-L000019E4       OR.W    D2,D1
-L000019E6       ROL.W   #$00000004,D1
-L000019E8       MOVE.L  #$00000000,D2
-L000019EA       MOVE.B  (A0)+,D2
-L000019EC       LSR.W   #$00000004,D2
-L000019EE       OR.W    D2,D1
-L000019F0       ROL.W   #$00000004,D1
-L000019F2       MOVE.L  #$00000000,D2
-L000019F4       MOVE.B  (A0)+,D2
-L000019F6       LSR.W   #$00000004,D2
-L000019F8       OR.W    D2,D1
-L000019FA       ADDA.L  #$00000002,A1
-L000019FC       MOVE.W  D1,(A1)+
-L000019FE       DBF.W   D0,L000019DC
-L00001A02       MOVEM.L (A7)+,D0/A0
-L00001A06       RTS 
 
-L00001A08       dc.w    $0000, $0000
 
-L00001A0C       MOVEM.L D0/A0,-(A7)
-L00001A10       MOVE.L  (A0)+,D0
-L00001A12       MOVE.L  D0,D1
-L00001A14       BTST.L  #$0000,D1
-L00001A18       BEQ.B   L00001A1C
-L00001A1A       ADD.L   #$00000001,D1
-L00001A1C       ADD.L   #$00000004,D1
-L00001A1E       ADD.L   D1,$0004(A7)
-L00001A22       SUB.L   D1,(A7)
-L00001A24       MOVE.L  A0,L00001A08
-L00001A28       MOVEM.L (A7)+,D0/A0
-L00001A2C       RTS 
+                ;------------------------- iff inner ilbm chunk -------------------------------
+                ;-- Process interleaved Bitmap chunk
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_inner_ilbm_chunks
+                CMP.L   #'FORM',D1                      ; #$464f524d,D1
+                BEQ.W   iff_form                        ; jmp $00001766
+                CMP.L   #'CAT ',D1                      ; #$43415420,D1
+                BEQ.W   iff_cat                         ; jmp $00001748
+                CMP.L   #'CMAP',D1                      ; #$434d4150,D1
+                BEQ.W   iff_cmap_chunk                  ; jmp $000019B8
+                CMP.L   #'BMHD',D1                      ; #$424d4844,D1
+                BEQ.W   iff_bmhd_chunk                  ; jmp $00001A0C
+                CMP.L   #'BODY',D1                      ; #$424f4459,D1
+                BEQ.W   iff_body_chunk                  ; jmp $00001A32
+                CMP.L   #'GRAB',D1                      ; #$47524142,D1
+                BEQ.B   .skip_other_inner_chunk         ; jmp $0000199A
+                CMP.L   #'DEST',D1                      ; #$44455354,D1
+                BEQ.B   .skip_other_inner_chunk         ; jmp $0000199A
+                CMP.L   #'CAMG',D1                      ; #$43414d47,D1
+.skip_other_inner_chunk
+                MOVEM.L D0/A0,-(A7)
+                MOVE.L  (A0)+,D0                        ; D0 = chunk len
+                MOVE.L  D0,D1                           ; D1 = chunk len
+                BTST.L  #$0000,D1                       ; test odd/even len
+                BEQ.B   .is_even                        ; if is even, jmp000019AA
+.is_odd
+                ADD.L   #$00000001,D1                   ; if is odd, add 1 pad byte
+.is_even
+                ADD.L   #$00000004,D1                   ; add 1 to chunk len
+                ADD.L   D1,$0004(A7)                    ; update address ptr on stack
+                SUB.L   D1,(A7)                         ; update remaining bytes on stack
+                MOVEM.L (A7)+,D0/A0                     ; restore remaining len/address ptr from stack
+                RTS 
 
-L00001A2E       dc.w    $0000, $0000
 
-L00001A32       MOVEM.L D0/A0,-(A7)
-L00001A36       MOVE.L  (A0)+,D0
-L00001A38       MOVE.L  D0,D1
-L00001A3A       BTST.L  #$0000,D1
-L00001A3E       BEQ.B   L00001A42
-L00001A40       ADD.L   #$00000001,D1
-L00001A42       ADD.L   #$00000004,D1
-L00001A44       ADD.L   D1,$0004(A7)
-L00001A48       SUB.L   D1,(A7)
-L00001A4A       LEA.L   $00007700,A1
-L00001A50       MOVEA.L L00001A08,A2
-L00001A54       TST.B   $0009(A2)
-L00001A58       BNE.B   L00001A82
-L00001A5A       CMP.B   #$02,$000a(A2)
-L00001A60       BCC.B   L00001A82
-L00001A62       MOVE.L  #$00000000,D0
-L00001A64       MOVE.B  $0008(A2),D0
-L00001A68       SUB.W   #$00000001,D0
-L00001A6A       MOVE.W  D0,L00001A88
-L00001A70       MOVEM.W (A2),D6-D7
-L00001A74       MOVE.B  $000a(A2),D5
-L00001A78       ASR.W   #$00000004,D6
-L00001A7A       ADD.W   D6,D6
-L00001A7C       SUB.W   #$00000001,D7
-L00001A7E       BSR.W   L00001A8A
-L00001A82       MOVEM.L (A7)+,D0/A0
-L00001A86       RTS 
 
-L00001A88       dc.w    $0000
 
-L00001A8A       SUBA.W  D6,A7
-L00001A8C       MOVE.W  D6,D4
-L00001A8E       CMP.W   #$0028,D4
-L00001A92       BLE.B   L00001A96
-L00001A94       MOVE.L  #$00000028,D4
-L00001A96       ASR.W   #$00000001,D4
-L00001A98       SUB.W   #$00000001,D4
-L00001A9A       MOVEA.L A1,A2
-L00001A9C       MOVE.W  L00001A88,D3
-L00001AA0       MOVEA.L A7,A3
-L00001AA2       MOVE.W  D6,D2
-L00001AA4       TST.B   D5
-L00001AA6       BNE.B   L00001AAE
-L00001AA8       MOVE.W  D2,D0
-L00001AAA       SUB.W   #$00000001,D0
-L00001AAC       BRA.B   L00001AC6
-L00001AAE       CLR.W   D0
-L00001AB0       MOVE.B  (A0)+,D0
-L00001AB2       BPL.B   L00001AC6
-L00001AB4       NEG.B   D0
-L00001AB6       BVS.B   L00001AAE
-L00001AB8       MOVE.B  (A0)+,D1
-L00001ABA       MOVE.B  D1,(A3)+
-L00001ABC       SUB.W   #$00000001,D2
-L00001ABE       DBF.W   D0,L00001ABA
-L00001AC2       BNE.B   L00001AAE
-L00001AC4       BRA.B   L00001AD0
-L00001AC6       MOVE.B  (A0)+,(A3)+
-L00001AC8       SUB.W   #$00000001,D2
-L00001ACA       DBF.W   D0,L00001AC6
-L00001ACE       BNE.B   L00001AAE
-L00001AD0       MOVEA.L A7,A3
-L00001AD2       MOVEA.L A2,A4
-L00001AD4       MOVE.W  D4,D2
-L00001AD6       MOVE.W  (A3)+,(A4)+
-L00001AD8       DBF.W   D2,L00001AD6
-L00001ADC       ADDA.W  #$2800,A2
-L00001AE0       DBF.W   D3,L00001AA0
-L00001AE4       ADDA.W  #$0028,A1
-L00001AE8       DBF.W   D7,L00001A9A
-L00001AEC       ADDA.W  D6,A7
-L00001AEE       RTS 
+                ;----------------------------- iff cmap chunk ----------------------------------
+                ;-- Process 'CMAP' colour map chunk, stores the colour values in the
+                ;-- loader copper list colours starting at address: copper_colours - $000014B8 
+                ;-- 
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+iff_cmap_chunk                                                  ; relocation address $000019B8
+                MOVEM.L D0/A0,-(A7)
+                MOVE.L  (A0)+,D0                                ; d0 = chunk len
+                MOVE.L  D0,D1                                   ; D1 = chunk len
+                BTST.L  #$0000,D1                               ; test odd/even len
+                BEQ.B   .is_even                                ; if is even, jmp $000019C8
+.is_odd
+                ADD.L   #$00000001,D1                           ; if is odd, add 1 pad byte
+.is_even
+                ADD.L   #$00000004,D1                           ; add 4 bytes to chunk len
+                ADD.L   D1,$0004(A7)                            ; address ptr of the stack
+                SUB.L   D1,(A7)                                 ; update remaining bytes on the stack
+
+                DIVU.W  #$0003,D0                               ; divide chunk len by 3 (r/g/b)?
+                BEQ.B   end_cmap_chunk                          ; if len == 0 then exit, jmp $00001A02
+
+                SUB.W   #$00000001,D0
+                LEA.L   copper_colours(PC),A1                   ; get bit-plane display colours. addr $000014B8
+.colour_loop
+                MOVE.L  #$00000000,D1
+                MOVE.L  #$00000000,D2
+                MOVE.B  (A0)+,D2                                ; D2 = first colour value (byte)
+                LSR.W   #$00000004,D2                           ; S2 = Divide colour value by 16 (trim lower 4 bits 8 bit Red value?)
+                OR.W    D2,D1                                   ; D1 = combine with D2
+                ROL.W   #$00000004,D1                           ; D1 = Shift Value by 4 bits (space for next colour component )
+
+                MOVE.L  #$00000000,D2                           ; D2 = clear down
+                MOVE.B  (A0)+,D2                                ; D2 = second colour value (byte)
+                LSR.W   #$00000004,D2                           ; D2 = Divide colour value by 16 (trim lower 4 bits of 8 bit green value>)
+                OR.W    D2,D1                                   ; D1 = Combine with D2
+                ROL.W   #$00000004,D1                           ; D1 = Shift value by 4 bits (space for next colour component)
+
+                MOVE.L  #$00000000,D2                           ; D2 = Clear down
+                MOVE.B  (A0)+,D2                                ; D2 = third colout value (byte)
+                LSR.W   #$00000004,D2                           ; D2 = Divide colour value by 16 (trim lower 4 bits of 8 bit blue value?)
+                OR.W    D2,D1                                   ; D1 = Combine with D2
+                ADDA.L  #$00000002,A1                           ; increase copper list index to colour value address
+                MOVE.W  D1,(A1)+                                ; Store colour RGB in copper colour value
+
+                DBF.W   D0,.colour_loop                         ; convert remaining colours, jmp $000019DC
+
+end_cmap_chunk
+                MOVEM.L (A7)+,D0/A0
+                RTS 
+
+
+
+
+
+                ;----------------------------- iff bmhd chunk ----------------------------------
+                ;-- Process 'BMHD' bitmap header chunk of iff file
+                ;-- 
+                ;-- IN: A0 = start of data chunk (chunk len)
+                ;-- IN: D0 = file length/bytes remaining
+                ;-- IN: D1 = chunk id
+                ;-- IN: ld_relocate_addr = dest addr
+                ;--
+bitmap_header_address
+                dc.l    $00000000                                   ; iff bitmap header address $00001A08
+
+iff_bmhd_chunk
+                MOVEM.L D0/A0,-(A7)                                 ; store remaiing bytes/address ptr on stack
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk len
+                MOVE.L  D0,D1                                       ; D1 = chunk len
+                BTST.L  #$0000,D1                                   ; test odd/even len
+                BEQ.B   .is_even                                    ; if is even, jmp $00001A1C
+.is_odd
+                ADD.L   #$00000001,D1                               ; if is odd, add 1 pad byte
+.is_even
+                ADD.L   #$00000004,D1                               ; add 4 byte to chunk len
+                ADD.L   D1,$0004(A7)                                ; update address ptr on stack
+                SUB.L   D1,(A7)                                     ; update remaining bytes on stack
+
+                MOVE.L  A0,bitmap_header_address                    ; store bitmap header address at $00001A08
+
+                MOVEM.L (A7)+,D0/A0                                 ; restore remaining bytes/address ptr
+                RTS 
+
+
+
+
+unused_address
+                dc.w    $0000, $0000                                ; $00001A2E nothing appears to reference this address
+
+iff_body_chunk
+                MOVEM.L D0/A0,-(A7)
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk len
+                MOVE.L  D0,D1                                       ; D1 = chunk len
+                BTST.L  #$0000,D1                                   ; test odd/even len
+                BEQ.B   .is_even                                    ; if len is even, jmp $00001A42
+.is_odd
+                ADD.L   #$00000001,D1                               ; if odd then add 1 pad byte
+.is_even
+                ADD.L   #$00000004,D1
+                ADD.L   D1,$0004(A7)
+                SUB.L   D1,(A7)
+
+.process_body
+                LEA.L   $00007700,A1                                ; bitplane 1 address
+                MOVEA.L bitmap_header_address,A2                    ; iff bit map header address ptr stored at $00001A08
+
+                TST.B   $0009(A2)
+                BNE.B   end_iff_body_chunk                          ; if not == 9, jmp $00001A82
+
+                CMP.B   #$02,$000a(A2)
+                BCC.B   end_iff_body_chunk                          ; if not == 9, jmp $00001A82
+.header_info
+                MOVE.L  #$00000000,D0                               ; D0 = clear
+                MOVE.B  $0008(A2),D0                                ; D0 - number of bitplanes
+                SUB.W   #$00000001,D0                               ; D0 - decremented by 1
+                MOVE.W  D0,number_of_bitplanes                      ; D0 stored as word value in $00001A88
+
+                MOVEM.W (A2),D6-D7                                  ; D6 = width pixels, D7 = height pixels
+                MOVE.B  $000a(A2),D5                                ; D5 = compression byte
+
+                ASR.W   #$00000004,D6                               ; D6 = D6 divided by 16     
+                ADD.W   D6,D6                                       ; D6 = D6 * 2 = byte width value
+                SUB.W   #$00000001,D7                               ; D7 = height Decremented by 1
+                BSR.W   process_iff_body                            ; calls $00001A8A
+
+end_iff_body_chunk
+                MOVEM.L (A7)+,D0/A0
+                RTS 
+
+
+number_of_bitplanes
+                dc.w    $0000                                       ; number of bitplanes in image, address $00001A88
+
+
+
+                ;------------------------- process iff body ------------------------------
+                ; Converts an interleaved source GFX Image to a collection of
+                ; 'uninterleaved' bitplanes. 
+                ; Bitplanes start at $7700 and each is #$2800 bytes (10K) in size.
+                ; Bitplane1 = $7700
+                ; Bitplane2 = $9F00
+                ; Bitplane3 = $C700
+                ; Bitplane4 = $EF00
+                ; Bitplane5 = $11700
+                ; End of Bitplanes = $13F00
+                ;
+                ; A0 = Source Body Data
+                ; A1 = Destination Bitplane Ptr
+                ; A2 = Bitmap Header Address Ptr
+                ; D0 = Number of bitplanes -1
+                ; D5 = Compression byte
+                ; D6 = Number of Bytes Wide 
+                ; D7 = Number of Rows High -1
+process_iff_body                                                ; relocated address: $00001A8A
+                SUBA.W  D6,A7                                   ; allocate one scanline of storage on the stack
+                MOVE.W  D6,D4                                   ; D4 = copy of byte width of gfx image
+                CMP.W   #$0028,D4                               ; Test if 40 bytes (320 pixels wide)
+                BLE.B   .skip_clamp_40                          ; if less than or equal to 40 bytes, jmp $00001A96                           
+.is_40_or_more
+                MOVE.L  #$00000028,D4                           ; D4 = 40 (bytes) clamped
+.skip_clamp_40
+                ASR.W   #$00000001,D4                           ; D4 = D4/2 (word count)
+                SUB.W   #$00000001,D4                           ; D4 = decremented by 1
+
+.start_scanline_processing                                       ; start unpacking of 1 interleaved scanline of image data
+                MOVEA.L A1,A2                                   ; A2 = copy of destination bitmap ptr
+                MOVE.W  number_of_bitplanes,D3                  ; D3 = number of bitplanes - $00001A88,D3
+
+.start_bitplane_loop                                             ; start unpacking the current bitplane's scanline of image data. relocated addr $00001AA0
+                MOVEA.L A7,A3                                   ; A7,A3 = scan line buffer on the stack
+                MOVE.W  D6,D2                                   ; D6,D2 = copy of image width in bytes
+
+.check_compressed
+                TST.B   D5                                      ; test compression byte
+                BNE.B   .unpack_scanline                         ; if is compressed, jmp $00001AAE
+
+.not_compressed
+                MOVE.W  D2,D0                                   ; D0 = gfx bytes wide
+                SUB.W   #$00000001,D0                           ; D0 = decrement by 1
+                BRA.B   .copy_src_dest                           ; jmp $00001AC6, D0 = number of bytes to copy
+
+.unpack_scanline
+                CLR.W   D0                                      ; clear D0
+                MOVE.B  (A0)+,D0                                ; get source BODY data byte (number of bytes to copy)
+                BPL.B   .copy_src_dest                           ; if D0 +ve, then jmp $00001AC6, D0 = number of bytes to copy
+                NEG.B   D0
+                BVS.B   .unpack_scanline                         ; if D0 caused overflow then loop back to, $00001AAE
+
+.repeat_byte                                                    ; repeat the last byte (D0 + 1) times
+                MOVE.B  (A0)+,D1                                ; get next source BODY data byte
+.repeat_byte_loop
+                MOVE.B  D1,(A3)+
+                SUB.W   #$00000001,D2
+                DBF.W   D0,.repeat_byte_loop                     ; D0 = repeat count, loop to $00001ABA
+
+                BNE.B   .unpack_scanline                         ; is D2 != 0, loop again. (not finished scan line) ;$00001AAE
+                BRA.B   .scanline_to_destbuffer                  ; jmp $00001AD0 ; scan line unpacked, copy to dest buffer
+
+.copy_src_dest                                                   ; D0 = number of bytes to copy + 1
+                MOVE.B  (A0)+,(A3)+                             ; copy BODY byte to scanline buffer
+                SUB.W   #$00000001,D2                           ; D2 = subtract 1 from remaining bytes for scan line
+                DBF.W   D0,.copy_src_dest                        ; D0 = number of bytes to copy, jmp $00001AC6
+
+                BNE.B   .unpack_scanline                         ; D2 - if bytes remaining on scanline, then loop to $00001AAE
+
+
+.scanline_to_destbuffer
+                MOVEA.L A7,A3                                   ; A7,A3 = scanline buffer
+                MOVEA.L A2,A4                                   ; A2,A4 = destination bitplane address
+                MOVE.W  D4,D2                                   ; D4,D2 = words per scan line -1
+
+.copy_scanline_loop                                              ; copy current bitplanes' unpacked scanline to the destination bitplane
+                MOVE.W  (A3)+,(A4)+                             ; copy word from scanline buffer to destination.
+                DBF.W   D2,.copy_scanline_loop                   ; copy D2 words to destination bitplane, loop $00001AD6
+
+.prep_next_interleaved_scanline
+                ADDA.W  #$2800,A2                               ; increase destination ptr by 10K = 10,240 bytes
+                DBF.W   D3,.start_bitplane_loop                        ; loop do next scanline on bitplane bitplane, loop to $00001AA0
+
+.prep_next_scanline
+                ADDA.W  #$0028,A1                               ; increment bitplane1 ptr by one scanline (40 bytes)
+                DBF.W   D7,.start_scanline_processing            ; loop for image height (D7) + 1, jmp $00001A9A
+
+.end_iff_body_process                
+                ADDA.W  D6,A7                                   ; remove scanline buffer from the stack
+                RTS 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
