@@ -454,37 +454,68 @@ loader                                                          ; relocated rout
                 ;------------- copy protection - mfm and decode buffer ---------------
                 ;-- data is read in from the protected track 'manually' and stored
                 ;-- here mfm encoded. It is later decoded in place (half size)
-cp_mfm_buffer
-L00000DCA       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000                 ;............
-L00000DD8       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000DE8       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000DF8       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000E08       dc.W    $0000, $0000, $0000, $0000
+cp_mfm_buffer                                                                           ; relocated addr 00000DCA
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;......
+                dc.W    $0000, $0000, $0000
 
 
                 ;------------ copy protection variables/data ------------------------
                 ;-- various data registers and storage value start at $E10 
-cp_data
-L00000E10       dc.w    $0000, $0000, $0000, $0000 
-L00000E18       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000E28       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000E38       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000E48       dc.W    $0000, $0000, $0000, $0000
+cp_register_store                                                                       ; relocated addr 00000E10
+                dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................ 
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
 
-L00000E50       dc.w    $0000, $0000, $0000, $0000                                      ;................
-L00000E58       dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00000E68       dc.W    $0000, $0000 
-L00000E6C       dc.w    $0000, $0000 
-L00000E70       dc.w    $FFFF, $FFFF 
-L00000E74       dc.w    $0000 
-L00000E76       dc.w    $0001                                                    ;................
-L00000E78       dc.W    $0000
-L00000E7A       dc.W    $0000, $0000, $0000, $0000                               
+
+                ;------------ saved exception vector values --------------------------
+cp_exception_vectors_store
+                dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
+                dc.W    $0000, $0000, $0000, $0000, $0000, $0000                        ;............
+cp_checksum_vector 
+                dc.w    $0000, $0000                                                    ; relocated addr $00000E6C
+
+
+                ;------------ current drive track numbers ---------------------------
+                ; copy protection appears to support either drive 0 or drive 1
+                ; any more drives may cause bug with indexing into other values.
+cp_current_track                                                                        ; relocated addr $00000E70
+                dc.w    $FFFF                                                           ; current track drive 0
+                dc.w    $FFFF                                                           ; current track drive 1
+
+                ;------------ current disk drive in use -----------------------------
+                ; 0 or 1 used as an index to cp_current_track
+cp_current_drive                                                                        ; relocated addr $00000E74
+                dc.w    $0000 
+
+                ;------------ copy lock track number --------------------------------
+                ; the track number holding the protected copylock track data
+cp_protection_track                                                                     ; relocated addr $00000E76
+                dc.w    $0001   
+
+                ;------------ saved track number ------------------------------------
+                ; the track that the disk drive was at before the copylock started
+                ; used to return the heads back to where they started after copy
+                ; check.                
+cp_saved_track_number                                                                   ; relocated addr $00000E78
+                dc.W    $0000
+
+                ;------------ decoded/encoded instruction buffer --------------------
+                ; normally used by the trace vector decoder to store the encoded
+                ; versions of the currently executing instruction, so they
+                ; can be replaced quickly without requiring re-encoding
+cp_decode_instructions                                                                  ; relocated addr $00000E7A    
+                dc.W    $0000, $0000, $0000, $0000                               
+
+
 
 
 copy_protection_init1
 L00000E82       MOVE.L  A6,-(A7)
-L00000E84       LEA.L   L00000E10(pc),A6
+L00000E84       LEA.L   cp_register_store(PC),A6                                ; L00000E10(pc),A6
 L00000E88       MOVEM.L D0-D7/A0-A7,(A6)
 L00000E8C       LEA.L   $0040(A6),A6
 L00000E90       MOVE.L  (A7)+,-$0008(A6)
@@ -561,7 +592,7 @@ L00000F4A       MOVE.L  A0,$00000020                                            
 L00000F50       ADD.L   #$00000002,$000e(A7)                                    ; Increment the return address on stack 2 bytes
 L00000F58       OR.B    #$07,$000c(A7)                                          ; Enable Interrupts
 L00000F5E       BCHG.B  #$07,$000c(A7)                                          ; Toggle the 68000 trace bit on/off
-L00000F64       LEA.L   L00000E7A(PC),A1                                        ; unused (locatopn previously used for encode/decode)
+L00000F64       LEA.L   cp_decode_instructions(PC),A1                           ; unused (locatopn previously used for encode/decode)
 L00000F68       MOVEM.L (A7)+,D0/A0-A1
 L00000F6C       RTE 
 L00000F6E       NOP 
@@ -608,14 +639,14 @@ L00000FBA       BRA.W L00000FCE
 exception_vector_offsets
 L00000FBE       dc.w    $059A, $051A, $00B6, $05DA, $061A ,$069A ,$051A, $00F0              ;................
 
-L00000FCE       LEA.L  L00000E50(PC),A1
+L00000FCE       LEA.L  cp_exception_vectors_store(PC),A1                        ; L00000E50(PC),A1
 L00000FD2       CLR.L  $001c(A1)
 L00000FD6       BSR.W  L00001070
 L00000FDA       BEQ.W  L0000136E
 L00000FDE       MOVE.L #$00000006,D2
 L00000FE0       SUB.L  #$00000001,D2
 L00000FE2       BEQ.B  L00001044
-L00000FE4       LEA.L  L00000DCA(PC),A0
+L00000FE4       LEA.L  cp_mfm_buffer(PC),A0                     ;L00000DCA(PC),A0
 L00000FE8       MOVE.L #$00000005,D0
 L00000FEA       BSR.W  L000010B4
 L00000FEE       MOVE.L D0,D3
@@ -643,12 +674,12 @@ L00001032       MOVEA.L A0,A1
 L00001034       ADD.L  (A1)+,D0
 L00001036       ROL.L  #$00000001,D0
 L00001038       DBF.W  D1,L00001034
-L0000103C       LEA.L  L00000E50(PC),A1
+L0000103C       LEA.L  cp_exception_vectors_store(PC),A1                        ; $00000E50(PC),A1
 L00001040       ADD.L  D0,$001c(A1)
-L00001044       MOVE.W L00000E78(PC),D2
+L00001044       MOVE.W cp_saved_track_number(PC),D2                             ; $00000E78(PC),D2
 L00001048       BSR.W  L0000124C
 L0000104C       BSR.W  L0000121A
-L00001050       MOVE.L L00000E6C(PC),D0
+L00001050       MOVE.L cp_checksum_vector(PC),D0                                ; $00000E6C(PC),D0
 L00001054       BRA.W  L0000136E
 L00001058       SUB.L  D1,D0
 L0000105A       BMI.B  L0000106C
@@ -668,16 +699,16 @@ L00001076       BNE.B   L0000109C
 L00001078       MOVE.L  #$00000000,D2
 L0000107A       BSR.W   L0000124C
 L0000107E       BNE.B   L0000109C
-L00001080       LEA.L   L00000DCA(PC),A0
+L00001080       LEA.L   cp_mfm_buffer(PC),A0                    ;L00000DCA(PC),A0
 L00001084       MOVE.L  #$00000002,D2
 L00001086       MOVE.W  L000011EA(PC),D0
 L0000108A       BSR.W   L00001134
 L0000108E       BNE.B   L000010B2
 L00001090       DBF.W   D2,L00001086
-L00001094       MOVE.W  L00000E78(PC),D2
+L00001094       MOVE.W  cp_saved_track_number(PC),D2            ; $00000E78(PC),D2
 L00001098       BSR.W   L0000124C
 L0000109C       BSR.W   L0000121C
-L000010A0       LEA.L   L00000E74(PC),A0
+L000010A0       LEA.L   cp_current_drive(PC),A0                 ; $00000E74(PC),A0
 L000010A4       ADD.W   #$0001,(A0)
 L000010A8       AND.W   #$0003,(A0)
 L000010AC       DBF.W   D3,L00001072
@@ -811,7 +842,7 @@ L00001218       BRA.B   L00001230
 L0000121A       MOVE.L  #$ffffffff,D1
 L0000121C       LEA.L   $00bfd100,A0
 L00001222       MOVE.B  D1,(A0)
-L00001224       MOVE.W  L00000E74(PC),D0
+L00001224       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
 L00001228       ADD.L   #$00000003,D0
 L0000122A       BCLR.L  D0,D1
 L0000122C       MOVE.B  D1,(A0)
@@ -833,7 +864,7 @@ L00001250       MOVE.W  D2,D5
 L00001252       BSR.W   L00001332
 L00001256       AND.W   #$007f,D5
 L0000125A       BEQ.B   L00001268
-L0000125C       MOVE.W  L00000E74(PC),D0
+L0000125C       MOVE.W  cp_current_drive(PC),D0                             ;  $00000E74(PC),D0
 L00001260       BSR.W   L0000129C
 L00001264       MOVE.W  D1,D4
 L00001266       BPL.B   L00001270
@@ -850,9 +881,9 @@ L0000127C       BSR.B   L000012E4
 L0000127E       SUB.L   #$00000001,D4
 L00001280       BRA.B   L00001270
 L00001282       BSR.W   L00001332
-L00001286       MOVE.W  L00000E74(PC),D0
+L00001286       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
 L0000128A       LSL.W   #$00000001,D0
-L0000128C       LEA.L   L00000E70(PC),A0
+L0000128C       LEA.L   cp_current_track(PC),A0                             ; $00000E70(PC),A0
 L00001290       MOVE.W  D4,$00(A0,D0.W)
 L00001294       MOVE.L  #$00000000,D0
 L00001296       MOVEM.L (A7)+,D1-D5
@@ -860,7 +891,7 @@ L0000129A       RTS
 
 
 L0000129C       LSL.W   #$00000001,D0
-L0000129E       LEA.L   L00000E70(PC),A0
+L0000129E       LEA.L   cp_current_track(PC),A0                             ; $00000E70(PC),A0
 L000012A2       MOVE.W  $00(A0,D0.W),D1
 L000012A6       RTS 
 
@@ -873,13 +904,13 @@ L000012B8       BSR.W   L000012E4
 L000012BC       DBF.W   D4,L000012AE
 L000012C0       MOVE.L  #$ffffffff,D0
 L000012C2       BRA.B   L000012DE
-L000012C4       MOVE.W  L00000E74(PC),D0
+L000012C4       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
 L000012C8       LSL.W   #$00000001,D0
-L000012CA       LEA.L   L00000E70(PC),A0
+L000012CA       LEA.L   cp_current_track(PC),A0                             ; $00000E70(PC),A0
 L000012CE       CLR.W   $00(A0,D0.W)
 L000012D2       MOVE.L  #$00000055,D0
 L000012D4       SUB.L   D4,D0
-L000012D6       LEA.L   L00000E78(PC),A0
+L000012D6       LEA.L   cp_saved_track_number(PC),A0                        ; $00000E78(PC),A0
 L000012DA       MOVE.W  D0,(A0)
 L000012DC       MOVE.L  #$00000000,D0
 L000012DE       MOVEM.L (A7)+,D1-D4
@@ -889,8 +920,8 @@ L000012E2       RTS
 L000012E4       MOVE.L  #$00000001,D2
 L000012E6       BRA.B   L000012EA
 L000012E8       MOVE.L  #$00000000,D2
-L000012EA       MOVE.W  L00000E74(PC),D0
-L000012EE       MOVE.W  L00000E76(PC),D1
+L000012EA       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
+L000012EE       MOVE.W  cp_protection_track(PC),D1                          ; $00000E76(PC),D1
 L000012F2       MOVE.B  $00bfd100,D3
 L000012F8       OR.B    #$7f,D3
 L000012FC       ADD.B   #$03,D0
@@ -908,8 +939,8 @@ L00001320       BSET.L  #$0000,D3
 L00001324       MOVE.B  D3,$00bfd100
 L0000132A       MOVE.L  #$00000bb8,D0
 L00001330       BRA.B   L00001366
-L00001332       MOVE.W  L00000E74(PC),D0
-L00001336       MOVE.W  L00000E76(PC),D1
+L00001332       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
+L00001336       MOVE.W  cp_protection_track(PC),D1                          ; $00000E76(PC),D1
 L0000133A       MOVE.W  D2,-(A7)
 L0000133C       MOVE.B  $00bfd100,D2
 L00001342       OR.B    #$7f,D2
@@ -928,16 +959,16 @@ L0000136A       BNE.B   L00001368
 L0000136C       RTS 
 
 
-L0000136E       LEA.L   L00000E10(PC),A0
+L0000136E       LEA.L   cp_register_store(PC),A0                    ; L00000E10(PC),A0
 L00001372       MOVE.L  D0,(A0)
-L00001374       MOVEM.L L00000E50(PC),D0-D7
+L00001374       MOVEM.L cp_exception_vectors_store(PC),D0-D7        ; L00000E50(PC),D0-D7
 L0000137A       MOVE.L  $00000004,D0
 L00001380       MOVE.L  D0,D1
 L00001382       LEA.L   L0000139C(PC),A0                            ; New copy protection return address.
 L00001386       MOVE.L  A0,$0002(A7)
 L0000138A       ILLEGAL 
 L0000138C       MOVEM.L D0-D7,$00000008
-L00001394       MOVEM.L L00000E10(PC),D0-D7/A0-A6
+L00001394       MOVEM.L cp_register_store(PC),D0-D7/A0-A6           ; L00000E10(PC),D0-D7/A0-A6
 L0000139A       RTE                                                 ; Return from copy protection exception to $0000139C below.
 
 
