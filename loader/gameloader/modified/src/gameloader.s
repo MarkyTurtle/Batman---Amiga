@@ -464,7 +464,7 @@ cp_mfm_buffer                                                                   
 
                 ;------------ copy protection variables/data ------------------------
                 ;-- various data registers and storage value start at $E10 
-cp_register_store                                                                       ; relocated addr 00000E10
+cp_register_store                                                                       ; original address $00000E10
                 dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................ 
                 dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
                 dc.W    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
@@ -472,11 +472,11 @@ cp_register_store                                                               
 
 
                 ;------------ saved exception vector values --------------------------
-cp_exception_vectors_store
+cp_exception_vectors_store                                                              ; original address $00000E50
                 dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
                 dc.W    $0000, $0000, $0000, $0000, $0000, $0000                        ;............
 cp_checksum_vector 
-                dc.w    $0000, $0000                                                    ; relocated addr $00000E6C
+                dc.w    $0000, $0000                                                    ; original address $00000E6C
 
 
                 ;------------ current drive track numbers ---------------------------
@@ -513,21 +513,21 @@ cp_decode_instructions                                                          
 
 
 
-copy_protection_init1
-L00000E82       MOVE.L  A6,-(A7)
-L00000E84       LEA.L   cp_register_store(PC),A6                                ; L00000E10(pc),A6
-L00000E88       MOVEM.L D0-D7/A0-A7,(A6)
-L00000E8C       LEA.L   $0040(A6),A6
-L00000E90       MOVE.L  (A7)+,-$0008(A6)
-L00000E94       MOVE.L  $00000010,D0
-L00000E9A       PEA.L   cp_supervisor(PC)                                                     
-L00000E9E       MOVE.L  (A7)+,$00000010
-L00000EA4       ILLEGAL  
+copy_protection_init1                                                           ; original routine address $00000E82
+                MOVE.L  A6,-(A7)
+                LEA.L   cp_register_store(PC),A6                                ; L00000E10(pc),A6
+                MOVEM.L D0-D7/A0-A7,(A6)
+                LEA.L   $0040(A6),A6
+                MOVE.L  (A7)+,-$0008(A6)
+                MOVE.L  $00000010,D0
+                PEA.L   cp_supervisor(PC)                                                     
+                MOVE.L  (A7)+,$00000010
+                ILLEGAL  
 
                 ;------------ enter supervisor (if not already) ------------------
                 ;-- This exception never returns to this point in the code.
                 ;-- Later the stack is return address is modified to return to
-                ;-- the address L0000139C
+                ;-- the address L0000139C 'cp_end'
 
 cp_supervisor                               
 L00000EA6       MOVE.L  D0,$00000010
@@ -582,21 +582,20 @@ L00000F34       BRA.W L00000F20
                 ;-- instruction that was being executed by the copy protection.
                 ;-- It's been patched so it doesn't encode/decode any instructions,
                 ;-- The 68000 trace bit is still toggled in 
-cp_toggle_tvd
-L00000F38       MOVEM.L D0/A0-A1,-(A7)
-L00000F3C       LEA.L   cp_tvd(PC),A0                                           ;  
-L00000F40       MOVE.L  A0,$00000024                                            ; Set TVD Address in Trace Exception Vector
-L00000F46       LEA.L   L0000139C(PC),A0                                        ; 
-L00000F4A       MOVE.L  A0,$00000020                                            ; Set cp_finish in Privilege Violation Exception Vector 
-                                                                                ; unused, maybe a protection mechanism to prevent tampering.
-L00000F50       ADD.L   #$00000002,$000e(A7)                                    ; Increment the return address on stack 2 bytes
-L00000F58       OR.B    #$07,$000c(A7)                                          ; Enable Interrupts
-L00000F5E       BCHG.B  #$07,$000c(A7)                                          ; Toggle the 68000 trace bit on/off
-L00000F64       LEA.L   cp_decode_instructions(PC),A1                           ; unused (locatopn previously used for encode/decode)
-L00000F68       MOVEM.L (A7)+,D0/A0-A1
-L00000F6C       RTE 
-L00000F6E       NOP 
-L00000F70       NOP 
+cp_toggle_tvd                                                                   ; original routine address $00000F38
+                MOVEM.L D0/A0-A1,-(A7)
+                LEA.L   cp_tvd(PC),A0                                           ; A0 = Address of Trace Vector Decoded routine. 
+                MOVE.L  A0,$00000024                                            ; Set TVD Address in Trace Exception Vector
+                LEA.L   cp_end(PC),A0                                           ; A0 = Address of copy protection end routine 'cp_end' $0000139C 
+                MOVE.L  A0,$00000020                                            ; Set 'cp_end' in Privilege Violation Exception Vector, maybe a protection mechanism to prevent tampering.
+                ADD.L   #$00000002,$000e(A7)                                    ; Increment the return address on stack 2 bytes
+                OR.B    #$07,$000c(A7)                                          ; Enable Interrupts
+                BCHG.B  #$07,$000c(A7)                                          ; Toggle the 68000 trace bit on/off
+                LEA.L   cp_decode_instructions(PC),A1                           ; unused (locatopn previously used for encode/decode)
+                MOVEM.L (A7)+,D0/A0-A1
+                RTE 
+                NOP 
+                NOP 
 
 
                 ;----------- copy protection - trace vector decoder (TVD) -------------
@@ -605,94 +604,164 @@ L00000F70       NOP
                 ;-- in trace mode.
                 ;-- Patched to do nothing but flash the screen when each instruction
                 ;-- executes while the 68000 trace bit is enabled.
-cp_tvd
-L00000F72       AND.W #$f8ff,SR
-L00000F76       MOVEM.L D0/A0-A1,-(A7)
-L00000F7A       NOP 
-L00000F7C       NOP 
-L00000F7E       MOVE.W #$0fff,D0
-L00000F82       MOVE.W D0,$00dff180
-L00000F88       SUB.W #$0111,D0
-L00000F8C       BNE.B L00000F82
-L00000F8E       NOP 
-L00000F90       NOP 
-L00000F92       NOP 
-L00000F94       NOP 
-L00000F96       NOP 
-L00000F98       MOVEM.L (A7)+,D0/A0-A1
-L00000F9C       RTE 
+cp_tvd                                                                  ; original routine address $00000F72
+                AND.W #$f8ff,SR
+                MOVEM.L D0/A0-A1,-(A7)
+                NOP 
+                NOP 
+                MOVE.W #$0fff,D0
+.flash_loop     MOVE.W D0,$00dff180
+                SUB.W #$0111,D0
+                BNE.B .flash_loop
+                NOP 
+                NOP 
+                NOP 
+                NOP 
+                NOP 
+                MOVEM.L (A7)+,D0/A0-A1
+                RTE 
 
 
                 ;------------ copy protection - set vectors -------------------
-cp_set_vectors
-L00000F9E       LEA.L exception_vector_offsets(PC),A0
-L00000FA2       LEA.L $00000008,A1
-L00000FA8       LEA.L L00000E82(PC),A2
-L00000FAC       MOVE.L #$00000007,D0
-L00000FAE       MOVE.L #$00000000,D1
-L00000FB0       MOVE.W (A0)+,D1
-L00000FB2       ADD.L A2,D1
-L00000FB4       MOVE.L D1,(A1)+
-L00000FB6       DBF.W D0,L00000FAE
-L00000FBA       BRA.W L00000FCE
+                ; updates exception vectors $08 (Bus Error) to $24 (Trace)
+                ; with new values, the original code updates the vectors
+                ; to the following values:-
+                ;
+                ; $08 - Bus Error             = $0000141c
+                ; $0C - Address Error         = $0000139C 'cp_end'
+                ; $10 - Illegal Intruction    = $00000F38 'cp_toggle_tvd'
+                ; $14 - Zero Divide           = $0000145C
+                ; $18 - CHK Instruction       = $0000149C
+                ; $1C - TRAPV Instruction     = $0000151C
+                ; $20 - Privilege Instruction = $0000139C 'cp_end'
+                ; $24 - Trace                 = $00000F72 'cp_tvd'
+                ;
+                ; The important entries are:
+                ; $10 - Illegal Instruction - normally used to toggle TVD on/off
+                ; $24 - Trace               - normally decode/encode next/previous instuction
+                ;
+                ; The other entries are there most probably to disguise the above
+                ; entries, or to cause additional problems with tracing/tampering.
+                ;
+                ; The 'exception_vector_offsets' is a table of values for the offsets
+                ; of each exception handler, the offsets are added to the address of
+                ; 'copy_protection_init1', originally located at $00000E82
+                ; again, any tampering would cause these offsets to alter, causing
+                ; problems with the execution of the code.
+                ;
+cp_set_vectors                                                  ; original routine address $00000F9E
+                LEA.L exception_vector_offsets(PC),A0
+                LEA.L $00000008,A1                              ; A1 = first exception vector address $08 = Bus Error
+                LEA.L copy_protection_init1(PC),A2              ; A2 = Address of 'copy_protection_init1', originally $00000E82
+                MOVE.L #$00000007,D0                            ; D0 = loop counter 7 + 1
+.loop
+                MOVE.L #$00000000,D1
+                MOVE.W (A0)+,D1                                 ; D1 = next handler address offset
+                ADD.L A2,D1                                     ; D1 = offset + base address 'copy_protection_init1'
+                MOVE.L D1,(A1)+                                 ; set exception handler address
+                DBF.W D0,.loop                                  ; update next exception vector, loop to $00000FAE
+                BRA.W cp_do_protection_check                    ; continue as address $00000FCE
 
 exception_vector_offsets
 L00000FBE       dc.w    $059A, $051A, $00B6, $05DA, $061A ,$069A ,$051A, $00F0              ;................
 
-L00000FCE       LEA.L  cp_exception_vectors_store(PC),A1                        ; L00000E50(PC),A1
-L00000FD2       CLR.L  $001c(A1)
-L00000FD6       BSR.W  L00001070
-L00000FDA       BEQ.W  L0000136E
-L00000FDE       MOVE.L #$00000006,D2
-L00000FE0       SUB.L  #$00000001,D2
-L00000FE2       BEQ.B  L00001044
-L00000FE4       LEA.L  cp_mfm_buffer(PC),A0                     ;L00000DCA(PC),A0
-L00000FE8       MOVE.L #$00000005,D0
-L00000FEA       BSR.W  L000010B4
-L00000FEE       MOVE.L D0,D3
-L00000FF0       MOVE.L #$00000004,D0
-L00000FF2       BSR.W  L000010B4
-L00000FF6       MOVE.L D0,D1
-L00000FF8       MOVE.L D3,D0
-L00000FFA       BSR.B  L00001058
-L00000FFC       BMI.B  L00000FE0
-L00000FFE       MOVE.L #$00000006,D0
-L00001000       BSR.W  L000010B4
-L00001004       MOVE.L D3,D1
-L00001006       BSR.B  L00001058
-L00001008       BMI.B  L00000FE0
-L0000100A       CMP.L  #$526f6220,(A0)
-L00001010       BNE.B  L00000FE0
-L00001012       CMP.L  #$4e6f7274,$0004(A0)
-L0000101A       BNE.B  L00000FE0
-L0000101C       CMP.L  #$68656e20,$0008(A0)
-L00001024       BNE.B  L00000FE0
-L00001026       CMP.L  #$436f6d70,$000c(A0)
-L0000102E       BNE.B  L00000FE0
-L00001030       MOVE.L #$00000005,D1
-L00001032       MOVEA.L A0,A1
-L00001034       ADD.L  (A1)+,D0
-L00001036       ROL.L  #$00000001,D0
-L00001038       DBF.W  D1,L00001034
-L0000103C       LEA.L  cp_exception_vectors_store(PC),A1                        ; $00000E50(PC),A1
-L00001040       ADD.L  D0,$001c(A1)
-L00001044       MOVE.W cp_saved_track_number(PC),D2                             ; $00000E78(PC),D2
-L00001048       BSR.W  L0000124C
-L0000104C       BSR.W  L0000121A
-L00001050       MOVE.L cp_checksum_vector(PC),D0                                ; $00000E6C(PC),D0
-L00001054       BRA.W  L0000136E
-L00001058       SUB.L  D1,D0
-L0000105A       BMI.B  L0000106C
-L0000105C       MULU.W #$0064,D0
-L00001060       DIVU.W D1,D0
-L00001062       CMP.B  #$03,D0
-L00001066       BLT.B  L0000106C
-L00001068       MOVE.L #$00000000,D0
-L0000106A       RTS 
 
-L0000106C       MOVE.L #$ffffffff,D0
-L0000106E       RTS 
 
+
+                ;------------------- Do Protection Check ----------------------
+                ; try to load data from the copylock track,
+                ; check the values loaded from the track and calculate a 
+                ; checksum/serial number for the copy protection check.
+                ;
+cp_do_protection_check                                          ; original routine address $00000FCE
+                LEA.L  cp_exception_vectors_store(PC),A1        ; A1 = Address buffer of saved exception vectors $00000E50
+                CLR.L  $001C(A1)                                ; clear copy protection checksum value $00000E6C
+                BSR.W  cp_load_data1                            ; cp_load_data1, calls $00001070
+                BEQ.W  cp_end_protection_check                  ; if Z = 1 then fail, jmp $0000136E
+
+                MOVE.L #$00000006,D2                            ; D2 = loop counter
+.retry_loop                                                      ; original address $00000FE0
+                SUB.L  #$00000001,D2                            ; D2 = decrement by 1
+                BEQ.B  exit_do_protection_check                 ; if D2 = 0 then jmp $00001044
+
+                LEA.L  cp_mfm_buffer(PC),A0                     ; $00000DCA
+                MOVE.L #$00000005,D0
+                BSR.W  cp_load_data2                            ; read from disk - calls $000010B4
+                MOVE.L D0,D3                                    ; D0,D3 = num bytes read
+
+                MOVE.L #$00000004,D0
+                BSR.W  cp_load_data2                            ; read from disk - calls $000010B4
+                MOVE.L D0,D1                                    ; D1 = num bytes read (cp_load_data2 - 2nd read)
+                MOVE.L D3,D0                                    ; D0 = num bytes read (cp_load_data2 - 1st read)
+                BSR.B  cp_check_bytes_read                      ; check bytes read, $00001058
+                BMI.B  .retry_loop                               ; if N = 1 then retry, jmp $00000FE0
+
+                MOVE.L #$00000006,D0
+                BSR.W  cp_load_data2                            ; calls $000010B4
+                MOVE.L D3,D1                                    ; D1 = num bytes read (cp_load_data2 - 1st read)
+                                                                ; D0 = num bytes read (cp_load_data2 - 3rd read)
+                BSR.B  cp_check_bytes_read                      ; check bytes read, $00001058
+                BMI.B  .retry_loop                               ; if N = 1 then retry, jmp $00000FE0
+
+                CMP.L  #'Rob ',(A0)                             ; #$526f6220,(A0)
+                BNE.B  .retry_loop                               ; $00000FE0
+
+                CMP.L  #'Nort',$0004(A0)                        ; #$4e6f7274,$0004(A0)
+                BNE.B  .retry_loop                               ; $00000FE0
+
+                CMP.L  #'hen ',$0008(A0)                        ;  #$68656e20,$0008(A0)'
+                BNE.B  .retry_loop                               ; $00000FE0
+
+                CMP.L  #'Comp',$000c(A0)                        ; #$436f6d70,$000c(A0)
+                BNE.B  .retry_loop                               ; $00000FE0
+
+                ; update copy protection checksum/serial no. 
+                MOVE.L #$00000005,D1                            ; D1 = loop counter 5 + 1
+                MOVEA.L A0,A1                                   ; A1 = decoded copy protection data buffer
+.checksum_loop
+                ADD.L  (A1)+,D0                                 ; D0 = add next long word of buffer data
+                ROL.L  #$00000001,D0                            ; D0 = rotate data left
+                DBF.W  D1,.checksum_loop                        ; loop through 6 long words (24 bytes)
+
+                LEA.L  cp_exception_vectors_store(PC),A1        ; $00000E50
+                ADD.L  D0,$001C(A1)                             ; update copy protection checksum $00000E6C
+
+exit_do_protection_check                                        ; original address $00001044
+                MOVE.W cp_saved_track_number(PC),D2             ; $00000E78
+                BSR.W  L0000124C
+                BSR.W  L0000121A
+                MOVE.L cp_checksum_vector(PC),D0                ; $00000E6C
+                BRA.W  cp_end_protection_check                  ; jmp $0000136E
+
+
+
+
+                ;------------------------ check bytes read --------------------------
+                ; checks the number of bytes read in by successive calls to
+                ; cp_load_data2, best I can work out is that the values readd in
+                ; are checked to see if the difference between the number of bytes
+                ; read in by successive calls to 'cp_load_data2' fall within
+                ; the allowed tolerance.  Will revisit this after having a think...
+                ;
+                ; IN: D0.l - Count of previous bytes read
+                ; IN: D1.l - COunt of previous bytes read
+                ; OUT: D0.l - 0 = Success, -1 = Fail
+                ;
+cp_check_bytes_read                                             ; original routine address $00001058
+                SUB.L  D1,D0
+                BMI.B  .check_error                             ; jmp $0000106C
+                MULU.W #$0064,D0
+                DIVU.W D1,D0
+                CMP.B  #$03,D0
+                BLT.B  .check_error                             ; jmp $0000106C
+                MOVE.L #$00000000,D0
+                RTS 
+.check_error
+                MOVE.L #$ffffffff,D0
+                RTS 
+
+
+cp_load_data1
 L00001070       MOVE.L  #$00000003,D0
 L00001072       BSR.W   L00001206
 L00001076       BNE.B   L0000109C
@@ -715,7 +784,8 @@ L000010AC       DBF.W   D3,L00001072
 L000010B0       MOVE.L  #$00000000,D0
 L000010B2       RTS 
 
-L000010B4       MOVEM.L D0-D2/A0-A1,-(A7)
+cp_load_data2                                                   ; original routine address $000010B4
+                MOVEM.L D0-D2/A0-A1,-(A7)
 L000010B8       BSR.B   L0000110A
 L000010BA       MOVE.L  D0,D2
 L000010BC       MOVE.L  (A7),D0
@@ -958,26 +1028,27 @@ L00001368       SUB.L   #$00000001,D0
 L0000136A       BNE.B   L00001368
 L0000136C       RTS 
 
-
-L0000136E       LEA.L   cp_register_store(PC),A0                    ; L00000E10(PC),A0
-L00001372       MOVE.L  D0,(A0)
-L00001374       MOVEM.L cp_exception_vectors_store(PC),D0-D7        ; L00000E50(PC),D0-D7
-L0000137A       MOVE.L  $00000004,D0
-L00001380       MOVE.L  D0,D1
-L00001382       LEA.L   L0000139C(PC),A0                            ; New copy protection return address.
-L00001386       MOVE.L  A0,$0002(A7)
-L0000138A       ILLEGAL 
-L0000138C       MOVEM.L D0-D7,$00000008
-L00001394       MOVEM.L cp_register_store(PC),D0-D7/A0-A6           ; L00000E10(PC),D0-D7/A0-A6
-L0000139A       RTE                                                 ; Return from copy protection exception to $0000139C below.
+cp_end_protection_check                                             ; original routine address $0000136E
+                LEA.L   cp_register_store(PC),A0                    ; L00000E10(PC),A0
+                MOVE.L  D0,(A0)
+                MOVEM.L cp_exception_vectors_store(PC),D0-D7        ; L00000E50(PC),D0-D7
+                MOVE.L  $00000004,D0
+                MOVE.L  D0,D1
+                LEA.L   cp_end(PC),A0                               ; A0 = address of 'cp_end' - copy protection return address.
+                MOVE.L  A0,$0002(A7)                                ; modify the return from exception (RTE) to return to 'cp_end' instead of original 'ILLEGAL' instruction
+                ILLEGAL                                             ; normally this would toggle of the Trace Vector Decoder routine.
+                MOVEM.L D0-D7,$00000008
+                MOVEM.L cp_register_store(PC),D0-D7/A0-A6           ; L00000E10(PC),D0-D7/A0-A6
+                RTE                                                 ; Return from copy protection exception to $0000139C below.
 
 
                 ;------------------- end of copy protection ----------------------------
-L0000139C       MOVE.L  #$00000000,D0
-L0000139E       MOVE.W  #$0001,ld_load_status                       ; $00001b08 ; set load status
-L000013A6       MOVEM.L (A7)+,D0-D7/A0-A6
-L000013AA       TST.W   ld_load_status                              ; $00001b08 ; test load status
-L000013B0       RTS                                                 ; return from initial call to 'loader'
+cp_end                                                              ; original routine start address $0000139C
+                MOVE.L  #$00000000,D0
+                MOVE.W  #$0001,ld_load_status                       ; $00001b08 ; set load status
+                MOVEM.L (A7)+,D0-D7/A0-A6
+                TST.W   ld_load_status                              ; $00001b08 ; test load status
+                RTS                                                 ; return from initial call to 'loader'
 
 
 
