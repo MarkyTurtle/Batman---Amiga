@@ -49,6 +49,8 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
+2024-04-26 - Commented lots of the main game loader, still some of the copy protection left to comment.
+
 2024-04-09 - Began adding the disassembly of the main game loader, the "BATMAN" file from disk 1.
 
 2024-04-07 - Completed first draft of documenting the [bootblock.s](./loader/bootblock/bootblock.s) code. 
