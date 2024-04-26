@@ -728,8 +728,8 @@ cp_do_protection_check                                          ; original routi
 
 exit_do_protection_check                                        ; original address $00001044
                 MOVE.W cp_saved_track_number(PC),D2             ; $00000E78
-                BSR.W  L0000124C
-                BSR.W  L0000121A
+                BSR.W  cp_seek_to_track                         ; D2.w = track number, calls $0000124C
+                BSR.W  cp_drive_off                             ; switch drive motor off $0000121A
                 MOVE.L cp_checksum_vector(PC),D0                ; $00000E6C
                 BRA.W  cp_end_protection_check                  ; jmp $0000136E
 
@@ -761,12 +761,14 @@ cp_check_bytes_read                                             ; original routi
                 RTS 
 
 
+
+
 cp_load_data1
 L00001070       MOVE.L  #$00000003,D0
-L00001072       BSR.W   L00001206
+L00001072       BSR.W   cp_drive_on                             ; calls $00001206
 L00001076       BNE.B   L0000109C
 L00001078       MOVE.L  #$00000000,D2
-L0000107A       BSR.W   L0000124C
+L0000107A       BSR.W   cp_seek_to_track                        ; D2.w = track number, calls $0000124C
 L0000107E       BNE.B   L0000109C
 L00001080       LEA.L   cp_mfm_buffer(PC),A0                    ;L00000DCA(PC),A0
 L00001084       MOVE.L  #$00000002,D2
@@ -775,14 +777,17 @@ L0000108A       BSR.W   L00001134
 L0000108E       BNE.B   L000010B2
 L00001090       DBF.W   D2,L00001086
 L00001094       MOVE.W  cp_saved_track_number(PC),D2            ; $00000E78(PC),D2
-L00001098       BSR.W   L0000124C
-L0000109C       BSR.W   L0000121C
+L00001098       BSR.W   cp_seek_to_track                        ; D2.w = track number, calls $0000124C
+L0000109C       BSR.W   cp_drive_motor                          ; calls $0000121C
 L000010A0       LEA.L   cp_current_drive(PC),A0                 ; $00000E74(PC),A0
 L000010A4       ADD.W   #$0001,(A0)
 L000010A8       AND.W   #$0003,(A0)
 L000010AC       DBF.W   D3,L00001072
 L000010B0       MOVE.L  #$00000000,D0
 L000010B2       RTS 
+
+
+
 
 cp_load_data2                                                   ; original routine address $000010B4
                 MOVEM.L D0-D2/A0-A1,-(A7)
@@ -859,7 +864,7 @@ L0000117A       RTS
 
 
 
-L0000117C       ILLEGAL 
+L0000117C       ILLEGAL                                     ; normally switch off TVD here, this routine would not be encoded (manual disk ready needs performance)
 L0000117E       TST.B   $00bfdd00
 L00001184       BTST.B  #$0004,$00bfdd00
 L0000118C       BEQ.B   L00001184
@@ -895,41 +900,77 @@ L000011EA       dc.w    $8A91, $8A44, $8A45, $8A51, $8912, $8911, $8914, $8915  
 L000011FA       dc.w    $8944, $8945, $8951                                         ;.D.E.Q
 
 L00001200       MOVE.L D1,D0
-L00001202       ILLEGAL 
+L00001202       ILLEGAL                                 ; normally switch on TVD again (encode/decode instructions again)
 L00001204       RTS 
 
 
 
 
+                ;-------------------------- drive on ---------------------------
+                ; switch current drive motor on 'cp_current_drive' $00000E74
+                ; 
+cp_drive_on                                                 ; original routine address $00001206
+                MOVEQ   #$ffffffff,D1                       ; deselect all drive bits
+                BCLR.L  #$0007,D1                           ; select drive motor on (active low)
+                BSR.B   cp_drive_motor                      ; calls $0000121C
+                MOVE.L  #$000927c0,D0                       ; D0 = 600,000 (processor wait divides this by 32 = 18,750)
+                BSR.W   cp_processor_wait_loop              ; calls $00001366
+                BRA.B   cp_is_drive_ready                   ; jmp $00001230
 
 
-L00001206       MOVE.L  #$ffffffff,D1
-L00001208       BCLR.L  #$0007,D1
-L0000120C       BSR.B   L0000121C
-L0000120E       MOVE.L  #$000927c0,D0
-L00001214       BSR.W   L00001366
-L00001218       BRA.B   L00001230
-L0000121A       MOVE.L  #$ffffffff,D1
-L0000121C       LEA.L   $00bfd100,A0
-L00001222       MOVE.B  D1,(A0)
-L00001224       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
-L00001228       ADD.L   #$00000003,D0
-L0000122A       BCLR.L  D0,D1
-L0000122C       MOVE.B  D1,(A0)
-L0000122E       RTS 
 
-L00001230       LEA.L   $00bfe001,A0
-L00001236       MOVE.L  #$0000061a,D0
-L0000123C       BTST.B  #$0005,(A0)
-L00001240       BEQ.B   L00001248
-L00001242       SUB.L   #$00000001,D0
-L00001244       BPL.B   L0000123C
-L00001246       RTS 
 
-L00001248       MOVE.L #$00000000,D0
-L0000124A       RTS 
+                ;------------------------- drive off --------------------------
+                ; deselect all drive bits, drop through to cp_drive_motor()
+                ;
+cp_drive_off                                                ; original routine address $0000121A
+                MOVEQ   #$ffffffff,D1                       ; deselect all drive bits (incl. motor off)
 
-L0000124C       MOVEM.L D1-D5,-(A7)
+
+
+
+                ;------------------------- drive motor ------------------------
+                ; used by drive on/off routines to latch the motor state
+                ; of the current drive.
+                ; IN: D1.b = drive control bits (motor on/off bits set or cleared)
+                ;
+cp_drive_motor                                              ; original routine address $0000121C
+                LEA.L   $00bfd100,A0                        ; A0 = CIAB PRB - drive control byte
+                MOVE.B  D1,(A0)                             ; set motor state (has to be done before selecting the drive)                            
+                MOVE.W  cp_current_drive(PC),D0             ; D0 = current drive number - $00000E74(PC),D0
+                ADD.L   #$00000003,D0                       ; D0 = shift value to drive select bit
+                BCLR.L  D0,D1                               ; Set Drive Select bit = 0 (active low)
+                MOVE.B  D1,(A0)                             ; CIAB PRB - store value in drive control byte
+                RTS 
+
+
+
+
+                ;-------------------- is drive ready --------------------
+                ; wait until drive is ready (RDY pulled low), or until
+                ; processor timeout loop expires (a bit dodgy, should be a 
+                ; timer wait or vbl wait)
+                ; 
+                ; OUT: D0 = 0 success, D0 = -1 failed
+                ;
+cp_is_drive_ready
+                LEA.L   $00bfe001,A0                        ; A0 = CIAB PRA - Drive status byte
+                MOVE.L  #$0000061A,D0                       ; processor timeout loop (a bit dodgy)
+.rdy_wait
+                BTST.B  #$0005,(A0)                         ; test drive RDY bit (ready)
+                BEQ.B   .is_rdy                             ; drive RDY bit active low, jmp $00001248
+                SUB.L   #$00000001,D0                       ; decrement timeout loop counter
+                BPL.B   .rdy_wait                           ; time out loop, jmp $0000123C
+                RTS 
+.is_rdy
+                MOVE.L #$00000000,D0                        ; set success return code.
+                RTS 
+
+
+
+
+cp_seek_to_track                                                            ; original routine address $0000124C
+                MOVEM.L D1-D5,-(A7)
 L00001250       MOVE.W  D2,D5
 L00001252       BSR.W   L00001332
 L00001256       AND.W   #$007f,D5
@@ -1008,7 +1049,7 @@ L0000131A       MOVE.B  D3,$00bfd100
 L00001320       BSET.L  #$0000,D3
 L00001324       MOVE.B  D3,$00bfd100
 L0000132A       MOVE.L  #$00000bb8,D0
-L00001330       BRA.B   L00001366
+L00001330       BRA.B   cp_processor_wait_loop                              ; calls $00001366
 L00001332       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
 L00001336       MOVE.W  cp_protection_track(PC),D1                          ; $00000E76(PC),D1
 L0000133A       MOVE.W  D2,-(A7)
@@ -1023,10 +1064,14 @@ L00001354       BCLR.L  #$0002,D2
 L00001358       MOVE.B  D2,$00bfd100
 L0000135E       MOVE.L  #$000005dc,D0
 L00001364       MOVE.W  (A7)+,D2
-L00001366       LSR.L   #$00000005,D0
-L00001368       SUB.L   #$00000001,D0
-L0000136A       BNE.B   L00001368
-L0000136C       RTS 
+
+cp_processor_wait_loop                                                      ; original routine address $00001366
+                LSR.L   #$00000005,D0                                       ; divide D0 by 32
+.wait_loop      SUB.L   #$00000001,D0                                       ; decrement counter by 1
+                BNE.B   .wait_loop                                          ; if D0 != 0, loop
+                RTS 
+
+
 
 cp_end_protection_check                                             ; original routine address $0000136E
                 LEA.L   cp_register_store(PC),A0                    ; L00000E10(PC),A0
