@@ -763,28 +763,45 @@ cp_check_bytes_read                                             ; original routi
 
 
 
-cp_load_data1
-L00001070       MOVE.L  #$00000003,D0
-L00001072       BSR.W   cp_drive_on                             ; calls $00001206
-L00001076       BNE.B   L0000109C
-L00001078       MOVE.L  #$00000000,D2
-L0000107A       BSR.W   cp_seek_to_track                        ; D2.w = track number, calls $0000124C
-L0000107E       BNE.B   L0000109C
-L00001080       LEA.L   cp_mfm_buffer(PC),A0                    ;L00000DCA(PC),A0
-L00001084       MOVE.L  #$00000002,D2
-L00001086       MOVE.W  L000011EA(PC),D0
-L0000108A       BSR.W   L00001134
-L0000108E       BNE.B   L000010B2
-L00001090       DBF.W   D2,L00001086
-L00001094       MOVE.W  cp_saved_track_number(PC),D2            ; $00000E78(PC),D2
-L00001098       BSR.W   cp_seek_to_track                        ; D2.w = track number, calls $0000124C
-L0000109C       BSR.W   cp_drive_motor                          ; calls $0000121C
-L000010A0       LEA.L   cp_current_drive(PC),A0                 ; $00000E74(PC),A0
-L000010A4       ADD.W   #$0001,(A0)
-L000010A8       AND.W   #$0003,(A0)
-L000010AC       DBF.W   D3,L00001072
-L000010B0       MOVE.L  #$00000000,D0
-L000010B2       RTS 
+                ;------------------------------ Load Data 1 -------------------------------
+                ; this routine cycles through the disk drives and reads in data in to
+                ; the 'cp_mfm_buffer' for copy protection processing.
+                ; it works by, selecting the current drive, seeking to track 0,
+                ; selecting a sync mark from 'cp_disk_sync_table', then 
+                ; calling 'cp_read_disk' to read the data.
+                ; it will retry 3 times on a read error, and also try all connected drives.
+                ; IN: D0.w = current drive
+                ; IN: D1.w = current track
+cp_load_data1                                           ; original routine address $00001070
+                MOVE.L  #$00000003,D3                   ; disk drive retry count (next drive retry)
+retry_next_drive
+                BSR.W   cp_drive_on                     ; Switch on Current Drive $00000E74, calls $00001206
+                BNE.B   try_next_drive                  ; Z = 0, fail, jmp $0000109C
+                MOVE.L  #$00000000,D2                   ; D2 = desired track number
+                BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C
+                BNE.B   try_next_drive                  ; Z = 0, fail, jmp $000109C
+                ; read from disk
+                LEA.L   cp_mfm_buffer(PC),A0            ; A0 = mfm read buffer, $00000DCA
+                MOVE.L  #$00000002,D2                   ; D2 = read retry count
+retry_read_disk
+                MOVE.W  cp_disk_sync_table(PC),D0       ; D0 = first disk sync number from address $000011EA
+                BSR.W   cp_read_disk                    ; calls $00001134
+                BNE.B   exit_load_data1                 ; Z = 0, success, jmp $000010B2
+                ; read fail, retry
+                DBF.W   D2,retry_read_disk              ; retry the read, jmp $00001086
+                ; failed to read, reset drive
+                MOVE.W  cp_saved_track_number(PC),D2    ; $00000E78(PC),D2
+                BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C
+try_next_drive
+                BSR.W   cp_drive_off                    ; turn drive off, calls $0000121A
+                LEA.L   cp_current_drive(PC),A0         ; get current drive number ,$00000E74(PC),A0
+                ADD.W   #$0001,(A0)                     ; increase drive number
+                AND.W   #$0003,(A0)                     ; clamp drive number to range 0-3
+                DBF.W   D3,retry_next_drive             ; retry next drive number, jmp $00001072
+                ; all drives failed
+                MOVE.L  #$00000000,D0                   ; Z = 1, failed return code.
+exit_load_data1
+                RTS 
 
 
 
@@ -794,12 +811,12 @@ cp_load_data2                                                   ; original routi
 L000010B8       BSR.B   L0000110A
 L000010BA       MOVE.L  D0,D2
 L000010BC       MOVE.L  (A7),D0
-L000010BE       LEA.L   L000011EA(PC),A1
+L000010BE       LEA.L   cp_disk_sync_table(PC),A1               ; $000011EA(PC),A1
 L000010C2       LSL.L   #$00000001,D0
 L000010C4       MOVE.W  $00(A1,D0.L),D0
 L000010C8       MOVE.L  D0,D1
 L000010CA       MOVE.L  D1,D0
-L000010CC       BSR.B   L00001134
+L000010CC       BSR.B   cp_read_disk                            ; calls $00001134
 L000010CE       BEQ.B   L000010CA
 L000010D0       MOVE.L  D0,(A7)
 L000010D2       MOVE.W  (A0),D0
@@ -844,11 +861,12 @@ L0000112E       MOVEM.L (A7)+,D1-D2
 L00001132       RTS 
 
 
-L00001134       MOVEM.L D1-D4/A0-A1,-(A7)
+cp_read_disk                                            ; original routine adsdress $00001134
+                MOVEM.L D1-D4/A0-A1,-(A7)
 L00001138       MOVEA.L A0,A1
 L0000113A       LEA.L   $00dff000,A0
 L00001140       MOVE.W  D0,$007e(A0)
-L00001144       BSR.W   L00001332
+L00001144       BSR.W   cp_initialise_drive             ; motor on, current drive select, calls $00001332
 L00001148       MOVE.W  #$4000,$0024(A0)
 L0000114E       MOVE.L  A1,$0020(A0)
 L00001152       MOVE.W  #$6600,$009e(A0)
@@ -896,8 +914,9 @@ L000011E4       BNE.B   L00001200
 L000011E6       MOVE.L  #$00000000,D1
 L000011E8       BRA.B   L00001200
 
-L000011EA       dc.w    $8A91, $8A44, $8A45, $8A51, $8912, $8911, $8914, $8915      ;...D.E.Q........
-L000011FA       dc.w    $8944, $8945, $8951                                         ;.D.E.Q
+cp_disk_sync_table                              ; original address $000011EA
+                dc.w    $8A91, $8A44, $8A45, $8A51, $8912, $8911, $8914, $8915      ;...D.E.Q........
+                dc.w    $8944, $8945, $8951                                         ;.D.E.Q
 
 L00001200       MOVE.L D1,D0
 L00001202       ILLEGAL                                 ; normally switch on TVD again (encode/decode instructions again)
@@ -969,10 +988,15 @@ cp_is_drive_ready
 
 
 
-cp_seek_to_track                                                            ; original routine address $0000124C
-                MOVEM.L D1-D5,-(A7)
-L00001250       MOVE.W  D2,D5
-L00001252       BSR.W   L00001332
+                ;------------------------ seek to track ----------------------------
+                ; steps the currently selected disk drive's heads to the desired
+                ; track number.
+                ; IN: D2.W = desired track number
+                ;;
+cp_seek_to_track                                            ; original routine address $0000124C
+                MOVEM.L D1-D5,-(A7)                         ; save registers on stack
+L00001250       MOVE.W  D2,D5                               ; D2.W, D5.w = desired track number
+L00001252       BSR.W   cp_initialise_drive                 ; motor on, current drive select, calls $00001332
 L00001256       AND.W   #$007f,D5
 L0000125A       BEQ.B   L00001268
 L0000125C       MOVE.W  cp_current_drive(PC),D0                             ;  $00000E74(PC),D0
@@ -991,7 +1015,7 @@ L0000127A       BRA.B   L00001270
 L0000127C       BSR.B   L000012E4
 L0000127E       SUB.L   #$00000001,D4
 L00001280       BRA.B   L00001270
-L00001282       BSR.W   L00001332
+L00001282       BSR.W   cp_initialise_drive                     ; motor on, current drive select, calls $00001332
 L00001286       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
 L0000128A       LSL.W   #$00000001,D0
 L0000128C       LEA.L   cp_current_track(PC),A0                             ; $00000E70(PC),A0
@@ -1050,21 +1074,46 @@ L00001320       BSET.L  #$0000,D3
 L00001324       MOVE.B  D3,$00bfd100
 L0000132A       MOVE.L  #$00000bb8,D0
 L00001330       BRA.B   cp_processor_wait_loop                              ; calls $00001366
-L00001332       MOVE.W  cp_current_drive(PC),D0                             ; $00000E74(PC),D0
-L00001336       MOVE.W  cp_protection_track(PC),D1                          ; $00000E76(PC),D1
-L0000133A       MOVE.W  D2,-(A7)
-L0000133C       MOVE.B  $00bfd100,D2
-L00001342       OR.B    #$7f,D2
-L00001346       ADD.B   #$03,D0
-L0000134A       BCLR.L  D0,D2
-L0000134C       SUB.B   #$03,D0
-L00001350       TST.B   D1
-L00001352       BEQ.B   L00001358
-L00001354       BCLR.L  #$0002,D2
-L00001358       MOVE.B  D2,$00bfd100
-L0000135E       MOVE.L  #$000005dc,D0
-L00001364       MOVE.W  (A7)+,D2
 
+
+
+
+                ;----------------------- initialise_drive ---------------------------
+                ; initialise the current drive 'cp_current_drive', 
+                ;
+cp_initialise_drive                                     ; original routine address $00001332
+                MOVE.W  cp_current_drive(PC),D0         ; D0 = current drive number, $00000E74(PC),D0
+                MOVE.W  cp_protection_track(PC),D1      ; D1 = protection track number, $00000E76(PC),D1
+                MOVE.W  D2,-(A7)                        ; save D2 on stack
+                MOVE.B  $00bfd100,D2                    ; CIAB PRB - Disk control bits
+                OR.B    #$7f,D2                         ; select motor on MTR (bit 7 active low)
+                ADD.B   #$03,D0                         ; shift current dive number to Select bits
+                BCLR.L  D0,D2                           ; select the current drive (active low)
+                SUB.B   #$03,D0                         ; return current drive to drive number
+                TST.B   D1                              ; test protection track number
+                BEQ.B   skip_select_disk_side           ; if == 0, jmp $00001358   
+select_disk_side                    
+                BCLR.L  #$0002,D2                       ; if !=0 select disk side
+skip_select_disk_side
+                MOVE.B  D2,$00bfd100                    ; Select drive, with motor on
+                MOVE.L  #$000005dc,D0                   ; processor wait loop count $5DC = 1500 (very dodgy)
+                MOVE.W  (A7)+,D2                        ; restore D2 from stack
+                ; drop thorugh to cp_processor_wait
+
+
+
+
+                ;-------------------------- processor wait loop ---------------------------
+                ; this routine uses the process to perform a busy wait for delays.
+                ; disk routines require various delays between various disk ops to
+                ; allow the mechanics of the drive to preform the operation and become
+                ; ready for use with in a defined specificaiton. 
+                ; The H/W reference guide frowns upon processor wait loops because they 
+                ; are not constant on the Amiga, different processors/system config can
+                ; make processor loops unreliable.
+                ; best practice is to use CIA timers or VBL waits.
+                ; I guess no body cared or only expected this to work on bog-standard A500
+                ;
 cp_processor_wait_loop                                                      ; original routine address $00001366
                 LSR.L   #$00000005,D0                                       ; divide D0 by 32
 .wait_loop      SUB.L   #$00000001,D0                                       ; decrement counter by 1
