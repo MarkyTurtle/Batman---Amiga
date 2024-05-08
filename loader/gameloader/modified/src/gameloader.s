@@ -771,9 +771,11 @@ cp_check_bytes_read                                             ; original routi
                 ; selecting a sync mark from 'cp_disk_sync_table', then 
                 ; calling 'cp_read_disk' to read the data.
                 ; it will retry 3 times on a read error, and also try all connected drives.
+                ;
                 ; IN: D0.w = current drive
                 ; IN: D1.w = current track
                 ; OUT: D0.l = Failed = 0, Success = Serial Number/Bytes Read
+                ;
 cp_load_data1                                           ; original routine address $00001070
                 MOVE.L  #$00000003,D3                   ; disk drive retry count (next drive retry)
 retry_next_drive
@@ -782,15 +784,18 @@ retry_next_drive
                 MOVE.L  #$00000000,D2                   ; D2 = desired track number
                 BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C
                 BNE.B   try_next_drive                  ; Z = 0, fail, jmp $000109C
+
                 ; read from disk
                 LEA.L   cp_mfm_buffer(PC),A0            ; A0 = mfm read buffer, $00000DCA
                 MOVE.L  #$00000002,D2                   ; D2 = read retry count
 retry_read_disk
                 MOVE.W  cp_disk_sync_table(PC),D0       ; D0 = first disk sync number from address $000011EA -  (8A91 – Disc Sync)
-                BSR.W   cp_read_disk                    ; calls $00001134
-                BNE.B   exit_load_data1                 ; Z = 0, success, jmp $000010B2
+                BSR.W   cp_read_disk                    ; A0.l = data buffer, D0.l, D1.l = bytes read from disk, 0 = fail, calls $00001134
+                BNE.B   exit_load_data1                 ; Success then jmp $000010B2
+
                 ; read fail, retry
                 DBF.W   D2,retry_read_disk              ; retry the read, jmp $00001086
+
                 ; failed to read, reset drive
                 MOVE.W  cp_saved_track_number(PC),D2    ; D2.w = original track/cylinder number $00000E78
                 BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C
@@ -800,6 +805,7 @@ try_next_drive
                 ADD.W   #$0001,(A0)                     ; increase drive number
                 AND.W   #$0003,(A0)                     ; clamp drive number to range 0-3
                 DBF.W   D3,retry_next_drive             ; retry next drive number, jmp $00001072
+                
                 ; all drives failed
                 MOVE.L  #$00000000,D0                   ; Z = 1, failed return code.
 exit_load_data1
@@ -818,8 +824,9 @@ L000010C2       LSL.L   #$00000001,D0
 L000010C4       MOVE.W  $00(A1,D0.L),D0
 L000010C8       MOVE.L  D0,D1
 L000010CA       MOVE.L  D1,D0
-L000010CC       BSR.B   cp_read_disk                            ; calls $00001134
-L000010CE       BEQ.B   L000010CA
+L000010CC       BSR.B   cp_read_disk                            ; A0.l = data buffer, D0.l, D1.l = bytes read from disk, 0 = fail, calls $00001134
+L000010CE       BEQ.B   L000010CA                               ; failed
+
 L000010D0       MOVE.L  D0,(A7)
 L000010D2       MOVE.W  (A0),D0
 L000010D4       EOR.W   D2,D0
@@ -863,23 +870,37 @@ L0000112E       MOVEM.L (A7)+,D1-D2
 L00001132       RTS 
 
 
+
+
+                ;--------------------------- read protected disk -----------------------------
+                ; reads the protected track data. Sets up the custom chips,
+                ; disk contoller, disk dma, and clears disk interrupts.
+                ; calls routine 'read_protected_track' to 'manually' read data from the disk.
+                ;
+                ; IN: D0.w - Disk Sync Mark
+                ; IN: A0.l - load buffer (disk read buffer)
+                ; OUT: D0.L, D1.L = number of bytes read (including skipped bytes), 0 = failure
+                ; CCR: Z = 0 - Success, Z = 1 - Failure
+                ;
 cp_read_disk                                            ; original routine adsdress $00001134
                 MOVEM.L D1-D4/A0-A1,-(A7)
-L00001138       MOVEA.L A0,A1
-L0000113A       LEA.L   $00dff000,A0
-L00001140       MOVE.W  D0,$007e(A0)
-L00001144       BSR.W   cp_initialise_drive             ; motor on, current drive select, calls $00001332
-L00001148       MOVE.W  #$4000,$0024(A0)
-L0000114E       MOVE.L  A1,$0020(A0)
-L00001152       MOVE.W  #$6600,$009e(A0)
-L00001158       MOVE.W  #$9500,$009e(A0)
-L0000115E       MOVE.W  #$8010,$0096(A0)
-L00001164       MOVE.W  #$0002,$009c(A0)
-L0000116A       BSR.W   read_protected_track            ; calls $0000117C
-L0000116E       MOVE.W  #$0400,$009e(A0)
-L00001174       TST.L   D0
-L00001176       MOVEM.L (A7)+,D1-D4/A0-A1
-L0000117A       RTS 
+                MOVEA.L A0,A1                           ; A1 = Disk Data Buffer
+                LEA.L   $00dff000,A0                    ; A0 = Custom Chip Base Address
+                MOVE.W  D0,DSKSYNC(A0)                  ; set disk sync mark for controller to search for
+                BSR.W   cp_initialise_drive             ; motor on, current drive select, calls $00001332
+                MOVE.W  #$4000,DSKLEN(A0)               ; disable disk DMA
+                MOVE.L  A1,DSKPT(A0)                    ; disk DMA buffer
+                MOVE.W  #$6600,ADKCON(A0)               ; Clear Precomp, WordSync, MSBSync
+                MOVE.W  #$9500,ADKCON(A0)               ; Enable MFM Precomp, WordSync, Fast (MFM)
+                MOVE.W  #$8010,DMACON(A0)               ; Enable Disk DMA
+                MOVE.W  #$0002,INTREQ(A0)               ; Clear DSKBLK interrupt
+                BSR.W   read_protected_track            ; A1 = load buffer, D0,D1 = bytes read (including skipped bytes), calls $0000117C
+                MOVE.W  #$0400,$009e(A0)
+                TST.L   D0
+                MOVEM.L (A7)+,D1-D4/A0-A1
+                RTS 
+
+
 
 
                 ; counter starts at 400,000 and decrements from the index pulse
