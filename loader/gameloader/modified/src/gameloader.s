@@ -474,10 +474,15 @@ cp_register_store                                                               
 
                 ;------------ saved exception vector values --------------------------
 cp_exception_vectors_store                                                              ; original address $00000E50
-                dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-                dc.W    $0000, $0000, $0000, $0000, $0000, $0000                        ;............
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000 
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
 cp_checksum_vector 
-                dc.w    $0000, $0000                                                    ; original address $00000E6C
+                dc.l    $00000000                                                       ; original address $00000E6C
 
 
                 ;------------ current drive track numbers ---------------------------
@@ -513,39 +518,48 @@ cp_decode_instructions                                                          
 
 
 
+                ;----------------- initialise copy protection ------------------------
+                ; 1) Saves a copy of all registers in 'cp_register_store'
+                ; 2) Enters 68000 'supervisor' mode by generating an ILLEGAL exception
+                ; 3) Saves exception vectors into cp_exception_vectors memory store.
+                ; 4) Insert TVD toggle on/off into ILLEGAL exception handler
+                ; 5) Toggle on the TVD
+copy_protection_init1                                               ; original routine address $00000E82
+                MOVE.L  A6,-(A7)                                    ; current value A6 stored on stack
+                LEA.L   cp_register_store(PC),A6                    ; A6 = register storage area, $00000E10
+                MOVEM.L D0-D7/A0-A7,(A6)                            ; save all register values to storage area
+                LEA.L   $0040(A6),A6                                ; A6 = cp_exception_vectors_store (64 bytes offset from cp_register_store)
+                MOVE.L  (A7)+,-$0008(A6)                            ; save original A6 value from stack in cp_register_store
+                MOVE.L  $00000010,D0                                ; D0.l = ILLEGAL exception vector value
+                PEA.L   cp_supervisor(PC)                           ; push address of cp_supervisor to stack
+                MOVE.L  (A7)+,$00000010                             ; set ILLEGAL exception vector with address of cp_supervisor from stack
+                ILLEGAL                                             ; enter supervisor mode, continue execution at 'cp_supervisor'
 
-copy_protection_init1                                                           ; original routine address $00000E82
-                MOVE.L  A6,-(A7)
-                LEA.L   cp_register_store(PC),A6                                ; L00000E10(pc),A6
-                MOVEM.L D0-D7/A0-A7,(A6)
-                LEA.L   $0040(A6),A6
-                MOVE.L  (A7)+,-$0008(A6)
-                MOVE.L  $00000010,D0
-                PEA.L   cp_supervisor(PC)                                                     
-                MOVE.L  (A7)+,$00000010
-                ILLEGAL  
-
-                ;------------ enter supervisor (if not already) ------------------
-                ;-- This exception never returns to this point in the code.
-                ;-- Later the stack is return address is modified to return to
-                ;-- the address L0000139C 'cp_end'
-
+                ; -- Enter supervisor mode
+                ; This exception never returns to this point in the code.
+                ; Later the stack is return address is modified to return to
+                ; the routine at address $0000139C 'cp_end'
 cp_supervisor                               
-                MOVE.L  D0,$00000010
-                MOVEM.L $00000008,D0-D7
-                MOVEM.L D0-D7,(A6)
+                MOVE.L  D0,$00000010                                ; restore ILLEGAL exception vector to original value.
+ 
+                ; -- Save exception vectors
+                MOVEM.L $00000008,D0-D7                             ; copy 8 exception vectors $8 - $24 into registers D0-D7
+                MOVEM.L D0-D7,(A6)                                  ; save exception vectors into cp_exception_vectors memory store
 
+                ; -- Insert Trace Vector Decoder into ILLEGAL exception vector
                 LEA.L cp_toggle_tvd(PC),A0
-                MOVE.L A0,$00000010                             ; Set ILLEGAL Exception vector to 'cp_toggle_tvd'
-                ILLEGAL                                         ; Toggle on trace vector decoder (TVD)
+                MOVE.L A0,$00000010                                 ; Set ILLEGAL Exception vector to 'cp_toggle_tvd'
+
+                ; -- Toggle On TVD (patched to flash screen as code is now decoded)
+                ILLEGAL                                             ; Toggle on trace vector decoder (TVD)
                 ; Execution continues here with TVD on
-                ; normally the code would be encoded.
+                ; Normally the following code would be encoded and illegible.
 
                 ;---------------- jump around table nonsense --------------------
                 ;-- Normally this code would be encoded by the TVD, this table
                 ;-- of jumps is no doubt intended to cause confusion and
                 ;-- cause would-be crackers problems tracing the code.
-cp_confusion
+cp_confusion                                                        ; original instruction address $00000EC4
 L00000EC4       BRA.W L00000ED4
 L00000EC8       BRA.W L00000F04
 L00000ECC       BRA.W L00000F30
@@ -563,7 +577,7 @@ L00000EF8       BRA.W L00000F28
 L00000EFC       BRA.W L00000F10
 L00000F00       BRA.W L00000EE4
 L00000F04       BRA.W L00000EE8
-L00000F08       BRA.W cp_set_vectors                                        ;L00000f9e Exit point from the jumps
+L00000F08       BRA.W cp_set_vectors                                ;  Exit point from the jumps, jmp $00000F9E
 L00000F0C       BRA.W L00000F14
 L00000F10       BRA.W L00000ED0
 L00000F14       BRA.W L00000F1C
@@ -577,35 +591,46 @@ L00000F30       BRA.W L00000F08
 L00000F34       BRA.W L00000F20
 
 
-                ;------------ copy protection - toggle trace vector decoder -------------
-                ;-- ILLEGAL intruction exception handler, this routine would normally
-                ;-- toggle on/off the TVD and also decode/encode the first/last
-                ;-- instruction that was being executed by the copy protection.
-                ;-- It's been patched so it doesn't encode/decode any instructions,
-                ;-- The 68000 trace bit is still toggled in 
-cp_toggle_tvd                                                                   ; original routine address $00000F38
-                MOVEM.L D0/A0-A1,-(A7)
-                LEA.L   cp_tvd(PC),A0                                           ; A0 = Address of Trace Vector Decoded routine. 
-                MOVE.L  A0,$00000024                                            ; Set TVD Address in Trace Exception Vector
-                LEA.L   cp_end(PC),A0                                           ; A0 = Address of copy protection end routine 'cp_end' $0000139C 
-                MOVE.L  A0,$00000020                                            ; Set 'cp_end' in Privilege Violation Exception Vector, maybe a protection mechanism to prevent tampering.
-                ADD.L   #$00000002,$000e(A7)                                    ; Increment the return address on stack 2 bytes
-                OR.B    #$07,$000c(A7)                                          ; Enable Interrupts
-                BCHG.B  #$07,$000c(A7)                                          ; Toggle the 68000 trace bit on/off
-                LEA.L   cp_decode_instructions(PC),A1                           ; unused (locatopn previously used for encode/decode)
-                MOVEM.L (A7)+,D0/A0-A1
-                RTE 
-                NOP 
-                NOP 
+
+
+                ;---------------- copy protection - toggle trace vector decoder ----------------
+                ;-- ILLEGAL intruction exception handler, 
+                ; This routine toggles on/off the 68000 trace mode whenan ILLEGAL 
+                ; instruction is executed.
+                ; Originally, this routine would have also decoded/encoded the first/last
+                ; instruction that was being executed by the copy protection.
+                ; It's been patched so it doesn't encode/decode any instructions,
+                ; The 68000 trace bit is still toggled on/off to enable/disable the TVD routine
+                ;
+cp_toggle_tvd                                                       ; original routine address $00000F38
+                MOVEM.L D0/A0-A1,-(A7)                              ; save registers on stack
+                LEA.L   cp_tvd(PC),A0                               ; A0 = Address of Trace Vector Decoded routine. 
+                MOVE.L  A0,$00000024                                ; Set TVD Address in Trace Exception Vector
+                LEA.L   cp_end(PC),A0                               ; A0 = Address of copy protection end routine 'cp_end' $0000139C 
+                MOVE.L  A0,$00000020                                ; Set 'cp_end' in Privilege Violation Exception Vector, maybe a protection mechanism to prevent tampering.
+                ADD.L   #$00000002,$000e(A7)                        ; Increment the return address on stack 2 bytes
+                OR.B    #$07,$000c(A7)                              ; Enable Interrupts
+                BCHG.B  #$07,$000c(A7)                              ; Toggle the 68000 trace bit on/off
+                LEA.L   cp_decode_instructions(PC),A1               ; unused (locatopn previously used for encode/decode)
+                MOVEM.L (A7)+,D0/A0-A1                              ; restore registers from the stack
+                RTE                                                 ; The act of returning sets the SR (Toggle Trace) and PC 
+                NOP                                                 ; ... patch code
+                NOP                                                 ; ... patch code
+
+
 
 
                 ;----------- copy protection - trace vector decoder (TVD) -------------
-                ;-- This code would normaly decode the next instruction and encode
-                ;-- the previous copy protection instruction while the 68000 is
-                ;-- in trace mode.
-                ;-- Patched to do nothing but flash the screen when each instruction
-                ;-- executes while the 68000 trace bit is enabled.
-cp_tvd                                                                  ; original routine address $00000F72
+                ; This code would have originally decoded the next instruction and 
+                ; re-encoded the previous instruction while the 68000 is in trace mode.
+                ; 
+                ; It has been patched to do nothing but flash the screen when each 
+                ; instruction executes while the 68000 trace bit is enabled.
+                ;
+                ; The NOPs have been added as patch code to keep the code the
+                ; same size (bytes) as the original code.
+                ;
+cp_tvd                                                              ; original routine address $00000F72
                 AND.W #$f8ff,SR
                 MOVEM.L D0/A0-A1,-(A7)
                 NOP 
@@ -623,8 +648,21 @@ cp_tvd                                                                  ; origin
                 RTE 
 
 
-                ;------------ copy protection - set vectors -------------------
-                ; updates exception vectors $08 (Bus Error) to $24 (Trace)
+
+
+                ;------------------ copy protection - set vectors -------------------------
+                ; After the copy protection initialisation and the execution through the
+                ; maze of encoded jumps, the execution continues here.
+                ;
+                ; The routine installs a new set of Exception Vectors, some useless,
+                ; others useful. i.e. Toggle TVD and the TVD istself.
+                ;
+                ; The vector routine addresses are calculated by adding address offsets
+                ; to the address of the 'copy_protection_init' routine.
+                ; So if the code changes size then the addresses will be wrong, unless
+                ; the offsets are correctly updated also.
+                ;
+                ; Updates exception vectors $08 (Bus Error) to $24 (Trace)
                 ; with new values, the original code updates the vectors
                 ; to the following values:-
                 ;
@@ -651,12 +689,12 @@ cp_tvd                                                                  ; origin
                 ; problems with the execution of the code.
                 ;
 cp_set_vectors                                                  ; original routine address $00000F9E
-                LEA.L exception_vector_offsets(PC),A0
+                LEA.L exception_vector_offsets(PC),A0           ; A0 = address of 'exception handler address offsets' table.
                 LEA.L $00000008,A1                              ; A1 = first exception vector address $08 = Bus Error
                 LEA.L copy_protection_init1(PC),A2              ; A2 = Address of 'copy_protection_init1', originally $00000E82
                 MOVE.L #$00000007,D0                            ; D0 = loop counter 7 + 1
 .loop
-                MOVE.L #$00000000,D1
+                MOVE.L #$00000000,D1                            ; D1 = 0.l - clear value
                 MOVE.W (A0)+,D1                                 ; D1 = next handler address offset
                 ADD.L A2,D1                                     ; D1 = offset + base address 'copy_protection_init1'
                 MOVE.L D1,(A1)+                                 ; set exception handler address
@@ -674,62 +712,109 @@ exception_vector_offsets                                        ; original addre
                 ; check the values loaded from the track and calculate a 
                 ; checksum/serial number for the copy protection check.
                 ;
+                ; 1) Check is a Copylock Disk ( cp_load_data1 uses 1st sync mark from cp_disk_sync_table $8A91)
+                ;    - if fail then exit
+                ;
+                ; 2) Read data using sync mark ($8911) table index from D0.l = #$0000005 from cp_disk_sync_table
+                ;       store bytes read in D3.l
+                ;       discards data read into buffer A0.l
+                ;
+                ; 3) Read data using sync mark ($8912) table index from D0.l = #$0000004 from cp_disk_sync_table
+                ;       store bytes read in D1.l
+                ;       discards data read into buffer A0.l
+                ;
+                ; 4) Validate number of bytes read in steps 2 & 3 above
+                ;       D0.l = bytes read (1st read)
+                ;       D1.l = bytes read (2nd read)
+                ;
+                ; 5) Read data using sync mark ($8914) table index from D0.l = #$0000006 from cp_disk_sync_table
+                ;       store bytes read in D0.l 
+                ;       data buffer contains data checked in step 5 below.
+                ;
+                ; 4) Validate number of bytes read in steps 2 & 3 above
+                ;       D0.l = bytes read (3rd read)
+                ;       D1.l = bytes read (1st read)
+                ;
+                ; 5) Compares 1st 4 Longs (16 bytes) with the values 'Rob Northen Comp'
+                ;       ** TODO ** - examine further 10 bytes read in to buffer (could be game data)
+                ;                  - 
+                ;
+                ;
 cp_do_protection_check                                          ; original routine address $00000FCE
                 LEA.L  cp_exception_vectors_store(PC),A1        ; A1 = Address buffer of saved exception vectors $00000E50
                 CLR.L  $001C(A1)                                ; clear copy protection checksum value $00000E6C
                 BSR.W  cp_load_data1                            ; cp_load_data1, calls $00001070, D0.l = 0 then fail
                 BEQ.W  cp_end_protection_check                  ; if Z = 1 then fail, jmp $0000136E
 
-                MOVE.L #$00000006,D2                            ; D2 = loop counter
-.retry_loop                                                      ; original address $00000FE0
+                    ; D0.l = Number of bytes read (including skiped bytes) (appears to be ignored except for check = 0 above)
+                    ; cp_mfm_buffer = 50 bytes of data read from disk (appears to be ignored and overwritten again below)
+                    ; perhaps cp_load_data1 is just a verification that this is a copylock disk before proceeding further?
+
+                MOVE.L #$00000006,D2                            ; D2 = loop counter -retry count
+.retry_loop                                                     
                 SUB.L  #$00000001,D2                            ; D2 = decrement by 1
-                BEQ.B  exit_do_protection_check                 ; if D2 = 0 then jmp $00001044
+                BEQ.B  exit_do_protection_check                 ; if D2 = 0 then exit, jmp $00001044
 
-                LEA.L  cp_mfm_buffer(PC),A0                     ; $00000DCA
-                MOVE.L #$00000005,D0
-                BSR.W  cp_load_data2                            ; read from disk - calls $000010B4
-                MOVE.L D0,D3                                    ; D0,D3 = num bytes read
+                LEA.L  cp_mfm_buffer(PC),A0                     ; A0.l = MFM/data buffer -$00000DCA
 
-                MOVE.L #$00000004,D0
-                BSR.W  cp_load_data2                            ; read from disk - calls $000010B4
-                MOVE.L D0,D1                                    ; D1 = num bytes read (cp_load_data2 - 2nd read)
-                MOVE.L D3,D0                                    ; D0 = num bytes read (cp_load_data2 - 1st read)
+                ; Read Data 1
+                MOVE.L #$00000005,D0                            ; D0 = sync mark table index value
+                BSR.W  cp_load_data2                            ; Read 24 bytes from disk, return number of bytes read - calls $000010B4
+                MOVE.L D0,D3                                    ; D0.l,D3.l = num bytes read (including skipped bytes)
+
+                ; Read Data 2
+                MOVE.L #$00000004,D0                            ; D0 = sync mark table index value
+                BSR.W  cp_load_data2                            ; Read 24 bytes from disk, return number of bytes read - calls $000010B4
+
+                ; validate bytes read (1st and 2nd cp_load_data2 results)
+                MOVE.L D0,D1                                    ; D0.l,D1.l = num bytes read (cp_load_data2 - 2nd read)
+                MOVE.L D3,D0                                    ; D3.l,D0.l = num bytes read (cp_load_data2 - 1st read)
                 BSR.B  cp_check_bytes_read                      ; check bytes read, $00001058
-                BMI.B  .retry_loop                               ; if N = 1 then retry, jmp $00000FE0
+                BMI.B  .retry_loop                              ; 0 = success, if N = 1 then retry, jmp $00000FE0
 
-                MOVE.L #$00000006,D0
-                BSR.W  cp_load_data2                            ; calls $000010B4
+                ; Read Data 3
+                MOVE.L #$00000006,D0                            ; D0 = sync mark table index value
+                BSR.W  cp_load_data2                            ; Read 24 bytes from disk, return number of bytes read - calls $000010B4
+
+                ; validate bytes read (3rd and 1st cp_load_data2 results)
                 MOVE.L D3,D1                                    ; D1 = num bytes read (cp_load_data2 - 1st read)
                                                                 ; D0 = num bytes read (cp_load_data2 - 3rd read)
                 BSR.B  cp_check_bytes_read                      ; check bytes read, $00001058
-                BMI.B  .retry_loop                               ; if N = 1 then retry, jmp $00000FE0
+                BMI.B  .retry_loop                              ; 0 = success, if N = 1 then retry, jmp $00000FE0
 
+.compare_string
+                ; compare 1st 16 bytes loaded in load 3 
+                ; with the string 'Rob Nothen Comp'
                 CMP.L  #'Rob ',(A0)                             ; #$526f6220,(A0)
-                BNE.B  .retry_loop                               ; $00000FE0
+                BNE.B  .retry_loop                              ; $00000FE0
 
                 CMP.L  #'Nort',$0004(A0)                        ; #$4e6f7274,$0004(A0)
-                BNE.B  .retry_loop                               ; $00000FE0
+                BNE.B  .retry_loop                              ; $00000FE0
 
                 CMP.L  #'hen ',$0008(A0)                        ;  #$68656e20,$0008(A0)'
-                BNE.B  .retry_loop                               ; $00000FE0
+                BNE.B  .retry_loop                              ; $00000FE0
 
                 CMP.L  #'Comp',$000c(A0)                        ; #$436f6d70,$000c(A0)
-                BNE.B  .retry_loop                               ; $00000FE0
+                BNE.B  .retry_loop                              ; $00000FE0
 
-                ; update copy protection checksum/serial no. 
-                MOVE.L #$00000005,D1                            ; D1 = loop counter 5 + 1
-                MOVEA.L A0,A1                                   ; A1 = decoded copy protection data buffer
+.calc_checksum
+                ; create copy protection checksum/serial no. 
+                ; accumulate a value in D0.l by summing and rotating data buffer values
+                ; D0.l = accumulator value for checksum/serial (inital value = $00000000)
+                ; A0.l = data buffer (decode mfm 24 bytes)
+                MOVE.L #$00000005,D1                            ; D1 = loop counter 5 + 1 (6  * 4 = 24 bytes)
+                MOVEA.L A0,A1                                   ; A0, A1 = decoded copy protection data buffer
 .checksum_loop
-                ADD.L  (A1)+,D0                                 ; D0 = add next long word of buffer data
-                ROL.L  #$00000001,D0                            ; D0 = rotate data left
+                ADD.L  (A1)+,D0                                 ; D0.l = sum next long word of buffer data to accumulator value D0.l
+                ROL.L  #$00000001,D0                            ; D0.l = rotate data left
                 DBF.W  D1,.checksum_loop                        ; loop through 6 long words (24 bytes)
-
-                LEA.L  cp_exception_vectors_store(PC),A1        ; $00000E50
-                ADD.L  D0,$001C(A1)                             ; update copy protection checksum $00000E6C
+.store_checksum
+                LEA.L  cp_exception_vectors_store(PC),A1        ; table of stored exception vector values, $00000E50
+                ADD.L  D0,$001C(A1)                             ; set copy protection checksum $00000E6C (cleared at start of routine above)
 
 exit_do_protection_check                                        ; original address $00001044
                 MOVE.W cp_saved_track_number(PC),D2             ; $00000E78
-                BSR.W  cp_seek_to_track                         ; D2.w = track number, calls $0000124C
+                BSR.W  cp_seek_to_track                         ; D2.w = track number, calls $0000124C (stores current track number)
                 BSR.W  cp_drive_off                             ; switch drive motor off $0000121A
                 MOVE.L cp_checksum_vector(PC),D0                ; $00000E6C
                 BRA.W  cp_end_protection_check                  ; jmp $0000136E
@@ -768,13 +853,13 @@ cp_check_bytes_read                                             ; original routi
                 ; this routine cycles through the disk drives and reads in data in to
                 ; the 'cp_mfm_buffer' for copy protection processing.
                 ; it works by, selecting the current drive, seeking to track 0,
-                ; selecting a sync mark from 'cp_disk_sync_table', then 
+                ; selecting the first sync mark from 'cp_disk_sync_table', then 
                 ; calling 'cp_read_disk' to read the data.
                 ; it will retry 3 times on a read error, and also try all connected drives.
                 ;
                 ; IN: D0.w = current drive
                 ; IN: D1.w = current track
-                ; OUT: D0.l = Failed = 0, Success = Serial Number/Bytes Read
+                ; OUT: D0.l = Failed = 0, Success = Serial Number/Bytes Read (includng skipped bytes)
                 ;
 cp_load_data1                                           ; original routine address $00001070
                 MOVE.L  #$00000003,D3                   ; disk drive retry count (next drive retry)
@@ -782,7 +867,7 @@ retry_next_drive
                 BSR.W   cp_drive_on                     ; Switch on Current Drive $00000E74, calls $00001206
                 BNE.B   try_next_drive                  ; Z = 0, fail, jmp $0000109C
                 MOVE.L  #$00000000,D2                   ; D2 = desired track number
-                BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C
+                BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C (stores current track number)
                 BNE.B   try_next_drive                  ; Z = 0, fail, jmp $000109C
 
                 ; read from disk
@@ -790,7 +875,7 @@ retry_next_drive
                 MOVE.L  #$00000002,D2                   ; D2 = read retry count
 retry_read_disk
                 MOVE.W  cp_disk_sync_table(PC),D0       ; D0 = first disk sync number from address $000011EA -  (8A91 – Disc Sync)
-                BSR.W   cp_read_disk                    ; A0.l = data buffer, D0.l, D1.l = bytes read from disk, 0 = fail, calls $00001134
+                BSR.W   cp_read_disk                    ; A0.l = data buffer, D0.l, D1.l = bytes read from disk (including skipped bytes), 0 = fail, calls $00001134
                 BNE.B   exit_load_data1                 ; Success then jmp $000010B2
 
                 ; read fail, retry
@@ -798,7 +883,7 @@ retry_read_disk
 
                 ; failed to read, reset drive
                 MOVE.W  cp_saved_track_number(PC),D2    ; D2.w = original track/cylinder number $00000E78
-                BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C
+                BSR.W   cp_seek_to_track                ; D2.w = track number, calls $0000124C (stores current track number)
 try_next_drive
                 BSR.W   cp_drive_off                    ; turn drive off, calls $0000121A
                 LEA.L   cp_current_drive(PC),A0         ; A0 = current drive number $00000E74
@@ -814,72 +899,132 @@ exit_load_data1
 
 
 
+                ;-------------------------------- Load Data 2 ----------------------------------
+                ; Called 3 times by the copy protection routine to load in data from the
+                ; protected track.
+                ;
+                ; Loads in 50 bytes of MFM enccoded data into data buffer A0.l
+                ; Decodes the data to 24 bytes of data in data buffer A0.l
+                ; Returns a value of the number of bytes read (including bytes skipped by read routine)
+                ;
+                ; Decodes the loaded mfm data buffer in-place over raw mfm data read in.
+                ; This is possible because decoded data is half the size of the loaded data
+                ;  - The data buffer is 50 bytes long
+                ;  - The first word is tested against the expected mfm encoded sync mark table index value (D0.l)
+                ;  - This leaves 48 bytes of encoded mfm data (4 * 12)
+                ;  - Which is decoded to 24 bytes of decoded data in place in the data buffer.
+                ;
+                ; IN: D0.l  - index value for selecting the disk sync mark for the disk read.
+                ;           - Also encoded to MFM and stored in D2 
+                ;           - called with the following values
+                ;           - D0.l $00000005 - $AAAAAA91 - Sync $8911
+                ;           - D0.l $00000004 - $AAAAAA92 - Sync $8912
+                ;           - D0.l $00000006 - $AAAAAA96 - Sync $8914
+                ;
+                ; IN: A0.l  - mfm data buffer (read & decode buffer)
+                ;
+                ; OUT: A0.l - decoded data buffer (24 bytes)
+                ; OUT: D0.l - number of bytes read (including skipped bytes)
+                ;
 cp_load_data2                                                   ; original routine address $000010B4
-                MOVEM.L D0-D2/A0-A1,-(A7)
-L000010B8       BSR.B   L0000110A
-L000010BA       MOVE.L  D0,D2
-L000010BC       MOVE.L  (A7),D0
-L000010BE       LEA.L   cp_disk_sync_table(PC),A1               ; $000011EA(PC),A1
-L000010C2       LSL.L   #$00000001,D0
-L000010C4       MOVE.W  $00(A1,D0.L),D0
-L000010C8       MOVE.L  D0,D1
-L000010CA       MOVE.L  D1,D0
-L000010CC       BSR.B   cp_read_disk                            ; A0.l = data buffer, D0.l, D1.l = bytes read from disk, 0 = fail, calls $00001134
-L000010CE       BEQ.B   L000010CA                               ; failed
+                MOVEM.L D0-D2/A0-A1,-(A7)                       ; save registers to stack
+                BSR.B   cp_encode_mfm_word                      ; encodes D0.w to D0.l (see above), calls $0000110A  
+                MOVE.L  D0,D2                                   ; D2 = mfm encoded disk sync index value
+                MOVE.L  (A7),D0                                 ; D0 = reset to orginal value from stack
+                LEA.L   cp_disk_sync_table(PC),A1               ; A1 = disk sync table - $000011EA
+                LSL.L   #$00000001,D0                           ; D0 = word index to disk sync table
+                MOVE.W  $00(A1,D0.L),D0                         ; D0.w = disc sync for read (see above)
+                MOVE.L  D0,D1                                   ; D1.l = disk sync value
+.retry_load
+                MOVE.L  D1,D0                                   ; D0.l = disk sync value
+                BSR.B   cp_read_disk                            ; read track with sync mark, A0.l = data buffer, D0.l, D1.l = bytes read from disk, 0 = fail, calls $00001134
+                BEQ.B   .retry_load                             ; failed, could be infinite loop if continues to fail, jmp $000010CA
 
-L000010D0       MOVE.L  D0,(A7)
-L000010D2       MOVE.W  (A0),D0
-L000010D4       EOR.W   D2,D0
-L000010D6       AND.W   #$5555,D0
-L000010DA       BNE.B   L000010CA
-L000010DC       MOVEA.L A0,A1
-L000010DE       TST.W   (A0)+
-L000010E0       MOVE.L  #$0000000b,D1
-L000010E2       MOVE.L  (A0)+,D0
-L000010E4       BSR.W   L000010F4
-L000010E8       MOVE.W  D0,(A1)+
-L000010EA       DBF.W   D1,L000010E2
-L000010EE       MOVEM.L (A7)+,D0-D2/A0-A1
-L000010F2       RTS 
-
-
-L000010F4       MOVEM.L D1-D2,-(A7)
-L000010F8       MOVE.L  D0,D1
-L000010FA       MOVE.L  #$0000000f,D2
-L000010FC       ROXL.L  #$00000002,D1
-L000010FE       ROXL.L  #$00000001,D0
-L00001100       DBF.W   D2,L000010FC
-L00001104       MOVEM.L (A7)+,D1-D2
-L00001108       RTS 
+                MOVE.L  D0,(A7)                                 ; save bytes read count to stack (d0 saved data position)
+                MOVE.W  (A0),D0                                 ; get first word of mfm buffer
+                EOR.W   D2,D0                                   ; exclusive or mfm encoded sync mark index (D2) with value read from disk
+                AND.W   #$5555,D0                               ; mask out clock bits, leaving any data bits.
+                BNE.B   .retry_load                             ; failed, could be infinite loop if continues to fail, jmp $000010CA
+.mfm_decode_in_place
+                MOVEA.L A0,A1                                   ; A1 = data buffer
+                TST.W   (A0)+                                   ; skip 1st word (sync index tested above)
+                MOVE.L  #$0000000b,D1                           ; D1 = 11 + 1 counter (12 * 4 bytes) 50 bytes total with sync index
+.mfm_decode_loop
+                MOVE.L  (A0)+,D0                                ; D0.l = MFM encoded 32 bit value
+                BSR.W   cp_decode_mfm_word                      ; decode 32bit mfm value to 16bit value, calls $000010F4
+                MOVE.W  D0,(A1)+                                ; Store decoded value over mfm buffer.
+                DBF.W   D1,.mfm_decode_loop                     ; loop to decode 12 longs (48 bytes) to 12 words (24 bytes), jmp $000010E2
+.exit
+                MOVEM.L (A7)+,D0-D2/A0-A1                       ; restore saved values, D0.l = bytes read, A0.l = data buffer
+                RTS 
 
 
-L0000110A       MOVEM.L D1-D2,-(A7)
-L0000110E       SWAP.W  D0
-L00001110       MOVE.L  D0,D2
-L00001112       MOVE.L  #$0000000f,D1
-L00001114       LSL.L   #$00000002,D0
-L00001116       ROXL.L  #$00000001,D2
-L00001118       BCS.B   L00001126
-L0000111A       BTST.L  #$0002,D0
-L0000111E       BNE.B   L0000112A
-L00001120       BSET.L  #$0001,D0
-L00001124       BRA.B   L0000112A
-L00001126       BSET.L  #$0000,D0
-L0000112A       DBF.W   D1,L00001114
-L0000112E       MOVEM.L (A7)+,D1-D2
-L00001132       RTS 
+
+
+                ;---------------------------- mfm deocde -------------------------------
+                ; This routine decodes an MFM encoded longword to a decoded word.
+                ; long-winded way of mfm decoding the value. A Mask, Shift and OR would
+                ; do the job nicely.
+                ;
+                ; IN: D0.l - MFM encoded 32 bit long word
+                ; OUT: D0.w - Decoded 16 bit word
+                ;
+cp_decode_mfm_word                                  ; original routin address $000010F4
+                MOVEM.L D1-D2,-(A7)
+                MOVE.L  D0,D1
+                MOVE.L  #$0000000f,D2               ; D2 = 15 + 1 bits to decode
+.decode_loop
+                ROXL.L  #$00000002,D1
+                ROXL.L  #$00000001,D0
+                DBF.W   D2,.decode_loop             ; decode loop, jmp $000010FC
+.exit
+                MOVEM.L (A7)+,D1-D2
+                RTS 
+
+
+
+
+                ;---------------------------- mfm encode word --------------------------
+                ; MFM encoder routine that encodes the low word of D0.l with clock bits.
+                ; a long-winded method of MFM encoding the data.
+                ; A couple of masks, shifts, EORs, and ORs would do the job nicely.
+                ; 
+                ; IN:  D0.l - $00000005, $00000004, $00000006    - raw value
+                ; OUT: D0.l - $AAAAAA91, $AAAAAA92, $AAAAAA94    - mfm encoded value
+                ;
+cp_encode_mfm_word
+                MOVEM.L D1-D2,-(A7)
+                SWAP.W  D0                          ; D0 = $00050000, $00040000, $00060000
+                MOVE.L  D0,D2                       ; D2 = $00050000, $00040000, $00060000
+                MOVE.L  #$0000000f,D1               ; D1 = 15 + 1 - loop counter, encode 16 bits to 32 bits
+
+.encode_loop
+                LSL.L   #$00000002,D0
+                ROXL.L  #$00000001,D2
+                BCS.B   .set_clock                  ; Was 1 bit is shifted out? Yes then, 1 is always encoded as 01), jmp $00001126
+                BTST.L  #$0002,D0                   ; else bit = 0, Was previous bit a 1?
+                BNE.B   .continue                   ;                - Yes, value = 00, continue, next bit encoding, jmp $0000112A
+                BSET.L  #$0001,D0                   ;                - No,  value = 10,
+                BRA.B   .continue                   ; continue, next bit encoding, jmp $0000112A
+.set_clock
+                BSET.L  #$0000,D0
+.continue
+                DBF.W   D1,.encode_loop             ; continue to encode next bits, jmp $00001114
+.exit
+                MOVEM.L (A7)+,D1-D2
+                RTS 
 
 
 
 
                 ;--------------------------- read protected disk -----------------------------
-                ; reads the protected track data. Sets up the custom chips,
+                ; Reads the protected track data. Sets up the custom chips,
                 ; disk contoller, disk dma, and clears disk interrupts.
                 ; calls routine 'read_protected_track' to 'manually' read data from the disk.
                 ;
                 ; IN: D0.w - Disk Sync Mark
                 ; IN: A0.l - load buffer (disk read buffer)
-                ; OUT: D0.L, D1.L = number of bytes read (including skipped bytes), 0 = failure
+                ; OUT: D0.L - number of bytes read (including skipped bytes), 0 = failure
                 ; CCR: Z = 0 - Success, Z = 1 - Failure
                 ;
 cp_read_disk                                            ; original routine adsdress $00001134
@@ -903,7 +1048,37 @@ cp_read_disk                                            ; original routine adsdr
 
 
 
-                ; counter starts at 400,000 and decrements from the index pulse
+                ;------------------------- read protected track ----------------------------
+                ; Reads data from the disk 'manually' using the DSKBYTR register, which
+                ; is why it needs to switch off the TVD encoder/decoder I guess.
+                ;
+                ; 1) Initially:
+                ; The code waits for the DSKINDEX FLG interrupt to be raised on CIAB ICR
+                ;
+                ; 2) Enable 0 length DMA read
+                ; The code enables a 0 length DMA disk read into mem buffer (already set previously)
+                ;
+                ; 3) Manual wait for disk sync
+                ; Initialises D2 with the value 400,000 and then decrements each byte read
+                ; until the disk sync mark is found by manually reading DSKBYTR 
+                ; If the counter reached 0 then the code exits (with failure)
+                ; NB: The D2 counter value is then ignored and reused for read loops below.
+                ;
+                ;
+                ; In read loop 1:
+                ; It only seems interested in reading -ve bytes (i.e. bytes with Bit 7 = 1)
+                ; into the memory buffer (50 bytes in total) 
+                ; skips all +ve bytes, but counts all bytes read in D1 (including skipped bytes)
+                ;
+                ; In read loop 2:
+                ; Wants to read a further 974 bytes from the disk but doesn't store these.
+                ; It only seems interested in reading -ve bytes (i.e. bytes with Bit 7 = 1)
+                ; It continues to count the number of bytes read in D1 (including the skipped bytes)
+                ;
+                ; Finally:
+                ; It only returns with success if the DSKBLK interrupt has been signalled in INTREQ
+                ;
+                ; Counter starts at 400,000 and decrements from the index pulse
                 ; until the disk sync mark is found.
                 ; if the disk sync is not found before the counter = 0, then the routine exits.
                 ;
@@ -912,65 +1087,75 @@ cp_read_disk                                            ; original routine adsdr
                 ; OUT: D1.l = Total Bytes Read (including skipped bytes), 0 = Failure
                 ; OUT: D0.l = Total Bytes Read (including skipped bytes), 0 = Failure
                 ;
-read_protected_track                                    ; original routine address $0000117C
-                ILLEGAL                                 ; normally switch off TVD here, this routine would not be encoded (manual disk ready needs performance)
-                TST.B   $00bfdd00                       ; clear CIAB ICR - Interrupt control register
+read_protected_track                                        ; original routine address $0000117C
+                ILLEGAL                                     ; normally switch off TVD here, this routine would not be encoded (manual disk ready needs performance)
+                TST.B   $00bfdd00                           ; clear CIAB ICR - Interrupt control register
 .wait_disk_index
-                BTST.B  #$0004,$00bfdd00                ; test FLG bit (Disk Index Interrupt bit)
-                BEQ.B   .wait_disk_index                ; wait for disk index interrupt, jmp $00001184
+                BTST.B  #$0004,$00bfdd00                    ; test FLG bit (Disk Index Interrupt bit)
+                BEQ.B   .wait_disk_index                    ; wait for disk index interrupt, jmp $00001184
 
-                MOVE.W  #$8000,DSKLEN(A0)                ; enable disk dma (read 0 bytes length)
-                MOVE.W  #$8000,DSKLEN(A0)                ; enable disk dma (read 0 bytes length)
+                MOVE.W  #$8000,DSKLEN(A0)                   ; enable disk dma (read 0 bytes length)
+                MOVE.W  #$8000,DSKLEN(A0)                   ; enable disk dma (read 0 bytes length)
 
-                MOVE.L  #$00000000,D1                   ; counter of bytes read
-                MOVE.L  #$00061a80,D2                   ; loop counter = 400,000, $1a80 = 6784 (approx 6.5k?)
+                MOVE.L  #$00000000,D1                       ; counter of bytes read
+                MOVE.L  #$00061a80,D2                       ; loop counter = 400,000, $1a80 = 6784 (approx 6.5k?)
 .disk_sync_loop
-                SUB.L   #$00000001,D2                   ; decrement loop counter
-                BEQ.B   .exit_main_loop                 ; if counter = 0, jmp $000011D0
+                SUB.L   #$00000001,D2                       ; decrement loop counter
+                BEQ.B   .exit_main_loop                     ; if counter = 0, jmp $000011D0
 
-                MOVE.B  DSKBYTR(A0),D0                  ; manually read from the disk, not sure its a good idea to read a byte value of a custom reg. (high byte)
-                BTST.L  #$0004,D0                       ; Wait for disk sync (WORDEQUAL = bit 4 of byte $dff001a)
-                BEQ.B   .disk_sync_loop                 ; loop until sync mark found, jmp $000011A2
+                MOVE.B  DSKBYTR(A0),D0                      ; manually read from the disk, not sure its a good idea to read a byte value of a custom reg. (high byte)
+                BTST.L  #$0004,D0                           ; Wait for disk sync (WORDEQUAL = bit 4 of byte $dff001a)
+                BEQ.B   .disk_sync_loop                     ; loop until sync mark found, jmp $000011A2
  
                  ; start reading data from the disk 'manually' first time
 .manual_read_1   ; manually read bytes into memory buffer
                  ; D1 = total bytes read (including bytes skipped)
-                MOVE.L  #$00000031,D2                   ; D2 = 49 + 1 (bytes to read) 
+                MOVE.L  #$00000031,D2                       ; D2 = 49 + 1 (bytes to read) 
 .manual_read_loop_1
-                ADD.L   #$00000001,D1                   ; D1 = increment bytes read count
-                MOVE.W  DSKBYTR(A0),D0                  ; manually read from the disk
-                BPL.B   .manual_read_loop_1             ; MSB of Disk Data = 0, jmp $000011B2
+                ADD.L   #$00000001,D1                       ; D1 = increment bytes read count
+                MOVE.W  DSKBYTR(A0),D0                      ; manually read from the disk
+                BPL.B   .manual_read_loop_1                 ; MSB of Disk Data = 0, jmp $000011B2
 .store_read_byte
-                MOVE.B  D0,(A1)+                        ; store disk byte into LoadBuffer
-                DBF.W   D2,.manual_read_loop_1          ; while main loop counter >= 0, jmp $000011B2         
-                                                        ; dbf only works on 16 bit counters
+                MOVE.B  D0,(A1)+                            ; store disk byte into LoadBuffer
+                DBF.W   D2,.manual_read_loop_1              ; while main loop counter >= 0, jmp $000011B2         
+                                                        
 
-                ; start reading data from the disk 'manually' second time
+                ; start reading data from the disk 'manually' second time 
+                ; no bytes are stored in data buffer this time
 .manual_read_2  ; D1 = total bytes read (including bytes skipped)
-                MOVE.W  #$03cd,D2                       ; D2 = 973 + 1 counter
+                MOVE.W  #$03cd,D2                           ; D2 = 973 + 1 counter
 .manual_read_loop_2
-                ADD.L   #$00000001,D1                   ; D1 = increment bytes read counter
+                ADD.L   #$00000001,D1                       ; D1 = increment bytes read counter
                 MOVE.W  DSKBYTR(A0),D0
-                BPL.B   .manual_read_loop_2             ; MSB of Disk Data = 0, jmp $000011C4
-                DBF.W   D2,.manual_read_loop_2          ; read 974 bytes where MSB = 1, jmp $000011C4
+                BPL.B   .manual_read_loop_2                 ; MSB of Disk Data = 0, jmp $000011C4
+                DBF.W   D2,.manual_read_loop_2              ; read 974 bytes where MSB = 1, jmp $000011C4
 
 .exit_main_loop
-                MOVE.W  INTREQR(A0),D0                  ; D0 = Interrupt Request Bits
-                MOVE.W  #$0002,INTREQ(A0)               ; Clear DSKBLK interrupt (disk block finished)
-                MOVE.W  #$4000,DSKLEN(A0)               ; Disable Disk DMA (as per h/w ref)
-                BTST.L  #$0001,D0                       ; Test DSKBLK interrupt bit read earlier 
-                BNE.B   exit_read_protected_track       ; if DSKBLK interrupt was raised then exit success. jmp $00001200
+                MOVE.W  INTREQR(A0),D0                      ; D0 = Interrupt Request Bits
+                MOVE.W  #$0002,INTREQ(A0)                   ; Clear DSKBLK interrupt (disk block finished)
+                MOVE.W  #$4000,DSKLEN(A0)                   ; Disable Disk DMA (as per h/w ref)
+                BTST.L  #$0001,D0                           ; Test DSKBLK interrupt bit read earlier 
+                BNE.B   exit_read_protected_track           ; if DSKBLK interrupt was raised then exit success. jmp $00001200
 .failed
-                MOVE.L  #$00000000,D1                   ; else exit with failure, clear bytes read counter
-                BRA.B   exit_read_protected_track       ; jmp $00001200
+                MOVE.L  #$00000000,D1                       ; else exit with failure, clear bytes read counter
+                BRA.B   exit_read_protected_track           ; jmp $00001200
 
+
+                ;------------------- table of disk sync marks --------------------------
+                ; This table of disk sync marks is used to select the correct sync mark
+                ; to read the copy protection track data.
+                ; it seems that there may be teo sets of data on the track using
+                ; different sync marks.
 cp_disk_sync_table                                      ; original address $000011EA
                 dc.w    $8A91, $8A44, $8A45, $8A51, $8912, $8911, $8914, $8915      ;...D.E.Q........
                 dc.w    $8944, $8945, $8951                                         ;.D.E.Q
 
-exit_read_protected_track                               ; original address $00001200
-                MOVE.L D1,D0                            ; D0,D1 = bytes read (including skipped bytes)
-                ILLEGAL                                 ; normally switch on TVD again (encode/decode instructions again)
+
+                ; exit the track read routine above, store bytes read value into D0.l
+                ; normally would also re-enable the TVD decoder/encoder
+exit_read_protected_track                                   ; original address $00001200
+                MOVE.L D1,D0                                ; D0,D1 = bytes read (including skipped bytes)
+                ILLEGAL                                     ; normally switch on TVD again (encode/decode instructions again)
                 RTS 
 
 
@@ -1154,41 +1339,45 @@ step_heads_to_track_0                                       ; original routine a
                 ;---------------------- step disk heads outwards -----------------------
                 ; step the disk heads outwards towards track/cylinder 0
                 ;
-step_heads_outwards                                     ; original routine address $000012E4
+step_heads_outwards                                         ; original routine address $000012E4
                 MOVE.L  #$00000001,D2
-                BRA.B   select_drive_and_step_heads     ; jmp $000012EA
+                BRA.B   select_drive_and_step_heads         ; jmp $000012EA
+
+
 
                 ;---------------------- step disk heads inwards ------------------------
                 ; step the disk heads inwards towards cylinder 80 / track 160
-step_heads_inwards                                                  ; original routine address $000012E8
+step_heads_inwards                                          ; original routine address $000012E8
                 MOVE.L  #$00000000,D2
+
+
 
                 ;----------------- select drive, disk side and step heads --------------
                 ; IN: D2.l  = step direction (0 = inwards, 1 = outwards)
-select_drive_and_step_heads                                         ; original routine address $000012EA
-                MOVE.W  cp_current_drive(PC),D0                     ; $00000E74(PC),D0
-                MOVE.W  cp_protection_track(PC),D1                  ; $00000E76(PC),D1
-                MOVE.B  $00bfd100,D3                                ; D3 = CIAB PRB - Disk Control Bits
-                OR.B    #$7f,D3                                     ; don't change motor MTR (bit 7), all drives deselected, disk side = bottom, step dir = outwards
-                ADD.B   #$03,D0                                     ; shift current dive number to Select bits 
-                BCLR.L  D0,D3                                       ; select the current drive (active low)
-                SUB.B   #$03,D0                                     ; return current drive to drive number
-                TST.B   D1                                          ; compare protection track no. with #$00
-                BEQ.B   .skip_select_disk_side                      ; if track no == 0, skip select disk side
+select_drive_and_step_heads                                 ; original routine address $000012EA
+                MOVE.W  cp_current_drive(PC),D0             ; $00000E74(PC),D0
+                MOVE.W  cp_protection_track(PC),D1          ; $00000E76(PC),D1
+                MOVE.B  $00bfd100,D3                        ; D3 = CIAB PRB - Disk Control Bits
+                OR.B    #$7f,D3                             ; don't change motor MTR (bit 7), all drives deselected, disk side = bottom, step dir = outwards
+                ADD.B   #$03,D0                             ; shift current dive number to Select bits 
+                BCLR.L  D0,D3                               ; select the current drive (active low)
+                SUB.B   #$03,D0                             ; return current drive to drive number
+                TST.B   D1                                  ; compare protection track no. with #$00
+                BEQ.B   .skip_select_disk_side              ; if track no == 0, skip select disk side
 .select_disk_side 
-                BCLR.L  #$0002,D3                                   ; else, select top disk side
+                BCLR.L  #$0002,D3                           ; else, select top disk side
 .skip_select_disk_side 
-                TST.B   D2                                          ; compare disk step dir with #$00
-                BNE.B   .skip_select_disk_dir                       ; if step dir == #$00, disk step outwards
+                TST.B   D2                                  ; compare disk step dir with #$00
+                BNE.B   .skip_select_disk_dir               ; if step dir == #$00, disk step outwards
 .select_disk_dir
-                BCLR.L  #$0001,D3                                   ; else, select step direction - inwards
+                BCLR.L  #$0001,D3                           ; else, select step direction - inwards
 .skip_select_disk_dir
-                BCLR.L  #$0000,D3                                   ; clear step bit (pulse bit to step heads)
-                MOVE.B  D3,$00bfd100                                ; set disk control bits
-                BSET.L  #$0000,D3                                   ; step step bit (pulse bit to step heads)
-                MOVE.B  D3,$00bfd100                                ; set disk control bits
-                MOVE.L  #$00000bb8,D0                               ; set processor wait loop value (very dodgy)
-                BRA.B   cp_processor_wait_loop                      ; jmp to $00001366
+                BCLR.L  #$0000,D3                           ; clear step bit (pulse bit to step heads)
+                MOVE.B  D3,$00bfd100                        ; set disk control bits
+                BSET.L  #$0000,D3                           ; step step bit (pulse bit to step heads)
+                MOVE.B  D3,$00bfd100                        ; set disk control bits
+                MOVE.L  #$00000bb8,D0                       ; set processor wait loop value (very dodgy)
+                BRA.B   cp_processor_wait_loop              ; jmp to $00001366
 
 
 
@@ -1229,10 +1418,10 @@ cp_initialise_drive                                                 ; original r
                 ; best practice is to use CIA timers or VBL waits.
                 ; I guess no body cared or only expected this to work on bog-standard A500
                 ;
-cp_processor_wait_loop                                                      ; original routine address $00001366
-                LSR.L   #$00000005,D0                                       ; divide D0 by 32
-.wait_loop      SUB.L   #$00000001,D0                                       ; decrement counter by 1
-                BNE.B   .wait_loop                                          ; if D0 != 0, loop
+cp_processor_wait_loop                                              ; original routine address $00001366
+                LSR.L   #$00000005,D0                               ; divide D0 by 32
+.wait_loop      SUB.L   #$00000001,D0                               ; decrement counter by 1
+                BNE.B   .wait_loop                                  ; if D0 != 0, loop
                 RTS 
 
 
@@ -1946,12 +2135,12 @@ iff_form                                                ; relocated addr $000017
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
 iff_blank_chunk
-                TST.L   D0                        ; test remaining bytes value
-                BEQ.B   .exit_blank_chink       ; if Remaining bytes = 0, jmp $000017B4
-                MOVE.L  (A0)+,D1                ; D1 = chunk length (bytes)
-                SUB.L   #$00000004,D0           ; D0 = subtract 4 bytes (chunk len) from remaining bytes
-                BSR.W   iff_inner_blank_chunk   ; calls $000017BA
-                BRA.B   iff_blank_chunk         ; loop, process rest of chunk, jmp $000017A6
+                TST.L   D0                              ; test remaining bytes value
+                BEQ.B   .exit_blank_chink               ; if Remaining bytes = 0, jmp $000017B4
+                MOVE.L  (A0)+,D1                        ; D1 = chunk length (bytes)
+                SUB.L   #$00000004,D0                   ; D0 = subtract 4 bytes (chunk len) from remaining bytes
+                BSR.W   iff_inner_blank_chunk           ; calls $000017BA
+                BRA.B   iff_blank_chunk                 ; loop, process rest of chunk, jmp $000017A6
 
 .exit_blank_chink
                 MOVEM.L (A7)+,D0/A0
@@ -2001,17 +2190,18 @@ iff_inner_blank_chunk                                       ; relocated address 
                 ;--
 iff_body                                                    ; relocated address $000017F4
                 MOVEM.L D0/A0,-(A7)
-L000017F8       MOVE.L  (A0)+,D0
-L000017FA       MOVE.L  D0,D1
-L000017FC       BTST.L  #$0000,D1
-L00001800       BEQ.B   L00001804
-L00001802       ADD.L   #$00000001,D1
-L00001804       ADD.L   #$00000004,D1
-L00001806       ADD.L   D1,$0004(A7)
-L0000180A       SUB.L   D1,(A7)
-L0000180C       BSR.W   relocate__bytes                     ; A0 = source addr, D0 = number of bytes, ld_relocate_addr = dest addr, calls $0000170A
-L00001810       MOVEM.L (A7)+,D0/A0
-L00001814       RTS 
+                MOVE.L  (A0)+,D0
+                MOVE.L  D0,D1
+                BTST.L  #$0000,D1
+                BEQ.B   .skip_pad_byte                      ; skip pad bytes, jmp $00001804
+                ADD.L   #$00000001,D1
+.skip_pad_byte
+                ADD.L   #$00000004,D1
+                ADD.L   D1,$0004(A7)
+                SUB.L   D1,(A7)
+                BSR.W   relocate__bytes                     ; A0 = source addr, D0 = number of bytes, ld_relocate_addr = dest addr, calls $0000170A
+                MOVEM.L (A7)+,D0/A0
+                RTS 
 
 
 
@@ -3419,7 +3609,7 @@ ciab_tb_20ms_tick                                                       ; $00002
 L0000223C       dc.w $3033, $0000
 L00002240       dc.w $00F0, $0002, $000F, $0F0D, $0000, $0000, $000F, $0F0D             ;................
 L00002250       dc.w $0000, $0070 
-L00002254       dc.w $F007, $0FF8, $0FF8, $F007, $F0F7, $08F8             ;...p............
+L00002254       dc.w $F007, $0FF8, $0FF8, $F007, $F0F7, $08F8                           ;...p............
 
 L00002260       dc.w $0F08, $F7F7, $F717, $0818, $0FE8, $F7F7, $F047, $0FB8             ;.............G..
 L00002270       dc.w $0FF8, $F1C7, $FD9F, $0260, $03E0, $FDDF, $FC5F, $0220             ;.......`....._. 
