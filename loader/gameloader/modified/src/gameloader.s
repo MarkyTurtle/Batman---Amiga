@@ -2,17 +2,13 @@
 ;---------- Includes ----------
               INCDIR      "include"
               INCLUDE     "hw.i"
-              ;INCLUDE     "funcdef.i"
-              ;INCLUDE     "exec/exec_lib.i"
-              ;INCLUDE     "graphics/graphics_lib.i"
-              ;INCLUDE     "hardware/cia.i"
-;---------- Const ----------
 
+;---------- Const ----------
 
 ;Interrupt status flags for variable $0000209A.B
 DSKBLK_FINISHED equ $0                                  ; set by level 1 interrupt handler but unused.
 BLIT_FINISHED   equ $1                                  ; set by level 3 interrupt handler but unused.
-TIMERA_FINISHED equ $2
+TIMERA_FINISHED equ $2                                  ; set by level 2 interrupt hander.
 DISK_INDEX1     equ $3                                  ; set by level 6 interrupt handler (disk write trigger - both must be set to 0 & CIAB FLG interrupt)
 DISK_INDEX2     equ $4                                  ; set by level 6 interrupt handler (disk write trigger - both must be set to 0 & CIAB FLG interrupt)
 
@@ -1431,8 +1427,8 @@ cp_processor_wait_loop                                              ; original r
                 ; IN: D0.L - Copy Protection Serial/Checksum
                 ;
                 ; Restored Exception Vector Values
-                ; - $00000008 = D0 - 00002070 - Bus Error
-                ; - $0000000C = D1 - 00002070 - Address Error
+                ; - $00000008 = D0 - 00002070 - Bus Error (.enable_interrupts)
+                ; - $0000000C = D1 - 00002070 - Address Error (.enable_interrupts)
                 ; - $00000010 = D2 - 00FC081C - Illegal Instruction (ROM)
                 ; - $00000014 = D3 – 00FC081E - Zero Divide (ROM)
                 ; - $00000018 = D4 – 00FC0820 - CHK Instruction (ROM)
@@ -1972,21 +1968,21 @@ load_file_entries                                       ; this routine's relocat
                 ;-- IN: ld_relocate_addr
                 ;-- D0 = File Length/remaining bytes
                 ;-- A0 = File Address      
-process_file                                            ; relocated address: $000016E0
+process_file                                                        ; original routine address: $000016E0
                 MOVEM.L D0/A0,-(A7)
-                TST.L   D0                              ; test file length
-                BEQ.B   .exit_process_file              ; if file is 0 bytes in length then jmp $00001704
-                CMP.L   #$0000000c,D0                   ; compare file length with len of 12 bytes
-                BCS.B   .relocate_small                 ; if file len < 12 bytes then rolocate_small number of bytes $00001702
+                TST.L   D0                                          ; test file length
+                BEQ.B   .exit_process_file                          ; if file is 0 bytes in length then jmp $00001704
+                CMP.L   #$0000000c,D0                               ; compare file length with len of 12 bytes
+                BCS.B   .relocate_small                             ; if file len < 12 bytes then rolocate_small number of bytes $00001702
 
-                MOVE.L  (A0),D1                         ; D1 = Iff Header Id Word
-                CMP.L   #'FORM',D1                      ; Test for 'FORM' header - #$464f524d,D1
-                BEQ.B   process_form_or_cat             ; jmp $0000171C
-                CMP.L   #'CAT ',D1                      ; Test for 'CAT ' header - #$43415420,D1
-                BEQ.B   process_form_or_cat             ; jmp $0000171C
+                MOVE.L  (A0),D1                                     ; D1 = Iff Header Id Word
+                CMP.L   #'FORM',D1                                  ; Test for 'FORM' header - #$464f524d,D1
+                BEQ.B   process_form_or_cat                         ; jmp $0000171C
+                CMP.L   #'CAT ',D1                                  ; Test for 'CAT ' header - #$43415420,D1
+                BEQ.B   process_form_or_cat                         ; jmp $0000171C
 
 .relocate_small
-                BSR.B   relocate__bytes                 ; calls $0000170A
+                BSR.B   relocate__bytes                             ; calls $0000170A
 
 .exit_process_file
                 MOVEM.L (A7)+,D0/A0
@@ -2005,14 +2001,14 @@ process_file                                            ; relocated address: $00
                 ;-- OUT: D0 = 0
                 ;-- OUT: ld_relocate_addr = incrememented by number of words copied
                 ;
-relocate__bytes                                             ; relocated address: $0000170A
-                MOVEA.L ld_relocate_addr,A1                 ; A1 = destination address, $00000CF0
-                ASR.L   #$00000001,D0                       ; D0 = divide bytes by 2, copy words
+relocate__bytes                                                     ; original routine address: $0000170A
+                MOVEA.L ld_relocate_addr,A1                         ; A1 = destination address, $00000CF0
+                ASR.L   #$00000001,D0                               ; D0 = divide bytes by 2, copy words
 .relocate_loop
                 MOVE.W  (A0)+,(A1)+
                 SUB.L   #$00000001,D0
-                BNE.B   .relocate_loop                          ; loop until D0 = 0, jmp $00001710
-                MOVE.L  A1,ld_relocate_addr                     ; update destination ptr $00000CF0
+                BNE.B   .relocate_loop                              ; loop until D0 = 0, jmp $00001710
+                MOVE.L  A1,ld_relocate_addr                         ; update destination ptr $00000CF0
                 RTS
 
 
@@ -2025,16 +2021,16 @@ relocate__bytes                                             ; relocated address:
                 ;-- IN: ld_relocate_addr = dest addr
                 ;
 process_form_or_cat
-                TST.L   D0                              ; Test file length/bytes remaining
-                BEQ.B   .exit_process_file              ; if end of file then .exit_process_file, jmp $0000172A
-                MOVE.L  (A0)+,D1                        ; D1 = header id
-                SUB.L   #$00000004,D0                   ; subtract 4 bytes from remaining file length
-                BSR.W   iff_form_or_cat                 ; calls $00001730
-                BRA.B   process_form_or_cat             ; loop to process form or cat, jmp $0000171C
+                TST.L   D0                                          ; Test file length/bytes remaining
+                BEQ.B   .exit_process_file                          ; if end of file then .exit_process_file, jmp $0000172A
+                MOVE.L  (A0)+,D1                                    ; D1 = header id
+                SUB.L   #$00000004,D0                               ; subtract 4 bytes from remaining file length
+                BSR.W   iff_form_or_cat                             ; calls $00001730
+                BRA.B   process_form_or_cat                         ; loop to process form or cat, jmp $0000171C
 
 .exit_process_file
                 MOVEM.L (A7)+,D0/A0
-                RTS                                     ; *** THIS RTS exits process_file or recursive call ***
+                RTS                                                 ; *** THIS RTS exits process_file or recursive call ***
 
 
 
@@ -2048,10 +2044,10 @@ process_form_or_cat
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
 iff_form_or_cat
-                CMP.L   #'FORM',D1                      ; Test for 'FORM' header Id, #$464f524d
-                BEQ.W   iff_form                        ; jmp $00001766
-                CMP.L   #'CAT ',D1                      ; Test for 'CAT ' header Id, #$43415420
-                BEQ.W   iff_cat                         ; jmp $00001748
+                CMP.L   #'FORM',D1                                  ; Test for 'FORM' header Id, #$464f524d
+                BEQ.W   iff_form                                    ; jmp $00001766
+                CMP.L   #'CAT ',D1                                  ; Test for 'CAT ' header Id, #$43415420
+                BEQ.W   iff_cat                                     ; jmp $00001748
                 CLR.L   D0
                 RTS 
 
@@ -2073,23 +2069,23 @@ iff_form_or_cat
                 ;-- IN: D0 = file length/remaining bytes
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
-iff_cat                                                 ; relocate address $00001748
-                MOVEM.L D0/A0,-(A7)                     ; save remaining bytes/chunk address ptr
-                MOVE.L  (A0)+,D0                        ; D0 = chunk length
-                MOVE.L  D0,D1                           ; D1 = chunk length
+iff_cat                                                             ; original routine address $00001748
+                MOVEM.L D0/A0,-(A7)                                 ; save remaining bytes/chunk address ptr
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk length
+                MOVE.L  D0,D1                                       ; D1 = chunk length
 
-                BTST.L  #$0000,D1                       ; test if odd/even
-                BEQ.B   .is_even                        ; if is even, jmp $00001758
-                ADD.L   #$00000001,D1                   ; else add pad byte to length
+                BTST.L  #$0000,D1                                   ; test if odd/even
+                BEQ.B   .is_even                                    ; if is even, jmp $00001758
+                ADD.L   #$00000001,D1                               ; else add pad byte to length
 .is_even
-                ADD.L   #$00000004,D1                   ; add header id length to block length
-                ADD.L   D1,$0004(A7)                    ; increase address on stack to point to end of block.
-                SUB.L   D1,(A7)                         ; subtract length from remaining bytes held on stack.
+                ADD.L   #$00000004,D1                               ; add header id length to block length
+                ADD.L   D1,$0004(A7)                                ; increase address on stack to point to end of block.
+                SUB.L   D1,(A7)                                     ; subtract length from remaining bytes held on stack.
 
-                ADDA.L  #$00000004,A0                   ; skip long word
-                SUB.L   #$00000004,D0                   ; subtract long from remaining bytes 
+                ADDA.L  #$00000004,A0                               ; skip long word
+                SUB.L   #$00000004,D0                               ; subtract long from remaining bytes 
 
-                BRA.B   process_form_or_cat             ; jmp to $0000171C, find next FORM/CAT to process
+                BRA.B   process_form_or_cat                         ; jmp to $0000171C, find next FORM/CAT to process
 
 
 
@@ -2100,26 +2096,26 @@ iff_cat                                                 ; relocate address $0000
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_form                                                ; relocated addr $00001766
+iff_form                                                            ; original routine address $00001766
                 MOVEM.L D0/A0,-(A7)
-                MOVE.L  (A0)+,D0                        ; D0 = chunk length in bytes
-                MOVE.L  D0,D1                           ; D1 = chunk length in bytes
-                BTST.L  #$0000,D1                       ; test even/odd
-                BEQ.B   .is_even                        ; is an even length, jmp $00001776
-                ADD.L   #$00000001,D1                   ; is odd, add pad byte
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk length in bytes
+                MOVE.L  D0,D1                                       ; D1 = chunk length in bytes
+                BTST.L  #$0000,D1                                   ; test even/odd
+                BEQ.B   .is_even                                    ; is an even length, jmp $00001776
+                ADD.L   #$00000001,D1                               ; is odd, add pad byte
 .is_even
-                ADD.L   #$00000004,D1                   ; add 4 bytes to data length (header id)
-                ADD.L   D1,$0004(A7)                    ; increment address ptr on stack to end of data block.
-                SUB.L   D1,(A7)                         ; subtract block length from, remaining byte length on stack.
+                ADD.L   #$00000004,D1                               ; add 4 bytes to data length (header id)
+                ADD.L   D1,$0004(A7)                                ; increment address ptr on stack to end of data block.
+                SUB.L   D1,(A7)                                     ; subtract block length from, remaining byte length on stack.
 
-                MOVE.L  (A0)+,D1                        ; D1 = get next long word
-                SUB.L   #$00000004,D0                   ; D0 = subtract 4 bytes from remaining byte count
-                CMP.L   #'    ',D1                      ; check Id '    ' (spaces) #$20202020,D1
-                BEQ.W   iff_blank_chunk                 ; call $000017A6
-                CMP.L   #'HUFF',D1                      ; check Id 'HUFF' #$48554646,D1
-                BEQ.W   iff_huff_chunk                  ; jmp $00001816
-                CMP.L   #'ILBM',D1                      ; check Id 'ILBM' #$494c424d,D1
-                BEQ.W   iff_ilbm_chunk                  ; jmp $0000193E
+                MOVE.L  (A0)+,D1                                    ; D1 = get next long word
+                SUB.L   #$00000004,D0                               ; D0 = subtract 4 bytes from remaining byte count
+                CMP.L   #'    ',D1                                  ; check Id '    ' (spaces) #$20202020,D1
+                BEQ.W   iff_blank_chunk                             ; call $000017A6
+                CMP.L   #'HUFF',D1                                  ; check Id 'HUFF' #$48554646,D1
+                BEQ.W   iff_huff_chunk                              ; jmp $00001816
+                CMP.L   #'ILBM',D1                                  ; check Id 'ILBM' #$494c424d,D1
+                BEQ.W   iff_ilbm_chunk                              ; jmp $0000193E
 
 .iff_form_exit
                 MOVEM.L (A7)+,D0/A0
@@ -2135,12 +2131,12 @@ iff_form                                                ; relocated addr $000017
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
 iff_blank_chunk
-                TST.L   D0                              ; test remaining bytes value
-                BEQ.B   .exit_blank_chink               ; if Remaining bytes = 0, jmp $000017B4
-                MOVE.L  (A0)+,D1                        ; D1 = chunk length (bytes)
-                SUB.L   #$00000004,D0                   ; D0 = subtract 4 bytes (chunk len) from remaining bytes
-                BSR.W   iff_inner_blank_chunk           ; calls $000017BA
-                BRA.B   iff_blank_chunk                 ; loop, process rest of chunk, jmp $000017A6
+                TST.L   D0                                          ; test remaining bytes value
+                BEQ.B   .exit_blank_chink                           ; if Remaining bytes = 0, jmp $000017B4
+                MOVE.L  (A0)+,D1                                    ; D1 = chunk length (bytes)
+                SUB.L   #$00000004,D0                               ; D0 = subtract 4 bytes (chunk len) from remaining bytes
+                BSR.W   iff_inner_blank_chunk                       ; calls $000017BA
+                BRA.B   iff_blank_chunk                             ; loop, process rest of chunk, jmp $000017A6
 
 .exit_blank_chink
                 MOVEM.L (A7)+,D0/A0
@@ -2156,27 +2152,27 @@ iff_blank_chunk
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_inner_blank_chunk                                       ; relocated address $000017BA
-                CMP.L   #'FORM',D1                          ; #$464f524d,D1
-                BEQ.B   iff_form                            ; jmp $00001766
-                CMP.L   #'CAT ',D1                          ; #$43415420,D1
-                BEQ.W   iff_cat                             ; jmp $00001748
-                CMP.L   #'BODY',D1                          ; #$424f4459,D1
-                BEQ.W   iff_body                            ; jmp $000017F4
+iff_inner_blank_chunk                                               ; original routine address $000017BA
+                CMP.L   #'FORM',D1                                  ; #$464f524d,D1
+                BEQ.B   iff_form                                    ; jmp $00001766
+                CMP.L   #'CAT ',D1                                  ; #$43415420,D1
+                BEQ.W   iff_cat                                     ; jmp $00001748
+                CMP.L   #'BODY',D1                                  ; #$424f4459,D1
+                BEQ.W   iff_body                                    ; jmp $000017F4
 .iff_inner_blank
-                MOVEM.L D0/A0,-(A7)                         ; store current remaining bytes/buffer address on stack
-                MOVE.L  (A0)+,D0                            ; D0 = chunk length
-                MOVE.L  D0,D1                               ; D1 = chunk length
-                BTST.L  #$0000,D1                           ; test length
-                BEQ.B   .is_even                            ; if is even, jmp $000017E6
+                MOVEM.L D0/A0,-(A7)                                 ; store current remaining bytes/buffer address on stack
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk length
+                MOVE.L  D0,D1                                       ; D1 = chunk length
+                BTST.L  #$0000,D1                                   ; test length
+                BEQ.B   .is_even                                    ; if is even, jmp $000017E6
 .is_odd                
-                ADD.L   #$00000001,D1                       ; if is odd, add pad byte to length
+                ADD.L   #$00000001,D1                               ; if is odd, add pad byte to length
 .is_even
-                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk length
-                ADD.L   D1,$0004(A7)                        ; add chunk length to data buffer pointer on stack
-                SUB.L   D1,(A7)                             ; subtract chunk length from remaining bytes on stack
+                ADD.L   #$00000004,D1                               ; add 4 bytes to chunk length
+                ADD.L   D1,$0004(A7)                                ; add chunk length to data buffer pointer on stack
+                SUB.L   D1,(A7)                                     ; subtract chunk length from remaining bytes on stack
 
-                MOVEM.L (A7)+,D0/A0                         ; restore buffer pointer and remaining bytes from stack
+                MOVEM.L (A7)+,D0/A0                                 ; restore buffer pointer and remaining bytes from stack
                 RTS 
 
 
@@ -2188,18 +2184,18 @@ iff_inner_blank_chunk                                       ; relocated address 
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_body                                                    ; relocated address $000017F4
+iff_body                                                            ; oroginal routine address $000017F4
                 MOVEM.L D0/A0,-(A7)
                 MOVE.L  (A0)+,D0
                 MOVE.L  D0,D1
                 BTST.L  #$0000,D1
-                BEQ.B   .skip_pad_byte                      ; skip pad bytes, jmp $00001804
+                BEQ.B   .skip_pad_byte                              ; skip pad bytes, jmp $00001804
                 ADD.L   #$00000001,D1
 .skip_pad_byte
                 ADD.L   #$00000004,D1
                 ADD.L   D1,$0004(A7)
                 SUB.L   D1,(A7)
-                BSR.W   relocate__bytes                     ; A0 = source addr, D0 = number of bytes, ld_relocate_addr = dest addr, calls $0000170A
+                BSR.W   relocate__bytes                             ; A0 = source addr, D0 = number of bytes, ld_relocate_addr = dest addr, calls $0000170A
                 MOVEM.L (A7)+,D0/A0
                 RTS 
 
@@ -2224,34 +2220,34 @@ iff_body                                                    ; relocated address 
                 ;--
 iff_huff_chunk
                 ; create 3 long words storage on the stack                             
-                CLR.L   -(A7)                   ; SIZE Long Word 
-                CLR.L   -(A7)                   ; CODE source address ptr
-                CLR.L   -(A7)                   ; TREE source address ptr
+                CLR.L   -(A7)                                       ; SIZE Long Word 
+                CLR.L   -(A7)                                       ; CODE source address ptr
+                CLR.L   -(A7)                                       ; TREE source address ptr
 
-                MOVE.L  A6,-(A7)                ; store A6 on stack
-                MOVEA.L A7,A6                   ; A6 = stack base ptr
+                MOVE.L  A6,-(A7)                                    ; store A6 on stack
+                MOVEA.L A7,A6                                       ; A6 = stack base ptr
 
 .huff_block_loop
-                TST.L   D0                      ; test remaining bytes/len
-                BEQ.B   .huff_block_end         ; if = 0 jmp $0000182E       
-                MOVE.L  (A0)+,D1                ; D1 = inner block id
-                SUB.L   #$00000004,D0           ; D0 = subtract 4 bytes from remaining length
-                BSR.W   iff_inner_huff_chunk    ; calls $00001856
-                BRA.B   .huff_block_loop        ; loop jmp $00001820
+                TST.L   D0                                          ; test remaining bytes/len
+                BEQ.B   .huff_block_end                             ; if = 0 jmp $0000182E       
+                MOVE.L  (A0)+,D1                                    ; D1 = inner block id
+                SUB.L   #$00000004,D0                               ; D0 = subtract 4 bytes from remaining length
+                BSR.W   iff_inner_huff_chunk                        ; calls $00001856
+                BRA.B   .huff_block_loop                            ; loop jmp $00001820
 
 .huff_block_end
                 TST.L   $0004(A6)
-                BEQ.B   .huff_block_exit        ; jmp $0000184A
+                BEQ.B   .huff_block_exit                            ; jmp $0000184A
                 TST.L   $0008(A6)
-                BEQ.B   .huff_block_exit        ; jmp $0000184A
+                BEQ.B   .huff_block_exit                            ; jmp $0000184A
                 TST.L   $000c(A6)
-                BEQ.B   .huff_block_exit        ; jmp $0000184A
-                MOVEM.L $0004(A6),D0/A0-A1      ; D0 = Code Size, A1 = Code Address, A2 = Tree Address
-                BSR.W   iff_process_code        ; call $0000190C
+                BEQ.B   .huff_block_exit                            ; jmp $0000184A
+                MOVEM.L $0004(A6),D0/A0-A1                          ; D0 = Code Size, A1 = Code Address, A2 = Tree Address
+                BSR.W   iff_process_code                            ; call $0000190C
 
 .huff_block_exit
-                MOVEA.L (A7)+,A6                ; restore a6 from stack
-                LEA.L   $000c(A7),A7            ; deallocate stack 3 long words
+                MOVEA.L (A7)+,A6                                    ; restore a6 from stack
+                LEA.L   $000c(A7),A7                                ; deallocate stack 3 long words
                 MOVEM.L (A7)+,D0/A0
                 RTS 
 
@@ -2265,28 +2261,28 @@ iff_huff_chunk
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
 iff_inner_huff_chunk
-                CMP.L   #'FORM',D1                      ; #$464f524d,D1
-                BEQ.W   iff_form                        ; jmp $00001766
-                CMP.L   #'CAT ',D1                      ; #$43415420,D1
-                BEQ.W   iff_cat                         ; jmp $00001748
-                CMP.L   #'SIZE',D1                      ; #$53495a45,D1
-                BEQ.W   iff_size                        ; jmp $000018A6
-                CMP.L   #'CODE',D1                      ; #$434f4445,D1
-                BEQ.W   iff_code                        ; jmp $000018C8
-                CMP.L   #'TREE',D1                      ; #$54524545,D1
-                BEQ.W   iff_tree                        ; jmp $000018EA
+                CMP.L   #'FORM',D1                                  ; #$464f524d,D1
+                BEQ.W   iff_form                                    ; jmp $00001766
+                CMP.L   #'CAT ',D1                                  ; #$43415420,D1
+                BEQ.W   iff_cat                                     ; jmp $00001748
+                CMP.L   #'SIZE',D1                                  ; #$53495a45,D1
+                BEQ.W   iff_size                                    ; jmp $000018A6
+                CMP.L   #'CODE',D1                                  ; #$434f4445,D1
+                BEQ.W   iff_code                                    ; jmp $000018C8
+                CMP.L   #'TREE',D1                                  ; #$54524545,D1
+                BEQ.W   iff_tree                                    ; jmp $000018EA
 .iff_skip_other_id
-                MOVEM.L D0/A0,-(A7)                     ; store address ptr/remaining bytes on stack
-                MOVE.L  (A0)+,D0                        ; D0 = chunk length
-                MOVE.L  D0,D1                           ; D1 = chunk length
-                BTST.L  #$0000,D1                       ; test odd/even
-                BEQ.B   .is_even                        ; if even then $00001898
+                MOVEM.L D0/A0,-(A7)                                 ; store address ptr/remaining bytes on stack
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk length
+                MOVE.L  D0,D1                                       ; D1 = chunk length
+                BTST.L  #$0000,D1                                   ; test odd/even
+                BEQ.B   .is_even                                    ; if even then $00001898
 .is_odd
-                ADD.L   #$00000001,D1                   ; if odd, add 1 pad bytes
+                ADD.L   #$00000001,D1                               ; if odd, add 1 pad bytes
 .is_even
-                ADD.L   #$00000004,D1                   ; add 4 to chunk length
-                ADD.L   D1,$0004(A7)                    ; add chunk length to address ptr on stack
-                SUB.L   D1,(A7)                         ; subtract chunk length from remaining bytes on stack
+                ADD.L   #$00000004,D1                               ; add 4 to chunk length
+                ADD.L   D1,$0004(A7)                                ; add chunk length to address ptr on stack
+                SUB.L   D1,(A7)                                     ; subtract chunk length from remaining bytes on stack
 .iff_skip_exit
                 MOVEM.L (A7)+,D0/A0
                 RTS 
@@ -2304,22 +2300,22 @@ iff_inner_huff_chunk
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_size                                                    ; relocated size $000018A6
-                MOVEM.L D0/A0,-(A7)                         ; save remaining bytes/address ptr on stack
-                MOVE.L  (A0)+,D0                            ; D0 = chunk len bytes
-                MOVE.L  D0,D1                               ; D1 = chunk len bytes
-                BTST.L  #$0000,D1                           ; test if len odd/even
-                BEQ.B   .is_even                            ; if even jmp $000018B6
+iff_size                                                            ; original routine address $000018A6
+                MOVEM.L D0/A0,-(A7)                                 ; save remaining bytes/address ptr on stack
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk len bytes
+                MOVE.L  D0,D1                                       ; D1 = chunk len bytes
+                BTST.L  #$0000,D1                                   ; test if len odd/even
+                BEQ.B   .is_even                                    ; if even jmp $000018B6
 .is_odd
-                ADD.L   #$00000001,D1                       ; if odd then add 1 pad bytes to len
+                ADD.L   #$00000001,D1                               ; if odd then add 1 pad bytes to len
 .is_even
-                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk len 
-                ADD.L   D1,$0004(A7)                        ; add chunk len to address ptr on stack
-                SUB.L   D1,(A7)                             ; subtract chunk len from remaining bytes on stack
+                ADD.L   #$00000004,D1                               ; add 4 bytes to chunk len 
+                ADD.L   D1,$0004(A7)                                ; add chunk len to address ptr on stack
+                SUB.L   D1,(A7)                                     ; subtract chunk len from remaining bytes on stack
 
-                MOVE.L  (A0)+,$0004(A6)                     ; **** store SIZE **** Long word in first Longword on stack
+                MOVE.L  (A0)+,$0004(A6)                             ; **** store SIZE **** Long word in first Longword on stack
 
-                MOVEM.L (A7)+,D0/A0                         ; restore updated remaining bytes/address ptr from stack
+                MOVEM.L (A7)+,D0/A0                                 ; restore updated remaining bytes/address ptr from stack
                 RTS 
 
 
@@ -2334,22 +2330,22 @@ iff_size                                                    ; relocated size $00
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_code                                                    ; relocated address $000018C8
-                MOVEM.L D0/A0,-(A7)                         ; save remaining bytes/address ptr on stack
-                MOVE.L  (A0)+,D0                            ; D0 = chunk len
-                MOVE.L  D0,D1                               ; D1 = chunk len
-                BTST.L  #$0000,D1                           ; test odd/even
-                BEQ.B   .is_even                            ; if is even, jmp $000018D8
+iff_code                                                            ; original routine address $000018C8
+                MOVEM.L D0/A0,-(A7)                                 ; save remaining bytes/address ptr on stack
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk len
+                MOVE.L  D0,D1                                       ; D1 = chunk len
+                BTST.L  #$0000,D1                                   ; test odd/even
+                BEQ.B   .is_even                                    ; if is even, jmp $000018D8
 .is_odd
-                ADD.L   #$00000001,D1                       ; if is odd, add 1 pad byte to chunk len
+                ADD.L   #$00000001,D1                               ; if is odd, add 1 pad byte to chunk len
 .is_even
-                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk len
-                ADD.L   D1,$0004(A7)                        ; add chunk len to address ptr on stack
-                SUB.L   D1,(A7)                             ; subtract chunk len from remaining bytes on stack
+                ADD.L   #$00000004,D1                               ; add 4 bytes to chunk len
+                ADD.L   D1,$0004(A7)                                ; add chunk len to address ptr on stack
+                SUB.L   D1,(A7)                                     ; subtract chunk len from remaining bytes on stack
 
-                MOVE.L  A0,$0008(A6)                        ; **** store current buffer address - CODE - address in 2nd longword on stack **** 
+                MOVE.L  A0,$0008(A6)                                ; **** store current buffer address - CODE - address in 2nd longword on stack **** 
 
-                MOVEM.L (A7)+,D0/A0                         ; restore updated remaining bytes/address ptr from stack
+                MOVEM.L (A7)+,D0/A0                                 ; restore updated remaining bytes/address ptr from stack
                 RTS 
 
 
@@ -2365,22 +2361,22 @@ iff_code                                                    ; relocated address 
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_tree                                                    ; relocated address $000018EA
+iff_tree                                                            ; original routine address $000018EA
                 MOVEM.L D0/A0,-(A7)
-                MOVE.L  (A0)+,D0                            ; D0 = chunk len
-                MOVE.L  D0,D1                               ; D1 = chunk len
-                BTST.L  #$0000,D1                           ; test odd/even chunk len
-                BEQ.B   .is_even                            ; is even, jmp $000018FA
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk len
+                MOVE.L  D0,D1                                       ; D1 = chunk len
+                BTST.L  #$0000,D1                                   ; test odd/even chunk len
+                BEQ.B   .is_even                                    ; is even, jmp $000018FA
 .is_odd
-                ADD.L   #$00000001,D1                       ; is odd, add 1 pad byte to chunk len
+                ADD.L   #$00000001,D1                               ; is odd, add 1 pad byte to chunk len
 .is_even
-                ADD.L   #$00000004,D1                       ; add 4 bytes to chunk len
-                ADD.L   D1,$0004(A7)                        ; update address ptr on stack
-                SUB.L   D1,(A7)                             ; subtract chunk len from remaining bytes on stack
+                ADD.L   #$00000004,D1                               ; add 4 bytes to chunk len
+                ADD.L   D1,$0004(A7)                                ; update address ptr on stack
+                SUB.L   D1,(A7)                                     ; subtract chunk len from remaining bytes on stack
 
-                MOVE.L  A0,$000c(A6)                        ; **** store current buffer address - TREE - address in 3rd longword on stack ****
+                MOVE.L  A0,$000c(A6)                                ; **** store current buffer address - TREE - address in 3rd longword on stack ****
 
-                MOVEM.L (A7)+,D0/A0                         ; restore updated remaining bytes/address ptr from stack
+                MOVEM.L (A7)+,D0/A0                                 ; restore updated remaining bytes/address ptr from stack
                 RTS 
 
 
@@ -2396,36 +2392,36 @@ iff_tree                                                    ; relocated address 
                 ;-- IN: A0 = CODE address ptr
                 ;-- IN: A1 = TREE address ptr
 iff_process_code
-                MOVEA.L ld_relocate_addr,A2                 ; A2 = code relocation address, from file entry $00000CF0
-                MOVEM.L D0/A2,-(A7)                         ; store remaining bytes/address ptr on stack
+                MOVEA.L ld_relocate_addr,A2                         ; A2 = code relocation address, from file entry $00000CF0
+                MOVEM.L D0/A2,-(A7)                                 ; store remaining bytes/address ptr on stack
 .init
-                MOVE.L  #$0000000f,D1                       ; D1 = 15 + 1 counter
-                MOVE.W  (A0)+,D2                            ; D2 = next value from CODE block
+                MOVE.L  #$0000000f,D1                               ; D1 = 15 + 1 counter
+                MOVE.W  (A0)+,D2                                    ; D2 = next value from CODE block
 .decode_loop
-                MOVEA.L A1,A3                               ; A3 = copy of tree ptr
+                MOVEA.L A1,A3                                       ; A3 = copy of tree ptr
 .inner_loop
-                ADD.W   D2,D2                               ; D2 = D2 x 2
-                BCC.B   .not_overflow                       ; no overflow, jmp $00001920
+                ADD.W   D2,D2                                       ; D2 = D2 x 2
+                BCC.B   .not_overflow                               ; no overflow, jmp $00001920
 .is_overflow
-                ADDA.W  #$00000002,A3                       ; is overflow, increment TREE ptr by 1 word
+                ADDA.W  #$00000002,A3                               ; is overflow, increment TREE ptr by 1 word
 .not_overflow
-                DBF.W   D1,.process_byte                    ; decrement D1 (15 + 1), branch $00001928
+                DBF.W   D1,.process_byte                            ; decrement D1 (15 + 1), branch $00001928
 .code_loop_reset
-                MOVE.L  #$0000000f,D1                       ; D1 = reset counter 15 + 1
-                MOVE.W  (A0)+,D2                            ; D2 = next value from CODE block
+                MOVE.L  #$0000000f,D1                               ; D1 = reset counter 15 + 1
+                MOVE.W  (A0)+,D2                                    ; D2 = next value from CODE block
 .process_byte
-                MOVE.W  (A3),D3                             ; D3 = current word from TREE block ptr
-                BMI.B   .store_reloc_byte                   ; if low byte of TREE value < 0 (bit 8 = 1), jmp $00001930                             
-                ADDA.W  D3,A3                               ; else D3 is an offset, add to TREE block ptr
-                BRA.B   .inner_loop                         ; loop, jmp $0000191A
+                MOVE.W  (A3),D3                                     ; D3 = current word from TREE block ptr
+                BMI.B   .store_reloc_byte                           ; if low byte of TREE value < 0 (bit 8 = 1), jmp $00001930                             
+                ADDA.W  D3,A3                                       ; else D3 is an offset, add to TREE block ptr
+                BRA.B   .inner_loop                                 ; loop, jmp $0000191A
 .store_reloc_byte
-                MOVE.B  D3,(A2)+                            ; **** store TREE byte value in relocated address buffer
-                SUB.L   #$00000001,D0                       ; decrement SIZE by 1
-                BNE.B   .decode_loop                        ; loop while SIZE > 0, jmp $00001918
+                MOVE.B  D3,(A2)+                                    ; **** store TREE byte value in relocated address buffer
+                SUB.L   #$00000001,D0                               ; decrement SIZE by 1
+                BNE.B   .decode_loop                                ; loop while SIZE > 0, jmp $00001918
 .end_iff_process_code
-                MOVEM.L (A7)+,D0/A0                         ; restore remaining bytes/address ptr on stack
-                BRA.W   process_file                        ; jump back to start process file. (not recursively) $000016E0
-                                                            ; process remaining chunks in the file?
+                MOVEM.L (A7)+,D0/A0                                 ; restore remaining bytes/address ptr on stack
+                BRA.W   process_file                                ; jump back to start process file. (not recursively) $000016E0
+                                                                    ; process remaining chunks in the file?
 
 
 
@@ -2440,13 +2436,13 @@ iff_process_code
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_ilbm_chunk                                          ; relocated address $0000193E
-                TST.L   D0                              ; test any bytes remaining
-                BEQ.B   .end_ilbm_chunk                 ; if no, then exit, jmp $0000194C
+iff_ilbm_chunk                                                      ; original address $0000193E
+                TST.L   D0                                          ; test any bytes remaining
+                BEQ.B   .end_ilbm_chunk                             ; if no, then exit, jmp $0000194C
                 MOVE.L  (A0)+,D1
                 SUB.L   #$00000004,D0
-                BSR.W   iff_inner_ilbm_chunks           ; calls $00001952
-                BRA.B   iff_ilbm_chunk                  ; $0000193E
+                BSR.W   iff_inner_ilbm_chunks                       ; calls $00001952
+                BRA.B   iff_ilbm_chunk                              ; $0000193E
 .end_ilbm_chunk
                 MOVEM.L (A7)+,D0/A0
                 RTS
@@ -2462,34 +2458,34 @@ iff_ilbm_chunk                                          ; relocated address $000
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
 iff_inner_ilbm_chunks
-                CMP.L   #'FORM',D1                      ; #$464f524d,D1
-                BEQ.W   iff_form                        ; jmp $00001766
-                CMP.L   #'CAT ',D1                      ; #$43415420,D1
-                BEQ.W   iff_cat                         ; jmp $00001748
-                CMP.L   #'CMAP',D1                      ; #$434d4150,D1
-                BEQ.W   iff_cmap_chunk                  ; jmp $000019B8
-                CMP.L   #'BMHD',D1                      ; #$424d4844,D1
-                BEQ.W   iff_bmhd_chunk                  ; jmp $00001A0C
-                CMP.L   #'BODY',D1                      ; #$424f4459,D1
-                BEQ.W   iff_body_chunk                  ; jmp $00001A32
-                CMP.L   #'GRAB',D1                      ; #$47524142,D1
-                BEQ.B   .skip_other_inner_chunk         ; jmp $0000199A
-                CMP.L   #'DEST',D1                      ; #$44455354,D1
-                BEQ.B   .skip_other_inner_chunk         ; jmp $0000199A
-                CMP.L   #'CAMG',D1                      ; #$43414d47,D1
+                CMP.L   #'FORM',D1                                  ; #$464f524d,D1
+                BEQ.W   iff_form                                    ; jmp $00001766
+                CMP.L   #'CAT ',D1                                  ; #$43415420,D1
+                BEQ.W   iff_cat                                     ; jmp $00001748
+                CMP.L   #'CMAP',D1                                  ; #$434d4150,D1
+                BEQ.W   iff_cmap_chunk                              ; jmp $000019B8
+                CMP.L   #'BMHD',D1                                  ; #$424d4844,D1
+                BEQ.W   iff_bmhd_chunk                              ; jmp $00001A0C
+                CMP.L   #'BODY',D1                                  ; #$424f4459,D1
+                BEQ.W   iff_body_chunk                              ; jmp $00001A32
+                CMP.L   #'GRAB',D1                                  ; #$47524142,D1
+                BEQ.B   .skip_other_inner_chunk                     ; jmp $0000199A
+                CMP.L   #'DEST',D1                                  ; #$44455354,D1
+                BEQ.B   .skip_other_inner_chunk                     ; jmp $0000199A
+                CMP.L   #'CAMG',D1                                  ; #$43414d47,D1
 .skip_other_inner_chunk
                 MOVEM.L D0/A0,-(A7)
-                MOVE.L  (A0)+,D0                        ; D0 = chunk len
-                MOVE.L  D0,D1                           ; D1 = chunk len
-                BTST.L  #$0000,D1                       ; test odd/even len
-                BEQ.B   .is_even                        ; if is even, jmp000019AA
+                MOVE.L  (A0)+,D0                                    ; D0 = chunk len
+                MOVE.L  D0,D1                                       ; D1 = chunk len
+                BTST.L  #$0000,D1                                   ; test odd/even len
+                BEQ.B   .is_even                                    ; if is even, jmp000019AA
 .is_odd
-                ADD.L   #$00000001,D1                   ; if is odd, add 1 pad byte
+                ADD.L   #$00000001,D1                               ; if is odd, add 1 pad byte
 .is_even
-                ADD.L   #$00000004,D1                   ; add 1 to chunk len
-                ADD.L   D1,$0004(A7)                    ; update address ptr on stack
-                SUB.L   D1,(A7)                         ; update remaining bytes on stack
-                MOVEM.L (A7)+,D0/A0                     ; restore remaining len/address ptr from stack
+                ADD.L   #$00000004,D1                               ; add 1 to chunk len
+                ADD.L   D1,$0004(A7)                                ; update address ptr on stack
+                SUB.L   D1,(A7)                                     ; update remaining bytes on stack
+                MOVEM.L (A7)+,D0/A0                                 ; restore remaining len/address ptr from stack
                 RTS 
 
 
@@ -2504,46 +2500,46 @@ iff_inner_ilbm_chunks
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_cmap_chunk                                                  ; relocation address $000019B8
+iff_cmap_chunk                                                      ; original routine address $000019B8
                 MOVEM.L D0/A0,-(A7)
-                MOVE.L  (A0)+,D0                                ; d0 = chunk len
-                MOVE.L  D0,D1                                   ; D1 = chunk len
-                BTST.L  #$0000,D1                               ; test odd/even len
-                BEQ.B   .is_even                                ; if is even, jmp $000019C8
+                MOVE.L  (A0)+,D0                                    ; d0 = chunk len
+                MOVE.L  D0,D1                                       ; D1 = chunk len
+                BTST.L  #$0000,D1                                   ; test odd/even len
+                BEQ.B   .is_even                                    ; if is even, jmp $000019C8
 .is_odd
-                ADD.L   #$00000001,D1                           ; if is odd, add 1 pad byte
+                ADD.L   #$00000001,D1                               ; if is odd, add 1 pad byte
 .is_even
-                ADD.L   #$00000004,D1                           ; add 4 bytes to chunk len
-                ADD.L   D1,$0004(A7)                            ; address ptr of the stack
-                SUB.L   D1,(A7)                                 ; update remaining bytes on the stack
+                ADD.L   #$00000004,D1                               ; add 4 bytes to chunk len
+                ADD.L   D1,$0004(A7)                                ; address ptr of the stack
+                SUB.L   D1,(A7)                                     ; update remaining bytes on the stack
 
-                DIVU.W  #$0003,D0                               ; divide chunk len by 3 (r/g/b)?
-                BEQ.B   end_cmap_chunk                          ; if len == 0 then exit, jmp $00001A02
+                DIVU.W  #$0003,D0                                   ; divide chunk len by 3 (r/g/b)?
+                BEQ.B   end_cmap_chunk                              ; if len == 0 then exit, jmp $00001A02
 
                 SUB.W   #$00000001,D0
-                LEA.L   copper_colours(PC),A1                   ; get bit-plane display colours. addr $000014B8
+                LEA.L   copper_colours(PC),A1                       ; get bit-plane display colours. addr $000014B8
 .colour_loop
                 MOVE.L  #$00000000,D1
                 MOVE.L  #$00000000,D2
-                MOVE.B  (A0)+,D2                                ; D2 = first colour value (byte)
-                LSR.W   #$00000004,D2                           ; S2 = Divide colour value by 16 (trim lower 4 bits 8 bit Red value?)
-                OR.W    D2,D1                                   ; D1 = combine with D2
-                ROL.W   #$00000004,D1                           ; D1 = Shift Value by 4 bits (space for next colour component )
+                MOVE.B  (A0)+,D2                                    ; D2 = first colour value (byte)
+                LSR.W   #$00000004,D2                               ; S2 = Divide colour value by 16 (trim lower 4 bits 8 bit Red value?)
+                OR.W    D2,D1                                       ; D1 = combine with D2
+                ROL.W   #$00000004,D1                               ; D1 = Shift Value by 4 bits (space for next colour component )
 
-                MOVE.L  #$00000000,D2                           ; D2 = clear down
-                MOVE.B  (A0)+,D2                                ; D2 = second colour value (byte)
-                LSR.W   #$00000004,D2                           ; D2 = Divide colour value by 16 (trim lower 4 bits of 8 bit green value>)
-                OR.W    D2,D1                                   ; D1 = Combine with D2
-                ROL.W   #$00000004,D1                           ; D1 = Shift value by 4 bits (space for next colour component)
+                MOVE.L  #$00000000,D2                               ; D2 = clear down
+                MOVE.B  (A0)+,D2                                    ; D2 = second colour value (byte)
+                LSR.W   #$00000004,D2                               ; D2 = Divide colour value by 16 (trim lower 4 bits of 8 bit green value>)
+                OR.W    D2,D1                                       ; D1 = Combine with D2
+                ROL.W   #$00000004,D1                               ; D1 = Shift value by 4 bits (space for next colour component)
 
-                MOVE.L  #$00000000,D2                           ; D2 = Clear down
-                MOVE.B  (A0)+,D2                                ; D2 = third colout value (byte)
-                LSR.W   #$00000004,D2                           ; D2 = Divide colour value by 16 (trim lower 4 bits of 8 bit blue value?)
-                OR.W    D2,D1                                   ; D1 = Combine with D2
-                ADDA.L  #$00000002,A1                           ; increase copper list index to colour value address
-                MOVE.W  D1,(A1)+                                ; Store colour RGB in copper colour value
+                MOVE.L  #$00000000,D2                               ; D2 = Clear down
+                MOVE.B  (A0)+,D2                                    ; D2 = third colout value (byte)
+                LSR.W   #$00000004,D2                               ; D2 = Divide colour value by 16 (trim lower 4 bits of 8 bit blue value?)
+                OR.W    D2,D1                                       ; D1 = Combine with D2
+                ADDA.L  #$00000002,A1                               ; increase copper list index to colour value address
+                MOVE.W  D1,(A1)+                                    ; Store colour RGB in copper colour value
 
-                DBF.W   D0,.colour_loop                         ; convert remaining colours, jmp $000019DC
+                DBF.W   D0,.colour_loop                             ; convert remaining colours, jmp $000019DC
 
 end_cmap_chunk
                 MOVEM.L (A7)+,D0/A0
@@ -2652,78 +2648,78 @@ number_of_bitplanes
                 ; D5 = Compression byte
                 ; D6 = Number of Bytes Wide 
                 ; D7 = Number of Rows High -1
-process_iff_body                                                ; relocated address: $00001A8A
-                SUBA.W  D6,A7                                   ; allocate one scanline of storage on the stack
-                MOVE.W  D6,D4                                   ; D4 = copy of byte width of gfx image
-                CMP.W   #$0028,D4                               ; Test if 40 bytes (320 pixels wide)
-                BLE.B   .skip_clamp_40                          ; if less than or equal to 40 bytes, jmp $00001A96                           
+process_iff_body                                                    ; original routine address: $00001A8A
+                SUBA.W  D6,A7                                       ; allocate one scanline of storage on the stack
+                MOVE.W  D6,D4                                       ; D4 = copy of byte width of gfx image
+                CMP.W   #$0028,D4                                   ; Test if 40 bytes (320 pixels wide)
+                BLE.B   .skip_clamp_40                              ; if less than or equal to 40 bytes, jmp $00001A96                           
 .is_40_or_more
-                MOVE.L  #$00000028,D4                           ; D4 = 40 (bytes) clamped
+                MOVE.L  #$00000028,D4                               ; D4 = 40 (bytes) clamped
 .skip_clamp_40
-                ASR.W   #$00000001,D4                           ; D4 = D4/2 (word count)
-                SUB.W   #$00000001,D4                           ; D4 = decremented by 1
+                ASR.W   #$00000001,D4                               ; D4 = D4/2 (word count)
+                SUB.W   #$00000001,D4                               ; D4 = decremented by 1
 
-.start_scanline_processing                                       ; start unpacking of 1 interleaved scanline of image data
-                MOVEA.L A1,A2                                   ; A2 = copy of destination bitmap ptr
-                MOVE.W  number_of_bitplanes,D3                  ; D3 = number of bitplanes - $00001A88,D3
+.start_scanline_processing                                          ; start unpacking of 1 interleaved scanline of image data
+                MOVEA.L A1,A2                                       ; A2 = copy of destination bitmap ptr
+                MOVE.W  number_of_bitplanes,D3                      ; D3 = number of bitplanes - $00001A88,D3
 
-.start_bitplane_loop                                             ; start unpacking the current bitplane's scanline of image data. relocated addr $00001AA0
-                MOVEA.L A7,A3                                   ; A7,A3 = scan line buffer on the stack
-                MOVE.W  D6,D2                                   ; D6,D2 = copy of image width in bytes
+.start_bitplane_loop                                                ; start unpacking the current bitplane's scanline of image data. relocated addr $00001AA0
+                MOVEA.L A7,A3                                       ; A7,A3 = scan line buffer on the stack
+                MOVE.W  D6,D2                                       ; D6,D2 = copy of image width in bytes
 
 .check_compressed
-                TST.B   D5                                      ; test compression byte
-                BNE.B   .unpack_scanline                         ; if is compressed, jmp $00001AAE
+                TST.B   D5                                          ; test compression byte
+                BNE.B   .unpack_scanline                            ; if is compressed, jmp $00001AAE
 
 .not_compressed
-                MOVE.W  D2,D0                                   ; D0 = gfx bytes wide
-                SUB.W   #$00000001,D0                           ; D0 = decrement by 1
-                BRA.B   .copy_src_dest                           ; jmp $00001AC6, D0 = number of bytes to copy
+                MOVE.W  D2,D0                                       ; D0 = gfx bytes wide
+                SUB.W   #$00000001,D0                               ; D0 = decrement by 1
+                BRA.B   .copy_src_dest                              ; jmp $00001AC6, D0 = number of bytes to copy
 
 .unpack_scanline
-                CLR.W   D0                                      ; clear D0
-                MOVE.B  (A0)+,D0                                ; get source BODY data byte (number of bytes to copy)
-                BPL.B   .copy_src_dest                           ; if D0 +ve, then jmp $00001AC6, D0 = number of bytes to copy
+                CLR.W   D0                                          ; clear D0
+                MOVE.B  (A0)+,D0                                    ; get source BODY data byte (number of bytes to copy)
+                BPL.B   .copy_src_dest                              ; if D0 +ve, then jmp $00001AC6, D0 = number of bytes to copy
                 NEG.B   D0
-                BVS.B   .unpack_scanline                         ; if D0 caused overflow then loop back to, $00001AAE
+                BVS.B   .unpack_scanline                            ; if D0 caused overflow then loop back to, $00001AAE
 
-.repeat_byte                                                    ; repeat the last byte (D0 + 1) times
-                MOVE.B  (A0)+,D1                                ; get next source BODY data byte
+.repeat_byte                                                        ; repeat the last byte (D0 + 1) times
+                MOVE.B  (A0)+,D1                                    ; get next source BODY data byte
 .repeat_byte_loop
                 MOVE.B  D1,(A3)+
                 SUB.W   #$00000001,D2
-                DBF.W   D0,.repeat_byte_loop                     ; D0 = repeat count, loop to $00001ABA
+                DBF.W   D0,.repeat_byte_loop                        ; D0 = repeat count, loop to $00001ABA
 
-                BNE.B   .unpack_scanline                         ; is D2 != 0, loop again. (not finished scan line) ;$00001AAE
-                BRA.B   .scanline_to_destbuffer                  ; jmp $00001AD0 ; scan line unpacked, copy to dest buffer
+                BNE.B   .unpack_scanline                            ; is D2 != 0, loop again. (not finished scan line) ;$00001AAE
+                BRA.B   .scanline_to_destbuffer                     ; jmp $00001AD0 ; scan line unpacked, copy to dest buffer
 
-.copy_src_dest                                                   ; D0 = number of bytes to copy + 1
-                MOVE.B  (A0)+,(A3)+                             ; copy BODY byte to scanline buffer
-                SUB.W   #$00000001,D2                           ; D2 = subtract 1 from remaining bytes for scan line
-                DBF.W   D0,.copy_src_dest                        ; D0 = number of bytes to copy, jmp $00001AC6
+.copy_src_dest                                                      ; D0 = number of bytes to copy + 1
+                MOVE.B  (A0)+,(A3)+                                 ; copy BODY byte to scanline buffer
+                SUB.W   #$00000001,D2                               ; D2 = subtract 1 from remaining bytes for scan line
+                DBF.W   D0,.copy_src_dest                           ; D0 = number of bytes to copy, jmp $00001AC6
 
-                BNE.B   .unpack_scanline                         ; D2 - if bytes remaining on scanline, then loop to $00001AAE
+                BNE.B   .unpack_scanline                            ; D2 - if bytes remaining on scanline, then loop to $00001AAE
 
 
 .scanline_to_destbuffer
-                MOVEA.L A7,A3                                   ; A7,A3 = scanline buffer
-                MOVEA.L A2,A4                                   ; A2,A4 = destination bitplane address
-                MOVE.W  D4,D2                                   ; D4,D2 = words per scan line -1
+                MOVEA.L A7,A3                                       ; A7,A3 = scanline buffer
+                MOVEA.L A2,A4                                       ; A2,A4 = destination bitplane address
+                MOVE.W  D4,D2                                       ; D4,D2 = words per scan line -1
 
-.copy_scanline_loop                                              ; copy current bitplanes' unpacked scanline to the destination bitplane
-                MOVE.W  (A3)+,(A4)+                             ; copy word from scanline buffer to destination.
-                DBF.W   D2,.copy_scanline_loop                   ; copy D2 words to destination bitplane, loop $00001AD6
+.copy_scanline_loop                                                 ; copy current bitplanes' unpacked scanline to the destination bitplane
+                MOVE.W  (A3)+,(A4)+                                 ; copy word from scanline buffer to destination.
+                DBF.W   D2,.copy_scanline_loop                      ; copy D2 words to destination bitplane, loop $00001AD6
 
 .prep_next_interleaved_scanline
-                ADDA.W  #$2800,A2                               ; increase destination ptr by 10K = 10,240 bytes
-                DBF.W   D3,.start_bitplane_loop                        ; loop do next scanline on bitplane bitplane, loop to $00001AA0
+                ADDA.W  #$2800,A2                                   ; increase destination ptr by 10K = 10,240 bytes
+                DBF.W   D3,.start_bitplane_loop                     ; loop do next scanline on bitplane bitplane, loop to $00001AA0
 
 .prep_next_scanline
-                ADDA.W  #$0028,A1                               ; increment bitplane1 ptr by one scanline (40 bytes)
-                DBF.W   D7,.start_scanline_processing            ; loop for image height (D7) + 1, jmp $00001A9A
+                ADDA.W  #$0028,A1                                   ; increment bitplane1 ptr by one scanline (40 bytes)
+                DBF.W   D7,.start_scanline_processing               ; loop for image height (D7) + 1, jmp $00001A9A
 
 .end_iff_body_process                
-                ADDA.W  D6,A7                                   ; remove scanline buffer from the stack
+                ADDA.W  D6,A7                                       ; remove scanline buffer from the stack
                 RTS 
 
 
@@ -2753,46 +2749,46 @@ process_iff_body                                                ; relocated addr
 
 
                 ;----------------------- loader variables/state ----------------------
-                ;-- relocated address: $00001AF0
+                ;-- original address: $00001AF0
                 even
 ld_track_status                                             
-                dc.b    $00                                 ; set to true when track loaded into buffer. $00001AF0
+                dc.b    $00                                         ; Track Loaded Status, set to true when track loaded into buffer. $00001AF0
 
 ld_unused_byte
-                dc.b    $00
+                dc.b    $00                                         ; Unused Byte
 
 ld_decoded_track_ptr
-                dc.l    $00000000                           ; relocated address: $00001AF2
+                dc.l    $00000000                                   ; Decoded Disk Buffer Address Pointer, $00001AF2
    
 ld_mfmencoded_track_ptr                             
-                dc.l    $00000000                           ; relocated address: $00001AF6
+                dc.l    $00000000                                   ; MFM Disk Buffer Address Pointer, $00001AF6
 
 ld_drive_bits_word                                          
-                dc.b    $00                                 ; Available drives bit field as a word: $00001AFA
+                dc.b    $00                                         ; Available drives bit field as a word: $00001AFA
 ld_drive_bits_byte                                          
-                dc.b    $00                                 ; Available drives bit field as a byte: $00001AFB
+                dc.b    $00                                         ; Available drives bit field as a byte: $00001AFB
 
 ld_drive_number                         
-                dc.w    $0000                               ; relocated address: $00001AFC 
+                dc.w    $0000                                       ; Disk Drive Number in use 0-3, $00001AFC 
 
 ld_unused_word1 
-                dc.w    $0000                               ; relocated address: $00001AFE 
+                dc.w    $0000                                       ; Unused 16 bit value, $00001AFE 
 
-ld_track_number_word                                        ; The current track number as a word. $00001B00                       
+ld_track_number_word                                                ; The current track number as a word. $00001B00                       
                 dc.b    $00                             
-ld_track_number_byte                                        ; The current track number as a byte. $00001B01
+ld_track_number_byte                                                ; The current track number as a byte. $00001B01
                 dc.b    $00 
 
 ld_unused_word2         
-                dc.w    $0001                               ; relocated address: $00001B02 
+                dc.w    $0001                                       ; Unused 16 bit value, $00001B02 
 
 ld_ciab_20ms_countdown                         
-                dc.w    $0000                               ; relocated address: $00001B04 - CIAB Timer B - 20 millisecond count down timer tick
+                dc.w    $0000                                       ; CIAB Timer B - 20 millisecond count down timer tick (clamped to 0), $00001B04 
 
 L00001B06       dc.w    $0000
 
 ld_load_status
-                dc.w    $0000                               ; relocated address: $00001B08
+                dc.w    $0000                                       ; Loader Action/Current Status, $00001B08
 
 
 
@@ -2805,29 +2801,29 @@ ld_load_status
                 ; - used state:
                 ; -- $1B00.W        - Current Selected Drive's track number
                 ; -- $1AF2.L        -
-load_decode_track                                   ; relocated routine address $00001B0A
+load_decode_track                                                   ; original routine address $00001B0A
                 MOVEM.L D0-D1,-(A7)
-L00001B0E       EXT.L   D0                          ; sign extend sector number to 32 bits (clear high word crap) 
-L00001B10       DIVU.W  #$000b,D0                   ; d0 = start track number, divide start sector by 11 sectors per track.
-L00001B14       MOVE.L  D0,D1                       ; copy result 
-L00001B16       SWAP.W  D1                          ; D1.w = remining sectors (if first track is not all sectors)
-L00001B18       TST.B   ld_track_status             ; $00001AF0 ; test file/track loaded status flag (set to true when track is loaded into memory)
+L00001B0E       EXT.L   D0                                          ; sign extend sector number to 32 bits (clear high word crap) 
+L00001B10       DIVU.W  #$000b,D0                                   ; d0 = start track number, divide start sector by 11 sectors per track.
+L00001B14       MOVE.L  D0,D1                                       ; copy result 
+L00001B16       SWAP.W  D1                                          ; D1.w = remining sectors (if first track is not all sectors)
+L00001B18       TST.B   ld_track_status                             ; $00001AF0 ; test file/track loaded status flag (set to true when track is loaded into memory)
 L00001B1C       BEQ.B   L00001B24
 
-L00001B1E       CMP.W   ld_track_number_word,D0     ; $00001B00 - D0 = start track, test current drive track number with required start track
-L00001B22       BEQ.B   L00001B32                   ; if equal, track already loaded and decocded?
+L00001B1E       CMP.W   ld_track_number_word,D0                     ; $00001B00 - D0 = start track, test current drive track number with required start track
+L00001B22       BEQ.B   L00001B32                                   ; if equal, track already loaded and decocded?
 
-L00001B24       MOVEA.L ld_decoded_track_ptr,A0     ; Track Decoded Buffer Address. addr: $00001AF2
-L00001B28       BSR.W   load_mfm_track              ; calls $00001CBC ; Load Track into Buffer (d0 = track number, d1 = remaining sectors if not whole track)
-L00001B2C       BNE.B   L00001B40                   ; Z = 0 - error occurred
-L00001B2E       ST.B    ld_track_status             ; $00001AF0 ; set file/track loaded status byte to $FF (true)
+L00001B24       MOVEA.L ld_decoded_track_ptr,A0                     ; Track Decoded Buffer Address. addr: $00001AF2
+L00001B28       BSR.W   load_mfm_track                              ; calls $00001CBC ; Load Track into Buffer (d0 = track number, d1 = remaining sectors if not whole track)
+L00001B2C       BNE.B   L00001B40                                   ; Z = 0 - error occurred
+L00001B2E       ST.B    ld_track_status                             ; $00001AF0 ; set file/track loaded status byte to $FF (true)
 
-L00001B32       MOVEA.L ld_decoded_track_ptr,A0     ; decoded track buffer address.
-L00001B36       MULU.W  #$0200,D1                   ; D1 = 512 x remaining sectors (bytes per sector)
-L00001B3A       ADDA.L  D1,A0                       ; Increment A0 by remaining sectors from whole tracks
-L00001B3C       CLR.W   ld_load_status              ; $00001B08 ; Clear Load Status = succcess
+L00001B32       MOVEA.L ld_decoded_track_ptr,A0                     ; decoded track buffer address.
+L00001B36       MULU.W  #$0200,D1                                   ; D1 = 512 x remaining sectors (bytes per sector)
+L00001B3A       ADDA.L  D1,A0                                       ; Increment A0 by remaining sectors from whole tracks
+L00001B3C       CLR.W   ld_load_status                              ; $00001B08 ; Clear Load Status = succcess
 
-L00001B40       TST.W   ld_load_status              ; $00001B08 ; Test Load Status Z = 1 - success
+L00001B40       TST.W   ld_load_status                              ; $00001B08 ; Test Load Status Z = 1 - success
 L00001B44       MOVEM.L (A7)+,D0-D1
 L00001B48       RTS 
 
@@ -2838,23 +2834,23 @@ L00001B48       RTS
                 ; creates a bit field of available drives at relocated address $00001afa.W
                 ; each bit in the field 0-3 represent whether a drive exists (1 = drive detected)
                 ;
-detect_available_drives                                     ; relocated address: $00001B4A 
+detect_available_drives                                             ; original routine address: $00001B4A 
                 MOVE.L  #$00000003,D0
                 MOVE.L  #$00000000,D1
-.detect_loop                                                ; relocated address: $00001B4E
+.detect_loop                                                        ; $00001B4E
                 MOVEM.L D0-D1,-(A7)
-                BSR.B   select_drive                        ; $00001B96
-                BSR.B   seek_track0                         ; $00001BAE
+                BSR.B   select_drive                                ; $00001B96
+                BSR.B   seek_track0                                 ; $00001BAE
                 MOVEM.L (A7)+,D0-D1
-                BNE.B   .check_next_drive                   ; if drive not available then skip to check next drive: bne $00001B5E
+                BNE.B   .check_next_drive                           ; if drive not available then skip to check next drive: bne $00001B5E
 
-                BSET.L  D0,D1                               ; Set Available Drive Flag (bits 0-3)
+                BSET.L  D0,D1                                       ; Set Available Drive Flag (bits 0-3)
 .check_next_drive
-                SUB.W   #$0001,D0                           ; decrement drive number:  relocated addr: $00001B5E
+                SUB.W   #$0001,D0                                   ; decrement drive number:  relocated addr: $00001B5E
                 BPL.B   .detect_loop 
 
-                MOVE.W  D1,ld_drive_bits_word               ; store detected drives bit field: $00001afa
-                BRA.B   deselect_all_drives                 ; end and clean up: jmp to $00001B8C
+                MOVE.W  D1,ld_drive_bits_word                       ; store detected drives bit field: $00001afa
+                BRA.B   deselect_all_drives                         ; end and clean up: jmp to $00001B8C
 
 
 
@@ -2862,10 +2858,10 @@ detect_available_drives                                     ; relocated address:
                 ;---------------- drive motor on -------------------------
                 ; -- selects and latches on the current drive
                 ; -- IN: D0 = current drive number (0-3)
-drive_motor_on                                              ; relocated address: $00001B68
-                BCLR.B  #$0007,$00bfd100                    ; CIAB PRB  - clear /MTR bit (active low)
-                BCLR.B  #$0007,$00bfd100                    ; CIAB PRB  - clear /MTR bit (active low)
-                BRA.B   select_drive                        ; routine addr: $00001B96
+drive_motor_on                                                      ; original routine address: $00001B68
+                BCLR.B  #$0007,$00bfd100                            ; CIAB PRB  - clear /MTR bit (active low)
+                BCLR.B  #$0007,$00bfd100                            ; CIAB PRB  - clear /MTR bit (active low)
+                BRA.B   select_drive                                ; routine addr: $00001B96
 
 
 
@@ -2874,17 +2870,17 @@ drive_motor_on                                              ; relocated address:
                 ; -- selects and latches off the current drive
                 ; -- ends by deselecting all drives.
                 ; -- IN: D0 = current drive number (0-3)
-drive_motor_off                                             ; relocated address: $00001B7A
+drive_motor_off                                                     ; original routine address: $00001B7A
                 BSET.B  #$0007,$00bfd100
                 BSET.B  #$0007,$00bfd100
-                BSR.B   select_drive                        ; routine addr: $00001B96
+                BSR.B   select_drive                                ; calls $00001B96
 
 
 
 
                 ;---------------- deselect all drives ---------------------
-deselect_all_drives                                         ; routine addr: $00001B8C
-                OR.B    #$78,$00bfd100                      ; Deselect all drives (active low)
+deselect_all_drives                                                 ; original routine addr: $00001B8C
+                OR.B    #$78,$00bfd100                              ; Deselect all drives (active low)
                 RTS 
 
 
@@ -2894,13 +2890,13 @@ deselect_all_drives                                         ; routine addr: $000
                 ; -- selects the current drive, used to latch motor on/off
                 ; -- called from: drive_motor_on
                 ; -- IN: D0 = current drive number (0-3)
-select_drive                                                ; relocated address: $00001B96
-                MOVE.L  D1,-(A7)                            ; store D1.L
-                OR.B    #$78,$00bfd100                      ; Deselect all drives (active low)
-                MOVE.B  D0,D1                               ; D0,D1 = current drive number
-                ADD.B   #$03,D1                             ; Shift drive number bits
-                BCLR.B  D1,$00bfd100                        ; Clear current drive select bit - active low (latch motor on/off state)
-                MOVE.L  (A7)+,D1                            ; restore D1.L
+select_drive                                                        ; original routine address: $00001B96
+                MOVE.L  D1,-(A7)                                    ; store D1.L
+                OR.B    #$78,$00bfd100                              ; Deselect all drives (active low)
+                MOVE.B  D0,D1                                       ; D0,D1 = current drive number
+                ADD.B   #$03,D1                                     ; Shift drive number bits
+                BCLR.B  D1,$00bfd100                                ; Clear current drive select bit - active low (latch motor on/off state)
+                MOVE.L  (A7)+,D1                                    ; restore D1.L
                 RTS 
 
 
@@ -2909,13 +2905,13 @@ select_drive                                                ; relocated address:
                 ;-------------------- seek track 0 ---------------------------
                 ;-- reset drive heads to track 0 of currently selected drive
                 ;
-seek_track0                                                 ; relocated address: $00001BAE
-                MOVE.W  #$0004,ld_load_status               ; $00001B08 ; set loader status (4 = step heads)
-                MOVEM.L D0,-(A7)                            ; save D0.L
-                MOVE.W  #$00a6,ld_track_number_word         ; $00001B00 ; Current Track = 168 (cylinder 84)
-                CLR.W   D0                                  ; clear target track D0.W
-                BSR.B   seek_to_track                       ; calls $00001BC8
-                MOVEM.L (A7)+,D0                            ; restore D0.l
+seek_track0                                                         ; original routine address: $00001BAE
+                MOVE.W  #$0004,ld_load_status                       ; $00001B08 ; set loader status (4 = step heads)
+                MOVEM.L D0,-(A7)                                    ; save D0.L
+                MOVE.W  #$00a6,ld_track_number_word                 ; $00001B00 ; Current Track = 168 (cylinder 84)
+                CLR.W   D0                                          ; clear target track D0.W
+                BSR.B   seek_to_track                               ; calls $00001BC8
+                MOVEM.L (A7)+,D0                                    ; restore D0.l
                 RTS 
 
 
@@ -2931,48 +2927,48 @@ seek_track0                                                 ; relocated address:
                 ;--
                 ;-- OUT: CCR Z = 0 - track 0
                 ;
-seek_to_track                                                   ; relocated address: $00001BC8
-.even_track_no  BSET.B  #$02,$00bfd100                          ; CIA PRB - SIDE = 1 (select bottom side)
-                BCLR.B  #$00,ld_track_number_byte               ; make current track counter even (bottom head)                
-                BTST.L  #$0000,D0                               ; is desired track even or odd?
-                BEQ.B   .step_heads                              ; if desired track is even then continue, jmp $00001BEA
+seek_to_track                                                       ; original routine address: $00001BC8
+.even_track_no  BSET.B  #$02,$00bfd100                              ; CIA PRB - SIDE = 1 (select bottom side)
+                BCLR.B  #$00,ld_track_number_byte                   ; make current track counter even (bottom head)                
+                BTST.L  #$0000,D0                                   ; is desired track even or odd?
+                BEQ.B   .step_heads                                 ; if desired track is even then continue, jmp $00001BEA
 .odd_track_no
-                BCLR.B  #$02,$00bfd100                          ; else, track is odd, so set CIAB PRA - SIDE = 0 (top head) and...
-                BSET.B  #$00,ld_track_number_byte               ; make current track counter odd
+                BCLR.B  #$02,$00bfd100                              ; else, track is odd, so set CIAB PRA - SIDE = 0 (top head) and...
+                BSET.B  #$00,ld_track_number_byte                   ; make current track counter odd
 .step_heads
-                CMP.W   ld_track_number_word,D0                 ; is current track equal to the desired track?
-                BEQ.B   .end_step                               ; calls $00001C5E
-                BPL.B   .step_inwards                           ; calls $00001C18 ; current track less than than desired
+                CMP.W   ld_track_number_word,D0                     ; is current track equal to the desired track?
+                BEQ.B   .end_step                                   ; calls $00001C5E
+                BPL.B   .step_inwards                               ; calls $00001C18 ; current track less than than desired
 .step_ouwards
-                BSET.B  #$01,$00bfd100                          ; CIAB PRB - DIR = 1 (step outwards)
+                BSET.B  #$01,$00bfd100                              ; CIAB PRB - DIR = 1 (step outwards)
 .step_out_loop
-                BTST.B  #$04,$00bfe001                          ; are heads at track 0
-                BEQ.B   .at_track0                              ;   yes.. $00001C12
-                BSR.B   step_heads                              ; call $00001C68
-                SUB.W   #$0002,ld_track_number_word             ; decrement track number by 2 (top & bottom)
-                CMP.W   ld_track_number_word,D0                 ; test if at desired track number 
-                BNE.B   .step_out_loop                          ; if not at desired track then step again, jmp $00001BFA
-                BRA.B   .step_completed                         ; jmp $00001C2C
+                BTST.B  #$04,$00bfe001                              ; are heads at track 0
+                BEQ.B   .at_track0                                  ;   yes.. $00001C12
+                BSR.B   step_heads                                  ; call $00001C68
+                SUB.W   #$0002,ld_track_number_word                 ; decrement track number by 2 (top & bottom)
+                CMP.W   ld_track_number_word,D0                     ; test if at desired track number 
+                BNE.B   .step_out_loop                              ; if not at desired track then step again, jmp $00001BFA
+                BRA.B   .step_completed                             ; jmp $00001C2C
 .at_track0
-                CLR.W   ld_track_number_word                    ; clear current track number $00001b00
+                CLR.W   ld_track_number_word                        ; clear current track number $00001b00
                 BRA.B   .step_completed
 .step_inwards
-                BCLR.B  #$01,$00bfd100                          ; CIAB PRB - DIR = 0 (step inwards)
+                BCLR.B  #$01,$00bfd100                              ; CIAB PRB - DIR = 0 (step inwards)
 .step_in_loop
-                BSR.B   step_heads                              ; calls $00001C68
-                ADD.W   #$0002,ld_track_number_word             ; increment track number by 2 (top & bottom)
-                CMP.W   ld_track_number_word,D0                 ; test if at desired track number
-                BNE.B   .step_in_loop                           ; if not at desired track then step again, jmp $00001C20
+                BSR.B   step_heads                                  ; calls $00001C68
+                ADD.W   #$0002,ld_track_number_word                 ; increment track number by 2 (top & bottom)
+                CMP.W   ld_track_number_word,D0                     ; test if at desired track number
+                BNE.B   .step_in_loop                               ; if not at desired track then step again, jmp $00001C20
 .step_completed
-                MOVE.B  #$00,$00bfde00                          ; CIAB CRA (stop timers)
-                MOVE.B  #$f4,$00bfd400                          ; timer A low  = #$f4 
-                MOVE.B  #$29,$00bfd500                          ; timer A high = #$29 (10740) - 15ms? not sure of timer freq (pal = 0.709379mhz)
-                BCLR.B  #TIMERA_FINISHED,interrupt_flags_byte   ; clear timerA interrupt flag: $0000209A
-                MOVE.B  #$19,$00bfde00                          ; CIAB CRA (start timer), LOAD = 1, RUNMODE = 1 (oneshot), START = 1
-.timer_wait     BTST.B  #TIMERA_FINISHED,interrupt_flags_byte   ; test timerA interrupt flag: $0000209A
-                BEQ.B   .timer_wait                             ; wait for timer $00001C54
+                MOVE.B  #$00,$00bfde00                              ; CIAB CRA (stop timers)
+                MOVE.B  #$f4,$00bfd400                              ; timer A low  = #$f4 
+                MOVE.B  #$29,$00bfd500                              ; timer A high = #$29 (10740) - 15ms? not sure of timer freq (pal = 0.709379mhz)
+                BCLR.B  #TIMERA_FINISHED,interrupt_flags_byte       ; clear timerA interrupt flag: $0000209A
+                MOVE.B  #$19,$00bfde00                              ; CIAB CRA (start timer), LOAD = 1, RUNMODE = 1 (oneshot), START = 1
+.timer_wait     BTST.B  #TIMERA_FINISHED,interrupt_flags_byte       ; test timerA interrupt flag: $0000209A
+                BEQ.B   .timer_wait                                 ; wait for timer $00001C54
 .end_step
-                BTST.B  #$0004,$00bfe001                        ; Test if Track 0, Z = 0
+                BTST.B  #$0004,$00bfe001                            ; Test if Track 0, Z = 0
                 RTS 
 
 
@@ -2983,19 +2979,19 @@ seek_to_track                                                   ; relocated addr
                 ;-- the currently selected heads direction.
                 ;-- heads are stepped by setting the STEP bit low then high (pulse)
                 ;
-step_heads                                                      ; relocated address: $00001C68
-                MOVE.B  #$00,$00bfde00                          ; CIAB CRA (control reg A)
-                MOVE.B  #$c8,$00bfd400                          ; TimerA low =  #$C8
-                MOVE.B  #$10,$00bfd500                          ; TimerA High = #$10
-                BCLR.B  #$00,$00bfd100                          ; clear STEP bit CIAB PRB   
-                BCLR.B  #$00,$00bfd100                          ; clear STEP bit CIAB PRB 
-                BCLR.B  #$00,$00bfd100                          ; clear STEP bit CIAB PRB 
-                BSET.B  #$00,$00bfd100                          ; set STEP bit CIAB PRB 
-                BCLR.B  #TIMERA_FINISHED,interrupt_flags_byte   ; clear timer A flag: $0000209A
-                MOVE.B  #$19,$00bfde00                          ; CIAB CRA (start timer), LOAD = 1, RUNMODE = 1 (oneshot), START = 1
+step_heads                                                          ; original routine address: $00001C68
+                MOVE.B  #$00,$00bfde00                              ; CIAB CRA (control reg A)
+                MOVE.B  #$c8,$00bfd400                              ; TimerA low =  #$C8
+                MOVE.B  #$10,$00bfd500                              ; TimerA High = #$10
+                BCLR.B  #$00,$00bfd100                              ; clear STEP bit CIAB PRB   
+                BCLR.B  #$00,$00bfd100                              ; clear STEP bit CIAB PRB 
+                BCLR.B  #$00,$00bfd100                              ; clear STEP bit CIAB PRB 
+                BSET.B  #$00,$00bfd100                              ; set STEP bit CIAB PRB 
+                BCLR.B  #TIMERA_FINISHED,interrupt_flags_byte       ; clear timer A flag: $0000209A
+                MOVE.B  #$19,$00bfde00                              ; CIAB CRA (start timer), LOAD = 1, RUNMODE = 1 (oneshot), START = 1
 .timer_wait
-                BTST.B  #TIMERA_FINISHED,interrupt_flags_byte   ; test timerA interrupt flag: $0000209A
-                BEQ.B   .timer_wait                             ; wait for timer $00001CB0
+                BTST.B  #TIMERA_FINISHED,interrupt_flags_byte       ; test timerA interrupt flag: $0000209A
+                BEQ.B   .timer_wait                                 ; wait for timer $00001CB0
                 RTS 
 
 
@@ -3057,7 +3053,7 @@ load_mfm_track
                 ;-------------------------- dma read track --------------------------
                 ;-- IN: A0.L - MFM Track Buffer
                 ;-- OUT: Z=0 - success, Z=1 - timeout
-dma_read_track                                                          ; relocated address: $00001D36
+dma_read_track                                                      ; original routine address: $00001D36
                 MOVEM.L D0/A0,-(A7)
                 MOVE.W  #$0005,ld_ciab_20ms_countdown               ; $00001B04 ; CIAB Timer B 20ms timer ticks = 5 * 20 = 100ms (drive ready timeout value)
 .drive_ready_loop
@@ -3152,7 +3148,9 @@ L00001E62       ADDA.W  #$001c,A7
 L00001E66       MOVEM.L (A7)+,D0-D1/D5-D7/A0
 L00001E6A       RTS 
 
-;L00001E6C       ANDSR.B #$00fb
+
+
+
 L00001E6C       AND.B   #$fb,CCR
 L00001E70       BRA.B   L00001E62
 L00001E72       MOVEM.L D1-D3,-(A7)
@@ -3169,6 +3167,9 @@ L00001E8C       MOVE.L  D2,(A1)+
 L00001E8E       DBF.W   D0,L00001E80
 L00001E92       MOVEM.L (A7)+,D1-D3
 L00001E96       RTS 
+
+
+
 
 L00001E98       MOVE.L  D1,-(A7)
 L00001E9A       BTST.B  #$0006,$00dff002
@@ -3196,6 +3197,9 @@ L00001EF8       BTST.B  #$0006,$00dff002
 L00001F00       BNE.B   L00001EF8
 L00001F02       MOVE.L  (A7)+,D1
 L00001F04       RTS 
+
+
+
 
 L00001F06       MOVEM.L D1-D2/A0,-(A7)
 L00001F0A       LSR.W   #$00000002,D0
@@ -3226,113 +3230,176 @@ L00001F24       RTS
 
 
                 ;--------------------------- init system --------------------------------
-                ;-- 
-init_system                                                             ;L00001F26
-L00001F26       LEA.L   $00dff000,A6
-L00001F2C       LEA.L   $00bfd100,A5
-L00001F32       LEA.L   $00bfe101,A4
+                ; This routine is called at the start of each level loading section.
+                ;   - load_loading_screen
+                ;   - load_title_screen2 
+                ;   - load_level1        
+                ;   - load_level_2       
+                ;   - load_level_3       
+                ;   - load_level_4       
+                ;   - load_level_5       
+                ;
+                ; Performs the following actions:
+                ;   - Disables Interrupts
+                ;   - Enter Supervisor mode via TRAP 0
+                ;   - Re-sets the display, sprites, audio, ciaa, ciab to a known state.
+                ;   - Re-sets level 1-6 interrupt handers
+                ;   - Re-sets magic number in $00002096 to the value $FFFFDF90
+                ;   - Re-sets $4.w to magic number value $FFFFDF90
+                ;   - Re-sets disk drive motors (off)
+                ;   - Re-sets CIAA Timer B - 20ms timer ticks (INT2) - Continuous
+                ;   - Re-sets CIAB Timer B - 200us timer (INT6) - ()
+                ;   - Enables Interrupts
+                ;   - Set Supervisor bit on SR
+                ;
+init_system                                                         ; original routine address $00001F26
+                LEA.L   $00dff000,A6                                ; A6 = custom chip base address
+                LEA.L   $00bfd100,A5                                ; A5 = CIAB PRB - used as base address to CIAB
+                LEA.L   $00bfe101,A4                                ; A4 = CIAA PRB - used as base address to CIAA
 
-L00001F38       MOVE.L  #$00000000,D0
+                MOVE.L  #$00000000,D0
 
-L00001F3A       MOVE.W  #$7fff,$009a(A6)
-L00001F40       MOVE.W  #$1fff,$0096(A6)
-L00001F46       MOVE.W  #$7fff,$009a(A6)
+                MOVE.W  #$7fff,INTENA(A6)                           ; disable interrupts
+                MOVE.W  #$1fff,DMACON(A6)                           ; disable DMA
+                MOVE.W  #$7fff,INTENA(A6)                           ; disable interrupts again?
 
-L00001F4C       LEA.L   L00001F58(PC),A0
-L00001F50       MOVE.L  A0,$00000080
-L00001F54       MOVEA.L A7,A0
+                ; enter supervisor mode
+                LEA.L   .supervisor_trap(PC),A0                     ; A0 = address of supervisor trap $00001F58
+                MOVE.L  A0,$00000080                                ; Set TRAP 0 vector
+                MOVEA.L A7,A0                                       ; store stack pointer
+                TRAP    #$00000000                                  ; do the trap (jmp to next instruction in supervisor mode)
+                                                                    ; this trap never returns.
 
-L00001F56       TRAP    #$00000000
+                ; enter supervisor mode
+                ; D0.l = $00000000
+.supervisor_trap                                                    ; original address $00001F58
+                MOVEA.L A0,A7                                       ; restore the stack (i.e. rts return address etc)
+                MOVE.W  #$0200,BPLCON0(A6)                          ; 0 bitplanes, COLOR_ON=1, low res
+                MOVE.W  D0,BPLCON1(A6)                              ; clear delay/scroll registers
+                MOVE.W  D0,BPLCON2(A6)                              ; reset sprite/bitplane priorities, genlock etc.
+                MOVE.W  D0,COLOR00(A6)                              ; background colour = black
+                MOVE.W  #$4000,DSKLEN(A6)                           ; disable disk DMA (as per h/w ref)
+                MOVE.L  D0,BLTCON0(A6)                              ; clear BLTCON0 & BLTCON1
+                MOVE.W  #$0041,BLTSIZE(A6)                          ; Perform 1 x 1 word blit (DMA off) bit odd.
 
-L00001F58       MOVEA.L A0,A7
-L00001F5A       MOVE.W  #$0200,$0100(A6)
-L00001F60       MOVE.W  D0,$0102(A6)
-L00001F64       MOVE.W  D0,$0104(A6)
-L00001F68       MOVE.W  D0,$0180(A6)
-L00001F6C       MOVE.W  #$4000,$0024(A6)
-L00001F72       MOVE.L  D0,$0040(A6)
-L00001F76       MOVE.W  #$0041,$0058(A6)
-L00001F7C       MOVE.W  #$8340,$0096(A6)
-L00001F82       MOVE.W  #$7fff,$009e(A6)
+                MOVE.W  #$8340,DMACON(A6)                           ; enable MASTER,BITPLANE,BLITTER DMA
+                MOVE.W  #$7fff,ADKCON(A6)                           ; clear disk controller bits
 
-L00001F88       MOVE.L  #$00000007,D1
-L00001F8A       LEA.L   $0140(A6),A0
+                ; reset sprites positions
+.reset_sprites
+                MOVE.L  #$00000007,D1                               ; D1 = counter 7 + 1 (8 sprites)
+                LEA.L   SPR0POS(A6),A0                              ; A0 = first sprite position
+.reset_sprite_loop
+                MOVE.W  D0,(A0)
+                ADDA.L  #$00000008,A0                               ; next sprite pointer
+                DBF.W   D1,.reset_sprite_loop                       ; reset next sprite position, $00001F8E
 
-L00001F8E       MOVE.W  D0,(A0)
-L00001F90       ADDA.L  #$00000008,A0
-L00001F92       DBF.W   D1,L00001F8E
+                ; silence audio
+.reset_audio
+                MOVE.L  #$00000003,D1                               ; D1 = counter 3 + 1 (4 audio channels)
+                LEA.L   AUD0VOL(A6),A0                              ; A0 = channel 1 audio volume register.
+.reset_audio_loop
+                MOVE.W  D0,(A0)                                     ; set audio channel volume to 0
+                LEA.L   $0010(A0),A0                                ; A0 = next channel audio volume address
+                DBF.W   D1,.reset_audio_loop                        ; reset next audio channel volume, $00001F9C
 
-L00001F96       MOVE.L  #$00000003,D1
-L00001F98       LEA.L   $00a8(A6),A0
+                ; reset CIAA
+                ; A4 = CIAA PRB - used as base address to CIAA
+.reset_ciaa
+                MOVE.B  #$7f,$0c00(A4)                              ; ICR = clear interrupts
+                MOVE.B  D0,$0d00(A4)                                ; CRA = clear timer A control bits
+                MOVE.B  D0,$0e00(A4)                                ; CRB = clear timer B control bits
+                MOVE.B  D0,-$0100(A4)                               ; PRA = clear /LED /OVL (/OVL shouldn't be played with - ROM overlay in memory flag)
+                MOVE.B  #$03,$0100(A4)                              ; DDRA = set /LED /OVL as output, set disk status as inputs (as the system intends)
+                MOVE.B  D0,(A4)                                     ; PRB = set parallel data lines to 0
+                MOVE.B  #$ff,$0200(A4)                              ; DDRB = set direction line to output
 
-L00001F9C       MOVE.W  D0,(A0)
-L00001F9E       LEA.L   $0010(A0),A0
-L00001FA2       DBF.W   D1,L00001F9C
+                ; reset CIAB
+                ; A5 = CIAB PRB - used as base address to CIAB
+.reset_ciab
+                MOVE.B  #$7f,$0c00(A5)                              ; ICR = clear interrupts
+                MOVE.B  D0,$0d00(A5)                                ; CRA = clear Timer A control bits
+                MOVE.B  D0,$0e00(A5)                                ; CRB = clear Timer B control bits
+                MOVE.B  #$c0,-$0100(A5)                             ; PRA = set keyboard serial /DTR /RTS lines
+                MOVE.B  #$c0,$0100(A5)                              ; DDRA = set /DTR /RTS lines to output
+                MOVE.B  #$ff,(A5)                                   ; PRB = deselect all drives & motor, /SIDE = Bottom, /DIR = outwards, 
+                MOVE.B  #$ff,$0200(A5)                              ; DDRB = set drive control bits to output
 
-L00001FA6       MOVE.B  #$7f,$0c00(A4)
-L00001FAC       MOVE.B  D0,$0d00(A4)
-L00001FB0       MOVE.B  D0,$0e00(A4)
-L00001FB4       MOVE.B  D0,-$0100(A4)
-L00001FB8       MOVE.B  #$03,$0100(A4)
-L00001FBE       MOVE.B  D0,(A4)
-L00001FC0       MOVE.B  #$ff,$0200(A4)
-L00001FC6       MOVE.B  #$7f,$0c00(A5)
-L00001FCC       MOVE.B  D0,$0d00(A5)
-L00001FD0       MOVE.B  D0,$0e00(A5)
-L00001FD4       MOVE.B  #$c0,-$0100(A5)
-L00001FDA       MOVE.B  #$c0,$0100(A5)
-L00001FE0       MOVE.B  #$ff,(A5)
-L00001FE4       MOVE.B  #$ff,$0200(A5)
+.unknown_tamper_check
+                ; maybe tamper check, or just code to confuse 
+                LEA.L   .enable_interrupts(PC),A0                   ; A0 = address of .enable_interrupts $00002070
+                MOVE.L  #$00000000,D0                               ; D0.l = #$00000000
+                SUB.L   A0,D0                                       ; D0.l = $FFFFDF90
+                MOVE.L  D0,$0026(A0)                                ; Set $00002096 to $FFFFDF90 - Unused Value, can't see this used anywhere.
+                MOVE.L  A0,$00000004                                ; A0 = $2070 ;This is an odd one($4.w is the reset PC counter)
 
-L00001FEA       LEA.L   L00002070(PC),A0
-L00001FEE       MOVE.L  #$00000000,D0
-L00001FF0       SUB.L   A0,D0
-L00001FF2       MOVE.L  D0,$0026(A0)                                    ; set value of addr $00002096 to $FFFFDF90 below this routine.
-L00001FF6       MOVE.L  A0,$00000004                                    ; A0 = $2070 ;This is an odd one($4.w is the reset PC counter)
+                ; set interrupt handlers
+.set_level1
+                LEA.L   level1_interrupt_handler(PC),A0             ; A0 = address of level1 handler $0000209C
+                MOVE.L  A0,$00000064                                ; Set Level 1 Interrupt Vector
+.set_level2
+                LEA.L   level2_interrupt_handler(PC),A0             ; A0 = address of level2 handler $000020DA
+                MOVE.L  A0,$00000068                                ; Set Level 2 Interrupt Vector
+.set_level3
+                LEA.L   level3_interrupt_handler(PC),A0             ; A0 = address of level3 handler $00002100
+                MOVE.L  A0,$0000006C                                ; Set Level 3 Interrupt Vector
+.set_level4
+                LEA.L   level4_interrupt_handler(PC),A0             ; A0 = address of level4 handler $00002146
+                MOVE.L  A0,$00000070                                ; Set Level 4 Interrupt Vector
+.set_level5
+                LEA.L   level5_interrupt_handler(PC),A0             ; A0 = address of level5 handler $0000215C
+                MOVE.L  A0,$00000074                                ; Set Level 5 Interrupt Vector
+.set_level6
+                LEA.L   level6_interrupt_handler(PC),A0             ; A0 = address of level6 handler $00002182
+                MOVE.L  A0,$00000078                                ; Set Level 6 Interrupt Vector
 
-L00001FFA       LEA.L   level1_interrupt_handler(PC),A0                 ; relocated addr: $0000209C
-L00001FFE       MOVE.L  A0,$00000064                                    ; Level 1 Interrupt Vector
+                MOVE.W  #$ff00,POTGO(A6)                            ; Enable output for Paula Pins on Port 2 (9,5), Port 1 (9,5), set pins high
+                MOVE.W  D0,JOYTEST(A6)                             ; D0.W = $DF90 (maybe a bug? D0.l is set above) write to all 4 joystick-mouse counters at once. (JOY0DAT, JOY1DAT)
 
-L00002002       LEA.L   level2_interrupt_handler(PC),A0                 ; relocated addr: $000020DA
-L00002006       MOVE.L  A0,$00000068                                    ; Level 2 Interrupt Vector
+.reset_drive_motors                
+                ; switch drives off
+                ; A5 = CIAB PRB - used as base address to CIAB
+                OR.B    #$ff,(A5)                                   ; deselect disk drives 
+                AND.B   #$87,(A5)                                   ; latch motors off on drives 0-3
+                AND.B   #$87,(A5)                                   ; latch motors off on drivee 0-3
+                OR.B    #$ff,(A5)                                   ; deselect disk drived
 
-L0000200A       LEA.L   level3_interrupt_handler(PC),A0                 ; relocated addr: $00002100
-L0000200E       MOVE.L  A0,$0000006c                                    ; Level 3 Interrupt Vector
+.reset_ciaa_timer_b
+                ; A4 = CIAA PRB - used as base address to CIAA
+                MOVE.B  #$f0,$0500(A4)                              ; Timer B Low Byte
+                MOVE.B  #$37,$0600(A4)                              ; Timer B High Byte - 14320 clock ticks = approx 20ms 
+                MOVE.B  #$11,$0e00(A4)                              ; Load, Start Timer B continuous mode.
 
-L00002012       LEA.L   level4_interrupt_handler(PC),A0                 ; relocated addr: $00002146
-L00002016       MOVE.L  A0,$00000070                                    ; Level 4 Interrupt Vector
+.reset_ciab_timer_b
+                ; A5 = CIAB PRB - used as base address to CIAB
+                MOVE.B  #$91,$0500(A5)                              ; Timer B Low Byte
+                MOVE.B  #$00,$0600(A5)                              ; Timer B High Byte - 145 clock ticks = approx 200us
+                MOVE.B  #$00,$0e00(A5)                              ; CRB - clear control reg (Timer B) - not started. (think it's used to trigger a keyboard ack)
 
-L0000201A       LEA.L   level5_interrupt_handler(PC),A0                 ; relocated addr: $0000215C
-L0000201E       MOVE.L  A0,$00000074                                    ; Level 5 Interrupt Vector
+                ; set all interrupt flag bits
+                MOVE.B  #$1f,interrupt_flags_byte                   ; $0000209A  ; %00011111 - set 5 flags
 
-L00002022       LEA.L   level6_interrupt_handler(PC),A0                 ; relocated addr: $00002182
-L00002026       MOVE.L  A0,$00000078                                    ; Level 6 Interrupt Vector
+.enable_interrupts
+                MOVE.W  #$7fff,INTREQ(A6)                           ; Clear Interrupt Request bits
+.enable_ciaa_interrupts
+                TST.B   $0c00(A4)                                   ; CIAA ICR - clear interrupt flags
+                MOVE.B  #$8a,$0c00(A4)                              ; CIAA ICR - Enable SP (Keyboard), ALRM (TOD)
+.enable_ciab_interrupts
+                TST.B   $0c00(A5)                                   ; CIAB ICR - clear interrupt flags
+                MOVE.B  #$93,$0c00(A5)                              ; CIAB ICR - Enable FLG (DSKINDEX), TB (TimerA), TA (TimerB)
+.enable_custum_interrupts
+                ; Enable interrupts, 6, 3, 2, 1
+                MOVE.W  #$e078,INTENA(A6)                           ; enable interrupts, INTEN(master),EXTER(6),BLIT(3),VERTB(3),COPER(3),PORTS(2),SOFT(1),DSKBLK(1),TBE(1)
+.set_supervisor_ssr
+                MOVE.W  #$2000,SR                                   ; Set Supervisor bit, you'd already have to be supervisor to get away with this.
+                                                                    ; otherwise PRIVILEGE exception (am i right?)
+.exit_init_system
+                RTS 
 
-L0000202A       MOVE.W  #$ff00,$0034(A6)
-L00002030       MOVE.W  D0,$0036(A6)                                    ; D0.L = $FFFFDF90
-L00002034       OR.B    #$ff,(A5)
-L00002038       AND.B   #$87,(A5)
-L0000203C       AND.B   #$87,(A5)
-L00002040       OR.B    #$ff,(A5)
-L00002044       MOVE.B  #$f0,$0500(A4)
-L0000204A       MOVE.B  #$37,$0600(A4)
-L00002050       MOVE.B  #$11,$0e00(A4)
-L00002056       MOVE.B  #$91,$0500(A5)
-L0000205C       MOVE.B  #$00,$0600(A5)
-L00002062       MOVE.B  #$00,$0e00(A5)
-L00002068       MOVE.B  #$1f,interrupt_flags_byte                       ; $0000209A  ; %00011111 - set 5 flags
-L00002070       MOVE.W  #$7fff,$009c(A6)
-L00002076       TST.B   $0c00(A4)
-L0000207A       MOVE.B  #$8a,$0c00(A4)
-L00002080       TST.B   $0c00(A5)
-L00002084       MOVE.B  #$93,$0c00(A5)
-L0000208A       MOVE.W  #$e078,$009a(A6)
-;L00002090       MV2SR.W #$2000
-L00002090       MOVE.W  #$2000,SR
-L00002094       RTS 
+unknown_magic_number:                                               ; original address $00002096
+                dc.l    $00000000                                   ; Set to the value $FFFFDF90 by init_system above (unused? not accessed anywhere else in loader)
 
 
-L00002096       dc.w    $0000, $0000                            ; Set to the value $FFFFDF90 by init_system above
 
 
 
@@ -3350,9 +3417,9 @@ L00002096       dc.w    $0000, $0000                            ; Set to the val
 
 
 
-interrupt_flags_byte                                            ; relocated addr: $0000209A
+interrupt_flags_byte                                                ; address $0000209A
                 dc.b    $1F
-L0000209B       dc.b    $00
+L0000209B       dc.b    $00                                         ; unused pad byte
 
                 ;-------------------------- level 1 interrupt handler --------------------------
                 ;-- handler for level 1 interrupts as follows:-
@@ -3360,26 +3427,26 @@ L0000209B       dc.b    $00
                 ;-- if TBE (serial) then clear TBE bit in INTREQ.
                 ;-- if DSKBLK (diskblock) then set DSKBLK_FINISHED bit in Interrupt_flags_Byte
                 ;-- 
-level1_interrupt_handler                                        ; relocated addr: $0000209C
+level1_interrupt_handler                                            ; original routine address $0000209C
                 MOVE.L  D0,-(A7)
-                MOVE.W  $00dff01e,D0                            ; Read INTREQR
+                MOVE.W  $00dff01e,D0                                ; Read INTREQR
 
-                BTST.L  #$0002,D0                               ; SOFT - Software Interrupt
-                BNE.B   .level1_soft                            ; if SOFT = 1 then jmp $000020CE
+                BTST.L  #$0002,D0                                   ; SOFT - Software Interrupt
+                BNE.B   .level1_soft                                ; if SOFT = 1 then jmp $000020CE
 
-                BTST.L  #$0001,D0                               ; DSKBLK - Disk Block Finished
-                BNE.B   .level_dskblk                           ; if DSKBLK = 1 then jmp $000020BC
+                BTST.L  #$0001,D0                                   ; DSKBLK - Disk Block Finished
+                BNE.B   .level_dskblk                               ; if DSKBLK = 1 then jmp $000020BC
 .level1_tbe
-                MOVE.W  #$0001,$00dff09c                        ; Clear TBE serial port interrupt
+                MOVE.W  #$0001,$00dff09c                            ; Clear TBE serial port interrupt
                 MOVE.L  (A7)+,D0
                 RTE 
 .level_dskblk
-                BSET.B  #DSKBLK_FINISHED,interrupt_flags_byte   ; var addr: $0000209A
-                MOVE.W  #$0002,$00dff09C                        ; Clear DSKBLK interrupt
+                BSET.B  #DSKBLK_FINISHED,interrupt_flags_byte       ; Set Disk Block Finished Flag, $0000209A
+                MOVE.W  #$0002,$00dff09C                            ; Clear DSKBLK interrupt
                 MOVE.L  (A7)+,D0
                 RTE 
 .level1_soft
-                MOVE.W  #$0004,$00dff09c                        ; Clear SOFT Interrupt
+                MOVE.W  #$0004,$00dff09c                            ; Clear SOFT Interrupt
                 MOVE.L  (A7)+,D0
                 RTE 
 
@@ -3390,17 +3457,17 @@ level1_interrupt_handler                                        ; relocated addr
                 ;-- handler for level 2 interrupts as follows:-
                 ;-- pretty much handles the 20ms timer ticks counters,
                 ;-- ignores and clears off other level 2 interrupts
-level2_interrupt_handler                                        ; relocated address: $000020DA
+level2_interrupt_handler                                            ; original routine address $000020DA
                 MOVE.L  D0,-(A7)
-                MOVE.B  $00bfed01,D0                            ; CIAA ICR, clears on read
-                BPL.B   .not_ciaa_int                           ; MSB = 0 then not a CIAA interrupt, jmp $000020F4
+                MOVE.B  $00bfed01,D0                                ; CIAA ICR, clears on read
+                BPL.B   .not_ciaa_int                               ; MSB = 0 then not a CIAA interrupt, jmp $000020F4
 .is_ciaa_int
-                BSR.W   ciaa_interrupt_handler                  ; routine addr: $000021C0
-                MOVE.W  #$0008,$00dff09c                        ; Clear PORTS bit of INTREQ
+                BSR.W   ciaa_interrupt_handler                      ; calls $000021C0
+                MOVE.W  #$0008,$00dff09c                            ; Clear PORTS bit of INTREQ
                 MOVE.L  (A7)+,D0
                 RTE 
 .not_ciaa_int
-                MOVE.W  #$0008,$00dff09c                        ; Clear PORTS bit of INTREQ
+                MOVE.W  #$0008,$00dff09c                            ; Clear PORTS bit of INTREQ
                 MOVE.L  (A7)+,D0
                 RTE 
 
@@ -3413,31 +3480,31 @@ level2_interrupt_handler                                        ; relocated addr
                 ;-- if VERTB (vertical blank) then increment frame_counter variable
                 ;-- if BLIT (blit finished) then set BLIT_FINISHED bit of interrupt_flags_byte
                 ;--
-level3_interrupt_handler                                        ; relocated address: $00002100
+level3_interrupt_handler                                            ; original routine address $00002100
                 MOVE.L  D0,-(A7)
-                MOVE.W  $00dff01e,D0                            ; Read INTREQR
-                BTST.L  #$0004,D0                               ; COPER - Copper Interrupt
-                BNE.B   .is_coper                               ; if COPER bit = 1 then jmp $00002138
+                MOVE.W  $00dff01e,D0                                ; Read INTREQR
+                BTST.L  #$0004,D0                                   ; COPER - Copper Interrupt
+                BNE.B   .is_coper                                   ; if COPER bit = 1 then jmp $00002138
 .chk_vertb      
-                BTST.L  #$0005,D0                               ; VERTB - Vertical Blank Interrupt
-                BNE.B   .is_vertb                               ; if VERTB bit = 1 then jmp $00002126
+                BTST.L  #$0005,D0                                   ; VERTB - Vertical Blank Interrupt
+                BNE.B   .is_vertb                                   ; if VERTB bit = 1 then jmp $00002126
 .blt_finished
-                BSET.B  #BLIT_FINISHED,interrupt_flags_byte     ; Set Bitter Finished Flag in $0000209A
-                MOVE.W  #$0040,$00dff09c                        ; Clear Blitter Interrupt bit
+                BSET.B  #BLIT_FINISHED,interrupt_flags_byte         ; Set Bitter Finished Flag in $0000209A
+                MOVE.W  #$0040,$00dff09c                            ; Clear Blitter Interrupt bit
                 MOVE.L  (A7)+,D0
                 RTE 
-.is_vertb                                                       ; relocated address: $00002126
-                ADD.W   #$0001,frame_counter                    ; increase frame counter variable - $00002144
-                MOVE.W  #$0020,$00dff09c                        ; clear VERTB interrupt bit
+.is_vertb                                                           ; relocated address: $00002126
+                ADD.W   #$0001,frame_counter                        ; increase frame counter variable - $00002144
+                MOVE.W  #$0020,$00dff09c                            ; clear VERTB interrupt bit
                 MOVE.L  (A7)+,D0
                 RTE 
-.is_coper                                                       ; relocated address: $00002138
-                MOVE.W  #$0010,$00dff09c                        ; clear COPER interrupt bit
+.is_coper                                                           ; relocated address: $00002138
+                MOVE.W  #$0010,$00dff09c                            ; clear COPER interrupt bit
                 MOVE.L  (A7)+,D0                            
-                RTE                                             ; exit level 3 interrupt handler
+                RTE                                                 ; exit level 3 interrupt handler
 
 frame_counter
-                dc.w    $0000                                   ; relocated address: $00002144                                 
+                dc.w    $0000                                       ; relocated address: $00002144                                 
 
 
 
@@ -3445,12 +3512,13 @@ frame_counter
                 ;----------------------- level 4 interrupt handler -----------------------
                 ;-- handles level 4 interrupts as follows:-
                 ;-- if audio interrupt occurs on any channel then clear the interrupt bit
-                ;--
-level4_interrupt_handler                                        ; relocated address: $00002146
+                ;-- *** Interrupt not enabled in 'init_system' ****
+                ;
+level4_interrupt_handler                                            ; original routine address $00002146
                 MOVE.L  D0,-(A7)
-                MOVE.W  $00dff01e,D0                            ; Read INTREQR
-                AND.W   #$0780,D0                               ; mask out interrupt bits, leaving aud0-aud3
-                MOVE.W  D0,$00dff09a                            ; clear aud0-aud3 interrupt in INTREQ
+                MOVE.W  $00dff01e,D0                                ; Read INTREQR
+                AND.W   #$0780,D0                                   ; mask out interrupt bits, leaving aud0-aud3
+                MOVE.W  D0,$00dff09a                                ; clear aud0-aud3 interrupt in INTREQ
                 MOVE.L  (A7)+,D0
                 RTE 
 
@@ -3459,17 +3527,19 @@ level4_interrupt_handler                                        ; relocated addr
 
                 ;----------------------- level 5 interrupt handler -----------------------
                 ; handle level 5 interrupts by just clearing their bits in INTREQ
-level5_interrupt_handler
+                ;-- *** Interrupt not enabled in 'init_system' ****
+                ;
+level5_interrupt_handler                                            ; original routine address $00215C
                 MOVE.L  D0,-(A7)
                 MOVE.W  $00dff01e,D0
                 BTST.L  #$000c,D0                                   
-                BNE.B   .is_dsksyn                          ; if DSKSYN then jmp $00002176
+                BNE.B   .is_dsksyn                                  ; if DSKSYN then jmp $00002176
 .is_rbf
-                MOVE.W  #$0800,$00dff09c                    ; clear RBF - Serial port buffer receive in INREQ
+                MOVE.W  #$0800,$00dff09c                            ; clear RBF - Serial port buffer receive in INREQ
                 MOVE.L  (A7)+,D0
                 RTE 
 .is_dsksyn
-                MOVE.W  #$1000,$00dff09c                    ; clear DSKSYN bit in INTREQ
+                MOVE.W  #$1000,$00dff09c                            ; clear DSKSYN bit in INTREQ
                 MOVE.L  (A7)+,D0
                 RTE 
 
@@ -3481,25 +3551,25 @@ level5_interrupt_handler
                 ;-- If not a CIAB (EXTER) Interrupt then just clear the INTREQ bits
                 ;-- else call 'level6_ciab' sub routine to handle Timer/FLG interrupts
                 ;
-level6_interrupt_handler                                        ; relocated address $00002182
+level6_interrupt_handler                                            ; original routine address $00002182
                 MOVE.L  D0,-(A7)
-                MOVE.W  $00dff01e,D0                            ; read INTREQR
-                BTST.L  #$000e,D0                               ; bit 14 INTEN - Master Interrupt (enable only)
-                BNE.B   .inten_int                              ; if INTEN then jmp $000021B4
+                MOVE.W  $00dff01e,D0                                ; read INTREQR
+                BTST.L  #$000e,D0                                   ; bit 14 INTEN - Master Interrupt (enable only)
+                BNE.B   .inten_int                                  ; if INTEN then jmp $000021B4
 .chk_ciab_int
-                MOVE.B  $00bfdd00,D0                            ; CIAB ICR - Interrupt Control Register (reading clears it also)                            
-                BPL.B   .not_ciab_int                           ; if MSB = 0 then not a CIAB interrupt, jmp $000021A8
+                MOVE.B  $00bfdd00,D0                                ; CIAB ICR - Interrupt Control Register (reading clears it also)                            
+                BPL.B   .not_ciab_int                               ; if MSB = 0 then not a CIAB interrupt, jmp $000021A8
 .is_ciab_int
-                BSR.W   level6_ciab                             ; routine addr: $000021EC
-                MOVE.W  #$2000,$00dff09c                        ; clear EXTERN - external interrupt (CIAB FLG)
+                BSR.W   level6_ciab                                 ; routine addr: $000021EC
+                MOVE.W  #$2000,$00dff09c                            ; clear EXTERN - external interrupt (CIAB FLG)
                 MOVE.L  (A7)+,D0
                 RTE 
 .not_ciab_int
-                MOVE.W  #$2000,$00dff09c                        ; clear EXTERN - external interrupt (CIAB FLG)
+                MOVE.W  #$2000,$00dff09c                            ; clear EXTERN - external interrupt (CIAB FLG)
                 MOVE.L  (A7)+,D0
                 RTE 
 .inten_int
-                MOVE.W  #$4000,$00dff09c                        ; Clear INTEN Bit 14 of INTREQ (strange as not an interrupt request bit)
+                MOVE.W  #$4000,$00dff09c                            ; Clear INTEN Bit 14 of INTREQ (strange as not an interrupt request bit)
                 MOVE.L  (A7)+,D0
                 RTE 
 
@@ -3510,19 +3580,19 @@ level6_interrupt_handler                                        ; relocated addr
                 ; called from level 2 interrupt handler when the interrupt was
                 ; generated by the CIAA chip.
                 ; IN: D0.b = CIAA ICR value (interrupt bits)
-ciaa_interrupt_handler                                          ; relocated address $000021C0
-                LSR.B   #$02,D0                                 ; shift out Timer B bit 2
-                BCC.B   .chk_sp_int                             ; if not TimerB interrupt, jmp $000021C8
+ciaa_interrupt_handler                                              ; original routine address $000021C0
+                LSR.B   #$02,D0                                     ; shift out Timer B bit 2
+                BCC.B   .chk_sp_int                                 ; if not TimerB interrupt, jmp $000021C8
 .is_timerA
-                BSR.W   level2_ciaa_timerA                      ; relocated address: $00002228
+                BSR.W   level2_ciaa_timerA                          ; relocated address: $00002228
 .chk_sp_int
-                LSR.B   #$02,D0                                 ; shift out SP bit bit 4 (kbd serial port full/empty)
-                BCC.B   .exit                                   ; not SP interrupt, jmp $000021EA               
+                LSR.B   #$02,D0                                     ; shift out SP bit bit 4 (kbd serial port full/empty)
+                BCC.B   .exit                                       ; not SP interrupt, jmp $000021EA               
 .is_sp_int
-                MOVEM.L D1-D2/A0,-(A7)                          ; keyboard shenanigans????, maybe an ack signal back to keyboard, old code, D1 read then later restored
-                MOVE.B  $00bfec01,D1                            ; D1 = serial data register (keyboard)
-                MOVE.B  #$40,$00bfee01                          ; CIAA CRA (control reg), SSPMODE = 1 - Serial Port CNT is shift source
-                MOVE.B  #$19,$00bfdf00                          ; CIAB CRB (control reg), RUNMODE = 1 (oneshot), START = 1 (Timer B), LOAD = 1 (force load)
+                MOVEM.L D1-D2/A0,-(A7)                              ; keyboard shenanigans????, maybe an ack signal back to keyboard, old code, D1 read then later restored
+                MOVE.B  $00bfec01,D1                                ; D1 = serial data register (keyboard)
+                MOVE.B  #$40,$00bfee01                              ; CIAA CRA (control reg), SSPMODE = 1 - Serial Port CNT is shift source
+                MOVE.B  #$19,$00bfdf00                              ; CIAB CRB (control reg), RUNMODE = 1 (oneshot), START = 1 (Timer B), LOAD = 1 (force load)
                 MOVEM.L (A7)+,D1-D2/A0
 .exit
                 RTS 
@@ -3538,29 +3608,29 @@ ciaa_interrupt_handler                                          ; relocated addr
                 ;-- If FLG Interrupt and Interrupt_flags_Byte Bits 3 & 4 are 0 then 
                 ;--        -- Initiate a 6.5K DMA disk write
                 ;--        -- Sets Interrupt_flags_Byte Bits 3 & 4 to 1
-level6_ciab                                                 ; relocated address: $000021EC
-                LSR.B   #$01,D0                             ; shift out Timer A interrupt bit
-                BCC.B   .chk_timerB_int                     ; Not a Timer A interrupt, jmp $000021F6 
+level6_ciab                                                         ; original routine address $000021EC
+                LSR.B   #$01,D0                                     ; shift out Timer A interrupt bit
+                BCC.B   .chk_timerB_int                             ; Not a Timer A interrupt, jmp $000021F6 
 .timerA_int
-                BSET.B  #$02,interrupt_flags_byte           ; Set Timer A Interrupt Flag
+                BSET.B  #TIMERA_FINISHED,interrupt_flags_byte       ; Set Timer A Interrupt Flag
 .chk_timerB_int
-                LSR.B   #$01,D0                             ; shift out Timer B interrupt bit
-                BCC.B   .chk_flg_int                        ; Not a Timer B interrupt, jmp $00002202
+                LSR.B   #$01,D0                                     ; shift out Timer B interrupt bit
+                BCC.B   .chk_flg_int                                ; Not a Timer B interrupt, jmp $00002202
 .timerB_int
-                MOVE.B  #$00,$00bfee01                      ; CIAA CRA; SPMODE = 0 (input), INMODE = 0, RUNMODE = 0 (continuous), OUTMODE = 0 (pulse), PBON = 0, START = 0 (Timer A stop) 
+                MOVE.B  #$00,$00bfee01                              ; CIAA CRA; SPMODE = 0 (input), INMODE = 0, RUNMODE = 0 (continuous), OUTMODE = 0 (pulse), PBON = 0, START = 0 (Timer A stop) 
 .chk_flg_int
-                LSR.B   #$03,D0                             ; shift out FLG interrupt bit
-                BCC.B   .exit                               ; Not a FLG interrupt (DSKINDEX) then jmp $00002226 (exit)
+                LSR.B   #$03,D0                                     ; shift out FLG interrupt bit
+                BCC.B   .exit                                       ; Not a FLG interrupt (DSKINDEX) then jmp $00002226 (exit)
 .dskindex1_int
-                BSET.B  #DISK_INDEX1,interrupt_flags_byte   ; Set DSKINDEX1 Interrupt Flag1, var addr: $0000209A
-                BNE.B   .exit                               ; if DSKINDEX1 was 1, then jmp $00002226 (exit)
+                BSET.B  #DISK_INDEX1,interrupt_flags_byte           ; Set DSKINDEX1 Interrupt Flag1, var addr: $0000209A
+                BNE.B   .exit                                       ; if DSKINDEX1 was 1, then jmp $00002226 (exit)
 .dskindex2_int
-                BSET.B  #DISK_INDEX2,interrupt_flags_byte   ; set DSKINDEX2 Interrupt Flag2 (if dskindex1 was 0), var addr: $0000209A
-                BNE.B   .exit                               ; if DSKINDEX2 was 1, then jmp $00002226 (exit)
+                BSET.B  #DISK_INDEX2,interrupt_flags_byte           ; set DSKINDEX2 Interrupt Flag2 (if dskindex1 was 0), var addr: $0000209A
+                BNE.B   .exit                                       ; if DSKINDEX2 was 1, then jmp $00002226 (exit)
 .dsk_write
-                MOVE.W  #$da00,D0                           ; $DA00 - DMAEN = 1, WRITE = 1, LENGTH = $1A00 (6656 bytes - 6.5K) 
-                MOVE.W  D0,$00dff024                        ; Set value twice to enable disk DMA
-                MOVE.W  D0,$00dff024                        ; 
+                MOVE.W  #$da00,D0                                   ; $DA00 - DMAEN = 1, WRITE = 1, LENGTH = $1A00 (6656 bytes - 6.5K) 
+                MOVE.W  D0,$00dff024                                ; Set value twice to enable disk DMA (h/w ref safety feature)
+                MOVE.W  D0,$00dff024                                ; Set value twice to enable disk DMA (h/w ref safety feature)
 .exit
                 RTS 
 
@@ -3572,16 +3642,16 @@ level6_ciab                                                 ; relocated address:
                ;-- decrement then ld_ciab_20ms_countdown counter, clamping it at 0
                ;-- increment the ciab_tb_20ms_tick, no clamping so will eventually overflow
                ;--
-level2_ciaa_timerA                                                      ; relocated address: $00002228
-                TST.W   ld_ciab_20ms_countdown                          ; $00001B04
-                BEQ.B   .increment_counter                              ; if countdown is 0 then skip decrement, jmp $00002232
+level2_ciaa_timerA                                                  ; original routine address $00002228
+                TST.W   ld_ciab_20ms_countdown                      ; $00001B04
+                BEQ.B   .increment_counter                          ; if countdown is 0 then skip decrement, jmp $00002232
 .decrement_counter
-                SUB.W   #$0001,ld_ciab_20ms_countdown                   ; $00001B04
+                SUB.W   #$0001,ld_ciab_20ms_countdown               ; Decrement 20ms counter value, $00001B04
 .increment_counter
-                ADD.W   #$0001,ciab_tb_20ms_tick                        ; $0000223A
+                ADD.W   #$0001,ciab_tb_20ms_tick                    ; Increment 20ms counter value, $0000223A
                 RTS 
 
-ciab_tb_20ms_tick                                                       ; $0000223A ; CIAB - TIMER B - Underflow counter, increments every 20ms                
+ciab_tb_20ms_tick                                                   ; CIAB - TIMER B - increments every 20ms, $0000223A              
                 dc.w $0000 
 
 
