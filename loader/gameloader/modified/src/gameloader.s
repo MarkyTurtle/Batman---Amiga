@@ -3129,82 +3129,128 @@ dma_read_track                                                      ; original r
 
 
                 ;--------------------- decode mfm track buffer ----------------------
+                ; IN: D0   - track number
                 ; IN: A0.L - mfm track buffer
                 ; IN: A1.L - decoded track buffer address
 decode_mfm_buffer
-L00001DD0       MOVEM.L D0-D1/D5-D7/A0,-(A7)
-L00001DD4       MOVE.B  D0,D7
-L00001DD6       CLR.W   D6
-L00001DD8       MOVE.W  #$33ff,D5
-L00001DDC       SUBA.W  #$001c,A7
-L00001DE0       CMP.W   #$4489,(A0)+
-L00001DE4       DBEQ.W  D5,L00001DE0
-L00001DE8       BNE.W   L00001E6C
-L00001DEC       CMP.W   #$4489,(A0)+
-L00001DF0       DBNE.W  D5,L00001DEC
-L00001DF4       BEQ.W   L00001E6C
-L00001DF8       SUBA.L  #$00000002,A0
-L00001DFA       SUB.W   #$00000001,D5
-L00001DFC       MOVEM.L A0-A1,-(A7)
-L00001E00       LEA.L   $0008(A7),A1
-L00001E04       MOVE.L  #$0000001c,D0
-L00001E06       BSR.W   L00001E72
-L00001E0A       MOVEM.L (A7)+,A0-A1
-L00001E0E       MOVE.L  #$00000028,D0
-L00001E10       BSR.W   L00001F06
-L00001E14       CMP.L   $0014(A7),D0
-L00001E18       BNE.B   L00001DE0
-L00001E1A       CMP.B   $0001(A7),D7
-L00001E1E       BNE.B   L00001E6C
-L00001E20       LEA.L   $0038(A0),A0
-L00001E24       MOVE.W  #$0400,D0
-L00001E28       BSR.W   L00001F06
-L00001E2C       CMP.L   $0018(A7),D0
-L00001E30       BNE.B   L00001DE0
-L00001E32       MOVE.B  $0002(A7),D0
-L00001E36       BSET.L  D0,D6
-L00001E38       MOVE.L  A1,-(A7)
-L00001E3A       EXT.W   D0
-L00001E3C       MULU.W  #$0200,D0
-L00001E40       ADDA.W  D0,A1
-L00001E42       MOVE.W  #$0200,D0
-L00001E46       BSR.W   L00001E98
-L00001E4A       MOVEA.L (A7)+,A1
-L00001E4C       CMP.W   #$07ff,D6
-L00001E50       BEQ.B   L00001E62
-L00001E52       SUB.W   #$021c,D5
-L00001E56       SUB.B   #$00000001,$0003(A7)
-L00001E5A       BEQ.B   L00001DE0
-L00001E5C       ADDA.L  #$00000008,A0
-L00001E5E       SUB.W   #$00000004,D5
-L00001E60       BRA.B   L00001DFC
-L00001E62       ADDA.W  #$001c,A7
-L00001E66       MOVEM.L (A7)+,D0-D1/D5-D7/A0
-L00001E6A       RTS 
+                MOVEM.L D0-D1/D5-D7/A0,-(A7)
+                MOVE.B  D0,D7                                       ; D0,D7 = track number
+                CLR.W   D6                                          ; D6 = decoded sector flags (when sector is decoded then it's bit is set in this field)
+                MOVE.W  #$33ff,D5                                   ; D5 = Max Track Size Counter, 13312 words? (not really used outside of the find & skip sync mark loops, although it is updated during the track processing)
+                SUBA.W  #$001c,A7                                   ; A7 = stack, add space to hold sector header 28 bytes
+.find_sync_mark
+                CMP.W   #$4489,(A0)+
+                DBEQ.W  D5,.find_sync_mark                          ; loop until find sector header disk sync mark, $00001DE0
+                BNE.W   .error
+.skip_sync_mark
+                CMP.W   #$4489,(A0)+
+                DBNE.W  D5,.skip_sync_mark                          ; loop and skip sync marks, $00001DEC
+                BEQ.W   .error                                      ; jmp $L00001E6C
+
+.decode_sector
+                SUBA.L  #$00000002,A0                               ; correct source mfm buffer address
+                SUB.W   #$00000001,D5                               ; correct counter
+.loop
+                MOVEM.L A0-A1,-(A7)
+.decode_header
+                LEA.L   $0008(A7),A1                                ; A1 = stack storage (sector header decoded values)
+                MOVE.L  #$0000001c,D0                               ; D0 = 28 sector header size
+                BSR.W   decode_sector_header                        ; calls $00001E72
+.checksum_header
+                MOVEM.L (A7)+,A0-A1                                 ; restore current MFM Buffer and decode buffer ptrs.
+                MOVE.L  #$00000028,D0                               ; D0 = 40
+                BSR.W   check_sum_data                              ; calls $00001F06
+                CMP.L   $0014(A7),D0
+                BNE.B   .find_sync_mark                             ; header check sum failed, decode next sector. jmp $00001DE0 (partial sector could be in track gap)
+.validate_track_no
+                CMP.B   $0001(A7),D7                                ; compare track number read against desired track number
+                BNE.B   .error                                      ; jmp $00001E6C
+
+.decode_data
+                LEA.L   $0038(A0),A0                                ; A0 = start of sector data (Skip sector header, encoded = 56 bytes)
+.checksum_data
+                MOVE.W  #$0400,D0                                   ; D0 = data length of 1024 bytes, mfm data is twice the length of decoded data.
+                BSR.W   check_sum_data                              ; calls $00001F06
+                CMP.L   $0018(A7),D0
+                BNE.B   .find_sync_mark                             ; data check sum failed, decode next sector. jmp $00001DE0 (partial sector could be in track gap)
+
+.set_decoded_sector_flag
+                MOVE.B  $0002(A7),D0                                ; D0 = sector number
+                BSET.L  D0,D6                                       ; D6 = set the sector decoded bit.
+
+.do_decode_sector
+                MOVE.L  A1,-(A7)                                    ; save decode buffer base address on stack.
+.calc_dest_address
+                EXT.W   D0                                          ; sign extend sector number to word (clear crap from bits 8-15)
+                MULU.W  #$0200,D0                                   ; D0 = decode buffer offset (multiple sector nummber by 512)
+                ADDA.W  D0,A1                                       ; A1 = decode buffer address ptr for this sector
+                MOVE.W  #$0200,D0                                   ; D0 = 512 bytes
+.decode_sector_data
+                BSR.W   decode_sector_data                          ; Decode mfm sector data using the blitter, calls $00001E98
+
+                ; check is complete, if not prep values for 
+                ; decoding next sector.
+.decode_next_sector
+                MOVEA.L (A7)+,A1                                    ; A1 = restored decode buffer base address.
+                CMP.W   #$07ff,D6                                   ; have all 11 sectors been decoded?
+                BEQ.B   .exit                                       ; yes, then exit with Z = 1, success flag. jmp $00001E62
+
+                SUB.W   #$021c,D5                                   ; D5 = subtract sector size + header size 
+
+                ; check if at track gap (if so then loop to search for next sector sync marks)
+.at_track_gap
+                SUB.B   #$00000001,$0003(A7)                        ; subtract 1 from 'sectors to gap' value
+                BEQ.B   .find_sync_mark                             ; if we're at the track gap then search for next sync mark, jmp $00001DE0
+
+                ; not at track gap, just skip next sync marks and loop
+.not_at_track_gap
+                ADDA.L  #$00000008,A0                               ; skip next set of sector header sync marks (8 bytes - $4489, $4489)
+                SUB.W   #$00000004,D5                               ; correct bytes left counter
+                BRA.B   .loop                                       ; decode next sector, jmp $00001DFC
+.exit
+                ADDA.W  #$001c,A7                                   ; remove stack space for decoding sector headers from stack
+                MOVEM.L (A7)+,D0-D1/D5-D7/A0                        ; restore saved registers from stack
+                RTS                                                 ; exit.
+.error
+                AND.B   #$fb,CCR                                   ; Z = 0, Error Flag
+                BRA.B   .exit                                      ; jmp $00001E62
 
 
 
 
-L00001E6C       AND.B   #$fb,CCR
-L00001E70       BRA.B   L00001E62
-L00001E72       MOVEM.L D1-D3,-(A7)
-L00001E76       LSR.W   #$00000002,D0
-L00001E78       SUB.W   #$00000001,D0
-L00001E7A       MOVE.L  #$55555555,D1
-L00001E80       MOVE.L  (A0)+,D2
-L00001E82       MOVE.L  (A0)+,D3
-L00001E84       AND.L   D1,D2
-L00001E86       AND.L   D1,D3
-L00001E88       ADD.L   D2,D2
-L00001E8A       ADD.L   D3,D2
-L00001E8C       MOVE.L  D2,(A1)+
-L00001E8E       DBF.W   D0,L00001E80
-L00001E92       MOVEM.L (A7)+,D1-D3
-L00001E96       RTS 
+                ;------------------------- decode sector header --------------------------
+                ; decode the sector header to the buffer specified in A1.
+                ; IN: A1 - decoded data buffer
+                ; IN: D0 - number of 16bit words to decode
+                ;
+decode_sector_header                                                ; original routine address $00001E72
+                MOVEM.L D1-D3,-(A7)
+                LSR.W   #$00000002,D0                               ; D0 = divide number of bytes by 4, this routine decodes longwords 
+                SUB.W   #$00000001,D0                               ; D0 = decrement couinter (dbf exits when -1)
+                MOVE.L  #$55555555,D1                               ; D1 = mfm data bit mask
+.decode_loop
+                MOVE.L  (A0)+,D2                                    ; D2 = get first mfm encoded longword value, even data bits
+                MOVE.L  (A0)+,D3                                    ; D3 = get second mfm encoded longword value, odd data bits
+                AND.L   D1,D2                                       ; D2 = remove clock bits from even data bits
+                AND.L   D1,D3                                       ; D3 = remove clock bits from odd data bits
+                ADD.L   D2,D2                                       ; D2 = shift even data bits to left (why not SHIFT LEFT?)
+                ADD.L   D3,D2                                       ; D2 = decoded longword, combine odd and even data bits into single longword (why not OR?)
+                MOVE.L  D2,(A1)+                                    ; A1 = store  decoded long word
+                DBF.W   D0,.decode_loop                             ; decode next longword, $00001E80
+.exit
+                MOVEM.L (A7)+,D1-D3
+                RTS 
 
 
 
 
+                ;---------------------- decode sector data -----------------------
+                ; uses the blitter to decode the sector mfm data.
+                ; IN: A0.l = decoded destination data ptr
+                ; IN: A1.l = source mfm data
+                ; IN: D0   = data size (512)
+                ;
+decode_sector_data                                                  ; original routine address $00001E98
 L00001E98       MOVE.L  D1,-(A7)
 L00001E9A       BTST.B  #$0006,$00dff002
 L00001EA2       BNE.B   L00001E9A
@@ -3233,19 +3279,25 @@ L00001F02       MOVE.L  (A7)+,D1
 L00001F04       RTS 
 
 
+                ;---------------------- check sum data ----------------------
+                ; IN: D0 = number of bytes to checksum
+                ; IN: A0 = source data
+                ; OUT: D0.l = checksum value
+check_sum_data                                                      ; original routine address $00001F06
+                MOVEM.L D1-D2/A0,-(A7)
+                LSR.W   #$00000002,D0
+                SUB.W   #$00000001,D0
+                MOVE.L  #$00000000,D1
+.checksum_loop
+                MOVE.L  (A0)+,D2
+                EOR.L   D2,D1
+                DBF.W   D0,.checksum_loop                           ; while data, jmp $00001F10
 
-
-L00001F06       MOVEM.L D1-D2/A0,-(A7)
-L00001F0A       LSR.W   #$00000002,D0
-L00001F0C       SUB.W   #$00000001,D0
-L00001F0E       MOVE.L  #$00000000,D1
-L00001F10       MOVE.L  (A0)+,D2
-L00001F12       EOR.L   D2,D1
-L00001F14       DBF.W   D0,L00001F10
-L00001F18       AND.L   #$55555555,D1
-L00001F1E       MOVE.L  D1,D0
-L00001F20       MOVEM.L (A7)+,D1-D2/A0
-L00001F24       RTS 
+                AND.L   #$55555555,D1                               ; remove clock bits
+                MOVE.L  D1,D0                                       ; D0 = returned checksum value
+.exit
+                MOVEM.L (A7)+,D1-D2/A0
+                RTS 
 
 
 
