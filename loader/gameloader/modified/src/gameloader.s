@@ -32,7 +32,17 @@ DISK_INDEX2     equ $4                                              ; set by lev
                 ;--           Once the files are loaded, the loader then processes the iff files and relocates
                 ;--           them in memory etc.
                 ;--
-                ;--         
+                ;-- 
+                ;-- Things to note about the loader:-
+                ;-- 1) Each set of load parameters (batch of files) can only load one IFF GFX file per batch.
+                ;--    This is because the loader automatically copies the bitplane data to an area of memory
+                ;--    between $00007700 and $13F00 (max 5 bitplanes, each bitplane size 10K each)
+                ;--    50K max GFX data loaded in from and image.iff file.
+                ;--
+                ;-- 2) Other files in the loader parameters have .iff extensions, they have block types of 'HUFF'
+                ;--    This I assume is a compressed Huffman encoding. Not sure what application would have been
+                ;--    used to create these files (maybe an internal tool?)
+                ;--       
 batman_start
                 bra.b jump_table                                    ; Calls $0000081C - jmp_load_screen (addr: $00000800)
                                                                     ; This will get overwritten by the stack during loading
@@ -65,7 +75,7 @@ load_loading_screen                                                 ; relocated 
                 BSR.W  init_system                                  ; calls $00001F26 - init_system
                 BSR.W  detect_available_drives                      ; calls $00001B4A - detect which disk drives are connected
                 MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
-                MOVE.L #$00002AD6,ld_relocate_addr                  ; $00000CF0 (** SET BUT UNUSED **) ; addr $02AD6 - address of disk file table
+                MOVE.L #$00002AD6,ld_relocate_addr                  ; maybe the address that the loading screen iff file is placed into, $00000CF0 (** SET BUT UNUSED **) ; addr $02AD6 - address of disk file table
                 LEA.L  lp_loading_screen(PC),A0                     ; addr $008C8 - address of the load parameter block (files to load for the loading screen section)
                 BSR.W  loader                                       ; calls $00000CFC - Load/Process files & Copy Protection
 
@@ -100,22 +110,23 @@ load_loading_screen                                                 ; relocated 
 
 lp_loading_screen                                                   ; loading screen load parameters - addr: $000008C8
                 ; Disk Name (offset from here)
-.diskname_offset    dc.w    $0020
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $0020
                 ; File Entry to load
                 ;       0 - 2 Bytes - File Name Offset (from here)
                 ;       2 - 4 bytes - File reloacation address
                 ;       6 - 4 bytes - File Length Stored below from file table
                 ;       a - 4 bytes - File Load Address stored below
-.file1_name_offset  dc.w    $002E
-.file1_reloc_addr   dc.l    $00000000
-.file1_byte_length  dc.l    $00000000
-.file1_loadbuf_addr dc.l    $00000000 
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $002E
+.file1_reloc_addr   dc.l    $00000000                               ; Loading.iff relocation address, original value = $00000000, 
+                                                                    ; GFX images are loaded into $00007700 by routine 'process_iff_body' 
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader
                 ; File Entry to load
                 ;       0 - 2 Bytes - File Name Offset (from here)
                 ;       2 - 4 bytes - File reloacation address
                 ;       6 - 4 bytes - File Length Stored below from file table
                 ;       a - 4 bytes - File Load Address stored below
-.file2_name_offset  dc.w    $002B
+.file2_name_offset  dc.w    .filename2-.file2_name_offset           ; original value = $002B
 .file2_reloc_addr   dc.l    $0007C7FC
 .file2_byte_length  dc.l    $00000000
 .file2_loadbuf_addr dc.l    $00000000
@@ -2088,7 +2099,7 @@ iff_form_or_cat
                 ;-- potential for all sorts of stack problems and corruption.
                 ;-- it makes recursive calls to 'process_form_or_cat'.
                 ;-- 
-                ;-- IN: A0 = start of data chuck id
+                ;-- IN: A0 = start of data chunk id
                 ;-- IN: D0 = file length/remaining bytes
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
@@ -2207,7 +2218,7 @@ iff_inner_blank_chunk                                               ; original r
                 ;-- IN: D1 = chunk id
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
-iff_body                                                            ; oroginal routine address $000017F4
+iff_body                                                            ; original routine address $000017F4
                 MOVEM.L D0/A0,-(A7)
                 MOVE.L  (A0)+,D0
                 MOVE.L  D0,D1
@@ -2621,14 +2632,16 @@ iff_body_chunk
                 SUB.L   D1,(A7)
 
 .process_body
-                LEA.L   $00007700,A1                                ; bitplane 1 address
+                LEA.L   $00007700,A1                                ; bitplane 1 address to copy to.
                 MOVEA.L bitmap_header_address,A2                    ; iff bit map header address ptr stored at $00001A08
 
-                TST.B   $0009(A2)
-                BNE.B   end_iff_body_chunk                          ; if not == 9, jmp $00001A82
+                ; test masking byte (0 = no mask)
+                TST.B   $0009(A2)                                   ; compare byte at position #$09 (09) in the header with value #$00
+                BNE.B   end_iff_body_chunk                          ; if != 0, jmp $00001A82
 
-                CMP.B   #$02,$000a(A2)
-                BCC.B   end_iff_body_chunk                          ; if not == 9, jmp $00001A82
+                ; test compression byte (0 = none, 1 = ByteRun)
+                CMP.B   #$02,$000a(A2)                              ; compare byte at position #$0A (10) in the header with value #$02
+                BCC.B   end_iff_body_chunk                          ; if value is less than or equal to #$02, jmp $00001A82
 .header_info
                 MOVE.L  #$00000000,D0                               ; D0 = clear
                 MOVE.B  $0008(A2),D0                                ; D0 - number of bitplanes
