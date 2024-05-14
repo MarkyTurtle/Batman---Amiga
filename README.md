@@ -36,19 +36,26 @@ I was always impressed by the game and think it would be interesting to try to r
 
 I'll be following the steps below, like all plans likely to change.
 
- - Disassemble the boot loader.
- - Disassemble the game loader.
- - Disassemble the Rob Northen Disk Protection.
- - Ripping the files from the disk. 
+ - Disassemble the boot loader. [Code Folder](./loader/bootblock/)
+ - Disassemble the game loader. [Code Folder](./loader/gameloader/modified/)
+ - Disassemble the Rob Northen Disk Protection. [Code Folder](./loader/gameloader/modified/)
+ - Ripping the files from the disk. [Files Folder](./rawrippedfiles/) 
+ - Decompress the ripped files.
  - Create a Cracked Version of the Disk.
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
- - Disassemble the Racing Levels.
+ - Disassemble the Batmobile/Batwing Levels.
  - Disassemble the BatCave Level.
 
 
 
 ## Progress to Date
+2024-05-14 - Completed quite a few tasks on the main game loader:-
+ - Completed first draft of documenting the gameloader.s code [BATMAN Loader](./loader/gameloader/modified/src/gameloader.s)
+ - Added a set of ripped raw files to the rawrippedfiles source directory [Ripped Files](./rawrippedfiles/)
+     - Disk 1 raw ripped files [Disk1 Files](./rawrippedfiles/disk1files/)
+     - Disk 2 raw ripped files [Disk2 Files](./rawrippedfiles/disk2files/)
+
 2024-04-26 - Commented lots of the main game loader, still some of the copy protection left to comment [BATMAN Loader](./loader/gameloader/modified/src/gameloader.s).
 
 2024-04-09 - Began adding the disassembly of the main game loader, the "BATMAN" file from disk 1.
