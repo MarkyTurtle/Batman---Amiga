@@ -51,6 +51,9 @@ DISK_INDEX2     equ $4                                              ; set by lev
                 ;--    I've tagged these up with the following labels:
                 ;--         - unused_globals_1
                 ;--         - unused_globals_2
+                ;--         - cp_mfm_buffer     - Copy Protection Buffer, data is read in here which may be accessed by the game.
+                ;--
+                ;--
                 ;--      
 batman_start                                                        ; original routine address $00000800
                 bra.b jump_table                                    ; Calls $0000081C - jmp_load_screen (addr: $00000800)
@@ -710,7 +713,16 @@ cp_set_vectors                                                      ; original r
                 BRA.W cp_do_protection_check                        ; continue as address $00000FCE
 
 exception_vector_offsets                                            ; original address $00000FBE
-                dc.w    $059A, $051A, $00B6, $05DA, $061A ,$069A ,$051A, $00F0              ;................
+                                                                    ; original value | effective address | exception name        | additional info
+                                                                    ;----------------+-------------------+-----------------------+-----------------
+                dc.w    $059A                                       ; $059A          | $0000141C         | Bus Error             | ** nonsense - address inside wait_for_correct_disk
+                dc.w    $051A                                       ; $051A          | $0000139C         | Address Error         | ** nonsense - cp_end routine
+                dc.w    cp_toggle_tvd-copy_protection_init1         ; $00B6          | $00000F38         | Illegal Instruction   | cp_toggle_tvd - TVD Toggle On/Off
+                dc.w    $05DA                                       ; $05DA          | $0000145C         | Zero Divide           | ** nonsense - address inside wait_for_correct_disk
+                dc.w    $061A                                       ; $061A          | $0000149C         | CHK Instruction       | ** nonsense - address inside the copper list
+                dc.w    $069A                                       ; $069A          | $0000151C         | TRAPV Instruction     | ** nonsense - address inside the copper list
+                dc.w    $051A                                       ; $051A          | $0000139C         | Privilege Instruction | ** nonsense - cp_end routine
+                dc.w    cp_tvd-copy_protection_init1                ; $00F0          | $00000F72         | Trace                 | cp_tvd - Trace Vector Decoder Routine 
 
 
 
@@ -747,7 +759,47 @@ exception_vector_offsets                                            ; original a
                 ;       ** TODO ** - examine further 10 bytes read in to buffer (could be game data)
                 ;                  - 
                 ;
+                ;       -- at start of routine $0DCA is all 0
+                ;               -- 00000DCA 0000 0000 0000 0000 0000 0000 0000 0000  ................
+                ;               -- 00000DDA 0000 0000 0000 0000 0000 0000 0000 0000  ................
+                ;               -- 00000DEA 0000 0000 0000 0000 0000 0000 0000 0000  ................
+                ;               -- 00000DFA 0000 0000 0000 0000 0000 0000 0000 0000  ................
+                ;               -- 00000E0A 0000 0000 0000
+
+                ;       -- after cp_load_data1 $0DCA contains:-
+                ;               -- 0000DCA 2AAA 4914 A452 9149 4525 1495 5255 4955  *.I..R.IE%..RUIU
+                ;               -- 00000DDA 2554 9552 554A 5529 54A4 5292 4A49 2925  %T.RUJU)T.R.JI)%
+                ;               -- 00000DEA 2495 1254 4952 A54A 9529 54A5 5294 4A51  $..TIR.J.)T.R.JQ
+                ;               -- 00000DFA 2945 0000 0000 0000 0000 0000 0000 0000  )E..............
+                ;               -- 00000E0A 0000 0000 0000
+                ;               -- Register D0 = $00000DE2, D1 = $FFFFFF77, D2 = $00000002, D3 = $00000003
                 ;
+                ;       -- after cp_load_data2 $0DCA contains:-
+                ;               -- 00000DCA B060 C081 0307 0F1E 3D7B F7EE DCB8 70E1  .`......={....p.
+                ;               -- 00000DDA C284 0912 2448 9020 5454 5152 454A 952A  ....$H. TTQREJ.*
+                ;               -- 00000DEA 54A9 52A4 4A92 AA49 2924 A492 924A 492A  T.R.J..I)$...JI*
+                ;               -- 00000DFA A4AA 0000 0000 0000 0000 0000 0000 0000  ................
+                ;               -- 00000E0A 0000 0000 0000  
+                ;               -- Register D0 = $00000DCD, D1 = $FFFFFF77, D2 = $00000005, D3 = $00FC081E
+                ;
+                ;       -- after cp_load_data2 $0DCA contains:-
+                ;               -- 00000DCA 2850 A040 8102 050A 152A 55AB 56AD 5BB6  (P.@.....*U.V.[.
+                ;               -- 00000DDA 6CD8 B163 C68C 1830 4445 1114 4451 1145  l..c...0DE..DQ.E
+                ;               -- 00000DEA 4514 9452 514A 4529 14A5 5294 4A52 A94A  E..RQJE)..R.JR.J
+                ;               -- 00000DFA A52A 0000 0000 0000 0000 0000 0000 0000  .*..............
+                ;               -- 00000E0A 0000 0000 0000
+                ;               -- Register D0 = $00000D0F, D1 = $FFFFFF77, D2 = $00000005, D3 = $00000DCD
+                ;
+                ;       -- after cp_load_data2 $0DCA contains:- 
+                ;               -- 00000DCA 526F 6220 4E6F 7274 6865 6E20 436F 6D70  Rob Northen Comp
+                ;               -- 00000DDA 6AD4 A952 A449 9327 A4AA 92A5 1455 1451  j..R.I.'.....U.Q
+                ;               -- 00000DEA 152A 9444 5112 4449 1124 4492 9249 4925  .*.DQ.DI.$D..II%
+                ;               -- 00000DFA 2495 0000 0000 0000 0000 0000 0000 0000  $...............
+                ;               -- 00000E0A 0000 0000 0000 
+                ;               -- Register D0 = $00000E8D, D1 = $00000D0F, D2 = $00000005, D3 = $00000DCD
+                ;
+                ;
+
 cp_do_protection_check                                              ; original routine address $00000FCE
                 LEA.L  cp_exception_vectors_store(PC),A1            ; A1 = Address buffer of saved exception vectors $00000E50
                 CLR.L  $001C(A1)                                    ; clear copy protection checksum value $00000E6C
@@ -1576,7 +1628,7 @@ wait_for_correct_disk                                               ; original a
                 LEA.L   copper_endwait(PC),A0                       ; A0 = Copper List 2 Address (End Wait) addr: $00001538
                 MOVE.L  A0,$0084(A6)                                ; Set Copper List 2
                 MOVE.W  A0,$008a(A6)                                ; Strobe Copper Jump 2 - Force Copper to execute copper 2 (will revert to copper 1 on next frame)
-                MOVE.W  #$8180,$0096(A6)                          ; Enable Copper & Bitplane DMA
+                MOVE.W  #$8180,DMACON(A6)                          ; Enable Copper & Bitplane DMA
 .disk_wait_loop
                 CLR.W   ciab_tb_20ms_tick                           ; reset 20ms timer tick counter
 .timer_wait_loop
@@ -1637,7 +1689,7 @@ copper_endwait  ; copper-list - copper end - relocated address: $00001538
                 ;-- IN: A1 = $7700 - Uncompressed logo buffer
                 ;-- IN: A2 = Copper List Colours
                 ;--
-unpack_disk_logo:
+unpack_disk_logo:                                                   ; original address $0000153C
                 MOVEM.L D0-D1/D7/A0-A3,-(A7)
                 MOVE.B  (A0)+,D0                                    ; get first data byte
                 CMP.B   #$03,D0                                     ; compare the first data byte with the value #3                  
