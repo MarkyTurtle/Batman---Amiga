@@ -1,5 +1,4 @@
 **/*.o
-uae/dh0/gameloader
+**/gameloader
 .DS_Store
-bin
-.vscode/settin
+**/bin
