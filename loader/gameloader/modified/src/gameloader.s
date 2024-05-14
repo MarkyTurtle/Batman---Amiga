@@ -42,18 +42,27 @@ DISK_INDEX2     equ $4                                              ; set by lev
                 ;-- 2) Other files in the loader parameters have .iff extensions, they have block types of 'HUFF'
                 ;--    This I assume is a compressed Huffman encoding. Not sure what application would have been
                 ;--    used to create these files (maybe an internal tool?)
-                ;--       
-batman_start
+                ;-- 
+                ;-- 3) There are a couple of unused, small blocks of memory.
+                ;--    These are either genuinely unused, or maybe stores for global data
+                ;--    used by the game to track state across levels or across multiple
+                ;--    game plays.
+                ;--    i.e. Lives, Energy, Level counts, High Scores etc.
+                ;--    I've tagged these up with the following labels:
+                ;--         - unused_globals_1
+                ;--         - unused_globals_2
+                ;--      
+batman_start                                                        ; original routine address $00000800
                 bra.b jump_table                                    ; Calls $0000081C - jmp_load_screen (addr: $00000800)
                                                                     ; This will get overwritten by the stack during loading
-
-                dc.w    $0000, $22BA, $0000, $0000                  ; scrap memory (i think)
-                dc.w    $0000, $0000, $0000, $0000  
-                dc.w    $0000, $0000, $0000, $0000  
-                dc.w    $0000   
+unused_globals_1
+                dc.w    $0000, $22BA, $0000, $0000                  ; Unused memory I think?
+                dc.w    $0000, $0000, $0000, $0000                  ; Maybe globals used by the game.
+                dc.w    $0000, $0000, $0000, $0000                  ;
+                dc.w    $0000                                       ;
 
 stack                                                               ; Top of Loader Stack, (re)set each time a game section is loaded. (addr:$0000081C) 
-jump_table                                                          ; Start of jump table for loading and executing the game sections. (addr:$0000081C)
+jump_table                                                          ; Start of jump table for loading and executing the game sections. (original addr:$0000081C)
                 bra.w  load_loading_screen                          ; Calls $00000838 - Load Loading Screen (instruction addr:$0000081C)
                 bra.w  load_title_screen2                           ; Calls $00000948 - Load Title Screen2  (instruction addr:$00000820)
                 bra.w  load_level1                                  ; Calls $000009C8 - Load Level 1 - Axis Chemicals (instruction addr:$00000824)
@@ -70,7 +79,7 @@ jump_table                                                          ; Start of j
                 ;---------------------- load loading screen ------------------------
                 ;-- load the batman loading.iff and display it for 5 seconds.
                 ;-- then, jump to load the title screen.
-load_loading_screen                                                 ; relocated address: $00000838
+load_loading_screen                                                 ; original routine address: $00000838
                 LEA.L  stack,A7                                     ; stack address $0000081C
                 BSR.W  init_system                                  ; calls $00001F26 - init_system
                 BSR.W  detect_available_drives                      ; calls $00001B4A - detect which disk drives are connected
@@ -108,32 +117,25 @@ load_loading_screen                                                 ; relocated 
                 BRA.B  load_title_screen1                           ; addr: $0000090E
 
 
-lp_loading_screen                                                   ; loading screen load parameters - addr: $000008C8
+                ;------------ loading screen parameters -------------
+lp_loading_screen                                                   ; original data address: $000008C8
                 ; Disk Name (offset from here)
 .diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $0020
                 ; File Entry to load
-                ;       0 - 2 Bytes - File Name Offset (from here)
-                ;       2 - 4 bytes - File reloacation address
-                ;       6 - 4 bytes - File Length Stored below from file table
-                ;       a - 4 bytes - File Load Address stored below
 .file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $002E
 .file1_reloc_addr   dc.l    $00000000                               ; Loading.iff relocation address, original value = $00000000, 
                                                                     ; GFX images are loaded into $00007700 by routine 'process_iff_body' 
 .file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
-.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
                 ; File Entry to load
-                ;       0 - 2 Bytes - File Name Offset (from here)
-                ;       2 - 4 bytes - File reloacation address
-                ;       6 - 4 bytes - File Length Stored below from file table
-                ;       a - 4 bytes - File Load Address stored below
-.file2_name_offset  dc.w    .filename2-.file2_name_offset           ; original value = $002B
-.file2_reloc_addr   dc.l    $0007C7FC
-.file2_byte_length  dc.l    $00000000
-.file2_loadbuf_addr dc.l    $00000000
+.file2_name_offset  dc.w    .filename2-.file2_name_offset           ; byte offset to filename string, original value = $002B
+.file2_reloc_addr   dc.l    $0007C7FC                               ; relocation address (bytes startaddress) $7C800
+.file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
 .filename3_offset   dc.w    $0000          
 .diskname           dc.b    "BATMAN MOVIE   0"
-.filename1          dc.b    "LOADING IFF"
-.filename2          dc.b    "PANEL   IFF"
+.filename1          dc.b    "LOADING IFF"                           ; real gfx iff file  - reloc $7700 (bitplane addresses)
+.filename2          dc.b    "PANEL   IFF"                           ; iff - huff encoded - reloc $7C7FC
 
 
 
@@ -3792,6 +3794,7 @@ ciab_tb_20ms_tick                                                   ; CIAB - TIM
                 ; maybe a store to track game progress?
                 ; a few globals used when the game is running perhaps?
                 ;
+unused_globals_2                                                    ; original data address $0000223C
 L0000223C       dc.w $3033, $0000
 L00002240       dc.w $00F0, $0002, $000F, $0F0D, $0000, $0000, $000F, $0F0D             ;................
 L00002250       dc.w $0000, $0070 

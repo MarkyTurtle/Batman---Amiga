@@ -10,8 +10,6 @@
             "remoteProgram": "SYS:gameloader",
             "emulatorType": "fs-uae",
             "emulatorArgs": [
-                "--floppy-image-0=${workspaceFolder}/disk.ipf",
-                "--floppy-drive-0=${workspaceFolder}/disk.ipf",
                 "--hard_drive_0=${workspaceFolder}/uae/dh0",
                 "--automatic_input_grab=0"
             ],
