@@ -54,13 +54,15 @@ DISK_INDEX2     equ $4                                              ; set by lev
                 ;--         - cp_mfm_buffer     - Copy Protection Buffer, data is read in here which may be accessed by the game.
                 ;--
                 ;--
-                ;--      
+                ;--  
+  
 batman_start                                                        ; original routine address $00000800
                 bra.b jump_table                                    ; Calls $0000081C - jmp_load_screen (addr: $00000800)
                                                                     ; This will get overwritten by the stack during loading
+
 unused_globals_1
-                dc.w    $0000, $22BA, $0000, $0000                  ; Unused memory I think?
-                dc.w    $0000, $0000, $0000, $0000                  ; Maybe globals used by the game.
+                dc.w    $0000, $22BA, $0000, $0000                  ; Unused memory, the stack will grown down over this.
+                dc.w    $0000, $0000, $0000, $0000                  ; 
                 dc.w    $0000, $0000, $0000, $0000                  ;
                 dc.w    $0000                                       ;
 
@@ -82,8 +84,9 @@ jump_table                                                          ; Start of j
                 ;---------------------- load loading screen ------------------------
                 ;-- load the batman loading.iff and display it for 5 seconds.
                 ;-- then, jump to load the title screen.
+                even
 load_loading_screen                                                 ; original routine address: $00000838
-                LEA.L  stack,A7                                     ; stack address $0000081C
+                LEA.l  stack,A7                                     ; stack address $0000081C
                 BSR.W  init_system                                  ; calls $00001F26 - init_system
                 BSR.W  detect_available_drives                      ; calls $00001B4A - detect which disk drives are connected
                 MOVE.L #$0007C7FC,ld_loadbuffer_top                 ; store loader parameter: addr $7C7FC - the Top of the Load Buffer
@@ -307,7 +310,7 @@ lp_level_3                                                          ; level 3 lo
                     dc.w    $0000                                   ; end of files marker. 
 .diskname           dc.b    "BATMAN MOVIE 1"                        ; BATMAN MOVIE 1    - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$31
 .filename1          dc.b    "BATCAVE IFF"                           ; BATCAVE IFF       - $20,$31,$42,$41,$54,$43,$41,$56,$45,$20,$49,$46,$46,$00
-
+                    dc.b    0                                       ; pad byte
 
 
 
