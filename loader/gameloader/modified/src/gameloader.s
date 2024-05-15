@@ -122,20 +122,17 @@ load_loading_screen                                                 ; original r
 
                 ;------------ loading screen loading parameters -------------
 lp_loading_screen                                                   ; original data address: $000008C8
-                ; Disk Name (offset from here)
 .diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $0020
-                ; File Entry to load
 .file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $002E
 .file1_reloc_addr   dc.l    $00000000                               ; Loading.iff relocation address, original value = $00000000, 
                                                                     ; GFX images are loaded into $00007700 by routine 'process_iff_body' 
 .file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
-                ; File Entry to load
 .file2_name_offset  dc.w    .filename2-.file2_name_offset           ; byte offset to filename string, original value = $002B
 .file2_reloc_addr   dc.l    $0007C7FC                               ; relocation address (bytes startaddress) $7C800
 .file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
-.filename3_offset   dc.w    $0000          
+                    dc.w    $0000                                   ; end of files marker.
 .diskname           dc.b    "BATMAN MOVIE   0"
 .filename1          dc.b    "LOADING IFF"                           ; real gfx iff file  - reloc $7700 (bitplane addresses)
 .filename2          dc.b    "PANEL   IFF"                           ; iff - huff encoded - reloc $7C7FC
@@ -187,6 +184,7 @@ lp_title_screen:                                                    ; title scre
 .file2_reloc_addr   dc.l    $0003F236                               ; TITLEPICIFF - relocation address, original value = $0003F236 ($0003F23A)
 .file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+                    dc.w    $0000                                   ; end of files marker.
 .diskname           dc.b    "BATMAN MOVIE   0"                      ; BATMAN MOVIE   0  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$30 
 .filename1          dc.b    "TITLEPRGIFF"                           ; TITLEPRGIFF       - $54,$49,$54,$4C,$45,$50,$52$,47,$49,$46,$46 
 .filename2          dc.B    "TITLEPICIFF"                           ; TITLEPICIFF       - $54,$49,$54,$4C,$45,$50,$49,$43,$49,$46,$46 
@@ -211,16 +209,31 @@ load_level_1                                                        ; original r
                 MOVE.W #$2000,SR                                    ; set supervisor mode bit
                 JMP $00003000                                       ; level 1 start
 
-lp_level_1                                                      ; level 1 loader parameters. addr: $00000A00
-                dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-                dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-                dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
-                dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000
-.diskname       dc.b    "BATMAN MOVIE   0"                          ; BATMAN MOVIE   0  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$30 
-                dc.b    "CODE1   IFF"                               ; CODE1   IFF       - $43,$4F,$44,$45,$31,$20,$20,$20,$49,$46,$46
-                dc.b    "MAPGR   IFF"                               ; MAPGR   IFF       - $4D,$41,$50,$47,$52,$20,$20,$20,$49,$46,$46
-                dc.b    "BATSPR1 IFF"                               ; BATSPR1 IFF       - $42,$41,$54,$53,$50,$52,$31,$20,$49,$46,$46
-                dc.B    "CHEM    IFF"                               ; CHEM    IFF       - $43,$48,$45,$4D,$20,$20,$20,$20,$49,$46,$46                                     ;M    IFF
+                ;------------ level 1 loading parameters -------------
+lp_level_1                                                          ; level 1 loader parameters. addr: $00000A00
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $003C
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $004A
+.file1_reloc_addr   dc.l    $00002FFC                               ; CODE1   IFF - relocation address, original value = $00002FFC ($00003000)
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file2_name_offset  dc.w    .filename2-.file1_name_offset           ; byte offset to filename string, original value = $0047
+.file2_reloc_addr   dc.l    $00007FFC                               ; MAPGR   IFF - relocation address, original value = $00007FFC, ($00008000)
+.file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file3_name_offset  dc.w    .filename3-.file1_name_offset           ; byte offset to filename string, original value = $0044 
+.file3_reloc_addr   dc.l    $00010FFC                               ; BATSPR1 IFF - relocation address, original value = $00010FFC, ($00011000)
+.file3_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file3_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file4_name_offset  dc.w    .filename4-.file1_name_offset           ; byte offset to filename string, original value = $0041 
+.file4_reloc_addr   dc.l    $00047FE4                               ; CHEM    IFF - relocation address, original value = $00047FE4, ($00047FE8)
+.file4_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file4_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)     
+                    dc.w    $0000                                   ; end of files marker.
+.diskname           dc.b    "BATMAN MOVIE   0"                      ; BATMAN MOVIE   0  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$30 
+.filename1          dc.b    "CODE1   IFF"                           ; CODE1   IFF       - $43,$4F,$44,$45,$31,$20,$20,$20,$49,$46,$46
+.filename2          dc.b    "MAPGR   IFF"                           ; MAPGR   IFF       - $4D,$41,$50,$47,$52,$20,$20,$20,$49,$46,$46
+.filename3          dc.b    "BATSPR1 IFF"                           ; BATSPR1 IFF       - $42,$41,$54,$53,$50,$52,$31,$20,$49,$46,$46
+.filename4          dc.B    "CHEM    IFF"                           ; CHEM    IFF       - $43,$48,$45,$4D,$20,$20,$20,$20,$49,$46,$46                                     ;M    IFF
 
 
 
@@ -241,15 +254,31 @@ load_level_2                                                        ; original r
                 MOVE.W #$2000,SR                                    ; set supervisor mode bit
                 JMP $00003000                                       ; level 2 start
 
-lp_level_2                                                      ; level 2 loader parameters. addr: $00000AB0
-                dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-                dc.w   $0047, $0001, $FFFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-                dc.w   $0002, $A416, $0000, $0000, $0000, $0000, $0041, $0006         ;.............A..
-                dc.w   $8F7C, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;.|..........BATM
-                dc.w   $414E, $204D, $4F56, $4945, $2020, $2031, $434F, $4445         ;AN MOVIE   1CODE
-                dc.w   $2020, $2020, $4946, $4644, $4154, $4120, $2020, $2049         ;    IFFDATA    I
-                dc.w   $4646, $4441, $5441, $3220, $2020, $4946, $464D, $5553         ;FFDATA2   IFFMUS
-                dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO
+                ;------------ level 2 loading parameters -------------
+lp_level_2                                                          ; level 2 loader parameters. addr: $00000AB0
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $003C
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $004A
+.file1_reloc_addr   dc.l    $00002FFC                               ; CODE    IFF - relocation address, original value = $00002FFC ($00003000)
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file2_name_offset  dc.w    .filename2-.file1_name_offset           ; byte offset to filename string, original value = $0047
+.file2_reloc_addr   dc.l    $0001FFFC                               ; DATA    IFF - relocation address, original value = $0001FFFC, ($00020000)
+.file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file3_name_offset  dc.w    .filename3-.file1_name_offset           ; byte offset to filename string, original value = $0044 
+.file3_reloc_addr   dc.l    $0002A416                               ; DATA2   IFF - relocation address, original value = $0002A416, ($0002A41A)
+.file3_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file3_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file4_name_offset  dc.w    .filename4-.file1_name_offset           ; byte offset to filename string, original value = $0041 
+.file4_reloc_addr   dc.l    $00068F7C                               ; MUSIC   IFF - relocation address, original value = $00068F7C, ($00068F80)
+.file4_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file4_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)     
+                    dc.w    $0000                                   ; end of files marker. 
+.diskname           dc.b    "BATMAN MOVIE   1"                      ; BATMAN MOVIE   1  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$31 
+.filename1          dc.b    "CODE    IFF"                           ; CODE    IFF       - $43,$4F,$44,$45,$20,$20,$20,$20,$49,$46,$46
+.filename2          dc.b    "DATA    IFF"                           ; DATA    IFF       - $44,$41,$54,$41,$20,$20,$20,$20,$49,$46,$46 
+.filename3          dc.b    "DATA2   IFF"                           ; DATA2   IFF       - $44,$41,$54,$41,$32,$20,$20,$20,$49,$46,$46
+.filename4          dc.B    "MUSIC   IFF"                           ; MUSIC   IFF       - $4D,$55,$53,$49,$43,$20,$20,$20,$49,$46,$46                                     
 
 
 
@@ -268,11 +297,16 @@ load_level_3                                                        ; original r
                 MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
                 MOVE.W #$2000,SR                                    ; set supervisor mode bit
                 JMP $0000d000                                       ; level 3 start
-
-lp_level_3                                                      ; level 3 loader parameters. addr: $00000B62
-                dc.w   $0012, $0020, $0000, $3FFC, $0000, $0000, $0000, $0000         ;... ..?.........
-                dc.w   $0000, $4241, $544D, $414E, $204D, $4F56, $4945, $2020         ;..BATMAN MOVIE  
-                dc.w   $2031, $4241, $5443, $4156, $4520, $4946, $4600                ; 1BATCAVE IFF.
+                ;------------ level 3 loading parameters -------------
+lp_level_3                                                          ; level 3 loader parameters. addr: $00000B62
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $0012
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $0020
+.file1_reloc_addr   dc.l    $00003FFC                               ; CODE    IFF - relocation address, original value = $00003FFC ($00004000)
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)                                                
+                    dc.w    $0000                                   ; end of files marker. 
+.diskname           dc.b    "BATMAN MOVIE 1"                        ; BATMAN MOVIE 1    - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$31
+.filename1          dc.b    "BATCAVE IFF"                           ; BATCAVE IFF       - $20,$31,$42,$41,$54,$43,$41,$56,$45,$20,$49,$46,$46,$00
 
 
 
@@ -291,16 +325,31 @@ load_level_4                                                        ; original r
                 MOVE.W #$1fff,DMACON(A6)                            ; disable all dma
                 MOVE.W #$2000,SR                                    ; set supervisor mode bit
                 JMP $00003002                                       ; level 4 start
-
-lp_level_4                                                      ; level 4 loader parameters. addr: $00000BC8
-                dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-                dc.w   $0047, $0001, $FFFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-                dc.w   $0002, $A416, $0000, $0000, $0000, $0000, $0041, $0006         ;.............A..
-                dc.w   $8F7C, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;.|..........BATM
-                dc.w   $414E, $204D, $4F56, $4945, $2020, $2031, $434F, $4445         ;AN MOVIE   1CODE
-                dc.w   $2020, $2020, $4946, $4644, $4154, $4120, $2020, $2049         ;    IFFDATA    I
-                dc.w   $4646, $4441, $5441, $3420, $2020, $4946, $464D, $5553         ;FFDATA4   IFFMUS
-                dc.w   $4943, $2020, $2049, $4646                                     ;IC   IFFO...a...
+                ;------------ level 4 loading parameters -------------
+lp_level_4                                                          ; level 4 loader parameters. addr: $00000BC8
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $003C
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $004A
+.file1_reloc_addr   dc.l    $00002FFC                               ; CODE    IFF - relocation address, original value = $00002FFC ($00003000)
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file2_name_offset  dc.w    .filename2-.file1_name_offset           ; byte offset to filename string, original value = $0047
+.file2_reloc_addr   dc.l    $0001FFFC                               ; DATA    IFF - relocation address, original value = $0001FFFC, ($00020000)
+.file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file3_name_offset  dc.w    .filename3-.file1_name_offset           ; byte offset to filename string, original value = $0044 
+.file3_reloc_addr   dc.l    $0002A416                               ; DATA4   IFF - relocation address, original value = $0002A416, ($0002A41A)
+.file3_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file3_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file4_name_offset  dc.w    .filename4-.file1_name_offset           ; byte offset to filename string, original value = $0041 
+.file4_reloc_addr   dc.l    $00068F7C                               ; MUSIC   IFF - relocation address, original value = $00068F7C, ($00068F80)
+.file4_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file4_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)     
+                    dc.w    $0000                                   ; end of files marker.
+.diskname           dc.b    "BATMAN MOVIE   1"                      ; BATMAN MOVIE   1  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$31                
+.filename1          dc.b    "CODE    IFF"                           ; CODE    IFF       - $43,$4F,$44,$45,$20,$20,$20,$20,$49,$46,$46               
+.filename2          dc.b    "DATA    IFF"                           ; DATA    IFF       - $44,$41,$54,$41,$20,$20,$20,$20,$49,$46,$46 
+.filename3          dc.b    "DATA4   IFF"                           ; DATA4   IFF       - $44,$41,$54,$41,$34,$20,$20,$20,$49,$46,$46
+.filename4          dc.b    "MUSIC   IFF"                           ; MUSIC   IFF       - $4D,$55,$53,$49,$43,$20,$20,$20,$49,$46,$46 
 
 
 
@@ -321,15 +370,31 @@ load_level_5                                                        ; original r
                 MOVE.W #$2000,SR                                    ; set supervisor mode bit
                 JMP $00003000                                       ; level 5 start
 
-lp_level_5                                                      ; level 5 loader parameters. addr: $00000C78
-                dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
-                dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
-                dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
-                dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;............BATM
-                dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445         ;AN MOVIE   0CODE
-                dc.w   $3520, $2020, $4946, $464D, $4150, $4752, $3220, $2049         ;5   IFFMAPGR2  I
-                dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4855         ;FFBATSPR1 IFFCHU
-                dc.w   $5243, $4820, $2049, $4646                                     ;RCH  IFF 
+                ;------------ level 5 loading parameters -------------
+lp_level_5                                                          ; level 5 loader parameters. addr: $00000C78
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $003C
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $004A
+.file1_reloc_addr   dc.l    $00002FFC                               ; CODE5   IFF - relocation address, original value = $00002FFC ($00003000)
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file2_name_offset  dc.w    .filename2-.file1_name_offset           ; byte offset to filename string, original value = $0047
+.file2_reloc_addr   dc.l    $00007FFC                               ; MAPGR2  IFF - relocation address, original value = $00007FFC, ($00008000)
+.file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file3_name_offset  dc.w    .filename3-.file1_name_offset           ; byte offset to filename string, original value = $0044 
+.file3_reloc_addr   dc.l    $00010FFC                               ; BATSPR1 IFF - relocation address, original value = $00010FFC, ($00011000)
+.file3_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file3_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file4_name_offset  dc.w    .filename4-.file1_name_offset           ; byte offset to filename string, original value = $0041 
+.file4_reloc_addr   dc.l    $00047FE4                               ; CHURCH  IFF - relocation address, original value = $00047FE4, ($00047FE8)
+.file4_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file4_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)                    
+                    dc.w    $0000                                   ; end of files marker. 
+.diskname           dc.b    "BATMAN MOVIE   0"                      ; BATMAN MOVIE   0  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$30                
+.filename1          dc.b    "CODE5   IFF"                           ; CODE5   IFF       - $43,$4F,$44,$45,$35,$20,$20,$20,$49,$46,$46           
+.filename2          dc.b    "MAPGR2  IFF"                           ; MAPGR2  IFF       - $4D,$41,$50,$47,$52,$32,$20,$20,$49,$46,$46
+.filename3          dc.b    "BATSPR1 IFF"                           ; BATSPR1 IFF       - $42,$41,$54,$53,$50,$52,$31,$20,$49,$46,$46
+.filename4          dc.b    "CHURCH  IFF"                           ; CHURCH  IFF       - $43,$48,$55,$52,$43,$48,$20,$20,$49,$46,$46                                     
 
 
 
