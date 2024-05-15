@@ -11,7 +11,7 @@ The following folders contain the original packed raw files ripped from disks 1 
  - [/disk2files](./disk2files/) - contains the packed files as ripped from Batman Disk 2
 
 ### Unpacked Files
-The two disk images here are Amiga DOS disks containing the unpacked raw files ripped from the disks 1 & 2 (unpacked using xfdmaster). Interestingly, the unpacked files fit on two disks unpacked which begs the question "why were the files packed, and why was this game disdributed on two disks in the first place?"
+The two disk images here are Amiga DOS disks containing the unpacked raw files ripped from the disks 1 & 2 (unpacked using xfdmaster). Interestingly, the unpacked files fit on two disks unpacked which begs the question "why were the files packed, and why was this game distributed on two disks in the first place?"
 - [depackeddisk-1.adf](./depackeddisk-1.adf) - contains depacked files ripped from Batman Disk 1
 - [depackeddisk-2.adf](./depackeddisk-2.adf) - contains depacked files ripped from Batman Disk 2
 
