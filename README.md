@@ -40,7 +40,9 @@ I'll be following the steps below, like all plans likely to change.
  - Disassemble the game loader. [Code Folder](./loader/gameloader/modified/)
  - Disassemble the Rob Northen Disk Protection. [Code Folder](./loader/gameloader/modified/)
  - Ripping the files from the disk. [Files Folder](./rawrippedfiles/) 
- - Decompress the ripped files.
+ - Decompress the ripped files. [Files Folder](./rawrippedfiles/)
+   - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
+   - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
  - Create a Cracked Version of the Disk.
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
@@ -50,6 +52,8 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
+2024-05-15 - Unpacked the ripped files and added them to source control and also as unpacked Amiga DOS format ADF files.
+
 2024-05-14 - Completed quite a few tasks on the main game loader:-
  - Completed first draft of documenting the gameloader.s code [BATMAN Loader](./loader/gameloader/modified/src/gameloader.s)
  - Added a set of ripped raw files to the rawrippedfiles source directory [Ripped Files](./rawrippedfiles/)
