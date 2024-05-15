@@ -120,7 +120,7 @@ load_loading_screen                                                 ; original r
                 BRA.B  load_title_screen1                           ; addr: $0000090E
 
 
-                ;------------ loading screen parameters -------------
+                ;------------ loading screen loading parameters -------------
 lp_loading_screen                                                   ; original data address: $000008C8
                 ; Disk Name (offset from here)
 .diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $0020
@@ -176,13 +176,21 @@ load_title_screen2                                                  ; original r
                 JMP    $0001c004                                    ; title screen start (on end of a game)
 
 
+                ;------------ title screen loading parameters -------------
+lp_title_screen:                                                    ; title screen loader parameters. addr: $00000982
+.diskname_offset    dc.w    .diskname-.diskname_offset              ; byte offset to diskname string, original value = $0020                                  
+.file1_name_offset  dc.w    .filename1-.file1_name_offset           ; byte offset to filename string, original value = $002E
+.file1_reloc_addr   dc.l    $00003FFC                               ; TITLEPRGIFF - relocation address, original value = $00003FFC ($00004000)
+.file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.file2_name_offset  dc.w    .filename2-.file2_name_offset           ; byte offset to filename string, original value = $002B
+.file2_reloc_addr   dc.l    $0003F236                               ; TITLEPICIFF - relocation address, original value = $0003F236 ($0003F23A)
+.file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
+.file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
+.diskname           dc.b    "BATMAN MOVIE   0"                      ; BATMAN MOVIE   0  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$30 
+.filename1          dc.b    "TITLEPRGIFF"                           ; TITLEPRGIFF       - $54,$49,$54,$4C,$45,$50,$52$,47,$49,$46,$46 
+.filename2          dc.B    "TITLEPICIFF"                           ; TITLEPICIFF       - $54,$49,$54,$4C,$45,$50,$49,$43,$49,$46,$46 
 
-lp_title_screen:                                                                    ; title screen loader parameters. addr: $00000982
-                dc.w   $0020, $002E, $0000, $3FFC, $0000, $0000, $0000, $0000       ;. ....?.........
-                dc.w   $002B, $0003, $F236, $0000, $0000, $0000, $0000, $0000       ;.+...6..........
-                dc.w   $4241, $544D, $414E, $204D, $4F56, $4945, $2020, $2030       ;BATMAN MOVIE   0
-                dc.w   $5449, $544C, $4550, $5247, $4946, $4654, $4954, $4C45       ;TITLEPRGIFFTITLE
-                dc.w   $5049, $4349, $4646                                          ;PICIFF
 
 
 
@@ -207,11 +215,12 @@ lp_level_1                                                      ; level 1 loader
                 dc.w   $003C, $004A, $0000, $2FFC, $0000, $0000, $0000, $0000         ;.<.J../.........
                 dc.w   $0047, $0000, $7FFC, $0000, $0000, $0000, $0000, $0044         ;.G.............D
                 dc.w   $0001, $0FFC, $0000, $0000, $0000, $0000, $0041, $0004         ;.............A..
-                dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000, $4241, $544D         ;............BATM
-                dc.w   $414E, $204D, $4F56, $4945, $2020, $2030, $434F, $4445         ;AN MOVIE   0CODE
-                dc.w   $3120, $2020, $4946, $464D, $4150, $4752, $2020, $2049         ;1   IFFMAPGR   I
-                dc.w   $4646, $4241, $5453, $5052, $3120, $4946, $4643, $4845         ;FFBATSPR1 IFFCHE
-                dc.w   $4D20, $2020, $2049, $4646                                     ;M    IFF
+                dc.w   $7FE4, $0000, $0000, $0000, $0000, $0000
+.diskname       dc.b    "BATMAN MOVIE   0"                          ; BATMAN MOVIE   0  - $42,$41,$54,$4D,$41,$4E,$20,$4D,$4F,$56,$49,$45,$20,$20,$20,$30 
+                dc.b    "CODE1   IFF"                               ; CODE1   IFF       - $43,$4F,$44,$45,$31,$20,$20,$20,$49,$46,$46
+                dc.b    "MAPGR   IFF"                               ; MAPGR   IFF       - $4D,$41,$50,$47,$52,$20,$20,$20,$49,$46,$46
+                dc.b    "BATSPR1 IFF"                               ; BATSPR1 IFF       - $42,$41,$54,$53,$50,$52,$31,$20,$49,$46,$46
+                dc.B    "CHEM    IFF"                               ; CHEM    IFF       - $43,$48,$45,$4D,$20,$20,$20,$20,$49,$46,$46                                     ;M    IFF
 
 
 
