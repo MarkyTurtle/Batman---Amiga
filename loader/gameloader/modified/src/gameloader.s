@@ -16,7 +16,7 @@ DISK_INDEX2     equ $4                                              ; set by lev
 
                     section BATMAN,code_c
                     ;opt o-
-
+                    org $800
 
                 ;------------------------------------------ BATMAN entry point ----------------------------------------
                 ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
