@@ -1,4 +1,28 @@
 
+                ;------------------------------------------- BATMAN ---------------------------------------------------
+                ; This is the main game loader for the Batman game.  It is the first file loaded by the game
+                ; bootloader.
+                ;
+                ; Build Relative (debugging/emulation)
+                ; ------------------------------------
+                ; It can be assembled and executed/debugged in an emulator up to a point.
+                ; The code crashes when the disk is inserted and it starts to lead data over the executable in memory.
+                ; This can be seen as the display becomes corrupted and then starts throwing exceptions.
+                ; The code is not intended to be run as a relative program in memory.
+                ;
+                ; Build Absoute
+                ; -------------
+                ;  - I have added a build task called 'build-absolute' which when used with the 'BUILD_ABSOLUTE_BIN'
+                ;    conditional assembly flag below will hopefully assemble a raw binary file (i.e. no hunks etc)
+                ;    this output should then be suitable to load directly to address 0x800 for execution.
+                ;  - The problrm is that the linker doesn't linke the output, the gameloader.o file produced looks
+                ;    like a raw file. I can't stop the linker running so we get a linker error when running this
+                ;    task currently.
+                ;  - I don't appear to be able to change the output filename either with the -o <filename> arg
+                ;    so the output file in the build directory is still called 'gameloader.o'
+                ;  - Very f@*king frustrating at the moment.
+                ;------------------------------------------------------------------------------------------------------
+
 ;---------- Includes ----------
               INCDIR      "include"
               INCLUDE     "hw.i"
@@ -15,8 +39,21 @@ DISK_INDEX2     equ $4                                              ; set by lev
 
 
                     section BATMAN,code_c
-                    ;opt o-
-                    org $800
+                    ;opt o-                                          ; no optimisations
+
+
+
+
+;BUILD_ABSOLUTE_BIN SET 1                                            ; Uncomment this to build absolute raw binary
+
+        IFD BUILD_ABSOLUTE_BIN
+
+                    org $800                                        ; org code at address $00000800 - original start address
+
+        ENDC
+
+
+
 
                 ;------------------------------------------ BATMAN entry point ----------------------------------------
                 ;-- Main Game Loader, entry point from the 'RTS' in the bool block code.
