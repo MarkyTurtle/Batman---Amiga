@@ -45,6 +45,8 @@ I'll be following the steps below, like all plans likely to change.
    - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
  - Create a Cracked Version of the Disk.
+   - In Progress [New Loader](./crack/newloader/)
+   - Test Disk ADF [testcrack.adf](./crack/testcrack.adf)
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
@@ -53,8 +55,8 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
-2024-05-18 - Created simple loader using RNC DosIO to load title screen from the ripped files.
-
+2024-05-17 - Created a test disk image [testcrack.adf](./crack/testcrack.adf) which can load the and start the *Title Screen* from the Amiga DOS formatted disk. The game will crash if you try to start it as theres no code to load the levels etc. 
+2024-05-17 - Created simple loader using RNC DosIO to load title screen from the ripped files.
 2024-05-17 - Added RNC disk code tools which I intend to use to re-create a loader for the game.
 
 2024-05-15 - Unpacked the ripped files and added them to source control and also as unpacked Amiga DOS format ADF files.
