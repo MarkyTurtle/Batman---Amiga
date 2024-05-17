@@ -1,9 +1,9 @@
 # Batman
-Batman The Movie, Amiga, 2 Disk Europe, Ocean
+[Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
 This repo will contain the result of my attempt to reverse engineer the 2 Disk version of Batman The Movie for the Amiga. 
 
-This major inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Links to those resources shown below.
+The inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Also to the TTE Crew members who (**JAYCEE_1980** who supplied a download link for the RNC disk code in Episode #16 Lemmings.) Links to those resources shown below.
 
  - [Youtube](https://www.youtube.com/@HoffmanYouTube)
  - [Twitch](https://www.twitch.tv/djh0ffman)
@@ -11,13 +11,14 @@ This major inspiration for this exercise was discovering the following cracking 
 
 I've been looking for an excuse to do something on the Amiga for ages and this seemed like a nice little hobby exercise to dip in and out of, a reason to re-learn 68000 and a chance to learn something about game programming in the process.
 
-I'll be standing on the shoulders of giants and any resources and code used in this project will be linked to below and if it gets too long here.
+Resources and code used in this project is lkisted below. If there's anything used which hasn't been credited, please let me know.
 
- - WinUAE (Windows Amiga Emulator)
- - FS-UAE (Linux Amiga Emulator)
- - Action Reply MKIII - (Emulator ROMS)
- - VS Code (Windows and MAC)
-
+- WinUAE (Windows Amiga Emulator)
+- FS-UAE (Linux Amiga Emulator)
+- Action Reply MKIII - (Emulator ROMS)
+- VS Code (Windows and MAC)
+   - Amiga Assembly Extension
+- RNC DosIO (Low level disk code)
 
 
 ## Contents
@@ -52,6 +53,8 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
+2024-05-17 - Added RNC disk code tools which I intend to use to re-create a loader for the game.
+
 2024-05-15 - Unpacked the ripped files and added them to source control and also as unpacked Amiga DOS format ADF files.
 
 2024-05-14 - Completed quite a few tasks on the main game loader:-
