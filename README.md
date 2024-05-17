@@ -46,7 +46,8 @@ I'll be following the steps below, like all plans likely to change.
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
  - Create a Cracked Version of the Disk.
    - In Progress [New Loader](./crack/newloader/)
-   - Test Disk ADF [testcrack.adf](./crack/testcrack.adf)
+   - **Test Disk ADF [testcrack.adf](./crack/testcrack.adf)**
+   - **TODO: Repack ripped files, finish new loader, compile disk**
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
