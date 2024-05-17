@@ -53,6 +53,8 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
+2024-05-18 - Created simple loader using RNC DosIO to load title screen from the ripped files.
+
 2024-05-17 - Added RNC disk code tools which I intend to use to re-create a loader for the game.
 
 2024-05-15 - Unpacked the ripped files and added them to source control and also as unpacked Amiga DOS format ADF files.
