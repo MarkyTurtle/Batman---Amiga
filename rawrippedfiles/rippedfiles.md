@@ -24,14 +24,13 @@ The following folders contain the unpacked raw files ripped from disks 1 & 2 (un
 
 ### Notes:
 \* The Loading.iff file is the only genuine ILBM IFF file, the loader processes these files and depacks to the allocated bitplane memory starting at $00007700 (10K per bitplane, 5 planes)
-
 ## Disk 1 - Files
 <table>
 <tr>
-    <th>Filename</th><th>File Type</th><th>Description</th><th>Code Useage</th><th>Load Address</th>
+    <th>Filename</th><th>File Type</th><th>Description</th><th>Code Useage</th><th>Load Buffer</th><th>Length</th>
 </tr>
 <tr>
-    <td>loading.iff</td><td>IFF ILBM</td><td>Game Loading Picture</td><td>load_loading_screen</td><td>$00007700 *</td>
+    <td>loading.iff</td><td>IFF ILBM</td><td>Game Loading Picture</td><td>load_loading_screen</td><td>$00007700 *</td><td>** N/A</td>
 </tr>
 <tr>
     <td>panel.iff</td><td>IFF HUFF</td><td>I'm guessing its the code and gfx for the bottom panel/energy/score area of the screen.</td><td>load_loading_screen</td><td>$0007C7FC </td>
