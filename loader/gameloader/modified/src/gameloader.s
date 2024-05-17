@@ -44,7 +44,7 @@ DISK_INDEX2     equ $4                                              ; set by lev
 
 
 
-;BUILD_ABSOLUTE_BIN SET 1                                            ; Uncomment this to build absolute raw binary
+BUILD_ABSOLUTE_BIN SET 1                                            ; Uncomment this to build absolute raw binary
 
         IFD BUILD_ABSOLUTE_BIN
 
