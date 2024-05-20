@@ -56,9 +56,10 @@ I'll be following the steps below, like all plans likely to change.
 
 
 ## Progress to Date
-2024-05-17 - Created a test disk image [testcrack.adf](./crack/testcrack.adf) which can load the and start the *Title Screen* from the Amiga DOS formatted disk. The game will crash if you try to start it as theres no code to load the levels etc. *Ive borked the test loader, try running on emulator with plenty of memory, think its got stack corruption at the moment*
 
 2024-05-20 - SUccessfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
+
+2024-05-17 - Created a test disk image [testcrack.adf](./crack/testcrack.adf) which can load the and start the *Title Screen* from the Amiga DOS formatted disk. The game will crash if you try to start it as theres no code to load the levels etc. *Ive borked the test loader, try running on emulator with plenty of memory, think its got stack corruption at the moment*
 
 2024-05-17 - Created simple loader using RNC DosIO to load title screen from the ripped files.
 
