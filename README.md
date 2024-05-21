@@ -3,7 +3,7 @@
 
 This repo will contain the result of my attempt to reverse engineer the 2 Disk version of Batman The Movie for the Amiga. 
 
-The inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Also to the TTE Crew members who (**JAYCEE_1980** who supplied a download link for the RNC disk code in Episode #16 Lemmings.) Links to those resources shown below.
+The inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Also to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in Episode #16 Lemmings. Links to those resources shown below.
 
  - [Youtube](https://www.youtube.com/@HoffmanYouTube)
  - [Twitch](https://www.twitch.tv/djh0ffman)
@@ -11,7 +11,7 @@ The inspiration for this exercise was discovering the following cracking series 
 
 I've been looking for an excuse to do something on the Amiga for ages and this seemed like a nice little hobby exercise to dip in and out of, a reason to re-learn 68000 and a chance to learn something about game programming in the process.
 
-Resources and code used in this project is lkisted below. If there's anything used which hasn't been credited, please let me know.
+Resources and code used in this project is listed below. If there's anything used which hasn't been credited, please let me know.
 
 - [Batman 2 Disk Europe](https://www.lemonamiga.com/games/details.php?id=131) 
 - [WinUAE](https://www.winuae.net/) - Windows Amiga Emulator
@@ -33,11 +33,7 @@ Resources and code used in this project is lkisted below. If there's anything us
 
 
 ## Overview
-This exercise is not one of speed, but of learning. The intension is to spend more time disassembling parts of the code.
-
-I was always impressed by the game and think it would be interesting to try to reverse engineer the Platform and Racing Levels to get an understanding of how they work. (We'll see if my interest level holds up).
-
-I'll be following the steps below, like all plans likely to change.
+This exercise is not one of speed, but of learning. It looks like this game could be cracked just by patching out the serial number check around $139C in the loader code. The intention is to spend more time disassembling parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
 
  - Disassemble the boot loader. [Code Folder](./loader/bootblock/)
  - Disassemble the game loader. [Code Folder](./loader/gameloader/modified/)
