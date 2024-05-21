@@ -380,4 +380,29 @@ interrupt_handler
               INCDIR        "rnc/DosIO"
               INCLUDE       "DosIO.S"
 
+
+; Decompress Shrinkler-compressed data produced with the --data option.
+;
+; A0 = Compressed data
+; A1 = Decompressed data destination
+; A2 = Progress callback, can be zero if no callback is desired.
+;      Callback will be called continuously with
+;      D0 = Number of bytes decompressed so far
+;      A0 = Callback argument
+;      D1 = Second callback argument
+; A3 = Callback argument
+; D2 = Second callback argument
+; D7 = 0 to disable parity context (Shrinkler --bytes / -b option)
+;      1 to enable parity context (default Shrinkler compression)
+;
+; Uses 3 kilobytes of space on the stack.
+; Preserves D2-D7/A2-A6 and assumes callback does the same.
+;
+; Decompression code may read one byte beyond compressed data.
+; The contents of this byte does not matter.
+
+;ShrinklerDecompress:
+            ;INCDIR        "shrinkler"
+            ;INCLUDE       "ShrinklerDecompress.S"
+
 loaderend:
