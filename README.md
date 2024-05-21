@@ -49,7 +49,7 @@ I'll be following the steps below, like all plans likely to change.
  - Create a Cracked Version of the Disk.
    - [packedfiles.adf](./crack/packedcrack/packedfiles.adf) - Amiga DOS disk with custom loader (rnc dosio)
    - Load time is far too slow, need to change packer
-   - Doesn't work on an A1200  (not sure about the original, will have to test it)
+   - Doesn't work on an A1200, but then neither does the original.
    - TODO: Create mfm loader, use H0ffman's loader which will cache files if extra ram is installed.
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
