@@ -60,7 +60,7 @@ I'll be following the steps below, like all plans likely to change.
 
 ## Progress to Date
 
-2024-05-21 - Created first verions of a single disk crack. The ADF can be found here [packedfiles.adf](./crack/packedcrack/packedfiles.adf). Thhe load time is far too slow due to the packer used (shrinkler). Need to find a packer with a faster decruncher which still has a decent oack ratio.
+2024-05-21 - Created first verison of a single disk crack. The ADF can be found here [packedfiles.adf](./crack/packedcrack/packedfiles.adf). The load time is far too slow due to the packer used (shrinkler). Need to find a packer with a faster decruncher which still has a decent pack ratio.
 
 2024-05-20 - Successfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
 
