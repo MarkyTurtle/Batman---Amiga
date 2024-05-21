@@ -58,4 +58,4 @@ dosioR
 		dc.l $00000000,$00000000,$00000000,$00000000,$74017600,$224E303A
 		dc.w $FFD6
 
-		include	diskioR.s
+		include	diskior.s

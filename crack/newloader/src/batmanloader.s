@@ -55,6 +55,7 @@ jump_table                                                          ; Start of j
 ;                bra.w  load_level_5                                 ; Calls $00000C40 - Load Level 5 - Cathedral (instruction addr:$00000834)
 
 
+
                 ;----------- load title screen & loading screen ------------
 load_loading_screen
                 lea     stack(pc),a7
@@ -66,37 +67,68 @@ load_loading_screen
                 lea     dosio(pc),a5
                 
                 ; panel.iff
-                move.l  #0,d0                              ; load file
+                lea     $3f000,a7                         ; set stack
+                moveq.l #$00,d0                           ; load file
                 lea     .filename1,a0
-                lea     $7C7FC,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
+                lea     $5d000,a1                         ; load address
+                lea     $20000,a2                         ; track buffers
+                jsr     (a5)                              ; load file into memory
                 tst.l   d0
                 bne     .load_error
+
+                ; decompress file
+                lea     $5d000,a0                         ; compressed data
+                lea     $7c7fc,a1                         ; decompressed buffer
+                lea     $0,a2
+                lea     $0,a3
+                moveq.l #$00,d2
+                moveq.l #$01,d7
+                bsr     ShrinklerDecompress
 
                 move.w  #$0f0,COLOR00(a6)
 
                 ; titleprg.iff
-                move.l #0,d0                              ; load file
+                lea     $3f000,a7                         ; set stack
+                moveq.l #$00,d0                           ; load file
                 lea    .filename2,a0
-                lea    $3FFC,a1
-                lea    $60000,a2
+                lea    $5d000,a1                          ; load address
+                lea    $20000,a2                          ; track buffers
                 jsr    (a5)                               ; load file into memory
                 tst.l   d0
                 bne     .load_error
 
+                ; decompress file
+                lea     $5d000,a0                         ; compressed data
+                lea     $3FFC,a1                          ; decompressed buffer
+                lea     $0,a2
+                lea     $0,a3
+                moveq.l #$00,d2
+                moveq.l #$01,d7
+                bsr     ShrinklerDecompress
+
                 move.w  #$00f,COLOR00(a6)
 
                 ; titlepic.iff
-                move.l  #0,d0                              ; load file
+                lea     $3f000,a7                         ; set stack                
+                moveq.l #$00,d0                           ; load file
                 lea     .filename3,a0
-                lea     $3F236,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
+                lea     $5d000,a1                         ; load address
+                lea     $20000,a2                         ; track buffers
+                jsr     (a5)                              ; load file into memory
 
                 tst.l   d0
                 bne     .load_error
 
+                ; decompress file
+                lea     $5d000,a0                         ; compressed data
+                lea     $3F236,a1                         ; decompressed buffer
+                lea     $0,a2
+                lea     $0,a3
+                moveq.l #$00,d2
+                moveq.l #$01,d7
+                bsr     ShrinklerDecompress
+
+                lea     stack(pc),a7
                 move.w  #$83ff,DMACON(a6)
                 jmp     $1c000
               
@@ -157,6 +189,7 @@ load_title_screen2:
                 tst.l   d0
                 bne     .load_error
 
+                lea     stack(pc),a7
                 move.w  #$83ff,DMACON(a6)
                 jmp     $1c004
               
@@ -233,6 +266,7 @@ load_level_1
 
                 move.w  #$fff,COLOR00(a6)
 
+                lea     stack(pc),a7
                 move.w  #$83ff,DMACON(a6)
                 jmp     $3000
               
@@ -377,8 +411,8 @@ interrupt_handler
               *	a1.l = file buffer (even word boundary)
               *		if d0.l=3 a1.l = ptr to file name buffer
               *	a2.l = workspace buffer ($4d00 bytes of CHIPmem required)
-              INCDIR        "rnc/DosIO"
-              INCLUDE       "DosIO.S"
+              INCDIR        "rnc/dosio"
+              INCLUDE       "dosio.s"
 
 
 ; Decompress Shrinkler-compressed data produced with the --data option.
@@ -402,7 +436,7 @@ interrupt_handler
 ; The contents of this byte does not matter.
 
 ;ShrinklerDecompress:
-            ;INCDIR        "shrinkler"
-            ;INCLUDE       "ShrinklerDecompress.S"
+            INCDIR        "shrinkler"
+            INCLUDE       "ShrinklerDecompress.S"
 
 loaderend:
