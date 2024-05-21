@@ -13,12 +13,14 @@ I've been looking for an excuse to do something on the Amiga for ages and this s
 
 Resources and code used in this project is lkisted below. If there's anything used which hasn't been credited, please let me know.
 
-- WinUAE (Windows Amiga Emulator)
-- FS-UAE (Linux Amiga Emulator)
-- Action Reply MKIII - (Emulator ROMS)
-- VS Code (Windows and MAC)
+- [Batman 2 Disk Europe](https://www.lemonamiga.com/games/details.php?id=131) 
+- [WinUAE](https://www.winuae.net/) - Windows Amiga Emulator
+- [FS-UAE](https://fs-uae.net/) - Linux Amiga Emulator
+- Action Reply MKIII - Emulator ROMS
+- [VS Code](https://code.visualstudio.com/) 
    - Amiga Assembly Extension
-- RNC DosIO (Low level disk code)
+- RNC DosIO - Low level disk code
+- [Shrinkler](https://github.com/askeksa/Shrinkler) - file cruncher/decruncher
 
 
 ## Contents
