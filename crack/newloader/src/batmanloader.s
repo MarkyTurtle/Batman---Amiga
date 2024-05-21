@@ -16,6 +16,10 @@ kill_system
                 move.w  #$7fff,DMACON(a6)
                 move.w  #$7fff,INTREQ(a6)   
 
+;mouse_wait
+;                btst.b  #$6,$bfe001
+;                bne.s   mouse_wait
+
 realloc_loader
                 lea     loaderstart,a0
                 lea     loaderend,a1
@@ -48,241 +52,236 @@ stack                                                               ; Top of Loa
 jump_table                                                          ; Start of jump table for loading and executing the game sections. (original addr:$0000081C)
                 bra.w  load_loading_screen                          ; Calls $00000838 - Load Loading Screen (instruction addr:$0000081C)
                 bra.w  load_title_screen2                           ; Calls $00000948 - Load Title Screen2  (instruction addr:$00000820)
-                bra.w  load_level_1                                 ; Calls $000009C8 - Load Level 1 - Axis Chemicals (instruction addr:$00000824)
-;                bra.w  load_level_2                                 ; Calls $00000A78 - Load Level 2 - Bat Mobile (instruction addr:$00000829)
-;                bra.w  load_level_3                                 ; Calls $00000B28 - Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
-;                bra.w  load_level_4                                 ; Calls $00000B90 - Load Level 4 - Batwing Parade (instruction addr:$00000830)
-;                bra.w  load_level_5                                 ; Calls $00000C40 - Load Level 5 - Cathedral (instruction addr:$00000834)
+                bra.w  load_level_3                                 ; Calls $000009C8 - Load Level 1 - Axis Chemicals (instruction addr:$00000824)
+                bra.w  load_level_2                                 ; Calls $00000A78 - Load Level 2 - Bat Mobile (instruction addr:$00000829)
+                bra.w  load_level_3                                 ; Calls $00000B28 - Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
+                bra.w  load_level_4                                 ; Calls $00000B90 - Load Level 4 - Batwing Parade (instruction addr:$00000830)
+                bra.w  load_level_5                                 ; Calls $00000C40 - Load Level 5 - Cathedral (instruction addr:$00000834)
 
 
 
-                ;----------- load title screen & loading screen ------------
+                    ;----------- load title screen & loading screen ------------
 load_loading_screen
-                lea     stack(pc),a7
-                bsr     init_system
-                lea     $dff000,a6    
-                move.w  #$8370,DMACON(a6)
-.retryload
-                move.w  #$fff,COLOR00(a6)  
-                lea     dosio(pc),a5
+                    lea     stack(pc),a7                              ; initialise game stack (as per original game loader)
+                    bsr     init_system                               ; kill the system         
+                    lea     .loading_parameters(pc),a5                ; a5 = load data structure
+                    bra     load_files
+
+.loading_parameters
+                    dc.l  $3f000                                    ; 00 - loading stack address
+                    dc.l  $5d000                                    ; 04 - load data buffer
+                    dc.l  $20000                                    ; 08 - load work buffer
+                    dc.l  $1c000                                    ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$7c7fc     ; panel
+                    dc.l  .filename2-.loading_parameters,$3FFC      ; title prg
+                    dc.l  .filename3-.loading_parameters,$3F236     ; title pic
+                    dc.l  $00000000
+.filename1          dc.b   "panel.shrunk",0
+.filename2          dc.b   "titleprg.shrunk",0
+.filename3          dc.b   "titlepic.shrunk",0
+                    even
+
+
+
+
+                    ;----------- load title screen, after failed game end, maybe completion ------------
+load_title_screen2
+                    lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
+                    bsr     init_system                                 ; kill the system         
+                    lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    bra     load_files
                 
-                ; panel.iff
-                lea     $3f000,a7                         ; set stack
-                moveq.l #$00,d0                           ; load file
-                lea     .filename1,a0
-                lea     $5d000,a1                         ; load address
-                lea     $20000,a2                         ; track buffers
-                jsr     (a5)                              ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                ; decompress file
-                lea     $5d000,a0                         ; compressed data
-                lea     $7c7fc,a1                         ; decompressed buffer
-                lea     $0,a2
-                lea     $0,a3
-                moveq.l #$00,d2
-                moveq.l #$01,d7
-                bsr     ShrinklerDecompress
-
-                move.w  #$0f0,COLOR00(a6)
-
-                ; titleprg.iff
-                lea     $3f000,a7                         ; set stack
-                moveq.l #$00,d0                           ; load file
-                lea    .filename2,a0
-                lea    $5d000,a1                          ; load address
-                lea    $20000,a2                          ; track buffers
-                jsr    (a5)                               ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                ; decompress file
-                lea     $5d000,a0                         ; compressed data
-                lea     $3FFC,a1                          ; decompressed buffer
-                lea     $0,a2
-                lea     $0,a3
-                moveq.l #$00,d2
-                moveq.l #$01,d7
-                bsr     ShrinklerDecompress
-
-                move.w  #$00f,COLOR00(a6)
-
-                ; titlepic.iff
-                lea     $3f000,a7                         ; set stack                
-                moveq.l #$00,d0                           ; load file
-                lea     .filename3,a0
-                lea     $5d000,a1                         ; load address
-                lea     $20000,a2                         ; track buffers
-                jsr     (a5)                              ; load file into memory
-
-                tst.l   d0
-                bne     .load_error
-
-                ; decompress file
-                lea     $5d000,a0                         ; compressed data
-                lea     $3F236,a1                         ; decompressed buffer
-                lea     $0,a2
-                lea     $0,a3
-                moveq.l #$00,d2
-                moveq.l #$01,d7
-                bsr     ShrinklerDecompress
-
-                lea     stack(pc),a7
-                move.w  #$83ff,DMACON(a6)
-                jmp     $1c000
-              
-.load_error
-                move.w  #$ffff,d7
-.error_loop
-                move.w  #$f00,COLOR00(a6)
-                dbra    d7,.error_loop
-                jmp     .retryload                        ; retry
-
-.filename1      dc.b   "panel.iff",0
-.filename2      dc.b   "titleprg.iff",0
-.filename3      dc.b   "titlepic.iff",0
-                even
+.loading_parameters
+                    dc.l  $3f000                                        ; 00 - loading stack address
+                    dc.l  $5d000                                        ; 04 - load data buffer
+                    dc.l  $20000                                        ; 08 - load work buffer
+                    dc.l  $1c004                                        ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$7c7fc         ; panel 
+                    dc.l  .filename2-.loading_parameters,$3FFC          ; title prg
+                    dc.l  .filename3-.loading_parameters,$3F236         ; title pic
+                    dc.l  $00000000
+.filename1          dc.b   "panel.shrunk",0
+.filename2          dc.b   "titleprg.shrunk",0
+.filename3          dc.b   "titlepic.shrunk",0
+                    even
 
 
 
-
-                ;----------- load title screen after game end ------------
-load_title_screen2:
-                lea     stack(pc),a7
-                bsr     init_system
-                lea     $dff000,a6    
-                move.w  #$8370,DMACON(a6)
-.retryload
-                move.w  #$fff,COLOR00(a6)  
-                lea     dosio(pc),a5
-                
-                ; panel.iff
-                move.l  #0,d0                              ; load file
-                lea     .filename1,a0
-                lea     $7C7FC,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                move.w  #$0f0,COLOR00(a6)
-
-                ; titleprg.iff
-                move.l #0,d0                              ; load file
-                lea    .filename2,a0
-                lea    $3FFC,a1
-                lea    $60000,a2
-                jsr    (a5)                               ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                move.w  #$00f,COLOR00(a6)
-
-                ; titlepic.iff
-                move.l  #0,d0                              ; load file
-                lea     .filename3,a0
-                lea     $3F236,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
-
-                tst.l   d0
-                bne     .load_error
-
-                lea     stack(pc),a7
-                move.w  #$83ff,DMACON(a6)
-                jmp     $1c004
-              
-.load_error
-                move.w  #$ffff,d7
-.error_loop
-                move.w  #$f00,COLOR00(a6)
-                dbra    d7,.error_loop
-                jmp     .retryload                        ; retry
-
-.filename1      dc.b   "panel.iff",0
-.filename2      dc.b   "titleprg.iff",0
-.filename3      dc.b   "titlepic.iff",0
-                even
-
-
-
-
-
-
-
-
-                ;----------- load level 1 ------------
+                    ;--------------------- load level 1 ----------------------
 load_level_1
-                lea     stack(pc),a7
-                bsr     init_system
-                lea     $dff000,a6    
-                move.w  #$8370,DMACON(a6)
-.retryload
-                move.w  #$fff,COLOR00(a6)  
-                lea     dosio(pc),a5
+                    lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
+                    bsr     init_system                                 ; kill the system         
+                    lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    bra     load_files
                 
-                ; code1.iff
-                move.l  #0,d0                              ; load file
-                lea     .filename1,a0
-                lea     $2FFC,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
-                tst.l   d0
+.loading_parameters
+                    dc.l  $47000                                        ; 00 - loading stack address
+                    dc.l  $59000                                        ; 04 - load data buffer
+                    dc.l  $2a000                                        ; 08 - load work buffer
+                    dc.l  $3000                                         ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$2ffc          ; code1
+                    dc.l  .filename2-.loading_parameters,$7ffc          ; mapgr
+                    dc.l  .filename3-.loading_parameters,$10ffc         ; batspr1
+                    dc.l  .filename4-.loading_parameters,$47fe4         ; chem                    
+                    dc.l  $00000000
+.filename1          dc.b   "code1.shrunk",0
+.filename2          dc.b   "mapgr.shrunk",0
+.filename3          dc.b   "batspr1.shrunk",0
+.filename4          dc.b   "chem.shrunk",0
+                    even
+
+
+
+
+                    ;--------------------- load level 2 ----------------------
+load_level_2
+                    lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
+                    bsr     init_system                                 ; kill the system         
+                    lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    bra     load_files
+                
+.loading_parameters
+                    dc.l  $1fffc                                        ; 00 - loading stack address
+                    dc.l  $56a00                                        ; 04 - load data buffer
+                    dc.l  $ce00                                         ; 08 - load work buffer
+                    dc.l  $3000                                         ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$2ffc          ; code
+                    dc.l  .filename2-.loading_parameters,$1fffc         ; data
+                    dc.l  .filename3-.loading_parameters,$2a416         ; data2
+                    dc.l  .filename4-.loading_parameters,$68f7c         ; music                    
+                    dc.l  $00000000
+.filename1          dc.b   "code.shrunk",0
+.filename2          dc.b   "data.shrunk",0
+.filename3          dc.b   "data2.shrunk",0
+.filename4          dc.b   "music.shrunk",0
+                    even
+
+
+
+
+                    ;--------------------- load level 3 ----------------------
+load_level_3
+                    lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
+                    bsr     init_system                                 ; kill the system         
+                    lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    bra     load_files
+                
+.loading_parameters
+                    dc.l  $3f000                                        ; 00 - loading stack address
+                    dc.l  $5d000                                        ; 04 - load data buffer
+                    dc.l  $20000                                        ; 08 - load work buffer
+                    dc.l  $d000                                         ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$3ffc          ; batcave                   
+                    dc.l  $00000000
+.filename1          dc.b   "batcave.shrunk",0
+                    even
+
+
+
+
+                    ;--------------------- load level 4 ----------------------
+load_level_4
+                    lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
+                    bsr     init_system                                 ; kill the system         
+                    lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    bra     load_files
+                
+.loading_parameters
+                    dc.l  $1fffc                                        ; 00 - loading stack address
+                    dc.l  $56a00                                        ; 04 - load data buffer
+                    dc.l  $ce00                                         ; 08 - load work buffer
+                    dc.l  $00003002                                     ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$2ffc          ; code
+                    dc.l  .filename2-.loading_parameters,$1fffc         ; data
+                    dc.l  .filename3-.loading_parameters,$2a416         ; data4
+                    dc.l  .filename4-.loading_parameters,$68f7c         ; music                    
+                    dc.l  $00000000
+.filename1          dc.b   "code.shrunk",0
+.filename2          dc.b   "data.shrunk",0
+.filename3          dc.b   "data4.shrunk",0
+.filename4          dc.b   "music.shrunk",0
+                    even
+
+
+
+
+                    ;--------------------- load level 5 ----------------------
+load_level_5
+                    lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
+                    bsr     init_system                                 ; kill the system         
+                    lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    bra     load_files
+                
+.loading_parameters
+                    dc.l  $47000                                        ; 00 - loading stack address
+                    dc.l  $59000                                        ; 04 - load data buffer
+                    dc.l  $2a000                                        ; 08 - load work buffer
+                    dc.l  $3000                                         ; 0C - start address
+                    dc.l  .filename1-.loading_parameters,$2ffc          ; code5
+                    dc.l  .filename2-.loading_parameters,$7ffc          ; mapgr2
+                    dc.l  .filename3-.loading_parameters,$10ffc         ; batspr1
+                    dc.l  .filename4-.loading_parameters,$47fe4         ; church                    
+                    dc.l  $00000000
+.filename1          dc.b   "code5.shrunk",0
+.filename2          dc.b   "mapgr2.shrunk",0
+.filename3          dc.b   "batspr1.shrunk",0
+.filename4          dc.b   "church.shrunk",0
+                    even
+
+
+
+              ;----------------- Load Files ----------------
+              ; IN: a5 = loading parameters
+load_files
+                lea     $dff000,a6                                ; a6 = custom base
+                move.w  #$8360,DMACON(a6)                         ; enable DMA, MASTER, DISK, COPPER, BLITTER
+                move.l  (a5),a7                                   ; set stack address
+                move.l  a5,-(a7)
+.retryload
+                lea.l   $10(a5),a4                                ; a4 = files to load
+.loadloop
+                tst.l   (a4)
+                beq     .endload
+
+                move.w  VHPOSR(a6),COLOR00(a6)            ; change background colour for each file loading
+
+                ; load file
+                moveq.l #$00,d0                           ; d0 = rnc - load file command      
+                move.l  (a4),d5                           ; d5 = filename offset
+                lea.l   (a5,d5.w),a0                      ; a0 = filename to load
+                move.l  4(a5),a1                          ; a1 = load address
+                move.l  8(a5),a2                          ; a2 = track buffers
+                bsr     dosio                             ; load file into memory
+                tst.l   d0                                ; test load result
                 bne     .load_error
 
-                move.w  #$0f0,COLOR00(a6)
+                ; decrunch file
+                move.l  4(a5),a0                          ; compressed data
+                move.l  4(a4),a1                          ; decompressed buffer
+                lea     $0,a2
+                lea     $0,a3
+                moveq.l #$00,d2
+                moveq.l #$01,d7
+                bsr     ShrinklerDecompress
 
-                ; mapgr.iff
-                move.l  #0,d0                              ; load file
-                lea     .filename2,a0
-                lea     $7FFC,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                move.w  #$00f,COLOR00(a6)
-
-                ; batspr1.iff
-                move.l  #0,d0                              ; load file
-                lea     .filename3,a0
-                lea     $10FFC,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                move.w  #$0ff,COLOR00(a6)
-
-                ; chem.iff
-                move.l  #0,d0                              ; load file
-                lea     .filename4,a0
-                lea     $47FE4,a1
-                lea     $60000,a2
-                jsr     (a5)                               ; load file into memory
-                tst.l   d0
-                bne     .load_error
-
-                move.w  #$fff,COLOR00(a6)
-
-                lea     stack(pc),a7
+                ; next file
+                lea.l   8(a4),a4                          ; next file to load
+                bra     .loadloop
+               
+.endload
+                lea     stack(pc),a7                      ; set game stack (as per original game)
                 move.w  #$83ff,DMACON(a6)
-                jmp     $3000
-              
+                move.w  #$0fff,COLOR00(a6)
+                move.l  $C(a5),a5
+                jmp     (a5)                              ; start execution address
+
 .load_error
                 move.w  #$ffff,d7
 .error_loop
                 move.w  #$f00,COLOR00(a6)
                 dbra    d7,.error_loop
+                move.l  (a7)+,a5                          ; a5 = loading parameters
                 jmp     .retryload                        ; retry
-
-
-.filename1      dc.b    "code1.iff",0                             ; CODE1   IFF       - $43,$4F,$44,$45,$31,$20,$20,$20,$49,$46,$46
-.filename2      dc.b    "mapgr.iff",0                             ; MAPGR   IFF       - $4D,$41,$50,$47,$52,$20,$20,$20,$49,$46,$46
-.filename3      dc.b    "batspr1.iff",0                           ; BATSPR1 IFF       - $42,$41,$54,$53,$50,$52,$31,$20,$49,$46,$46
-.filename4      dc.B    "chem.iff",0                              ; CHEM    IFF       - $43,$48,$45,$4D,$20,$20,$20,$20,$49,$46,$46                                     ;M    IFF
-                even
 
 
 
