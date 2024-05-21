@@ -47,9 +47,10 @@ I'll be following the steps below, like all plans likely to change.
    - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
  - Create a Cracked Version of the Disk.
-   - In Progress [New Loader](./crack/newloader/)
-   - **Test Disk ADF [testcrack.adf](./crack/testcrack.adf)**
-   - **TODO: Repack ripped files, finish new loader, compile disk**
+   - [packedfiles.adf](./crack/packedcrack/packedfiles.adf) - Amiga DOS disk with custom loader (rnc dosio)
+   - Load time is far too slow, need to change packer
+   - Doesn't work on an A1200  (not sure about the original, will have to test it)
+   - TODO: Create mfm loader, use H0ffman's loader which will cache files if extra ram is installed.
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
@@ -59,7 +60,9 @@ I'll be following the steps below, like all plans likely to change.
 
 ## Progress to Date
 
-2024-05-20 - SUccessfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
+2024-05-21 - Created first verions of a single disk crack. The ADF can be found here [packedfiles.adf](./crack/packedcrack/packedfiles.adf). Thhe load time is far too slow due to the packer used (shrinkler). Need to find a packer with a faster decruncher which still has a decent oack ratio.
+
+2024-05-20 - Successfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
 
 2024-05-17 - Created a test disk image [testcrack.adf](./crack/testcrack.adf) which can load the and start the *Title Screen* from the Amiga DOS formatted disk. The game will crash if you try to start it as theres no code to load the levels etc. *Ive borked the test loader, try running on emulator with plenty of memory, think its got stack corruption at the moment*
 
