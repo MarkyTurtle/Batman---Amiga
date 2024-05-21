@@ -5,9 +5,9 @@ This repo will contain the result of my attempt to reverse engineer the 2 Disk v
 
 The inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Also to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in Episode #16 Lemmings. Links to those resources shown below.
 
- - [Youtube](https://www.youtube.com/@HoffmanYouTube){:target="_blank"}
- - [Twitch](https://www.twitch.tv/djh0ffman){:target="_blank"}
- - [GitHub](https://github.com/djh0ffman){:target="_blank"}
+ - [Youtube](https://www.youtube.com/@HoffmanYouTube)
+ - [Twitch](https://www.twitch.tv/djh0ffman)
+ - [GitHub](https://github.com/djh0ffman)
 
 I've been looking for an excuse to do something on the Amiga for ages and this seemed like a nice little hobby exercise to dip in and out of, a reason to re-learn 68000 and a chance to learn something about game programming in the process.
 
