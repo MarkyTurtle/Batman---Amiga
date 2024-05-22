@@ -1,7 +1,7 @@
 # Batman
 [Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
-This repo will contain the result of my attempt to reverse engineer the 2 Disk version of Batman The Movie for the Amiga. 
+This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
 
 The inspiration for this exercise was discovering the following cracking series run by **djh0ffman**. Also to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in Episode #16 Lemmings. Links to those resources shown below.
 
