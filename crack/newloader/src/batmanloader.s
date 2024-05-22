@@ -16,9 +16,9 @@ kill_system
                 move.w  #$7fff,DMACON(a6)
                 move.w  #$7fff,INTREQ(a6)   
 
-;mouse_wait
-;                btst.b  #$6,$bfe001
-;                bne.s   mouse_wait
+mouse_wait
+                btst.b  #$6,$bfe001
+                bne.s   mouse_wait
 
 realloc_loader
                 lea     loaderstart,a0
@@ -52,7 +52,7 @@ stack                                                               ; Top of Loa
 jump_table                                                          ; Start of jump table for loading and executing the game sections. (original addr:$0000081C)
                 bra.w  load_loading_screen                          ; Load Loading Screen (instruction addr:$0000081C)
                 bra.w  load_title_screen2                           ; Load Title Screen2  (instruction addr:$00000820)
-                bra.w  load_level_1                                 ; Load Level 1 - Axis Chemicals (instruction addr:$00000824)
+                bra.w  load_level_5                                 ; Load Level 1 - Axis Chemicals (instruction addr:$00000824)
                 bra.w  load_level_2                                 ; Load Level 2 - Bat Mobile (instruction addr:$00000829)
                 bra.w  load_level_3                                 ; Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
                 bra.w  load_level_4                                 ; Load Level 4 - Batwing Parade (instruction addr:$00000830)
@@ -210,6 +210,9 @@ load_level_5
                     lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
                     bsr     init_system                                 ; kill the system         
                     lea     .loading_parameters(pc),a5                  ; a5 = load data structure
+                    move.w  #$4e71,$7fa76
+                    move.w  #$4e71,$7fa78
+                    move.w  #$4e71,$7fa7a
                     bra     load_files
                 
 .loading_parameters
