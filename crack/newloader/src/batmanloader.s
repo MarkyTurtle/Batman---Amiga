@@ -219,9 +219,9 @@ load_level_5
                     lea     stack(pc),a7                                ; initialise game stack (as per original game loader)
                     bsr     init_system                                 ; kill the system         
                     lea     .loading_parameters(pc),a5                  ; a5 = load data structure
-                    move.w  #$4e71,$7fa76
-                    move.w  #$4e71,$7fa78
-                    move.w  #$4e71,$7fa7a
+                    ;move.w  #$4e71,$7fa76
+                    ;move.w  #$4e71,$7fa78
+                    ;move.w  #$4e71,$7fa7a
                     bra     load_files
                 
 .loading_parameters
