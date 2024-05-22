@@ -3,6 +3,15 @@
 ;-----------------------------------------------------------------------------------------------------------------------------
 
 
+;               -- Copy protection addresses and values to restore
+;               -- need to work out where in the relocated code below to insert these values.
+;               -- 00000DCA 526F 6220 4E6F 7274 6865 6E20 436F 6D70  Rob Northen Comp
+;               -- 00000DDA 6AD4 A952 A449 9327 A4AA 92A5 1455 1451  j..R.I.'.....U.Q
+;               -- 00000DEA 152A 9444 5112 4449 1124 4492 9249 4925  .*.DQ.DI.$D..II%
+;               -- 00000DFA 2495 0000 0000 0000 0000 0000 0000 0000  $...............
+;               -- 00000E0A 0000 0000 0000 
+                ; - $0E10 = D0 = FF7EEFAB - *** Protection Checksum Value ***
+
 
 ;---------- Includes ----------
               INCDIR        "include"
@@ -276,6 +285,7 @@ load_files
                 move.w  #$83ff,DMACON(a6)
                 move.w  #$0fff,COLOR00(a6)
                 move.l  $C(a5),a5
+                bsr     set_exceptions
                 jmp     (a5)                              ; start execution address
 
 .load_error
@@ -287,6 +297,16 @@ load_files
                 jmp     .retryload                        ; retry
 
 
+
+                ;------------------ set exceptions ----------------------
+                ; set the original value to exception vectors that would
+                ; be set by the game loader & copy protection
+                ;
+set_exceptions:
+                move.l  #$00002070,$8
+                move.l  #$00002070,$c
+                move.l  #$FF7EEFAB,$24
+                rts
 
 
                 ;------------------ init system -------------------------
