@@ -56,6 +56,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 ## Progress to Date
 
+2024-05-21 - Noticed that Level 5 is crashing/corrupt when navigating through the level. Will have to double check the ripped data for this level, also see if there are any copy protection checksums happening during the level to cause the issue. (i.e. you can get infinite energy by patching 3 NOPs into location $7fA76 when playing the game, using action replay, WIN UAE debugger, etc)
+
 2024-05-21 - Created first verison of a single disk crack. The ADF can be found here [packedfiles.adf](./crack/packedcrack/packedfiles.adf). The load time is far too slow due to the packer used (shrinkler). Need to find a packer with a faster decruncher which still has a decent pack ratio.
 
 2024-05-20 - Successfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
