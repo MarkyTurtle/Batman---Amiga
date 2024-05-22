@@ -50,13 +50,13 @@ unused_globals_1
 
 stack                                                               ; Top of Loader Stack, (re)set each time a game section is loaded. (addr:$0000081C) 
 jump_table                                                          ; Start of jump table for loading and executing the game sections. (original addr:$0000081C)
-                bra.w  load_loading_screen                          ; Calls $00000838 - Load Loading Screen (instruction addr:$0000081C)
-                bra.w  load_title_screen2                           ; Calls $00000948 - Load Title Screen2  (instruction addr:$00000820)
-                bra.w  load_level_3                                 ; Calls $000009C8 - Load Level 1 - Axis Chemicals (instruction addr:$00000824)
-                bra.w  load_level_2                                 ; Calls $00000A78 - Load Level 2 - Bat Mobile (instruction addr:$00000829)
-                bra.w  load_level_3                                 ; Calls $00000B28 - Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
-                bra.w  load_level_4                                 ; Calls $00000B90 - Load Level 4 - Batwing Parade (instruction addr:$00000830)
-                bra.w  load_level_5                                 ; Calls $00000C40 - Load Level 5 - Cathedral (instruction addr:$00000834)
+                bra.w  load_loading_screen                          ; Load Loading Screen (instruction addr:$0000081C)
+                bra.w  load_title_screen2                           ; Load Title Screen2  (instruction addr:$00000820)
+                bra.w  load_level_1                                 ; Load Level 1 - Axis Chemicals (instruction addr:$00000824)
+                bra.w  load_level_2                                 ; Load Level 2 - Bat Mobile (instruction addr:$00000829)
+                bra.w  load_level_3                                 ; Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
+                bra.w  load_level_4                                 ; Load Level 4 - Batwing Parade (instruction addr:$00000830)
+                bra.w  load_level_5                                 ; Load Level 5 - Cathedral (instruction addr:$00000834)
 
 
 
