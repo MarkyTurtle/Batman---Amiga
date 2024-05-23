@@ -134,11 +134,11 @@ load_title_screen2
                     dc.l  $5d000                                        ; 04 - load data buffer
                     dc.l  $20000                                        ; 08 - load work buffer
                     dc.l  $1c004                                        ; 0C - start address
-                    dc.l  .filename1-.loading_parameters,$7c7fc         ; panel 
+                    ;dc.l  .filename1-.loading_parameters,$7c7fc         ; panel 
                     dc.l  .filename2-.loading_parameters,$3FFC          ; title prg
                     dc.l  .filename3-.loading_parameters,$3F236         ; title pic
                     dc.l  $00000000
-.filename1          dc.b   "panel.shrunk",0
+;.filename1          dc.b   "panel.shrunk",0
 .filename2          dc.b   "titleprg.shrunk",0
 .filename3          dc.b   "titlepic.shrunk",0
                     even
