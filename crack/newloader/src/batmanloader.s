@@ -19,28 +19,57 @@
 
               section       loader,code_c
 
+
 kill_system
                 lea     $dff000,a6
                 move.w  #$7fff,INTENA(a6)
                 move.w  #$7fff,DMACON(a6)
                 move.w  #$7fff,INTREQ(a6)   
 
-mouse_wait
+.mouse_wait
                 btst.b  #$6,$bfe001
-                bne.s   mouse_wait
+                bne.s   .mouse_wait
 
+
+                ;------------- reallocate the loader code ------------------
 realloc_loader
                 lea     loaderstart,a0
                 lea     loaderend,a1
                 lea     $800,a2
-realloc_loop
+.realloc_loop
                 move.w  (a0)+,(a2)+
                 move.w  d0,COLOR00(a6)
                 add.w   #1,d0
                 cmp.l   a0,a1
-                bne     realloc_loop
+                bne     .realloc_loop
+
+
+                ;------------------- realloc cp data -----------------------
+                ; copy the original copy protection data to the original
+                ; location in the relocated loader memory.
+insert_cp_data
+                moveq   #$24,d7                       ; 37 - 1 - loop counter
+                lea     copy_protection_data(pc),a0
+                lea     $DCA,a1
+.copy_loop
+                move.w  (a0)+,(a1)+
+                dbra    d7,.copy_loop
+
+                ; jump to start of relocated loader in memory
                 jmp     $800
 
+
+
+                ; -- Copy protection addresses and values to restore
+                ; -- need to work out where in the relocated code below to insert these values.
+                ; original address $00000DCA
+copy_protection_data  
+                dc.W  $526F, $6220, $4E6F, $7274, $6865, $6E20, $436F, $6D70      ;Rob Northen Comp
+                dc.W  $6AD4, $A952, $A449, $9327, $A4AA, $92A5, $1455, $1451      ;j..R.I.'.....U.Q
+                dc.W  $152A, $9444, $5112, $4449, $1124, $4492, $9249, $4925      ;.*.DQ.DI.$D..II%
+                dc.W  $2495, $0000, $0000, $0000, $0000, $0000, $0000, $0000      ;$...............
+                dc.W  $0000, $0000, $0000 
+                dc.l  $FF7EEFAB
 
             ;-------------------- loader start -------------------
             ; entry point of relocated loader at address $800.l
@@ -426,6 +455,10 @@ interrupt_handler
                 move.w  #$7fff,INTREQ(a6)
                 movem.l (a7)+,d0-d7/a0-a6
                 rte
+
+
+                dc.l    254,"MARK"
+
 
 
 
