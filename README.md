@@ -43,7 +43,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
    - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
  - Create a Cracked Version of the Disk.
-   - [packedfiles.adf](./crack/packedcrack/packedfiles.adf) - Amiga DOS disk with custom loader (rnc dosio)
+   - [packedfiles.adf](./crack/packedcrack/DosCrackShrinkler.adf)
+   - Amiga DOS disk with custom loader (rnc dosio)
    - Load time is far too slow, need to change packer
    - Doesn't work on an A1200, but then neither does the original.
    - TODO: Create mfm loader, use H0ffman's loader which will cache files if extra ram is installed.
