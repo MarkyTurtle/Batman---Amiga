@@ -56,6 +56,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 ## Progress to Date
 
+2024-05-23 - Created an Amiga DOS disk that can be played and completed, very slow loading times due to decompression (which needs to be fixed). Its a learning exercise and I'm learning loads. I think the clock timer is running too fast (also the music on the title screen), so I think the game timers aren't set quite right at the moment. Also affects game play of levels 2 & 4 which are very tight on the time limits. This needs to be looked at and fixed.
+
 2024-05-22 - Been testing the game and have completed the cracked version. It showed the game-over screen instead of the completion screen. Also had an
 intermittent crash on level 5. I've updated the new loader, so that it sets the original copy protection serial into the exception vectors.
 May also need to insert other copy protection data into memory, will test when I have the time.
