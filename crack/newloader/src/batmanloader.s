@@ -307,7 +307,7 @@ load_files
                 move.l  $C(a5),a5
                 bsr     set_exceptions
 
-                btst    #$6,$bfe001
+                btst.b  #$6,$bfe001
                 bne.s   .start_game
 .add_cheat
                 bsr     add_cheat
