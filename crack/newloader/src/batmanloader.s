@@ -80,7 +80,7 @@ load_loading_screen
                     dc.l  $3f000                                    ; 00 - loading stack address
                     dc.l  $5d000                                    ; 04 - load data buffer
                     dc.l  $20000                                    ; 08 - load work buffer
-                    dc.l  $1c000                                    ; 0C - start address
+                    dc.l  $1c004                                    ; 0C - start address
                     dc.l  .filename1-.loading_parameters,$7c7fc     ; panel
                     dc.l  .filename2-.loading_parameters,$3FFC      ; title prg
                     dc.l  .filename3-.loading_parameters,$3F236     ; title pic
