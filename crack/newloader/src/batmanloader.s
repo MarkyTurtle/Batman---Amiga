@@ -26,10 +26,6 @@ kill_system
                 move.w  #$7fff,DMACON(a6)
                 move.w  #$7fff,INTREQ(a6)   
 
-.mouse_wait
-                btst.b  #$6,$bfe001
-                bne.s   .mouse_wait
-
 
                 ;------------- reallocate the loader code ------------------
 realloc_loader
@@ -90,7 +86,7 @@ stack                                                               ; Top of Loa
 jump_table                                                          ; Start of jump table for loading and executing the game sections. (original addr:$0000081C)
                 bra.w  load_loading_screen                          ; Load Loading Screen (instruction addr:$0000081C)
                 bra.w  load_title_screen2                           ; Load Title Screen2  (instruction addr:$00000820)
-                bra.w  load_level_5                                 ; Load Level 1 - Axis Chemicals (instruction addr:$00000824)
+                bra.w  load_level_1                                 ; Load Level 1 - Axis Chemicals (instruction addr:$00000824)
                 bra.w  load_level_2                                 ; Load Level 2 - Bat Mobile (instruction addr:$00000829)
                 bra.w  load_level_3                                 ; Load Level 3 - Bat Cave Puzzle (instruction addr:$0000082C)
                 bra.w  load_level_4                                 ; Load Level 4 - Batwing Parade (instruction addr:$00000830)
@@ -134,13 +130,11 @@ load_title_screen2
                     dc.l  $5d000                                        ; 04 - load data buffer
                     dc.l  $20000                                        ; 08 - load work buffer
                     dc.l  $1c004                                        ; 0C - start address
-                    ;dc.l  .filename1-.loading_parameters,$7c7fc         ; panel 
-                    dc.l  .filename2-.loading_parameters,$3FFC          ; title prg
-                    dc.l  .filename3-.loading_parameters,$3F236         ; title pic
+                    dc.l  .filename1-.loading_parameters,$3FFC          ; title prg
+                    dc.l  .filename2-.loading_parameters,$3F236         ; title pic
                     dc.l  $00000000
-;.filename1          dc.b   "panel.shrunk",0
-.filename2          dc.b   "titleprg.shrunk",0
-.filename3          dc.b   "titlepic.shrunk",0
+.filename1          dc.b   "titleprg.shrunk",0
+.filename2          dc.b   "titlepic.shrunk",0
                     even
 
 
@@ -315,6 +309,12 @@ load_files
                 move.w  #$0fff,COLOR00(a6)
                 move.l  $C(a5),a5
                 bsr     set_exceptions
+
+                btst    #$6,$bfe101
+                bne.s   .start_game
+.add_cheat
+                bsr     add_cheat
+.start_game
                 jmp     (a5)                              ; start execution address
 
 .load_error
@@ -336,6 +336,16 @@ set_exceptions:
                 move.l  #$00002070,$c
                 move.l  #$FF7EEFAB,$24
                 rts
+
+
+
+                ;----------------- infinite energy cheat -----------------
+add_cheat:
+                move.w  #$4e71,$7fa76
+                move.w  #$4e71,$7fa78
+                move.w  #$4e71,$7fa7a
+                rts
+
 
 
                 ;------------------ init system -------------------------
