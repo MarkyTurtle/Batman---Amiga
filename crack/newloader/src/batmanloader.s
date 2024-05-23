@@ -18,7 +18,7 @@
               INCLUDE       "hw.i"
 
               section       loader,code_c
-
+              opt           o-
 
 kill_system
                 lea     $dff000,a6
@@ -69,7 +69,7 @@ copy_protection_data
                 dc.W  $152A, $9444, $5112, $4449, $1124, $4492, $9249, $4925      ;.*.DQ.DI.$D..II%
                 dc.W  $2495, $0000, $0000, $0000, $0000, $0000, $0000, $0000      ;$...............
                 dc.W  $0000, $0000, $0000 
-                dc.l  $FF7EEFAB
+                dc.w  $FF7E, $EFAB
 
             ;-------------------- loader start -------------------
             ; entry point of relocated loader at address $800.l
@@ -109,7 +109,7 @@ load_loading_screen
                     dc.l  $3f000                                    ; 00 - loading stack address
                     dc.l  $5d000                                    ; 04 - load data buffer
                     dc.l  $20000                                    ; 08 - load work buffer
-                    dc.l  $1c004                                    ; 0C - start address
+                    dc.l  $1c000                                    ; 0C - start address
                     dc.l  .filename1-.loading_parameters,$7c7fc     ; panel
                     dc.l  .filename2-.loading_parameters,$3FFC      ; title prg
                     dc.l  .filename3-.loading_parameters,$3F236     ; title pic
@@ -457,7 +457,7 @@ interrupt_handler
                 rte
 
 
-                dc.l    254,"MARK"
+                dcb.l    254,$AAAAAAAA
 
 
 
