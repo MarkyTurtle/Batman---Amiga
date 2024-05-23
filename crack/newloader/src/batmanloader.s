@@ -40,16 +40,16 @@ realloc_loader
                 bne     .realloc_loop
 
 
-                ;------------------- realloc cp data -----------------------
-                ; copy the original copy protection data to the original
-                ; location in the relocated loader memory.
-insert_cp_data
-                moveq   #$24,d7                       ; 37 - 1 - loop counter
-                lea     copy_protection_data(pc),a0
-                lea     $DCA,a1
-.copy_loop
-                move.w  (a0)+,(a1)+
-                dbra    d7,.copy_loop
+;                ;------------------- realloc cp data -----------------------
+;                ; copy the original copy protection data to the original
+;                ; location in the relocated loader memory.
+;insert_cp_data
+;                moveq   #$24,d7                       ; 37 - 1 - loop counter
+;                lea     copy_protection_data(pc),a0
+;                lea     $DCA,a1
+;.copy_loop
+;                move.w  (a0)+,(a1)+
+;                dbra    d7,.copy_loop
 
                 ; jump to start of relocated loader in memory
                 jmp     $800
@@ -464,7 +464,7 @@ interrupt_handler
                 rte
 
 
-                dcb.l    254,$AAAAAAAA
+                ;dcb.l    254,$AAAAAAAA
 
 
 
