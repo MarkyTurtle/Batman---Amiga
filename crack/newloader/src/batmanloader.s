@@ -48,13 +48,13 @@ realloc_loader
                 ;------------------- realloc cp data -----------------------
                 ; copy the original copy protection data to the original
                 ; location in the relocated loader memory.
-insert_cp_data
-                moveq   #$24,d7                       ; 37 - 1 - loop counter
-                lea     copy_protection_data(pc),a0
-                lea     $DCA,a1
-.copy_loop
-                move.w  (a0)+,(a1)+
-                dbra    d7,.copy_loop
+;insert_cp_data
+;                moveq   #$24,d7                       ; 37 - 1 - loop counter
+;                lea     copy_protection_data(pc),a0
+;                lea     $DCA,a1
+;.copy_loop
+;                move.w  (a0)+,(a1)+
+;                dbra    d7,.copy_loop
 
                 ; jump to start of relocated loader in memory
                 jmp     $800
@@ -343,6 +343,9 @@ load_files
 .add_cheat
                 bsr     add_cheat
 .start_game
+                movem.l d0-d7/a0-a6,-(a7)
+                bsr     init_system
+                movem.l (a7)+,d0-d7/a0-a6
                 jmp     (a5)                              ; start execution address
 
 .load_error
@@ -488,11 +491,11 @@ init_system                                                         ; original r
                 move.w  #$7fff,INTREQ(A6)                           ; Clear Interrupt Request bits
 .enable_ciaa_interrupts
                 tst.b   $0c00(A4)                                   ; CIAA ICR - clear interrupt flags
-                MOVE.B  #$8a,$0c00(A4)                              ; CIAA ICR - Enable SP (Keyboard), ALRM (TOD)
+                ;MOVE.B  #$8a,$0c00(A4)                              ; CIAA ICR - Enable SP (Keyboard), ALRM (TOD)
 
 .enable_ciab_interrupts
                 tst.b   $0c00(A5)                                   ; CIAB ICR - clear interrupt flags
-                MOVE.B  #$93,$0c00(A5)                              ; CIAB ICR - Enable FLG (DSKINDEX), TB (TimerA), TA (TimerB)
+                ;MOVE.B  #$93,$0c00(A5)                              ; CIAB ICR - Enable FLG (DSKINDEX), TB (TimerA), TA (TimerB)
               
 .exit_init_system
                 move.w  #$e078,INTENA(a6)
@@ -553,8 +556,8 @@ interrupt_handler
                 ;------------------------ Copy Protection Values -----------------------
                 ; space to write the original copy protection values that are loaded in
                 ; from the copylock track.
-                dcb.l    64,$AAAAAAAA                               ;256 bytes of memory for original copy protection data
-                even
+                ;dcb.l    64,$AAAAAAAA                               ;256 bytes of memory for original copy protection data
+                ;even
 
 
 
