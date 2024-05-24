@@ -23,16 +23,6 @@ Resources and code used in this project is listed below. If there's anything use
 - [Shrinkler](https://github.com/askeksa/Shrinkler) - file cruncher/decruncher
 - [Salvador](https://github.com/emmanuel-marty/salvador) - zxo file cruncher/decruncher
 
-
-## Contents
- - [Original Floppy Disk Images](./originalfloppies/README.md)
- - [Raw Ripped Files](./rawrippedfiles/rippedfiles.md)
- - Loader
-   - [Boot Loader](./loader/bootloader.md)
-   - [Game Loader](./loader/gameloader.md)
-
-
-
 ## Overview
 This exercise is not one of speed, but of learning. It looks like this game could be cracked just by patching out the serial number check around $139C in the loader code. The intention is to spend more time disassembling parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
 
