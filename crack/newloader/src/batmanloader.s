@@ -510,51 +510,63 @@ interrupt_handler
                 rte
 
 
+
+
+                ;  unzx0_68000.s - ZX0 decompressor for 68000 - 88 bytes
+                ;
+                ;  in:  a0 = start of compressed data
+                ;       a1 = start of decompression buffer
+                ;
+                even
+                INCDIR        "zx0"
+                INCLUDE       "unzx0_68000.S"
+                even
+
+
+                ; Decompress Shrinkler-compressed data produced with the --data option.
+                ;
+                ; A0 = Compressed data
+                ; A1 = Decompressed data destination
+                ; A2 = Progress callback, can be zero if no callback is desired.
+                ;      Callback will be called continuously with
+                ;      D0 = Number of bytes decompressed so far
+                ;      A0 = Callback argument
+                ;      D1 = Second callback argument
+                ; A3 = Callback argument
+                ; D2 = Second callback argument
+                ; D7 = 0 to disable parity context (Shrinkler --bytes / -b option)
+                ;      1 to enable parity context (default Shrinkler compression)
+                ;
+                ; Uses 3 kilobytes of space on the stack.
+                ; Preserves D2-D7/A2-A6 and assumes callback does the same.
+                ;
+                ; Decompression code may read one byte beyond compressed data.
+                ; The contents of this byte does not matter.
+
+                ;ShrinklerDecompress:
+                ;            INCDIR        "shrinkler"
+                ;            INCLUDE       "ShrinklerDecompress.S"
+
+
+
+
+                ;------------------------ Copy Protection Values -----------------------
+                ; space to write the original copy protection values that are loaded in
+                ; from the copylock track.
                 dcb.l    64,$AAAAAAAA                               ;256 bytes of memory for original copy protection data
+                even
 
 
 
-
-              *	a0.l = full pathname of file, terminated with 0
-              *	a1.l = file buffer (even word boundary)
-              *		if d0.l=3 a1.l = ptr to file name buffer
-              *	a2.l = workspace buffer ($4d00 bytes of CHIPmem required)
-              INCDIR        "rnc/dosio"
-              INCLUDE       "dosio.s"
-
+                *	a0.l = full pathname of file, terminated with 0
+                *	a1.l = file buffer (even word boundary)
+                *		if d0.l=3 a1.l = ptr to file name buffer
+                *	a2.l = workspace buffer ($4d00 bytes of CHIPmem required)
+                INCDIR        "rnc/dosio"
+                INCLUDE       "dosio.s"
 
 
-              INCDIR        "zx0"
-              INCLUDE       "unzx0_68000.S"
-
-
-
-
-; Decompress Shrinkler-compressed data produced with the --data option.
-;
-; A0 = Compressed data
-; A1 = Decompressed data destination
-; A2 = Progress callback, can be zero if no callback is desired.
-;      Callback will be called continuously with
-;      D0 = Number of bytes decompressed so far
-;      A0 = Callback argument
-;      D1 = Second callback argument
-; A3 = Callback argument
-; D2 = Second callback argument
-; D7 = 0 to disable parity context (Shrinkler --bytes / -b option)
-;      1 to enable parity context (default Shrinkler compression)
-;
-; Uses 3 kilobytes of space on the stack.
-; Preserves D2-D7/A2-A6 and assumes callback does the same.
-;
-; Decompression code may read one byte beyond compressed data.
-; The contents of this byte does not matter.
-
-;ShrinklerDecompress:
-;            INCDIR        "shrinkler"
-;            INCLUDE       "ShrinklerDecompress.S"
-
-
-
+                ; spare bytes
+                dc.l      0,0,0,0
 
 loaderend:
