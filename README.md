@@ -21,6 +21,7 @@ Resources and code used in this project is listed below. If there's anything use
    - Amiga Assembly Extension
 - RNC DosIO - Low level disk code
 - [Shrinkler](https://github.com/askeksa/Shrinkler) - file cruncher/decruncher
+- [Salvador](https://github.com/emmanuel-marty/salvador) - zxo file cruncher/decruncher
 
 
 ## Contents
@@ -39,15 +40,21 @@ This exercise is not one of speed, but of learning. It looks like this game coul
  - Disassemble the game loader. [Code Folder](./loader/gameloader/modified/)
  - Disassemble the Rob Northen Disk Protection. [Code Folder](./loader/gameloader/modified/)
  - Ripping the files from the disk. [Files Folder](./rawrippedfiles/) 
- - Decompress the ripped files. [Files Folder](./rawrippedfiles/)
+ - Unpack the ripped files. [Files Folder](./rawrippedfiles/)
    - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
+ - Re-pack the files for reuse. [Files Folder](./crack/packedcrack/)
+   - [Shrinkler Disk 1](./crack/packedcrack/shrinkfiles/disk1/)
+   - [Shrinkler Disk 2](./crack/packedcrack/shrinkfiles/disk2/)
+   - [ZX0 Disk 1](./crack/packedcrack/zx0files/disk1/)
+   - [ZX0 Disk 2](./crack/packedcrack/zx0files/disk2/)
  - Create a Cracked Version of the Disk.
-   - [packedfiles.adf](./crack/packedcrack/DosCrackShrinkler.adf)
+   - **Dos Crack V2**
+   - In Progress - Use zx0 compression
+   - **Dos Crack V1** - 
+   - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf)
    - Amiga DOS disk with custom loader (rnc dosio)
    - Load time is far too slow, need to change packer
-   - Doesn't work on an A1200, but then neither does the original.
-   - TODO: Create mfm loader, use H0ffman's loader which will cache files if extra ram is installed.
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
@@ -56,6 +63,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+
+2024-05-24 - Obtained source and built 'salvador' zx0 packer/unpacker tool and link to the depacker source code from git hub (see links above). Have packed ripped files with tool and added files to source control.
 
 2024-05-23 - Created an Amiga DOS disk that can be played and completed, very slow loading times due to decompression (which needs to be fixed). Its a learning exercise and I'm learning loads. I think the clock timer is running too fast (also the music on the title screen), so I think the game timers aren't set quite right at the moment. Also affects game play of levels 2 & 4 which are very tight on the time limits. This needs to be looked at and fixed.
 
