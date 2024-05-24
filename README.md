@@ -48,12 +48,11 @@ This exercise is not one of speed, but of learning. It looks like this game coul
    - [Shrinkler Disk 2](./crack/packedcrack/shrinkfiles/disk2/)
    - [ZX0 Disk 1](./crack/packedcrack/zx0files/disk1/)
    - [ZX0 Disk 2](./crack/packedcrack/zx0files/disk2/)
- - Create a Cracked Version of the Disk.
+ - Create a Cracked Version of the Disk. - Amiga DOS disk with custom loader (rnc dosio)
    - **Dos Crack V2**
-   - In Progress - Use zx0 compression
+   - [DosCrackZX0.adf](./crack/packedcrack/DosCrackZX0.adf) - In Progress (semi functional some loading corruption, game/timer speed up, level 2 onwards)
    - **Dos Crack V1** - 
-   - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf)
-   - Amiga DOS disk with custom loader (rnc dosio)
+   - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) - In Progress (game/timer speed up, level 2 onwards)
    - Load time is far too slow, need to change packer
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
@@ -63,6 +62,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+
+2024-05-24 - Created a zx0 version of the disk, it's not working perfoectly yet, I think the compressed files are larger, causing corruption/memory overwriting on loading. Also the game timer is speeding up when loading level 2 and above, 1 minute is taking about 50 seconds. It looks like the level 3 interrupt is being called 60 times a second(ish) instead of 50 times a second. The music and game is also running noticably faster. When returning to the title screen, the music is playing faster. Once this is sorted the game should be working on A500 and I can move on to disassembling other parts of the game.
 
 2024-05-24 - Obtained source and built 'salvador' zx0 packer/unpacker tool and link to the depacker source code from git hub (see links above). Have packed ripped files with tool and added files to source control.
 
