@@ -45,16 +45,16 @@ realloc_loader
                 bne     .realloc_loop
 
 
-;                ;------------------- realloc cp data -----------------------
-;                ; copy the original copy protection data to the original
-;                ; location in the relocated loader memory.
-;insert_cp_data
-;                moveq   #$24,d7                       ; 37 - 1 - loop counter
-;                lea     copy_protection_data(pc),a0
-;                lea     $DCA,a1
-;.copy_loop
-;                move.w  (a0)+,(a1)+
-;                dbra    d7,.copy_loop
+                ;------------------- realloc cp data -----------------------
+                ; copy the original copy protection data to the original
+                ; location in the relocated loader memory.
+insert_cp_data
+                moveq   #$24,d7                       ; 37 - 1 - loop counter
+                lea     copy_protection_data(pc),a0
+                lea     $DCA,a1
+.copy_loop
+                move.w  (a0)+,(a1)+
+                dbra    d7,.copy_loop
 
                 ; jump to start of relocated loader in memory
                 jmp     $800
@@ -139,8 +139,10 @@ load_title_screen2
                     dc.l  .filename1-.loading_parameters,$3FFC          ; title prg
                     dc.l  .filename2-.loading_parameters,$3F236         ; title pic
                     dc.l  $00000000
-.filename1          dc.b   "titleprg.shrunk",0
-.filename2          dc.b   "titlepic.shrunk",0
+.filename1          dc.b   "titleprg.zx0",0
+.filename2          dc.b   "titlepic.zx0",0
+;.filename1          dc.b   "titleprg.shrunk",0
+;.filename2          dc.b   "titlepic.shrunk",0
                     even
 
 
@@ -162,10 +164,14 @@ load_level_1
                     dc.l  .filename3-.loading_parameters,$10ffc         ; batspr1
                     dc.l  .filename4-.loading_parameters,$47fe4         ; chem                    
                     dc.l  $00000000
-.filename1          dc.b   "code1.shrunk",0
-.filename2          dc.b   "mapgr.shrunk",0
-.filename3          dc.b   "batspr1.shrunk",0
-.filename4          dc.b   "chem.shrunk",0
+.filename1          dc.b   "code1.zx0",0
+.filename2          dc.b   "mapgr.zx0",0
+.filename3          dc.b   "batspr1.zx0",0
+.filename4          dc.b   "chem.zx0",0
+;.filename1          dc.b   "code1.shrunk",0
+;.filename2          dc.b   "mapgr.shrunk",0
+;.filename3          dc.b   "batspr1.shrunk",0
+;.filename4          dc.b   "chem.shrunk",0
                     even
 
 
@@ -188,10 +194,14 @@ load_level_2
                     dc.l  .filename3-.loading_parameters,$2a416         ; data2
                     dc.l  .filename4-.loading_parameters,$68f7c         ; music                    
                     dc.l  $00000000
-.filename1          dc.b   "code.shrunk",0
-.filename2          dc.b   "data.shrunk",0
-.filename3          dc.b   "data2.shrunk",0
-.filename4          dc.b   "music.shrunk",0
+.filename1          dc.b   "code.zx0",0
+.filename2          dc.b   "data.zx0",0
+.filename3          dc.b   "data2.zx0",0
+.filename4          dc.b   "music.zx0",0
+;.filename1          dc.b   "code.shrunk",0
+;.filename2          dc.b   "data.shrunk",0
+;.filename3          dc.b   "data2.shrunk",0
+;.filename4          dc.b   "music.shrunk",0
                     even
 
 
@@ -211,7 +221,8 @@ load_level_3
                     dc.l  $d000                                         ; 0C - start address
                     dc.l  .filename1-.loading_parameters,$3ffc          ; batcave                   
                     dc.l  $00000000
-.filename1          dc.b   "batcave.shrunk",0
+.filename1          dc.b   "batcave.zx0",0
+;;.filename1          dc.b   "batcave.shrunk",0
                     even
 
 
@@ -234,10 +245,14 @@ load_level_4
                     dc.l  .filename3-.loading_parameters,$2a416         ; data4
                     dc.l  .filename4-.loading_parameters,$68f7c         ; music                    
                     dc.l  $00000000
-.filename1          dc.b   "code.shrunk",0
-.filename2          dc.b   "data.shrunk",0
-.filename3          dc.b   "data4.shrunk",0
-.filename4          dc.b   "music.shrunk",0
+.filename1          dc.b   "code.zx0",0
+.filename2          dc.b   "data.zx0",0
+.filename3          dc.b   "data4.zx0",0
+.filename4          dc.b   "music.zx0",0
+;.filename1          dc.b   "code.shrunk",0
+;.filename2          dc.b   "data.shrunk",0
+;.filename3          dc.b   "data4.shrunk",0
+;.filename4          dc.b   "music.shrunk",0
                     even
 
 
@@ -260,10 +275,14 @@ load_level_5
                     dc.l  .filename3-.loading_parameters,$10ffc         ; batspr1
                     dc.l  .filename4-.loading_parameters,$47fe4         ; church                    
                     dc.l  $00000000
-.filename1          dc.b   "code5.shrunk",0
-.filename2          dc.b   "mapgr2.shrunk",0
-.filename3          dc.b   "batspr1.shrunk",0
-.filename4          dc.b   "church.shrunk",0
+.filename1          dc.b   "code5.zx0",0
+.filename2          dc.b   "mapgr2.zx0",0
+.filename3          dc.b   "batspr1.zx0",0
+.filename4          dc.b   "church.zx0",0
+;.filename1          dc.b   "code5.shrunk",0
+;.filename2          dc.b   "mapgr2.shrunk",0
+;.filename3          dc.b   "batspr1.shrunk",0
+;.filename4          dc.b   "church.shrunk",0
                     even
 
 
@@ -274,13 +293,12 @@ load_files
                 lea     $dff000,a6                                ; a6 = custom base
                 move.w  #$8360,DMACON(a6)                         ; enable DMA, MASTER, DISK, COPPER, BLITTER
                 move.l  (a5),a7                                   ; set stack address
-                move.l  a5,-(a7)
-.retryload
                 lea.l   $10(a5),a4                                ; a4 = files to load
 .loadloop
                 tst.l   (a4)
                 beq     .endload
 
+.retryload
                 move.w  VHPOSR(a6),COLOR00(a6)            ; change background colour for each file loading
 
                 ; load file
@@ -293,13 +311,14 @@ load_files
                 tst.l   d0                                ; test load result
                 bne     .load_error
 
-;                ; decrunch file
+;                ; zx0 - decrunch file
+                movem.l d0-d7/a0-a6,-(a7)
                 move.l  4(a5),a0                          ; compressed data
                 move.l  4(a4),a1                          ; decompressed buffer
                 bsr   zx0_decompress
+                movem.l (a7)+,d0-d7/a0-a6
 
-
-;                ; decrunch file
+;                ; shrinkler - decrunch file
 ;                move.l  4(a5),a0                          ; compressed data
 ;                move.l  4(a4),a1                          ; decompressed buffer
 ;                lea     $0,a2
@@ -307,7 +326,6 @@ load_files
 ;                moveq.l #$00,d2
 ;                moveq.l #$01,d7
 ;                bsr     ShrinklerDecompress
-
 
                 ; next file
                 lea.l   8(a4),a4                          ; next file to load
@@ -332,7 +350,6 @@ load_files
 .error_loop
                 move.w  #$f00,COLOR00(a6)
                 dbra    d7,.error_loop
-                move.l  (a7)+,a5                          ; a5 = loading parameters
                 jmp     .retryload                        ; retry
 
 
@@ -455,12 +472,28 @@ init_system                                                         ; original r
                 and.b   #$87,(A5)                                   ; latch motors off on drivee 0-3
                 or.b    #$ff,(A5)                                   ; deselect disk drived
 
+.reset_ciaa_timer_b
+                ; A4 = CIAA PRB - used as base address to CIAA
+                MOVE.B  #$f0,$0500(A4)                              ; Timer B Low Byte
+                MOVE.B  #$37,$0600(A4)                              ; Timer B High Byte - 14320 clock ticks = approx 20ms 
+                MOVE.B  #$11,$0e00(A4)                              ; Load, Start Timer B continuous mode.
+
+.reset_ciab_timer_b
+                ; A5 = CIAB PRB - used as base address to CIAB
+                MOVE.B  #$91,$0500(A5)                              ; Timer B Low Byte
+                MOVE.B  #$00,$0600(A5)                              ; Timer B High Byte - 145 clock ticks = approx 200us
+                MOVE.B  #$00,$0e00(A5)                              ; CRB - clear control reg (Timer B) - not started. (think it's used to trigger a keyboard ack)
+
 .enable_interrupts
                 move.w  #$7fff,INTREQ(A6)                           ; Clear Interrupt Request bits
 .enable_ciaa_interrupts
                 tst.b   $0c00(A4)                                   ; CIAA ICR - clear interrupt flags
+                MOVE.B  #$8a,$0c00(A4)                              ; CIAA ICR - Enable SP (Keyboard), ALRM (TOD)
+
 .enable_ciab_interrupts
                 tst.b   $0c00(A5)                                   ; CIAB ICR - clear interrupt flags
+                MOVE.B  #$93,$0c00(A5)                              ; CIAB ICR - Enable FLG (DSKINDEX), TB (TimerA), TA (TimerB)
+              
 .exit_init_system
                 move.w  #$e078,INTENA(a6)
                 move.w  #$2000,sr
@@ -477,7 +510,7 @@ interrupt_handler
                 rte
 
 
-                ;dcb.l    254,$AAAAAAAA
+                dcb.l    64,$AAAAAAAA                               ;256 bytes of memory for original copy protection data
 
 
 
