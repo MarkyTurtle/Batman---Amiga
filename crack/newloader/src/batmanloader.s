@@ -13,6 +13,8 @@
                 ; - $0E10 = D0 = FF7EEFAB - *** Protection Checksum Value ***
 
 
+
+
 ;---------- Includes ----------
               INCDIR        "include"
               INCLUDE       "hw.i"
@@ -26,6 +28,9 @@ kill_system
                 move.w  #$7fff,DMACON(a6)
                 move.w  #$7fff,INTREQ(a6)   
 
+.mouse_loop
+                btst    #$6,$bfe001
+                bne.s   .mouse_loop
 
                 ;------------- reallocate the loader code ------------------
 realloc_loader
@@ -110,12 +115,13 @@ load_loading_screen
                     dc.l  .filename2-.loading_parameters,$3FFC      ; title prg
                     dc.l  .filename3-.loading_parameters,$3F236     ; title pic
                     dc.l  $00000000
-.filename1          dc.b   "panel.shrunk",0
-.filename2          dc.b   "titleprg.shrunk",0
-.filename3          dc.b   "titlepic.shrunk",0
+.filename1          dc.b   "panel.zx0",0
+.filename2          dc.b   "titleprg.zx0",0
+.filename3          dc.b   "titlepic.zx0",0
+;.filename1          dc.b   "panel.shrunk",0
+;.filename2          dc.b   "titleprg.shrunk",0                  
+;.filename3          dc.b   "titlepic.shrunk",0
                     even
-
-
 
 
                     ;----------- load title screen, after failed game end, maybe completion ------------
@@ -287,14 +293,21 @@ load_files
                 tst.l   d0                                ; test load result
                 bne     .load_error
 
-                ; decrunch file
+;                ; decrunch file
                 move.l  4(a5),a0                          ; compressed data
                 move.l  4(a4),a1                          ; decompressed buffer
-                lea     $0,a2
-                lea     $0,a3
-                moveq.l #$00,d2
-                moveq.l #$01,d7
-                bsr     ShrinklerDecompress
+                bsr   zx0_decompress
+
+
+;                ; decrunch file
+;                move.l  4(a5),a0                          ; compressed data
+;                move.l  4(a4),a1                          ; decompressed buffer
+;                lea     $0,a2
+;                lea     $0,a3
+;                moveq.l #$00,d2
+;                moveq.l #$01,d7
+;                bsr     ShrinklerDecompress
+
 
                 ; next file
                 lea.l   8(a4),a4                          ; next file to load
@@ -477,6 +490,13 @@ interrupt_handler
               INCLUDE       "dosio.s"
 
 
+
+              INCDIR        "zx0"
+              INCLUDE       "unzx0_68000.S"
+
+
+
+
 ; Decompress Shrinkler-compressed data produced with the --data option.
 ;
 ; A0 = Compressed data
@@ -498,7 +518,10 @@ interrupt_handler
 ; The contents of this byte does not matter.
 
 ;ShrinklerDecompress:
-            INCDIR        "shrinkler"
-            INCLUDE       "ShrinklerDecompress.S"
+;            INCDIR        "shrinkler"
+;            INCLUDE       "ShrinklerDecompress.S"
+
+
+
 
 loaderend:
