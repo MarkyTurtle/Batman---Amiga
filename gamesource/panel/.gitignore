@@ -1,7 +1,7 @@
 build
-**/bootblock.o
-uae/dh0/bootblock
-uae/dh0/myprogram
+**/panel.o
+uae/dh0/panel
+uae/dh0/*
 .DS_Store
-bin
+**/bin
 .vscode/settings.json
