@@ -28,7 +28,7 @@ panel
                 ;
 panel_update                                    ; $0007c800 called every fame by game code level 3 interrupt
                 movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c800
-                bsr.w   L0007fc98
+                bsr.w   do_panel_update         ; calls $0007fc98
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
@@ -101,13 +101,16 @@ clock_timer_seconds
 L0007c885       dc.b    $00                 ; Clock Timer Seconds Value, held in BCD Format 
 clock_timer_end
 
-0007c886 0000                or.b #$00,d0
-0007c888 0000 ffff                or.b #$ff,d0
-0007c88c ffff                     illegal
+L0007c886       dc.w $0000
+L0007c888       dc.w $0000, $ffff
+L0007c88c       dc.w $ffff       
 
-
+player_remaining_energy                     ; original address $0007c88e
 L0007c88e       dc.w    $0000               ; counter (count down - possible total energy value ) 
+
+player_hit_damage                           ; original address $0007C890
 L0007C890       dc.w    $0000               ; counter (count down, clamped at 0, possible energy hit/damage value)
+
 L0007c892       dc.L    $00000000           ; dest ptr to something
 L0007c896       dc.l    $00000000           ; source ptr to something
 
@@ -3164,112 +3167,57 @@ batman_lives_dest                                                           ; st
 0007e694 ffff                     illegal
 0007e696 ffff                     illegal
 0007e698 e130                     roxl.b d0,d0
-0007e69a 0024 8000                or.b #$00,-(a4) [00]
-0007e69e 4002                     negx.b d2
-0007e6a0 7800                     moveq #$00,d4
-0007e6a2 0188 0006                movep.w d0,(a0,$0006) == $00fe971c
-0007e6a6 a7c0                     illegal
-0007e6a8 2800                     move.l d0,d4
-0007e6aa 0200 0008                and.b #$08,d0
-0007e6ae 203c 0200 6000           move.l #$02006000,d0
-0007e6b4 0004 48bc                or.b #$bc,d4
-0007e6b8 0026 e000                or.b #$00,-(a6) [1c]
-0007e6bc 000e                     illegal
-0007e6be 10fc 003f                move.b #$3f,(a0)+ [23]
-0007e6c2 0000 0507                or.b #$07,d0
-0007e6c6 38b0 000e                move.w (a0,d0.W,$0e) == $00fe9724 [082b],(a4) [0000]
-0007e6ca c000                     and.b d0,d0
-0007e6cc 00f2 3938 001f           [ chk2.b (a2,d0.W,$1f) == $00000020,d3 ]
-0007e6ce 3938 001f                move.w $001f [2200],-(a4) [0000]
-0007e6d2 1800                     move.b d0,d4
-0007e6d4 0037 8398 00c0           or.b #$98,(a7,d0.W,$c0) == $00c01476 [00]
-0007e6da 4000                     negx.b d0
-0007e6dc 001d 9818                or.b #$18,(a5)+ [00]
-0007e6e0 0010 e000                or.b #$00,(a0) [23]
 
 
+batman_energy_gfx                   ; batman image of energy display 64 x 41 pixels in size
+L0007e69a   dc.w    $0024, $8000, $4002, $7800      ; .... .... ..X. .X.. X... .... .... .... .X.. .... .... ..X. .XXX X... .... ....
+L0007e6a2   dc.w    $0188, $0006, $a7c0, $2800    ; .... ...X X... X... .... .... .... .XX. XX.. .XXX XX.. .... ..X. X... .... .... 
+L0007e6aa   dc.w    $0200, $0008, $203c, $0200      ; .... ..X. .... .... .... .... .... X... ..X. .... ..XX XX.. ..X. .... .... ....
+L0007e6b2   dc.w    $6000, $0004, $48bc, $0026      ; .XX. .... .... .... .... .... .... .X.. .X.. X... X.XX XX.. .... .... ..X. .XX.
+L0007e6ba   dc.w    $e000, $000e, $10fc, $003f      ; XXX. .... .... .... .... .... .... XXX. ...X .... XXXX XX.. .... .... ..XX XXXX
+L0007e6c2   dc.w    $0000, $0507, $38b0, $000e      ; .... .... .... .... .... .X.X .... .XXX ..XX X... X.XX .... .... .... .... XXX.
+L0007e6ca   dc.w    $c000, $00f2, $3938, $001f      ; XX.. .... .... .... .... .... XXXX ..X. ..XX X..X ..XX X... .... .... ...X XXXX
+L0007e6ce   dc.w    $3938, $001f, $1800, $0037      ; ..XX X..X ..XX X... .... .... ...X XXXX ...X X... .... .... .... .... ..XX .XXX
+L0007e6d6   dc.w    $8398, $00c0, $4000, $001d      ; X... ..XX X..X X... .... .... XX.. .... .X.. .... .... .... .... .... ...X XX.X
+L0007e6de   dc.w    $9818, $0010, $e000, $0001      ; X..X X... ...X X... .... .... ...X .... XXX. .... .... .... .... .... .... ...X
 
-0007e6e4 0001 0118                or.b #$18,d1
-0007e6e8 003c 1800                or.b #$1800,ccr
-0007e6ec 0000 0828                or.b #$28,d0
-0007e6f0 00c0                     illegal
-0007e6f2 0000 0000                or.b #$00,d0
-0007e6f6 072c 0000                btst.b d3,(a4,$0000) == $00001558 [00]
-0007e6fa 8000                     or.b d0,d0
-0007e6fc 0000 595c                or.b #$5c,d0
-0007e700 000f                     illegal
-0007e702 8000                     or.b d0,d0
-0007e704 1900                     move.b d0,-(a4) [00]
-0007e706 5d2c 000f                subq.b #$06,(a4,$000f) == $00001567 [00]
-0007e70a 0000 2ec0                or.b #$c0,d0
-0007e70e 2e5c                     movea.l (a4)+ [00000000],a7
-0007e710 0000 0000                or.b #$00,d0
-0007e714 1100                     move.b d0,-(a0) [75]
-0007e716 24ec 0003                move.l (a4,$0003) == $0000155b [00000000],(a2)+ [00000000]
-0007e71a 0000 0c40                or.b #$40,d0
-0007e71e 17dc                     illegal
-0007e720 0001 0000                or.b #$00,d1
-0007e724 01c0                     bset.l d0,d0
-0007e726 13fa 0001 0000 1e80      move.b (pc,$0001) == $0007e729 [01],$00001e80 [aa]
-0007e72e 19f4                     illegal
-0007e730 0001 0000                or.b #$00,d1
-0007e734 0100                     btst.l d0,d0
-0007e736 0be8 0001                bset.b d5,(a0,$0001) == $00fe9717 [6b]
-0007e73a 0000 0000                or.b #$00,d0
-0007e73e 0dd4                     bset.b d6,(a4) [00]
-0007e740 0001 0000                or.b #$00,d1
-0007e744 0400 0e24                sub.b #$24,d0
-0007e748 0001 0000                or.b #$00,d1
-0007e74c 0000 0644                or.b #$44,d0
-0007e750 0000 0000                or.b #$00,d0
-0007e754 0000 06e4                or.b #$e4,d0
-0007e758 0001 0001                or.b #$01,d1
-0007e75c ffb0                     illegal
-0007e75e 3bcc                     illegal
-0007e760 0000 0000                or.b #$00,d0
-0007e764 bef9 5fc8 0001           cmpa.w $5fc80001,a7
-0007e76a 0000 1ffd                or.b #$fd,d0
+L0007e6e6   dc.w    $0118, $003c, $1800, $0000      ; .... ...X ...X X... .... .... ..XX XX.. ...X X... .... .... .... .... .... ....
+L0007e6ee   dc.w    $0828, $00c0, $0000, $0000      ; .... X... ..X. X... .... .... XX.. .... .... .... .... .... .... .... .... ....
+L0007e6f6   dc.w    $072c, $0000, $8000, $0000      ; .... .XXX ..X. XX.. .... .... .... .... X... .... .... .... .... .... .... ....
+L0007e6fe   dc.w    $595c, $000f, $8000, $1900      ; .X.X X..X .X.X XX.. .... .... .... XXXX X... .... .... .... ...X X..X .... ....
+L0007e706   dc.w    $5d2c, $000f, $0000, $2ec0      ; .X.X XX.X ..X. XX.. .... .... .... XXXX .... .... .... .... ..X. XXX. XX.. ....
+L0007e70e   dc.w    $2e5c, $0000, $0000, $1100      ; ..X. XXX. .X.X XX.. .... .... .... .... .... .... .... .... ...X ...X .... ....
+L0007e716   dc.w    $24ec, $0003, $0000, $0c40      ; ..X. .X.. XXX. XX.. .... .... .... ..XX .... .... .... .... .... XX.. .X.. ....
+L0007e71e   dc.w    $17dc, $0001, $0000, $01c0      ; ...X .XXX XX.X XX.. .... .... .... ...X .... .... .... .... .... ...X XX.. ....
+L0007e726   dc.w    $13fa, $0001, $0000, $1e80      ; ...X ..XX XXXX X.X. .... .... .... ...X .... .... .... .... ...X XXX. X... ....
+L0007e72e   dc.w    $19f4, $0001, $0000, $0100      ; ...X X..X XXXX .X.. .... .... .... ...X .... .... .... .... .... ...X .... ....
 
+L0007e736   dc.w    $0be8, $0001, $0000, $0000  
+L0007e73e   dc.w    $0dd4, $0001, $0000, $0400 
+L0007e746   dc.w    $0e24, $0001, $0000, $0000 
+L0007e74e   dc.w    $0644, $0000, $0000, $0000
+L0007e756   dc.w    $06e4, $0001, $0001, $ffb0 
+L0007e75e   dc.w    $3bcc, $0000, $0000, $bef9 
+L0007e766   dc.w    $5fc8, $0001, $0000, $1ffd   
+L0007e76e   dc.w    $fffc, $0001, $8000, $0fbf
+L0007e776   dc.w    $7ff8, $000f, $c000, $0fb1
+L0007e77e   dc.w    $bff0, $001f, $1000, $0fc7
 
-0007e76e fffc                     illegal
-0007e770 0001 8000                or.b #$00,d1
-0007e774 0fbf                     illegal
-0007e776 7ff8                     illegal
-0007e778 000f                     illegal
-0007e77a c000                     and.b d0,d0
-0007e77c 0fb1 bff0                bclr.b d7,(a1,a3.L[*8],$f0) == $01be9bc0 (68020+)
-0007e780 001f 1000                or.b #$00,(a7)+ [00]
-0007e784 0fc7                     bset.l d7,d7
-0007e786 d7b8 0040                add.l d3,$0040 [00fc0834]
-0007e78a 4000                     negx.b d0
-0007e78c 07e8 11a0                bset.b d3,(a0,$11a0) == $00fea8b6 [00]
-0007e790 0010 e000                or.b #$00,(a0) [23]
-0007e794 01c0                     bset.l d0,d0
-0007e796 4bc0                     illegal
-0007e798 003c 1800                or.b #$1800,ccr
-0007e79c 0141                     bchg.l d0,d1
-0007e79e efe0                     illegal
-0007e7a0 00c0                     illegal
-0007e7a2 0000 0001                or.b #$01,d0
-0007e7a6 ffe0                     illegal
-0007e7a8 0000 8000                or.b #$00,d0
-0007e7ac 0000 0f60                or.b #$60,d0
-0007e7b0 000f                     illegal
-0007e7b2 0000 001d                or.b #$1d,d0
-0007e7b6 bfc0                     cmpa.l d0,a7
-0007e7b8 0004 5000                or.b #$00,d4
-0007e7bc 0019 7f80                or.b #$80,(a1)+ [00]
-0007e7c0 005b 0d00                or.w #$0d00,(a3)+ [4e75]
-0007e7c4 0001 7f80                or.b #$80,d1
-0007e7c8 064e                     illegal
-0007e7ca 00d0 8003                [ cmp2.b (a0),a0 ]
-0007e7cc 8003                     or.b d3,d0
-0007e7ce bb00                     eor.b d5,d0
-0007e7d0 1c80                     move.b d0,(a6) [00]
-0007e7d2 002d 0000 c601           or.b #$00,(a5,-$39ff) == $00bfdab7
-0007e7d8 6800 000a                bvc.w #$000a == $0007e7e4 (T)
-0007e7dc d803                     add.b d3,d4
-0007e7de f036 d000                [ f-line (mmu 68030) ]
+L0007e786   dc.w    $d7b8, $0040, $4000, $07e8
+L0007e78e   dc.w    $11a0, $0010, $e000 ,$01c0
+L0007e796   dc.w    $4bc0, $003c, $1800, $0141
+L0007e79e   dc.w    $efe0, $00c0, $0000, $0001
+L0007e7a6   dc.w    $ffe0, $0000, $8000, $0000
+L0007e7ae   dc.w    $0f60, $000f, $0000, $001d 
+L0007e7b6   dc.w    $bfc0, $0004, $5000, $0019
+L0007e7be   dc.w    $7f80, $005b, $0d00, $0001
+L0007e7c6   dc.w    $7f80, $064e, $00d0, $8003  
+L0007e7cc   dc.w    $8003, $bb00, $1c80, $002d 
+
+0007e7d4 0000 c601  
+0007e7d8 6800 000a  
+0007e7dc d803     
+0007e7de f036 d000  
 0007e7e0 d000                     add.b d0,d0
 
 
@@ -4880,11 +4828,12 @@ display_batman_icon                                     ; orignal routine addres
 
 
 
-L0007fa00       move.w #$0028,d0
-0007fa04        move.w d0,L0007c88e
-0007fa0a        clr.w L0007C890
-0007fa10        lea.l $0007e69a,a0
-0007fa16        lea.l $0007c94a,a1
+initialise_player_energy                                ; original address $0007fa00
+L0007fa00       move.w #$0028,d0                        ; D0 = 40 + 1 - loop counter (initial energy value)
+0007fa04        move.w d0,player_remaining_energy       ; set player remaining energy level as address $0007c88e
+0007fa0a        clr.w player_hit_damage                 ; L0007C890
+0007fa10        lea.l $0007e69a,a0                      ; source gfx
+0007fa16        lea.l $0007c94a,a1                      ; destination bitplanes
 0007fa1c        move.l a1,L0007c892
 L0007fa22       move.l (a0),(a1)
 0007fa24        move.l (a0,$0004),(a1,$0004)
@@ -4903,66 +4852,66 @@ Exit
 L0007fa64       rts                                 ; L0007fa64
 
 
-0007fa66        tst.w L0007c88e                     ; 0007fa66
+0007fa66        tst.w player_remaining_energy       ; test player remaining energy with 0, as address $0007c88e     - 0007fa66
 0007fa6c        bne.b L007fa76                      ; 0007fa6c
-0007fa6e        clr.w L0007C890                     ; 0007fa6e
-0007fa74        rts                                 ; 0007fa74
+0007fa6e        clr.w player_hit_damage             ; clear 16b its as address $0007C890                    - 0007fa6e
+0007fa74        rts                                 ;                                                       - 0007fa74
 
 
-L007fa76        add.w d0,L0007C890                 ; L007fa76
-0007fa7c        rts                                 ; 0007fa7c
-
-
-
+L007fa76        add.w d0,player_hit_damage          ; add to player hit/damage as address $0007C890         - L007fa76
+0007fa7c        rts                                 ;                                                       - 0007fa7c
 
 
 
+
+
+                ;------------------- update hit damage -------------------
                 ; called every frame from panel_update L0007fc98
+                ; it looks like this routine is updating the player's
+                ; energy from a hit/damage value stored in $0007C890 'player_hit_damage'
+                ; The damage is decremented from the player's energy
+                ; every frame, to give the smooth energy loss appearance
+                ; over a number of display frames.
+                ; The Player's total remaining life energy is stored in $0007C88E 'player_remaining_energy'
                 ;
-                ; L0007C890 - clamp to 0, if = 0 then exit,
-                ;             else,
-                ;               decrement value and other processing
-                ;
-                ;
-                ;
-update_energy_loss                                  ; think this subtracts energy loss value stored in L0007C890 from total energy L0007C88E
-L0007fa7e       move.w  L0007C890,d0                ; d0 = stored word value,       L0007fa7e
-                bpl.w   .check_is_0                 ; if D0 >= 0 jmp L0007fa90,     0007fa84
+update_hit_damage                                   ; original routine address $0007fa7e 
+                move.w  player_hit_damage,d0        ; d0 = stored word value at address $0007C890           - 0007fa7e
+                bpl.w   .check_is_0                 ; if D0 >= 0 jmp L0007fa90,                             - 0007fa84
 .clamp_value_to_0
-                clr.w   L0007C890                   ; set stored value to 0,        0007fa88
-                moveq   #$00,d0                     ; d0.l = 0,                     0007fa8e
+                clr.w   player_hit_damage           ; set player hit/damage to 0 at address $0007C890,      - 0007fa88
+                moveq   #$00,d0                     ; d0.l = 0,                                             - 0007fa8e
 .check_is_0
-                beq.b   L0007fa64                   ; if d0 = 0, then exit (jmp L0007fa64), L0007fa90
+                beq.b   L0007fa64                   ; if d0 = 0, then exit (jmp L0007fa64),                 - 0007fa90
 .decrement_value
-                sub.w   #$0001,L0007C890            ; 0007fa92
+                sub.w   #$0001,player_hit_damage    ; reduce player hit/damage as address $0007C890         - 0007fa92
 
 
                 ; copy interleaved bitplane (32 pixels wide)
                 ; possibly update the batman energy display
-0007fa9a        movea.l L0007c896,a0                ; a0 = source ptr to something (initially $0),  0007fa9a
-0007faa0        movea.l L0007c892,a1                ; a1 = dest ptr to something (initially 0$),    0007faa0
+0007fa9a        movea.l L0007c896,a0                    ; a0 = source ptr to something (initially $0),  - 0007fa9a
+0007faa0        movea.l L0007c892,a1                    ; a1 = dest ptr to something (initially 0$),    - 0007faa0
 
-0007faa6        move.l (a0),(a1)                    ; copy 4 bytes source to dest,                  0007faa6
-0007faa8        move.l $0004(a0),$0004(a1)          ; copy 4 bytes source+4 to dest + 4             0007faa8
+0007faa6        move.l (a0),(a1)                        ; copy 4 bytes source to dest,                  - 0007faa6
+0007faa8        move.l $0004(a0),$0004(a1)              ; copy 4 bytes source+4 to dest + 4             - 0007faa8
 
-0007faae        move.l (a0,$0148),(a1,$0780)        ; copy 4 bytes source+328 to dest+328           0007faae
-0007fab4        move.l (a0,$014c),(a1,$0784)        ; copy 4 bytes source+332 to desc+332           0007fab4
+0007faae        move.l (a0,$0148),(a1,$0780)            ; copy 4 bytes source+328 to dest+328           - 0007faae
+0007fab4        move.l (a0,$014c),(a1,$0784)            ; copy 4 bytes source+332 to desc+332           - 0007fab4
 
-0007faba        move.l (a0,$0290),(a1,$0f00)        ; copy 4 bytes source+656 to desc+656           0007faba
-0007fac0        move.l (a0,$0294),(a1,$0f04)        ; copy 4 bytes source+660 to dest+660           0007fac0
+0007faba        move.l (a0,$0290),(a1,$0f00)            ; copy 4 bytes source+656 to desc+656           - 0007faba
+0007fac0        move.l (a0,$0294),(a1,$0f04)            ; copy 4 bytes source+660 to dest+660           - 0007fac0
 
-0007fac6        move.l (a0,$03d8),(a1,$1680)        ; copy 4 bytes source+984 to dest+984           0007fac6
-0007facc        move.l (a0,$03dc),(a1,$1684)        ; copy 4 bytes source+988 to dest+988           0007facc
+0007fac6        move.l (a0,$03d8),(a1,$1680)            ; copy 4 bytes source+984 to dest+984           - 0007fac6
+0007facc        move.l (a0,$03dc),(a1,$1684)            ; copy 4 bytes source+988 to dest+988           - 0007facc
 
-0007fad2        addq.l #$08,a0                      ; increment source by 8 bytes                   0007fad2
-0007fad4        adda.l #$00000028,a1                ; increment dest by 40 bytes (320 pixel width)  0007fad4
+0007fad2        addq.l #$08,a0                          ; increment source by 8 bytes                   - 0007fad2
+0007fad4        adda.l #$00000028,a1                    ; increment dest by 40 bytes (320 pixel width)  - 0007fad4
 
-0007fada        move.l a0,$0007c896                 ; store updated source ptr                      0007fada
-0007fae0        move.l a1,L0007c892                 ; store updated dest ptr                        0007fae0
+0007fada        move.l a0,$0007c896                     ; store updated source ptr                      - 0007fada
+0007fae0        move.l a1,L0007c892                     ; store updated dest ptr                        - 0007fae0
 
-0007fae6        sub.w #$0001,L0007c88e              ; subtract 1 from total energy? at L0007c88e    0007fae6
-0007faee        bne.w Exit                          ; not equal to 0 then exit (jmp L0007fa64)      0007faee
-0007faf2        bra.w lose_a_life                   ; is equal to 0 then jmp L0007fb00              0007faf2
+0007fae6        sub.w #$0001,player_remaining_energy    ; subtract 1 from total energy at $0007c88e     - 0007fae6
+0007faee        bne.w Exit                              ; not equal to 0 then exit (jmp L0007fa64)      - 0007faee
+0007faf2        bra.w lose_a_life                       ; is equal to 0 then jmp L0007fb00              - 0007faf2
 
 
 
@@ -4977,8 +4926,8 @@ L0007faf6       bset.b #$01,L0007c874               ; set bit 1 of status byte 1
 
                 ; do lost life processing
 lose_a_life                                         ; original routine address $0007fb00
-L0007fb00       clr.w   L0007C890                   ; clear 'energy hit/damage' counter,        L0007fb00
-0007fb06        tst.w   L0007c876                   ; test possible lives count                 0007fb06
+L0007fb00       clr.w   player_hit_damage           ; clear 'energy hit/damage' counter as address $0007C890        - 0007fb00
+0007fb06        tst.w   L0007c876                   ; test possible lives count                                     - 0007fb06
 0007fb0c        beq.b   L0007faf6                   ; 0007fb0c 
 
                 ; player lost life
@@ -5094,12 +5043,14 @@ L0007fc78       move.w d0,clock_timer               ; d0 = clock timer value (mi
                 ;--------------------- update panel --------------------------
                 ; called every frame from $7c800 update_panel
                 ;
-L0007fc98       bsr.w L0007fa7e                     ; L0007fc98                     ; update energy loss / lives
-0007fc9c        cmp.w #$9999,$0007c882              ; test value in 0007c882.w                  - 0007fc9c
-0007fca4        beq.w L0007fd1a                     ; if = #$9999 then exit, jmp $7fd1a         - 0007fca4
+do_panel_update                                     ; original routine address
+                bsr.w update_hit_damage             ; calls L0007fa7e,update energy loss / lives        - 0007fc98
 
-0007fca8        sub.w #$0001,frame_tick             ; subtract 1 from frame tick $0007c880      - 0007fca8
-0007fcb0        bpl.w L0007fcf6                     ; if (tick > 0) jmp 0007fcb0                - 0007fcb0
+0007fc9c        cmp.w #$9999,$0007c882              ; test value in 0007c882.w                          - 0007fc9c
+0007fca4        beq.w L0007fd1a                     ; if = #$9999 then exit, jmp $7fd1a                 - 0007fca4
+
+0007fca8        sub.w #$0001,frame_tick             ; subtract 1 from frame tick $0007c880              `- 0007fca8
+0007fcb0        bpl.w L0007fcf6                     ; if (tick > 0) jmp 0007fcb0                        - 0007fcb0
 
 .reset_frame_tick                                   ; else
 0007fcb4        move.w #$0032,frame_tick            ; set tick to 50 $0007c880
