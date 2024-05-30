@@ -14,7 +14,8 @@ panel
 
 
 
-                ;-------------------- panel update -------------------------
+
+                ;----------------------- PANEL UPDATE - $0007c800 -----------------------
                 ; This routine is called every frame (50hz) to 
                 ; update the game timer.
                 ; somehow this gets called more frequently on my 'cracked'
@@ -45,20 +46,28 @@ L0007c81c
                 rts
 
 L007c82a        
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $007c82a
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $007c82a
                 bsr.w   L0007fb7e
                 movem.l (a7)+,d0-d7/a0-a2
                 rts  
 
-L0007c838       
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c838 
-                bsr.w   L0007f978
+
+
+                ;------------------ INITIALISE PLAYER LIVES - $0007c838 -------------------
+                ; sets player lives to 2 and update the player lives icons on the panel.
+Initialise_Player_Lives 
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c838 
+                bsr.w   do_initialise_player_lives                  ; calls $0007f978
                 movem.l (a7)+,d0-d7/a0-a2
                 rts 
 
-L0007c846       
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c846
-                bsr.w   L0007f95a
+
+
+                ;----------------------- ADD EXTRA LIFE - $0007f95a -----------------------
+                ; adds extra life to player lives count and updates the display panel.
+Add_Extra_Life                                        
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c846
+                bsr.w   do_add_extra_life                           ; calls $0007f95a
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
@@ -78,38 +87,64 @@ L0007c870
                 bra.w L0007fa66                 ; original routine address $0007c870
 
 
-                                ;---------------- data -------------------
-L0007c874       dc.b    $00                 ; status byte 1 (bits 0-clock timer expired, 1-no lives left, bit 2-life lost)
-L0007c875       dc.b    $00                 ; status byte 2 (bits 7 used for test if set - infinite lives?)
-L0007c876       dc.w    $0000               ; possible lives counter
+
+
+
+                ;----------------------- DATA/STATUS VALUES -----------------------
+                ; various variables for keeping state of panel status:-
+                ;   1) Player Lives
+                ;   2) Player Energy Levels (including hit damage)
+                ;   3) Clock Timer (Minutes:Seconds)
+                ;   4) Frame Tick Counter
+                ;   5) Status Bytes 1 & 2  (bit array of flags)
+                ;
+CLOCK_TIMER_EXPIRED     equ     0
+NO_LIVES_REMAINING      equ     1
+PLAYER_LIFE_LOST        equ     2
+INFINITE_LIVES          equ     7
+panel_status_1                              ; original address $0007c874
+                dc.b    $00                 ; status byte 1 (bits 0-clock timer expired, 1-no lives left, bit 2-life lost)
+panel_status_2                              ; original address $0007c875
+                dc.b    $00                 ; status byte 2 (bits 7 used for test if set - infinite lives?)
+
+
+                even
+player_lives_count                          ; original address $0007c876
+                dc.w    $0000               ; possible lives counter
+
 
 L0007c878       dc.w    $0000, $0000
 L0007c87c       dc.w    $0000, $0000
 
+
 frame_tick                                  ; original address $0007c880
-L0007c880       dc.w    $0000               ; vbl ticker, ticks every frame from 50 to 0 (1 second at 50hz)
+                dc.w    $0000               ; vbl ticker, ticks every frame from 50 to 0 (1 second at 50hz)
 
 
+clock_timer_update_value                    ; original address $0007c882
+                dc.w    $0000               ; BCD value subtracted from clock_timer when frame_tick = 0
 
-L0007c882       dc.w    $0000               ; BCD value subtracted from clock_timer when frame_tick = 0
-clock_timer_update_value                    ; original address $0007c884 (subtract above value using address predecrement i.e. -(a1) )
 
 clock_timer
 clock_timer_minutes
-L0007c884       dc.b    $00                 ; Clock Timer Minutes value, held in BCD Format
+                dc.b    $00                 ; Clock Timer Minutes value, held in BCD Format, original address = $0007c884
 clock_timer_seconds
-L0007c885       dc.b    $00                 ; Clock Timer Seconds Value, held in BCD Format 
-clock_timer_end
+                dc.b    $00                 ; Clock Timer Seconds Value, held in BCD Format, original address $0007c885
 
+
+                even
 L0007c886       dc.w $0000
 L0007c888       dc.w $0000, $ffff
 L0007c88c       dc.w $ffff       
 
+
 player_remaining_energy                     ; original address $0007c88e
-L0007c88e       dc.w    $0000               ; counter (count down - possible total energy value ) 
+                dc.w    $0000               ; player's remaining energy level, max/full level = #$28 (40)
+
 
 player_hit_damage                           ; original address $0007C890
-L0007C890       dc.w    $0000               ; counter (count down, clamped at 0, possible energy hit/damage value)
+                dc.w    $0000               ; counter (count down, clamped at 0, possible energy hit/damage value)
+
 
 L0007c892       dc.L    $00000000           ; dest ptr to something
 L0007c896       dc.l    $00000000           ; source ptr to something
@@ -3417,65 +3452,65 @@ L0007EDAA   dc.w $0033, $4002, $185F, $9001     ; .... .... ..XX ..XX .X.. .... 
 L0007EDBA   dc.w $0028, $E102, $9A3F, $4001     ; .... .... ..X. X... XXX. ...X .... ..X. X..X X.X. ..XX XXXX .X.. .... .... ...X
             dc.w $0007, $8025, $7C02, $0001     ; .... .... .... .XXX X... .... ..X. .X.X .XXX XX.. .... ..X. .... .... .... ...X
 L0007EDCA   dc.w $0009, $2209, $A0E1, $0003     ; .... .... .... X..X ..X. ..X. .... X..X X.X. .... XXX. ...X .... .... .... ..XX
-            dc.w $0009, $1000, $1509, $0003
-L0007EDDA   dc.w $C009, $0006, $2210, $001F
-            dc.w $300B, $0001, $2010, $0060
-L0007EDEA   dc.w $D805, $0000, $0042, $00DF
-            dc.w $7404, $8000, $16A8, $0070
-L0007EDFA   dc.w $3402, $4006, $4C18, $0063
-            dc.w $F808, $0001, $B584, $00FF
-L0007EE0A   dc.w $F008, $8006, $0802, $807F
-            dc.w $4000, $2000, $CB08, $0010
-L0007EE1A   dc.w $F000, $0003, $0511, $007D
-            dc.w $1C00, $8003, $0021, $00C3
-L0007EE2A   dc.w $FDF0, $8903, $088C, $1E8F
-            dc.w $FFDF, $8141, $9109, $F8FF
-L0007EE3A   dc.w $0FFD, $F8A0, $403F, $7780
-            dc.w $F1FF, $DFE4, $0FF7, $9C7F
+            dc.w $0009, $1000, $1509, $0003     ; .... .... .... X..X ...X .... .... .... ...X .X.X .... X..X .... .... .... ..XX
+L0007EDDA   dc.w $C009, $0006, $2210, $001F     ; XX.. .... .... X..X .... .... .... .XX. ..X. ..X. ...X .... .... .... ...X XXXX
+            dc.w $300B, $0001, $2010, $0060     ; ..XX .... .... X.XX .... .... .... ...X ..X. .... ...X .... .... .... .XX. ....
+L0007EDEA   dc.w $D805, $0000, $0042, $00DF     ; XX.X X... .... .X.X .... .... .... .... .... .... .X.. ..X. .... .... XX.X XXXX
+            dc.w $7404, $8000, $16A8, $0070     ; .XXX .X.. .... .X.. X... .... .... .... ...X .XX. X.X. X... .... .... .XXX ....
+L0007EDFA   dc.w $3402, $4006, $4C18, $0063     ; ..XX .X.. .... ..X. .X.. .... .... .XX. .X.. XX.. ...X X... .... .... .XX. ..XX
+            dc.w $F808, $0001, $B584, $00FF     ; XXXX X... .... X... .... .... .... ...X X.XX .X.X X... .X.. .... .... XXXX XXXX
+L0007EE0A   dc.w $F008, $8006, $0802, $807F     ; XXXX .... .... X... X... .... .... .XX. .... X... .... ..X. X... .... .XXX XXXX
+            dc.w $4000, $2000, $CB08, $0010     ; .X.. .... .... .... ..X. .... .... .... XX.. X.XX .... X... .... .... ..X. ....
+L0007EE1A   dc.w $F000, $0003, $0511, $007D     ; XXXX .... .... .... .... .... .... ..XX .... .X.X ...X ...X .... .... .XXX XX.X
+            dc.w $1C00, $8003, $0021, $00C3     ; ...X XX.. .... .... X... .... .... ..XX .... .... ..X. ...X .... .... XX.. ..XX
+L0007EE2A   dc.w $FDF0, $8903, $088C, $1E8F     ; XXXX XX.X XXXX .... X... X..X .... ..XX .... X... X... XX.. ...X .XXX X... XXXX
+            dc.w $FFDF, $8141, $9109, $F8FF     ; XXXX XXXX XX.X XXXX X... ...X .X.. ...X X..X ...X .... X..X XXXX X... XXXX XXXX
+L0007EE3A   dc.w $0FFD, $F8A0, $403F, $7780     ; .... XXXX XXXX XX.X XXXX X... X.X. .... .X.. .... ..XX XXXX .XXX .XXX X... ....
+            dc.w $F1FF, $DFE4, $0FF7, $9C7F     ; XXXX ...X XXXX XXXX XX.X XXXX .XXX .X.. .... XXXX XXXX .XXX X..X XX.. .XXX XXXX
 
 
 
-L0007EE4A   dc.w $01DF, $07E0, $4FC1, $F400
-            dc.w $0E70, $FC06, $A7FE, $1F80           
-L0007EE5A   dc.w $F38F, $0006, $3B1D, $E7FF
-            dc.w $B8F6, $1E1F, $304C, $1CFF           
-L0007EE6A   dc.w $0F05, $618F, $E1EB, $E382
-            dc.w $F149, $3CC5, $8651, $5070         
-L0007EE7A   dc.w $F011, $70EF, $D821, $F87F
-            dc.w $1B93, $7A0B, $F27B, $A0C0          
-L0007EE8A   dc.w $8692, $03C0, $643D, $D80F
-            dc.w $C7A4, $60B9, $A3A6, $701F           
-L0007EE9A   dc.w $1A14, $FC6F, $9BF5, $98C0
-            dc.w $F01D, $838F, $BC12, $687F           
-L0007EEAA   dc.w $805D, $0063, $3092, $300F
-            dc.w $C098, $3C01, $C106, $E01F           
-L0007EEBA   dc.w $0098, $6005, $91B7, $1002
-            dc.w $0058, $A002, $D087, $2800         
-L0007EECA   dc.w $00FC, $4000, $F70F, $6800
-            dc.w $00FC, $B038, $FCF7, $0800          
-L0007EEDA   dc.w $00FA, $27EA, $7FCF, $B000
-            dc.w $00B5, $0A1B, $2203, $3000          
-L0007EEEA   dc.w $007D, $400B, $0136, $B800
-            dc.w $0033, $D01A, $185F, $9000
-L0007EEFA   dc.w $0072, $E13A, $DD7F, $B000
-            dc.w $0038, $E59A, $9E3F, $7000
-L0007EF0A   dc.w $0037, $CC35, $7FE2, $6000
-            dc.w $003F, $6209, $A0FD, $6000
-L0007EF1A   dc.w $003D, $F800, $950D, $6000
-            dc.w $C03D, $000E, $52DC, $601F
-L0007EF2A   dc.w $F01F, $0FB1, $A318, $E07F
-            dc.w $183F, $8400, $0672, $E0C0
-L0007EF3A   dc.w $842F, $8100, $0EE8, $C00F
-            dc.w $C43B, $C0AF, $BCD8, $C01F
-L0007EF4A   dc.w $1839, $6047, $B58D, $C0C0
-            dc.w $F01C, $E00E, $091B, $C07F
-L0007EF5A   dc.w $C01C, $3007, $CB0B, $C01F
-            dc.w $7011, $8A07, $0513, $B072
-L0007EF6A   dc.w $EC02, $C583, $006F, $D0BC
-            dc.w $02F0, $C987, $08BF, $19F0
-L0007EF7A   dc.w $F02F, $89C3, $913D, $E77F
-            dc.w $0E02, $F8F0, $C37E, $8B80
-L0007EF8A   dc.w $0FC0, $27E7, $FFC8, $6780
+L0007EE4A   dc.w $01DF, $07E0, $4FC1, $F400     ; .... ...X XX.X XXXX .... .XXX XXX. .... .X.. XXXX XX.. ...X XXXX .X.. .... ....
+            dc.w $0E70, $FC06, $A7FE, $1F80     ; .... XXX. .XXX .... XXXX XX.. .... .XX. X.X. .XXX XXXX XXX. ...X XXXX X... ....
+L0007EE5A   dc.w $F38F, $0006, $3B1D, $E7FF     ; XXXX ..XX X... XXXX .... .... .... .XX. ..XX X.XX ...X XX.X XXX. .XXX XXXX XXXX
+            dc.w $B8F6, $1E1F, $304C, $1CFF     ; X.XX X... XXXX .XX. ...X XXX. ...X XXXX ..XX .... .X.. XX.. ...X XX.. XXXX XXXX
+L0007EE6A   dc.w $0F05, $618F, $E1EB, $E382   ; .... XXXX .... .X.X .XX. ...X X... XXXX XXX. ...X XXX. X.XX XXX. ..XX X... ..X.
+            dc.w $F149, $3CC5, $8651, $5070     ; XXXX ...X .X.. X..X ..XX XX.. XX.. .X.X X... .XX. .X.X ...X .X.X .... .XXX ....
+L0007EE7A   dc.w $F011, $70EF, $D821, $F87F     ; XXXX .... ...X ...X .XXX .... XXX. XXXX XX.X X... ..X. ...X XXXX X... .XXX XXXX
+            dc.w $1B93, $7A0B, $F27B, $A0C0     ; ...X X.XX X..X ..XX .XXX X.X. .... X.XX XXXX ..X. .XXX X.XX X.X. .... XX.. ....     
+L0007EE8A   dc.w $8692, $03C0, $643D, $D80F     ; X... .XX. X..X ..X. .... ..XX XX.. .... .XX. .X.. ..XX XX.X XX.X X... .... XXXX
+            dc.w $C7A4, $60B9, $A3A6, $701F     ; XX.. .XXX X.X. .X.. .XX. .... X.XX X..X X.X. ..XX X.X. .XX. .XXX .... ...X XXXX
+L0007EE9A   dc.w $1A14, $FC6F, $9BF5, $98C0     ; ...X X.X. ...X .X.. XXXX XX.. .XX. XXXX X..X X.XX XXXX .X.X X..X X... XX.. ....
+            dc.w $F01D, $838F, $BC12, $687F     ; XXXX .... ...X XX.X X... ..XX X... XXXX X.XX XX.. ...X ..X. .XX. X... .XXX XXXX
+L0007EEAA   dc.w $805D, $0063, $3092, $300F     ; X... .... .X.X XX.X .... .... .XX. ..XX ..XX .... X..X ..X. ..XX .... .... XXXX
+            dc.w $C098, $3C01, $C106, $E01F     ; XX.. .... X..X X... ..XX XX.. .... ...X XX.. ...X .... .XX. XXX. .... ...X XXXX
+L0007EEBA   dc.w $0098, $6005, $91B7, $1002   ; .... .... X..X X... .XX. .... .... .X.X X..X ...X X.XX .XXX ...X .... .... ..X.
+            dc.w $0058, $A002, $D087, $2800     ; .... .... .X.X X... X.X. .... .... ..X. XX.X .... X... .XXX ..X. X... .... ....
+L0007EECA   dc.w $00FC, $4000, $F70F, $6800     ; .... .... XXXX XX.. .X.. .... .... .... XXXX .XXX .... XXXX .XX. X... .... ....
+            dc.w $00FC, $B038, $FCF7, $0800     ; .... .... XXXX XX.. X.XX .... ..XX X... XXXX XX.. XXXX .XXX .... X... .... ....
+L0007EEDA   dc.w $00FA, $27EA, $7FCF, $B000     ; .... .... XXXX X.X. ..X. .XXX XXX. X.X. .XXX XXXX XX.. XXXX X.XX .... .... ....
+            dc.w $00B5, $0A1B, $2203, $3000     ; .... .... X.XX .X.X .... X.X. ...X X.XX ..X. ..X. .... ..XX ..XX .... .... ....
+L0007EEEA   dc.w $007D, $400B, $0136, $B800     ; .... .... .XXX XX.X .X.. .... .... X.XX .... ...X ..XX .XX. X.XX X... .... ....
+            dc.w $0033, $D01A, $185F, $9000     ; .... .... ..XX ..XX XX.X .... ...X X.X. ...X X... .X.X XXXX X..X .... .... ....
+L0007EEFA   dc.w $0072, $E13A, $DD7F, $B000     ; .... .... .XXX ..X. XXX. ...X ..XX X.X. XX.X XX.X .XXX XXXX X.XX .... .... ....
+            dc.w $0038, $E59A, $9E3F, $7000     ; .... .... ..XX X... XXX. .X.X X..X X.X. X..X XXX. ..XX XXXX .XXX .... .... ....
+L0007EF0A   dc.w $0037, $CC35, $7FE2, $6000     ; .... .... ..XX .XXX XX.. XX.. ..XX .X.X .XXX XXXX XXX. ..X. .XX. .... .... ....
+            dc.w $003F, $6209, $A0FD, $6000     ; .... .... ..XX XXXX .XX. ..X. .... X..X X.X. .... XXXX XX.X .XX. .... .... ....
+L0007EF1A   dc.w $003D, $F800, $950D, $6000     ; .... .... ..XX XX.X XXXX X... .... .... X..X .X.X .... XX.X .XX. .... .... ....
+            dc.w $C03D, $000E, $52DC, $601F     ; XX.. .... ..XX XX.X .... .... .... XXX. .X.X ..X. XX.X XX.. .XX. .... ...X XXXX
+L0007EF2A   dc.w $F01F, $0FB1, $A318, $E07F     ; XXXX .... ...X XXXX .... XXXX X.XX ...X X.X. ..XX ...X X... XXX. .... .XXX XXXX
+            dc.w $183F, $8400, $0672, $E0C0     ; ...X X... ..XX XXXX X... .X.. .... .... .... .XX. .XXX ..X. XXX. .... CC.. ....
+L0007EF3A   dc.w $842F, $8100, $0EE8, $C00F     ; X... .X.. ..X. XXXX X... ...X .... .... .... XXX. XXX. X... XX.. .... .... XXXX
+            dc.w $C43B, $C0AF, $BCD8, $C01F     ; XX.. .X.. ..XX X.XX XX.. .... X.X. XXXX X.XX XX.. XX.X X... XX.. .... ...X XXXX
+L0007EF4A   dc.w $1839, $6047, $B58D, $C0C0     ; ...X X... ..XX X..X .XX. .... .X.. .XXX X.XX .X.X X... XX.X XX.. .... XX.. ....
+            dc.w $F01C, $E00E, $091B, $C07F     ; XXXX .... ...X XX.. XXX. .... .... XXX. .... X..X ...X X.XX XX.. .... .XXX XXXX
+L0007EF5A   dc.w $C01C, $3007, $CB0B, $C01F     ; XX.. .... ...X XX.. ..XX .... .... .XXX XX.. X.XX .... X.XX XX.. .... ...X XXXX
+            dc.w $7011, $8A07, $0513, $B072     ; .XXX .... ...X ...X X... X.X. .... .XXX .... .X.X ...X ..XX X.XX .... .XXX ..X.
+L0007EF6A   dc.w $EC02, $C583, $006F, $D0BC     ; XXX. XX.. .... ..X. XX.. .X.X X... ..XX .... .... .XX. XXXX XX.X .... X.XX XX..
+            dc.w $02F0, $C987, $08BF, $19F0     ; .... ..X. XXXX .... XX.. X..X X... .XXX .... X... X.XX XXXX ...X X..X XXXX ....
+L0007EF7A   dc.w $F02F, $89C3, $913D, $E77F     ; XXXX .... ..X. XXXX X... X..X XX.. ..XX X..X ...X ..XX XX.X XXX. .XXX .XXX XXXX
+            dc.w $0E02, $F8F0, $C37E, $8B80     ; .... XXX. .... ..X. XXXX X... XXXX .... XX.. ..XX .XXX XXX. X... X.XX X... ....
+L0007EF8A   dc.w $0FC0, $27E7, $FFC8, $6780     ; .... XXXX XX.. .... ..X. .XXX XXX. .XXX XXXX XXXX XX.. X... .XX. .XXX X... ....
 
 
 
@@ -3624,101 +3659,160 @@ L0007F6EA dc.w $4200, $7600, $7600, $4200, $3C00, $4200, $7600, $7600           
 L0007F6FA dc.w $4200, $3C00, $3C00, $4200, $6600, $6600, $4200, $3C00           ;B.<.<.B.f.f.B.<.
 L0007F70A dc.w $4200, $6600, $6600, $4200, $3C00, $0000, $0000, $0000           ;B.f.f.B.<.......
 L0007F71A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0007F72A dc.w $0000, $0000, $0000, $7FFC, $0001, $0007, $FFC0, $001F           ;................
-L0007F73A dc.w $FFF0, $003C, $FE78, $0071, $D71C, $00E1, $C70E, $00C0           ;...<.x.q........
-L0007F74A dc.w $8206, $00C0, $0006, $00C0, $0006, $00E2, $008E, $0073           ;...............s
-L0007F75A dc.w $459C, $003F, $EFF8, $001F, $FFF0, $0007, $FFC0, $0007           ;E..?............
-L0007F76A dc.w $FFC0, $001F, $34F0, $0034, $3858, $0061, $D70C, $00C0           ;....4..48X.a....
-L0007F77A dc.w $0006, $00C0, $8206, $0080, $0002, $00C0, $0006, $00C2           ;................
-L0007F78A dc.w $0086, $0070, $001C, $0035, $A958, $001F, $15F0, $0007           ;...p...5.X......
-L0007F79A dc.w $FFC0, $0000, $0000, $0002, $DF80, $0000, $4400, $0001           ;............D...
-L0007F7AA dc.w $0100, $0020, $8208, $0000, $0000, $0040, $0004, $0000           ;... .......@....
-L0007F7BA dc.w $0000, $0000, $0000, $0001, $0100, $0006, $46C0, $0003           ;............F...
-L0007F7CA dc.w $AE80, $0000, $0000, $0007, $FFC0, $001D, $FF70, $003C           ;.............p.<
-L0007F7DA dc.w $FE78, $0070, $D61C, $00E1, $C70E, $00C0, $8206, $00C0           ;.x.p............
-L0007F7EA dc.w $0006, $00C0, $0006, $00E2, $008E, $0073, $459C, $003B           ;...........sE..;
-L0007F7FA dc.w $EFB8, $001D, $FF70, $0007, $FFC0, $0000, $0000, $0003           ;.....p..........
-L0007F80A dc.w $FF80, $000C, $FE60, $0011, $D710, $0021, $C708, $0040           ;.....`.....!...@
-L0007F81A dc.w $8204, $0040, $0004, $0040, $0004, $0022, $0088, $0013           ;...@...@..."....
-L0007F82A dc.w $4590, $000F, $EFE0, $0003, $FF80, $0000, $0000, $0007           ;E...............
-L0007F83A dc.w $FFC0 
+L0007F72A dc.w $0000, $0000, $0000, $7FFC, $0001
 
 
+batman_lives_icon_on_mask           ; 'lit' lives icon bit mask (batman symbol)
+            dc.w    $0007, $FFC0    ; .... .... .... .XXX XXXX XXXX XX.. ....
+            dc.w    $001F, $FFF0    ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.w    $003C, $FE78    ; .... .... ..XX XX.. XXXX XXX. .XXX X...
+            dc.w    $0071, $D71C    ; .... .... .XXX ...X XX.X .XXX ...X XX..
+            dc.w    $00E1, $C70E    ; .... .... XXX. ...X XX.. .XXX .... XXX.
+            dc.w    $00C0, $8206    ; .... .... XX.. .... X... ..X. .... .XX.
+            dc.w    $00C0, $0006    ; .... .... XX.. .... .... .... .... .XX.
+            dc.w    $00C0, $0006    ; .... .... XX.. .... .... .... .... .XX.
+            dc.w    $00E2, $008E    ; .... .... XXX. ..X. .... .... X... XXX.
+            dc.w    $0073, $459C    ; .... .... .XXX ..XX .X.. .X.X X..X XX..
+            dc.w    $003F, $EFF8    ; .... .... ..XX XXXX XXX. XXXX XXXX X...
+            dc.w    $001F, $FFF0    ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.w    $0007, $FFC0    ; .... .... .... .XXX XXXX XXXX XX.. ....
 
 
+batman_lives_icon_on                ; 'lit' lives icon (batman symbol) - 32 x 13 pixels - 4 bitplanes - original address $0007f768
+.bitplane1  dc.w    $0007, $FFC0    ; .... .... .... .XXX XXXX XXXX XX.. ....
+            dc.w    $001F, $34F0    ; .... .... ...X XXXX ..XX .X.. XXXX ....
+            dc.w    $0034, $3858    ; .... .... ..XX .X.. ..XX X... .X.X X...
+            dc.w    $0061, $D70C    ; .... .... .XX. ...X XX.X .XXX .... XX..
+            dc.w    $00C0, $0006    ; .... .... XX.. .... .... .... .... .XX.
+            dc.w    $00C0, $8206    ; .... .... XX.. .... X... ..X. .... .XX.
+            dc.w    $0080, $0002    ; .... .... X... .... .... .... .... ..X.
+            dc.w    $00C0, $0006    ; .... .... XX.. .... .... .... .... .XX.
+            dc.w    $00C2, $0086    ; .... .... XX.. ..X. .... .... X... .XX.
+            dc.w    $0070, $001C    ; .... .... .XXX .... .... .... ...X XX..
+            dc.w    $0035, $A958    ; .... .... ..XX .X.X X.X. X..X .X.X X...
+            dc.w    $001F, $15F0    ; .... .... ...X XXXX ...X .X.X XXXX ....
+            dc.w    $0007, $FFC0    ; .... .... .... .XXX XXXX XXXX XX.. ....
 
-batman_lives_icon_mask
-L0007f83c   dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
-L0007f840   dc.l    $003cfe78       ; .... .... ..XX XX.. XXXX XXX. .XXX X...
-L0007f844   dc.l    $0071d71c       ; .... .... .XXX ...X XX.X .XXX ...X XX..
-L0007f848   dc.l    $00e1c70e       ; .... .... XXX. ...X XX.. .XXX .... XXX.
-L0007f84c   dc.l    $00c18306       ; .... .... XX.. ...X X... ..XX .... .XX.
-L0007f850   dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
-L0007f854   dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
-L0007f858   dc.l    $00e2008e       ; .... .... XXX. ..X. .... .... X... XXX.
-L0007f85c   dc.l    $0073459c       ; .... .... .XXX ..XX .X.. .X.X X..X XX..
-L0007f860   dc.l    $003feff8       ; .... .... ..XX XXXX XXX. XXXX XXXX X...
-L0007f860   dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
-L0007f864   dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
-L0007f868   dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
+.bitplane2  dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
+            dc.w    $0002, $DF80    ; .... .... .... ..X. XX.X XXXX X... ....
+            dc.w    $0000, $4400    ; .... .... .... .... .X.. .X.. .... ....
+            dc.w    $0001, $0100    ; .... .... .... ...X .... ...X .... ....
+            dc.w    $0020, $8208    ; .... .... ..X. .... X... ..X. .... X...
+            dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
+            dc.w    $0040, $0004    ; .... .... .X.. .... .... .... .... .X..
+            dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
+            dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
+            dc.w    $0001, $0100    ; .... .... .... ...X .... ...X .... ....
+            dc.w    $0006, $46C0    ; .... .... .... .XX. .X.. .XX. XX.. ....
+            dc.w    $0003, $AE80    ; .... .... .... ..XX X.X. XXX. X... ....
+            dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
+            
+.bitplane3  dc.w    $0007, $FFC0    ; .... .... .... .XXX XXXX XXXX XX.. ....
+            dc.w    $001D, $FF70    ; .... .... ...X XX.X XXXX XXXX .XXX ....
+            dc.w    $003C, $FE78    ; .... .... ..XX XX.. XXXX XXX. .XXX X...
+            dc.w    $0070, $D61C    ; .... .... .XXX .... XX.X .XX. ...X XX..
+            dc.w    $00E1, $C70E    ; .... .... XXX. ...X XX.. .XXX .... XXX.
+            dc.w    $00C0, $8206    ; .... .... XX.. .... X... ..X. .... .XX.
+            dc.w    $00C0, $0006    ; .... .... XX.. .... .... .... .... .XX.
+            dc.w    $00C0, $0006    ; .... .... XX.. .... .... .... .... .XX.
+            dc.w    $00E2, $008E    ; .... .... XXX. ..X. .... .... X... XXX.
+            dc.w    $0073, $459C    ; .... .... .XXX ..XX .X.. .X.X X..X XX..
+            dc.w    $003B, $EFB8    ; .... .... ..XX X.XX XXX. XXXX X.XX X...
+            dc.w    $001D, $FF70    ; .... .... ...X XX.X XXXX XXXX .XXX ....
+            dc.w    $0007, $FFC0    ; .... .... .... .XXX XXXX XXXX XX.. ....
+            
+
+.bitplane4  dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
+            dc.w    $0003, $FF80    ; .... .... .... ..XX XXXX XXXX X... ....
+            dc.w    $000C, $FE60    ; .... .... .... XX.. XXXX XXX. .XX. ....
+            dc.w    $0011, $D710    ; .... .... ...X ...X XX.X .XXX ...X ....
+            dc.w    $0021, $C708    ; .... .... ..X. ...X XX.. .XXX .... X...
+            dc.w    $0040, $8204    ; .... .... .X.. .... X... ..X. .... .X..
+            dc.w    $0040, $0004    ; .... .... .X.. .... .... .... .... .X..
+            dc.w    $0040, $0004    ; .... .... .X.. .... .... .... .... .X..
+            dc.w    $0022, $0088    ; .... .... ..X. ..X. .... .... X... X...
+            dc.w    $0013, $4590    ; .... .... ...X ..XX .X.. .X.X X..X ....
+            dc.w    $000F, $EFE0    ; .... .... .... XXXX XXX. XXXX XXX. ....
+            dc.w    $0003, $FF80    ; .... .... .... ..XX XXXX XXXX X... ....
+            dc.w    $0000, $0000    ; .... .... .... .... .... .... .... ....
 
 
-batman_lives_icon                   ; 32 x 13 pixels - 4 bitplanes
-L0007f86c   dc.L    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
-L0007f870   dc.l    $001c0070       ; .... .... .... XX.. .... .... .XXX ....
-L0007f874   dc.l    $00300018       ; .... .... ..XX .... .... .... ...X X...
-L0007f878   dc.l    $0060000c       ; .... .... .XX. .... .... .... .... XX..
-L0007f87c   dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
-L0007f880   dc.l    $00800002       ; .... .... X... .... .... .... .... ..X.
-L0007f884   dc.l    $00800002       ; .... .... X... .... .... .... .... ..X.
-L0007f888   dc.l    $00800002       ; .... .... X... .... .... .... .... ..X.
-L0007f88c   dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
-L0007f890   dc.l    $0060000c       ; .... .... .XX. .... .... .... .... XX..
-L0007f894   dc.l    $00300018       ; .... .... ..XX .... .... .... ...X X...
-L0007f898   dc.l    $001c0070       ; .... .... ...X XX.. .... .... .XXX ....
-L0007f89c   dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
+unused      dc.w    $0007, $FFC0 
 
-L0007f8a0   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8a4   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8a8   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8ac   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8b0   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8b4   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8b8   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8bc   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8c0   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8c4   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8c8   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8cc   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f8d0   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
 
-L0007f8d4   dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. .... 
-L0007f8d8   dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
-L0007f8dc   dc.l    $003cfe78       ; .... .... ..XX XX.. XXXX XXX. .XXX X...
-L0007f8e0   dc.l    $0071d71c       ; .... .... .XXX ...X XX.X .XXX ...X XX..
-L0007f8e4   dc.L    $00e1c70e       ; .... .... XXX. ...X XX.. .XXX .... XXX.
-L0007f8e8   dc.l    $00c18306       ; .... .... XX.. ...X X... ..XX .... .XX.
-L0007f8ec   dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
-L00077ff0   dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
-L00077ff4   dc.l    $00e2008e       ; .... .... XXX. .... .... .... X... XXX.
-L0007f8f8   dc.l    $0073459c       ; .... .... .XXX ..XX .X.. .X.X X..X XX..
-L0007f8fc   dc.l    $003feff8       ; .... .... ..XX XXXX XXX. XXXX XXXX X...
-L0007f900   dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
-L0007f904   dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
+batman_lives_icon_off_mask          ; 'unlit' lives icon bit mask (batman symbol)
+            dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.l    $003cfe78       ; .... .... ..XX XX.. XXXX XXX. .XXX X...
+            dc.l    $0071d71c       ; .... .... .XXX ...X XX.X .XXX ...X XX..
+            dc.l    $00e1c70e       ; .... .... XXX. ...X XX.. .XXX .... XXX.
+            dc.l    $00c18306       ; .... .... XX.. ...X X... ..XX .... .XX.
+            dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
+            dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
+            dc.l    $00e2008e       ; .... .... XXX. ..X. .... .... X... XXX.
+            dc.l    $0073459c       ; .... .... .XXX ..XX .X.. .X.X X..X XX..
+            dc.l    $003feff8       ; .... .... ..XX XXXX XXX. XXXX XXXX X...
+            dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
 
-L0007f908   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f90c   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f910   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f914   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f918   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f91c   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f920   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f924   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f928   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f92c   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f930   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f934   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f938   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+
+batman_lives_icon_off               ; 'unlit' lives icon (batman symbol)  - 32 x 13 pixels - 4 bitplanes, original address $0007f86c
+.bitplane1  dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
+            dc.l    $001c0070       ; .... .... .... XX.. .... .... .XXX ....
+            dc.l    $00300018       ; .... .... ..XX .... .... .... ...X X...
+            dc.l    $0060000c       ; .... .... .XX. .... .... .... .... XX..
+            dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
+            dc.l    $00800002       ; .... .... X... .... .... .... .... ..X.
+            dc.l    $00800002       ; .... .... X... .... .... .... .... ..X.
+            dc.l    $00800002       ; .... .... X... .... .... .... .... ..X.
+            dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
+            dc.l    $0060000c       ; .... .... .XX. .... .... .... .... XX..
+            dc.l    $00300018       ; .... .... ..XX .... .... .... ...X X...
+            dc.l    $001c0070       ; .... .... ...X XX.. .... .... .XXX ....
+            dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
+
+.bitplane2  dc.l    $00000000       ; .... .... .... .... .... .... .... ....       - original address $0007f8a0
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+
+.bitplane3  dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....       - original address $0007f8d4 
+            dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.l    $003cfe78       ; .... .... ..XX XX.. XXXX XXX. .XXX X...
+            dc.l    $0071d71c       ; .... .... .XXX ...X XX.X .XXX ...X XX..
+            dc.L    $00e1c70e       ; .... .... XXX. ...X XX.. .XXX .... XXX.
+            dc.l    $00c18306       ; .... .... XX.. ...X X... ..XX .... .XX.
+            dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
+            dc.l    $00c00006       ; .... .... XX.. .... .... .... .... .XX.
+            dc.l    $00e2008e       ; .... .... XXX. .... .... .... X... XXX.
+            dc.l    $0073459c       ; .... .... .XXX ..XX .X.. .X.X X..X XX..
+            dc.l    $003feff8       ; .... .... ..XX XXXX XXX. XXXX XXXX X...
+            dc.l    $001ffff0       ; .... .... ...X XXXX XXXX XXXX XXXX ....
+            dc.l    $0007ffc0       ; .... .... .... .XXX XXXX XXXX XX.. ....
+
+.bitplane4  dc.l    $00000000       ; .... .... .... .... .... .... .... ....       - original address $0007f908
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+            dc.l    $00000000       ; .... .... .... .... .... .... .... ....
+
 
 L0007f93c   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
 L0007f940   dc.w    $1450
@@ -3738,26 +3832,37 @@ L0007f940   dc.w    $1450
 
 0007f956        movem.l d0-d7/a0-a2,-(a7)
 
-L0007f95a       lea.l $0007f768,a0
-0007f960        move.w L0007c876,d0                         ; d0 = possible lives count
-0007f966        add.w #$0001,L0007c876                      ; increment value
-0007f96e        cmp.w #$0003,d0
-0007f972        blt.w display_batman_icon                   ; jmp $0007f9ac
-0007f976        rts
 
 
 
-L0007f978       move.w #$0002,L0007c876                     ; possible lives count
-0007f980        clr.b L0007c874                             ; clear status byte
-0007f986        moveq #$00,d0
-0007f988        lea.l $0007f768,a0
-0007f98e        bsr.w display_batman_icon                   ; calls $0007f9ac
-0007f992        moveq #$01,d0
-0007f994        lea.l $0007f768,a0
-0007f99a        bsr.w display_batman_icon                   ; calls $0007f9ac
-0007f99e        moveq #$02,d0
-0007f9a0        lea.l batman_lives_icon,a0                  ; original icon address $0007f86c
-0007f9a6        bsr.w display_batman_icon                   ; calls $0007f9ac
+                ;---------------- do add extra life ----------------
+                ; called from main api entry point to add an extra
+                ; player life & update the panel display.
+do_add_extra_life                                           ; original routine address - $0007f95a
+                lea.l batman_lives_icon_on,a0               ; icon display address.                             - $0007f95a
+                move.w player_lives_count,d0                ; d0 = player lives count (icon index)              - $0007f960
+                add.w #$0001,player_lives_count             ; increment player lives count                      - $0007f966
+                cmp.w #$0003,d0                             ; update display if lives <= 3                      - $0007f96e
+                blt.w display_batman_icon                   ; jmp $0007f9ac                                     - $0007f972
+                rts
+
+
+
+                ;----------- do initialise player lives -----------
+                ; called from main api entry point to initialise
+                ; player lives to 2 and update panel display.
+do_initialise_player_lives                                          ; original routine address $0007f978
+                move.w #$0002,player_lives_count                    ; set player lives count = 2
+0007f980        clr.b panel_status_1                                ; clear panel status byte 1                 - 0007f980
+0007f986        moveq #$00,d0                                       ; D0 = icon index
+0007f988        lea.l batman_lives_icon_on,a0                       ; A0 = icon display address
+0007f98e        bsr.w display_batman_icon                           ; calls $0007f9ac
+0007f992        moveq #$01,d0                                       ; D0 = icon index
+0007f994        lea.l batman_lives_icon_on,a0                       ; A0 = icon display address
+0007f99a        bsr.w display_batman_icon                           ; calls $0007f9ac
+0007f99e        moveq #$02,d0                                       ; D0 = icon index
+0007f9a0        lea.l batman_lives_icon_off,a0                      ; Display 'unlit' lives icon (posiiton 3), original icon address $0007f86c
+0007f9a6        bsr.w display_batman_icon                           ; calls $0007f9ac
 0007f9aa        rts
 
 
@@ -3765,7 +3870,7 @@ L0007f978       move.w #$0002,L0007c876                     ; possible lives cou
                 ;------------------------------------------------------------
                 ; update player lives display/icon?
                 ; IN: d0 = lives image to update (0 - 2) desintation index
-                ; IN: a0 = source gfx address  
+                ; IN: a0 = source gfx address (mask must be 52 bytes before this address)
                 ;
                 ; panel gfx = 320 x 48 pixels (1920 bytes per bitplane)
                 ; batman symbol = 32 x 13 pixels (52 bytes per bitplane)
@@ -3892,30 +3997,30 @@ update_hit_damage                                   ; original routine address $
 
                 ; player has not lives left
 set_no_lives_left
-L0007faf6       bset.b #$01,L0007c874               ; set bit 1 of status byte 1,               L0007faf6
-                rts                                 ; exit                                      007fafe
+L0007faf6       bset.b #NO_LIVES_REMAINING,panel_status_1   ; set bit 1 of status byte 1,               L0007faf6
+                rts                                         ; exit                                      007fafe
 
                 ; do lost life processing
-lose_a_life                                         ; original routine address $0007fb00
-L0007fb00       clr.w   player_hit_damage           ; clear 'energy hit/damage' counter as address $0007C890        - 0007fb00
-0007fb06        tst.w   L0007c876                   ; test possible lives count                                     - 0007fb06
-0007fb0c        beq.b   L0007faf6                   ; 0007fb0c 
+lose_a_life                                                 ; original routine address $0007fb00
+L0007fb00       clr.w   player_hit_damage                   ; clear 'energy hit/damage' counter as address $0007C890        - 0007fb00
+0007fb06        tst.w   player_lives_count                  ; test player lives count                                       - 0007fb06
+0007fb0c        beq.b   L0007faf6                           ; 0007fb0c 
 
                 ; player lost life
-0007fb0e        bset.b  #$0002,L0007c874            ; set bit 2 of status byte 1,               0007fb0e
-0007fb16        btst.b  #$0007,L0007c875            ; set bit 7 of status byte 2,               0007fb16
-0007fb1e        bne.b   L0007fb3e                   ; 0007fb1e
+0007fb0e        bset.b  #PLAYER_LIFE_LOST,panel_status_1    ; set bit 2 of status byte 1,               0007fb0e
+0007fb16        btst.b  #INFINITE_LIVES,panel_status_2      ; set bit 7 of status byte 2,               0007fb16
+0007fb1e        bne.b   L0007fb3e                           ; 0007fb1e
 
                 ; subtract play lives
-0007fb20        subq.w  #$01,L0007c876              ; subtract possible lives count             0007fb20
-0007fb26        move.w  L0007c876,d0                ; d0 = possible lives count                 0007fb26
+0007fb20        subq.w  #$01,player_lives_count     ; decrement player lives count              0007fb20
+0007fb26        move.w  player_lives_count,d0       ; d0 = player lives count                   0007fb26
 
                 ; check if > 2 lives left
 0007fb2c        cmp.w   #$0002,d0                   ; 0007fb2c
 0007fb30        bgt.w   L0007fb3e                   ; if > 2 lives left then jmp L0007fb3e      0007fb30
 
                 ; update lives left display?
-0007fb34        lea.l   batman_lives_icon,a0        ; a0 = source gfx orignal address $0007f86c                     0007fb34
+0007fb34        lea.l   batman_lives_icon_off,a0    ; a0 = source gfx orignal address $0007f86c                     0007fb34
 0007fb3a        bra.w   display_batman_icon         ; d0 = icon to update, a0 = source gfx, jmp $0007f9ac           0007fb3a
 
 L0007fb3e       rts                                 ; L0007fb3e
@@ -3954,7 +4059,7 @@ L0007fb7e       move.l d0,$0007c886
 0007fbb4        and.b #$f0,d1
 0007fbb8        cmp.b d0,d1
 0007fbba        beq.b L0007fbc0
-0007fbbc        bsr.w L0007f95a
+0007fbbc        bsr.w do_add_extra_life                     ; calls $0007f95a
 L007fbc0        movem.l (a7)+,d0-d1
 0007fbc4        move.b $0007c87f,d0
 0007fbca        cmp.b $0007c88d,d0
@@ -4002,8 +4107,8 @@ L0007fc76       rts
 L0007fc78       move.w d0,clock_timer               ; d0 = clock timer value (minutes and seconds) in BCD format $0007c884                 ; L0007fc78
 0007fc7e        move.w #$0032,frame_tick            ; set frame_tick to 50, $0007c880       - 0007fc7e
 0007fc86        bsr.w L0007fd28                     ; 0007fc86
-0007fc8a        clr.w $0007c882                     ; 0007fc8a
-0007fc90        clr.b L0007c874                     ; clear status byte 1                   - 0007fc90
+0007fc8a        clr.w clock_timer_update_value      ; 0007fc8a
+0007fc90        clr.b panel_status_1                ; clear panel status byte 1                   - 0007fc90
 0007fc96        rts                                 ; 0007fc96
 
 
@@ -4014,34 +4119,34 @@ L0007fc78       move.w d0,clock_timer               ; d0 = clock timer value (mi
                 ;--------------------- update panel --------------------------
                 ; called every frame from $7c800 update_panel
                 ;
-do_panel_update                                     ; original routine address
-                bsr.w update_hit_damage             ; calls L0007fa7e,update energy loss / lives        - 0007fc98
+do_panel_update                                             ; original routine address
+                bsr.w update_hit_damage                     ; calls L0007fa7e,update energy loss / lives        - 0007fc98
 
-0007fc9c        cmp.w #$9999,$0007c882              ; test value in 0007c882.w                          - 0007fc9c
-0007fca4        beq.w L0007fd1a                     ; if = #$9999 then exit, jmp $7fd1a                 - 0007fca4
+0007fc9c        cmp.w #$9999,clock_timer_update_value       ; test value in 0007c882.w                          - 0007fc9c
+0007fca4        beq.w L0007fd1a                             ; if = #$9999 then exit, jmp $7fd1a                 - 0007fca4
 
-0007fca8        sub.w #$0001,frame_tick             ; subtract 1 from frame tick $0007c880              `- 0007fca8
-0007fcb0        bpl.w L0007fcf6                     ; if (tick > 0) jmp 0007fcb0                        - 0007fcb0
+0007fca8        sub.w #$0001,frame_tick                     ; subtract 1 from frame tick $0007c880              `- 0007fca8
+0007fcb0        bpl.w L0007fcf6                             ; if (tick > 0) jmp 0007fcb0                        - 0007fcb0
 
-.reset_frame_tick                                   ; else
-0007fcb4        move.w #$0032,frame_tick            ; set tick to 50 $0007c880
+.reset_frame_tick                                           ; else
+0007fcb4        move.w #$0032,frame_tick                    ; set tick to 50 $0007c880
 
-0007fcbc        tst.w clock_timer                   ; test clock timer = 0 (minutes and seconds) $0007c884
-0007fcc2        beq.w clock_timer_expired           ; if clock_timer = 0, jmp $0007fd1c
+0007fcbc        tst.w clock_timer                           ; test clock timer = 0 (minutes and seconds) $0007c884
+0007fcc2        beq.w clock_timer_expired                   ; if clock_timer = 0, jmp $0007fd1c
 
-0007fcc6        lea.l clock_timer_update_value,a0   ; clock timer update value address
-0007fccc        lea.l clock_timer_end,a1            ; clock timer end address $0007c886
+0007fcc6        lea.l clock_timer_update_value+2,a0         ; clock timer update value address
+0007fccc        lea.l clock_timer+2,a1                      ; clock timer end address $0007c886
 0007fcd2        move.b #$10,ccr
-0007fcd6        sbcd.b -(a0),-(a1)                  ; subtract BCD byte from word before timer from clock seconds
-0007fcd8        sbcd.b -(a0),-(a1)                  ; subtract BCD byte from word before time from clock minutes
+0007fcd6        sbcd.b -(a0),-(a1)                          ; subtract BCD byte from word before timer from clock seconds
+0007fcd8        sbcd.b -(a0),-(a1)                          ; subtract BCD byte from word before time from clock minutes
 
 .check_minutes_decremented
-0007fcda        move.b clock_timer_seconds,d0       ; d0 = timer seconds value $0007c885
-0007fce0        and.b #$f0,d0                       ; d0 = mask least significant seconds digit
-0007fce4        cmp.b #$90,d0                       ; if seconds value starts with '9' then minutes were decremented
-0007fce8        bne.b .display_clock_timer_value    ; else continue to display clock_timer value $0007fcf2
+0007fcda        move.b clock_timer_seconds,d0               ; d0 = timer seconds value $0007c885
+0007fce0        and.b #$f0,d0                               ; d0 = mask least significant seconds digit
+0007fce4        cmp.b #$90,d0                               ; if seconds value starts with '9' then minutes were decremented
+0007fce8        bne.b .display_clock_timer_value            ; else continue to display clock_timer value $0007fcf2
 .minutes_decremented
-0007fcea        move.b #$59,clock_timer_seconds     ; set seconds from '99' to '59' for correct seconds value as BCD $7c885
+0007fcea        move.b #$59,clock_timer_seconds             ; set seconds from '99' to '59' for correct seconds value as BCD $7c885
 .display_clock_timer_value
 L0007fcf2       bsr.w L0007fd28
 
@@ -4055,8 +4160,8 @@ L0007fd12       move.w #$1d19,d1
 0007fd16        bsr.w L0007fde2
 L0007fd1a       rts
 
-clock_timer_expired                                         ; original routine address $0007fd1c
-L0007fd1c       bset.b #$00,L0007c874                       ; set bit 0 of status byte 1 (clock timer expired = 00:00)
+clock_timer_expired                                             ; original routine address $0007fd1c
+L0007fd1c       bset.b #CLOCK_TIMER_EXPIRED,panel_status_1      ; set bit 0 of status byte 1 (clock timer expired = 00:00)
 0007fd24        bra.w L0007fcf6
 
 
