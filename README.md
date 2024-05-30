@@ -3,7 +3,7 @@
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
 
-The inspiration for this exercise was discovering the following cracking series run by **H0ffman**. Links to those resources shown below.
+The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
 
  - [Youtube](https://www.youtube.com/@HoffmanYouTube)
  - [Twitch](https://www.twitch.tv/djh0ffman)
