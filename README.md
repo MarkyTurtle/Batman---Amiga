@@ -44,6 +44,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
    - **Dos Crack V1** - 
    - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) - In Progress (game/timer speed up, level 2 onwards)
    - Load time is far too slow, need to change packer
+ - Disassemble the Game Panel - In Progress 
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
@@ -52,6 +53,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+
+2024-05-30 - Been disassembling the 'Panel' executable that is loaded to $7Cf7C in memory. It contains the gfx and code that manages the game status panel including keeping track of the player lives, energy, level count down timer. Looking for hints for why the 'cracked' version of the game speeds up on level 2 and beyond.  Can see that a level 3 vertical blank interrupt calls the 'update' routine every frame. At the moment it appear that this routine is being called more frequently in my version of the re-complied ADF images for level 2 and beyond. Will keep searching... probably wont find out why until I disassemble the level code and see exectly where the level 3 interrupt is raised in the game code (apart from by the vbl).
 
 2024-05-24 - Created a zx0 version of the disk, it's not working perfoectly yet, I think the compressed files are larger, causing corruption/memory overwriting on loading. Also the game timer is speeding up when loading level 2 and above, 1 minute is taking about 50 seconds. It looks like the level 3 interrupt is being called 60 times a second(ish) instead of 50 times a second. The music and game is also running noticably faster. When returning to the title screen, the music is playing faster. Once this is sorted the game should be working on A500 and I can move on to disassembling other parts of the game.
 
