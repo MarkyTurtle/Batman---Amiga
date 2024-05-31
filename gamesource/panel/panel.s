@@ -16,31 +16,34 @@ panel
 
 
                 ;----------------------- PANEL UPDATE - $0007c800 -----------------------
-                ; This routine is called every frame (50hz) to 
-                ; update the game timer.
-                ; somehow this gets called more frequently on my 'cracked'
-                ; version of the game after completion of level 1
-                ; not sure why yet, as it seems to be tied to the level 3
-                ; interrupt handlers called for ever vbl.
-                ; something else seems to be adding extra calls to this
-                ; make make the timer run down slightly quicker.
-                ; this makes the batmobile and batwing levels impossible
-                ; to complete without losing at least 1 life.
+                ; This routine is called every frame (50hz) as a main panel update for
+                ; each game loop cycle.
+                ; 
+                ; Somehow this gets called more frequently on my 'cracked' version of the 
+                ; game after completion of level 1, Not sure why/how yet, as it seems to 
+                ; be tied to the level 3 interrupt handlers called for ever vbl.
+                ; Something else seems to be adding extra calls to this make make the 
+                ; timer run down slightly quicker in the cracked version.
                 ;
-panel_update                                    ; $0007c800 called every fame by game code level 3 interrupt
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c800
-                bsr.w   do_panel_update         ; calls $0007fc98
+Panel_Update                                                        ; $0007c800 called every frame by game code level 3 interrupt
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c800
+                bsr.w   do_panel_update                             ; calls $0007fc98
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
-L0007c80e       
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c80e
+
+
+                ;----------------------- INITIALISE LEVEL TIMER - $0007c80e -----------------------
+                ; IN: D0.w - Game Level Timer Value (BCD Minutes:Seconds)
+                ;
+Initialise_Level_Timer      
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c80e
                 bsr.w   L0007fc78
                 movem.l (a7)+,d0-d7/a0-a2
                 rts  
 
 L0007c81c       
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c81c
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c81c
                 bsr.w   L0007fb40
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
@@ -76,22 +79,22 @@ Add_Extra_Life
                 ;------------------ INTIALISE PLAYER ENERGY - $0007c854 ------------------
                 ; reset the player's energy to 'full' and restore the bitplane ptrs
                 ; and panel display graphics for the energy meter
- Initialise_Player_Energy       
+Initialise_Player_Energy       
                 movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c854
-                bsr.w   do_initialise_player_energy                    ; calls $0007fa00
+                bsr.w   do_initialise_player_energy                 ; calls $0007fa00
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
 
 
 L0007c862       
-                movem.l d0-d7/a0-a2,-(a7)       ; original routine address $0007c862
+                movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c862
                 bsr.w   L0007fb00
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
 L0007c870       
-                bra.w L0007fa66                 ; original routine address $0007c870
+                bra.w L0007fa66                                     ; original routine address $0007c870
 
 
 
@@ -160,6 +163,7 @@ joker_energy_gfx_ptr
                 dc.l    $00000000           ; source ptr to the joker energy graphics, original address $0007c896
 
 
+panel_or_digit_gfx
 0007c89a 0000 0000                or.b #$00,d0
 0007c89e 0000 0000                or.b #$00,d0
 0007c8a2 0000 0000                or.b #$00,d0
@@ -3832,25 +3836,25 @@ L0007f940   dc.w    $1450
 
 
 
-0007f942        movem.l (a7)+,d0-d7/a0-a2
-0007f946        rts
 
-
-0007f948        movem.l d0-d7/a0-a2,-(a7)
-0007f94c        bsr.w $0007fcca                                     ; no such address (Check it out)
-0007f950        movem.l (a7)+,d0-d7/a0-a2
-0007f954        rts
-
-
-
-0007f956        movem.l d0-d7/a0-a2,-(a7)
+                ;-------------------------------------------------
+                ; code here is either unused nonsense or data
+                ; disassembled as code.
+0007f942        movem.l (a7)+,d0-d7/a0-a2                           ; not called from anywhere in panel.s
+0007f946        rts                                                 ; not called from anywhere in panel.s
+0007f948        movem.l d0-d7/a0-a2,-(a7)                           ; not called from anywhere in panel.s
+0007f94c        bsr.w $0007fcca                                     ; no such address (Check it out) half way through instruction @ $0007fcc6
+0007f950        movem.l (a7)+,d0-d7/a0-a2                           ; not called from anywhere in panel.s
+0007f954        rts                                                 ; not called from anywhere in panel.s
+0007f956        movem.l d0-d7/a0-a2,-(a7)                           ; not called from anywhere in panel.s
 
 
 
 
                 ;---------------- do add extra life ----------------
-                ; called from main api entry point to add an extra
-                ; player life & update the panel display.
+                ; called from main api entry point at address $0007f95a
+                ; also called from routine as address $0007fbbc
+                ; Adds an extra player life & update the panel display.
 do_add_extra_life                                           ; original routine address - $0007f95a
                 lea.l batman_lives_icon_on,a0               ; icon display address.                             - $0007f95a
                 move.w player_lives_count,d0                ; d0 = player lives count (icon index)              - $0007f960
@@ -4122,12 +4126,20 @@ L0007fc76       rts
 
 
 
-L0007fc78       move.w d0,clock_timer               ; d0 = clock timer value (minutes and seconds) in BCD format $0007c884                 ; L0007fc78
-0007fc7e        move.w #$0032,frame_tick            ; set frame_tick to 50, $0007c880       - 0007fc7e
-0007fc86        bsr.w L0007fd28                     ; 0007fc86
-0007fc8a        clr.w clock_timer_update_value      ; 0007fc8a
-0007fc90        clr.b panel_status_1                ; clear panel status byte 1                   - 0007fc90
-0007fc96        rts                                 ; 0007fc96
+
+                ; reset frame_tick to 50
+                ; clear level timer update value (assume pauses the level timer)
+                ; clear panel_status_1 bit field (timer_expired,lost_life,game_over) flags
+                ;
+                ; IN: D0.w = value to set clock timer (BCD Minutes:Seconds)
+                ;
+do_initialise_level_timer
+L0007fc78       move.w d0,clock_timer                               ; d0 = clock timer value (minutes and seconds) in BCD format $0007c884                 ; L0007fc78
+                move.w #$0032,frame_tick                            ; set frame_tick to 50, $0007c880       - 0007fc7e
+                bsr.w L0007fd28                                     ; calls $0007fd28                       - 0007fc86
+                clr.w clock_timer_update_value                      ; pause the level timer                 - 0007fc8a
+                clr.b panel_status_1                                ; clear panel status byte 1             - 0007fc90
+                rts                                                 ; return                                - 0007fc96
 
 
 
@@ -4136,6 +4148,8 @@ L0007fc78       move.w d0,clock_timer               ; d0 = clock timer value (mi
 
                 ;--------------------- update panel --------------------------
                 ; called every frame from $7c800 update_panel
+                ; house keeping of the panel display, also setting status
+                ; flags for lost_life, timer_expired, no_lives_remaining
                 ;
 do_panel_update                                             ; original routine address
                 bsr.w update_hit_damage                     ; calls L0007fa7e,update energy loss / lives        - 0007fc98
@@ -4183,9 +4197,17 @@ L0007fd1c       bset.b #CLOCK_TIMER_EXPIRED,panel_status_1      ; set bit 0 of s
 0007fd24        bra.w L0007fcf6
 
 
-L0007fd28       moveq #$00,d0
-0007fd2a        move.b clock_timer_seconds,d0               ;$0007c885,d0
-0007fd30        move.w #$1f19,d1
+
+
+
+
+                ;--------------------- display level timer --------------------------
+                ; display minutes:seconds timer on the panel display.
+                ;            
+display_level_timer
+L0007fd28       moveq #$00,d0                               ; d0.l = 0
+0007fd2a        move.b clock_timer_seconds,d0               ; d0.b = clock timer seconds in BCD from location $0007c885
+0007fd30        move.w #$1f19,d1                            ; d1.w = #$1f19 
 0007fd34        bsr.w L0007fde2
 0007fd38        move.b clock_timer_seconds                  ;$0007c885,d0
 0007fd3e        lsr.b #$04,d0
@@ -4235,12 +4257,15 @@ L0007fda6       move.b (a1),(a0)
 0007fde0        rts
 
 
-L0007fde2       and.l #$0000ffff,d0
+                ; IN: d0.b = BCD value to display (byte)
+                ; IN: d1.w = X,y location to display the digits
+display_timer_digits
+L0007fde2       and.l #$0000ffff,d0         ; clamp d0.l to a 16bit word
 0007fde8        movem.l d0-d2,-(a7)
-0007fdec        moveq #$00,d2
-0007fdee        move.b d1,d2
-0007fdf0        lsr.w #$08,d1
-0007fdf2        mulu.w #$0028,d2
+0007fdec        moveq #$00,d2               ; d2.l = 0
+0007fdee        move.b d1,d2                ; d2.b = 
+0007fdf0        lsr.w #$08,d1               ; d1.b = 
+0007fdf2        mulu.w #$0028,d2            ; Get digit index (#$28 = 40 bytes per digit)
 0007fdf6        add.l #$0007c89a,d2
 0007fdfc        add.w d1,d2
 0007fdfe        movea.l d2,a0
@@ -4250,7 +4275,7 @@ L0007fde2       and.l #$0000ffff,d0
 0007fe0c        move.w (a2,d0.W,$00),d0
 0007fe10        add.l #$0007f30a,d0
 0007fe16        movea.l d0,a1
-0007fe18        moveq #$03,d2
+0007fe18        moveq #$03,d2                   ; d2 = 3 + 1 = 4 bitplanes
 L0007fe1a       move.b (a1),(a0)
 0007fe1c        move.b (a1,$0002),(a0,$0028)
 0007fe22        move.b (a1,$0004),(a0,$0050)
