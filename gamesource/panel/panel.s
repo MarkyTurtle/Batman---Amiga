@@ -1047,7 +1047,7 @@ L0007F2FA dc.w $3800, $3800, $6C00, $6C00, $6C00, $6C00, $6C00, $3800           
 
 
 timer_digit_gfx                     ; 16 X 11 pixels - original address $0007F30A
-            ; unused/unkown digit gfx
+            ; Timer Separator Animation 1 - ':'
 L0007F30A   dc.w $3C00  ; ..XX XX.. .... ....
             dc.w $4200  ; .X.. ..X. .... ....
             dc.w $6600  ; .XX. .XX. .... ....
@@ -1553,7 +1553,7 @@ L0007F67A   dc.w $0000 ; .... .... .... ....
             dc.w $0000 ; .... .... .... ....
             dc.w $0000 ; .... .... .... ....
 
-            ; unused/unkown digit gfx
+            ; Timer Separator Animation 2 - ':'
 L0007F6D2   dc.w $3C00 ; ..XX XX.. .... ....
             dc.w $4200 ; .X.. ..X. .... ....
             dc.w $6600 ; .XX. .XX. .... ....
@@ -1771,7 +1771,7 @@ L0007f940   dc.w    $1450
 L0007f942        movem.l (a7)+,d0-d7/a0-a2                           ; not called from anywhere in panel.s
 L0007f946        rts                                                 ; not called from anywhere in panel.s
 L0007f948        movem.l d0-d7/a0-a2,-(a7)                           ; not called from anywhere in panel.s
-L0007f94c        bsr.w L0007fcca                                     ; no such address (Check it out) half way through instruction @ $0007fcc6
+;L0007f94c        bsr.w L0007fcca                                     ; no such address (Check it out) half way through instruction @ $0007fcc6
 L0007f950        movem.l (a7)+,d0-d7/a0-a2                           ; not called from anywhere in panel.s
 L0007f954        rts                                                 ; not called from anywhere in panel.s
 L0007f956        movem.l d0-d7/a0-a2,-(a7)                           ; not called from anywhere in panel.s
@@ -1831,21 +1831,21 @@ display_batman_icon                                     ; orignal routine addres
 .display_loop   move.l (a2),d1                          ; d1 = 32 bit mask value
                 not.l d1                                ; d1 = invert bits
                 and.l d1,(a1)                           ; mask d1.l with contents of      a1 = $7CA44 (start)
-                and.l d1,(a1,$0780)                     ; mask d1.l with contents of a1+1920 = $7D1C4 (start)
-                and.l d1,(a1,$0f00)                     ; mask d1.l with contents of a1+3840 = $7D944 (start)
-                and.l d1,(a1,$1680)                     ; mask d1.l with contents of a1+5769 = $7E0C4 (start) 
+                and.l d1,$0780(a1)                      ; mask d1.l with contents of a1+1920 = $7D1C4 (start)
+                and.l d1,$0f00(a1)                      ; mask d1.l with contents of a1+3840 = $7D944 (start)
+                and.l d1,$1680(a1)                      ; mask d1.l with contents of a1+5769 = $7E0C4 (start) 
                 move.l (a0),d2                          ; d2 = 32 bits source gfx
                 or.l d2,(a1)                            ; add source gfx to dest address (bitplane 1)
-                move.l (a0,$0034),d2                    ; d2 = 32 bit source gfx (52 byte offset) (52/4 = 13 - 32 pixels wide x 13 pixels high )
-                or.l d2,(a1,$0780)                      ; add source gfx to dest address (bitplane 2)
-                move.l (a0,$0068),d2                    ; d2 = 32 bit source gfx (104 byte offset)
-                or.l d2,(a1,$0f00)                      ; add source gfx to dest address (bitplane 3)
-                move.l (a0,$009c),d2                    ; d2 = 32 bit source gfx (156 byte offset)
-                or.l d2,(a1,$1680)                      ; add source gfx to dest address (biitplane 4)
+                move.l $0034(a0),d2                    ; d2 = 32 bit source gfx (52 byte offset) (52/4 = 13 - 32 pixels wide x 13 pixels high )
+                or.l d2,$0780(a1)                      ; add source gfx to dest address (bitplane 2)
+                move.l $0068(a0),d2                    ; d2 = 32 bit source gfx (104 byte offset)
+                or.l d2,$0f00(a1)                      ; add source gfx to dest address (bitplane 3)
+                move.l $009c(a0),d2                    ; d2 = 32 bit source gfx (156 byte offset)
+                or.l d2,$1680(a1)                      ; add source gfx to dest address (biitplane 4)
                 adda.l #$00000028,a1                    ; a1 = add 40 bytes to destination address (next scanline bitplane 1)
                 addq.l #$04,a2                          ; a2 = increase mask ptr
                 addq.l #$04,a0                          ; a0 = increase source gfx ptr
-                dbf.w d0,display_loop                   ; loop next display line
+                dbf.w d0,.display_loop                  ; loop next display line
                 rts
 
 
@@ -1864,13 +1864,13 @@ L0007fa16        lea.l panel_gfx+((40*4)+16),a1                      ; destinati
 ;0007fa16        lea.l player_energy_display_location,a1             ; destination bitplanes for player energy display (batman/joker energy meter)
 L0007fa1c        move.l a1,player_energy_display_location_ptr        ; store ptr to the energy meter location in the panel display.
 L0007fa22       move.l (a0),(a1)
-L0007fa24        move.l (a0,$0004),(a1,$0004)
-L0007fa2a        move.l (a0,$0148),(a1,$0780)
-L0007fa30        move.l (a0,$014c),(a1,$0784)
-L0007fa36        move.l (a0,$0290),(a1,$0f00)
-L0007fa3c        move.l (a0,$0294),(a1,$0f04)
-L0007fa42        move.l (a0,$03d8),(a1,$1680)
-L0007fa48        move.l (a0,$03dc),(a1,$1684)
+L0007fa24        move.l $0004(a0),$0004(a1)
+L0007fa2a        move.l $0148(a0),$0780(a1)
+L0007fa30        move.l $014c(a0),$0784(a1)
+L0007fa36        move.l $0290(a0),$0f00(a1)
+L0007fa3c        move.l $0294(a0),$0f04(a1)
+L0007fa42        move.l $03d8(a0),$1680(a1)
+L0007fa48        move.l $03dc(a0),$1684(a1)
 L0007fa4e        addq.l #$08,a0
 L0007fa50        adda.l #$00000028,a1
 L0007fa56        dbf.w   d0,L0007fa22
@@ -1921,16 +1921,12 @@ L0007faa0        movea.l player_energy_display_location_ptr,a1       ; a1 = dest
 
 L0007faa6        move.l (a0),(a1)                        ; copy 4 bytes source to dest,                  - 0007faa6
 L0007faa8        move.l $0004(a0),$0004(a1)              ; copy 4 bytes source+4 to dest + 4             - 0007faa8
-
-L0007faae        move.l (a0,$0148),(a1,$0780)            ; copy 4 bytes source+328 to dest+328           - 0007faae
-L0007fab4        move.l (a0,$014c),(a1,$0784)            ; copy 4 bytes source+332 to desc+332           - 0007fab4
-
-L0007faba        move.l (a0,$0290),(a1,$0f00)            ; copy 4 bytes source+656 to desc+656           - 0007faba
-L0007fac0        move.l (a0,$0294),(a1,$0f04)            ; copy 4 bytes source+660 to dest+660           - 0007fac0
-
-L0007fac6        move.l (a0,$03d8),(a1,$1680)            ; copy 4 bytes source+984 to dest+984           - 0007fac6
-L0007facc        move.l (a0,$03dc),(a1,$1684)            ; copy 4 bytes source+988 to dest+988           - 0007facc
-
+L0007faae        move.l $0148(a0),$0780(a1)              ; copy 4 bytes source+328 to dest+328           - 0007faae
+L0007fab4        move.l $014c(a0),$0784(a1)              ; copy 4 bytes source+332 to desc+332           - 0007fab4
+L0007faba        move.l $0290(a0),$0f00(a1)              ; copy 4 bytes source+656 to desc+656           - 0007faba
+L0007fac0        move.l $0294(a0),$0f04(a1)              ; copy 4 bytes source+660 to dest+660           - 0007fac0
+L0007fac6        move.l $03d8(a0),$1680(a1)              ; copy 4 bytes source+984 to dest+984           - 0007fac6
+L0007facc        move.l $03dc(a0),$1684(a1)              ; copy 4 bytes source+988 to dest+988           - 0007facc
 L0007fad2        addq.l #$08,a0                          ; increment source by 8 bytes                   - 0007fad2
 L0007fad4        adda.l #$00000028,a1                    ; increment dest by 40 bytes (320 pixel width)  - 0007fad4
 
@@ -2013,7 +2009,7 @@ L0007fbb4        and.b #$f0,d1
 L0007fbb8        cmp.b d0,d1
 L0007fbba        beq.b L0007fbc0
 L0007fbbc        bsr.w do_add_extra_life                     ; calls $0007f95a
-LL007fbc0        movem.l (a7)+,d0-d1
+L0007fbc0        movem.l (a7)+,d0-d1
 L0007fbc4        move.b $0007c87f,d0
 L0007fbca        cmp.b $0007c88d,d0
 L0007fbd0        beq.b L0007fbe0
@@ -2065,11 +2061,11 @@ L0007fc76       rts
                 ; IN: D0.w = value to set clock timer (BCD Minutes:Seconds)
                 ;
 do_initialise_level_timer
-L0007fc78       move.w d0,clock_timer                               ; d0 = clock timer value (minutes and seconds) in BCD format $0007c884                 ; L0007fc78
-                move.w #$0032,frame_tick                            ; set frame_tick to 50, $0007c880       - 0007fc7e
-                bsr.w L0007fd28                                     ; calls $0007fd28                       - 0007fc86
-                clr.w clock_timer_update_value                      ; pause the level timer                 - 0007fc8a
-                clr.b panel_status_1                                ; clear panel status byte 1             - 0007fc90
+L0007fc78       move.w  d0,clock_timer                              ; d0 = clock timer value (minutes and seconds) in BCD format $0007c884                 ; L0007fc78
+                move.w  #$0032,frame_tick                           ; set frame_tick to 50, $0007c880       - 0007fc7e
+                bsr.w   display_level_timer                         ; calls $0007fd28                       - 0007fc86
+                clr.w   clock_timer_update_value                    ; pause the level timer                 - 0007fc8a
+                clr.b   panel_status_1                              ; clear panel status byte 1             - 0007fc90
                 rts                                                 ; return                                - 0007fc96
 
 
@@ -2085,74 +2081,92 @@ L0007fc78       move.w d0,clock_timer                               ; d0 = clock
 do_panel_update                                             ; original routine address
                 bsr.w update_hit_damage                     ; calls L0007fa7e,update energy loss / lives        - 0007fc98
 
-L0007fc9c        cmp.w #$9999,clock_timer_update_value       ; test value in 0007c882.w                          - 0007fc9c
-L0007fca4        beq.w L0007fd1a                             ; if = #$9999 then exit, jmp $7fd1a                 - 0007fca4
+                cmp.w #$9999,clock_timer_update_value       ; test value in 0007c882.w                          - 0007fc9c
+                beq.w .exit_do_panel_update                  ; if = #$9999 then exit, jmp $7fd1a                 - 0007fca4
 
-L0007fca8        sub.w #$0001,frame_tick                     ; subtract 1 from frame tick $0007c880              `- 0007fca8
-L0007fcb0        bpl.w L0007fcf6                             ; if (tick > 0) jmp 0007fcb0                        - 0007fcb0
+                sub.w #$0001,frame_tick                     ; subtract 1 from frame tick $0007c880              `- 0007fca8
+                bpl.w .display_clock_timer_separator         ; if (tick > 0) jmp 0007fcf6                        - 0007fcb0
 
 .reset_frame_tick                                           ; else
-L0007fcb4        move.w #$0032,frame_tick                    ; set tick to 50 $0007c880
+                move.w #$0032,frame_tick                    ; set tick to 50 $0007c880
 
-L0007fcbc        tst.w clock_timer                           ; test clock timer = 0 (minutes and seconds) $0007c884
-L0007fcc2        beq.w clock_timer_expired                   ; if clock_timer = 0, jmp $0007fd1c
+                tst.w clock_timer                           ; test clock timer = 0 (minutes and seconds) $0007c884
+                beq.w .clock_timer_expired                   ; if clock_timer = 0, jmp $0007fd1c
 
-L0007fcc6        lea.l clock_timer_update_value+2,a0         ; clock timer update value address
-L0007fccc        lea.l clock_timer+2,a1                      ; clock timer end address $0007c886
-L0007fcd2        move #$10,ccr
-;L0007fcd2        move.b #$10,ccr
-L0007fcd6        sbcd.b -(a0),-(a1)                          ; subtract BCD byte from word before timer from clock seconds
-L0007fcd8        sbcd.b -(a0),-(a1)                          ; subtract BCD byte from word before time from clock minutes
+                lea.l clock_timer_update_value+2,a0         ; clock timer update value address
+                lea.l clock_timer+2,a1                      ; clock timer end address $0007c886
+                move #$10,ccr
+;L0007fcd2      move.b #$10,ccr
+                sbcd.b -(a0),-(a1)                          ; subtract BCD byte from word before timer from clock seconds
+                sbcd.b -(a0),-(a1)                          ; subtract BCD byte from word before time from clock minutes
 
 .check_minutes_decremented
-L0007fcda        move.b clock_timer_seconds,d0               ; d0 = timer seconds value $0007c885
-L0007fce0        and.b #$f0,d0                               ; d0 = mask least significant seconds digit
-L0007fce4        cmp.b #$90,d0                               ; if seconds value starts with '9' then minutes were decremented
-L0007fce8        bne.b .display_clock_timer_value            ; else continue to display clock_timer value $0007fcf2
+                move.b clock_timer_seconds,d0               ; d0 = timer seconds value $0007c885
+                and.b #$f0,d0                               ; d0 = mask least significant seconds digit
+                cmp.b #$90,d0                               ; if seconds value starts with '9' then minutes were decremented
+                bne.b .display_clock_timer_value            ; else continue to display clock_timer value $0007fcf2
 .minutes_decremented
-L0007fcea        move.b #$59,clock_timer_seconds             ; set seconds from '99' to '59' for correct seconds value as BCD $7c885
+                move.b #$59,clock_timer_seconds             ; set seconds from '99' to '59' for correct seconds value as BCD $7c885
+
 .display_clock_timer_value
-L0007fcf2       bsr.w L0007fd28
+                bsr.w display_level_timer                   ; calls $0007fd28
 
-L0007fcf6       move.w #$000a,d0
-L0007fcfa        cmp.w #$0019,frame_tick                     ; compare frame tick to #$19 (25) $0007c880
-L0007fd02        beq.b   L0007fd12
-L0007fd04        cmp.w #$0032,frame_tick                     ; compare frame tick to #$32 (50) $0007c880
-L0007fd0c        bne.b L0007fd1a
-L0007fd0e        move.w #$000b,d0
-L0007fd12       move.w #$1d19,d1
-L0007fd16        bsr.w display_timer_digit                   ; calls $0007fde2
-L0007fd1a       rts
+.display_clock_timer_separator
+                move.w  #$000a,d0                                   ; d0 = timer separator 1 - table offset
+                cmp.w   #$0019,frame_tick                           ; compare frame tick to #$19 (25) $0007c880
+                beq.b   .display_timer_seperator                    ; on half second frame_tick - L0007fd12
+                cmp.w   #$0032,frame_tick                           ; compare frame tick to #$32 (50) $0007c880
+                bne.b   .exit_do_panel_update                        ; jump exit, $0007fd1a
+                move.w  #$000b,d0                                   ; d0 = timer separator 2 - table offset
+                                                                    ; on full second frame_tick 
+.display_timer_seperator
+                move.w  #$1d19,d1                                   ; d1 = x,y co-oords for display
+                bsr.w   display_timer_digit                         ;display the separator character - calls $0007fde2
+.exit_do_panel_update
+                rts                                                 ; return
 
-clock_timer_expired                                             ; original routine address $0007fd1c
-L0007fd1c       bset.b #CLOCK_TIMER_EXPIRED,panel_status_1      ; set bit 0 of status byte 1 (clock timer expired = 00:00)
-L0007fd24        bra.w L0007fcf6
+.clock_timer_expired                                             ; original routine address $0007fd1c
+                bset.b #CLOCK_TIMER_EXPIRED,panel_status_1      ; set bit 0 of status byte 1 (clock timer expired = 00:00)
+                bra.w .display_clock_timer_separator            ; L0007fcf6
 
 
 
 
 
 
-                ;--------------------- display level timer --------------------------
-                ; display minutes:seconds timer on the panel display.
-                ;            
-display_level_timer
-L0007fd28       moveq #$00,d0                               ; d0.l = 0
-                move.b clock_timer_seconds,d0               ; d0.b = clock timer seconds in BCD from location $0007c885
-                move.w #$1f19,d1                            ; d1.w = #$1f19 (x = 31, y = 25 coords)
-                bsr.w display_timer_digit                   ; calls $0007fde2
-                move.b clock_timer_seconds,d0                  ;$0007c885,d0
-                lsr.b #$04,d0
-                move.w #$1e19,d1
-                bsr.w display_timer_digit                   ; calls $0007fde2
-                move.b clock_timer_minutes,d0
-                move.w #$1c19,d1
-                bsr.w display_timer_digit                   ; calls $0007fde2
-                move.b clock_timer_minutes,d0
-                lsr.b #$04,d0
-                move.w #$1b19,d1
-                bra.w display_timer_digit                   ; calls $0007fde2 and returns
-
+                ;-------------------------- Display Level Timer --------------------------
+                ; Displays 'minutes:seconds' (00:00) timer digits on the panel display.     
+                ; uses:
+                ; - d0  - lower 4 bts = BCD digit to display (0 - 9)
+                ;
+                ; - d1  - X,Y co-oord
+                ;       - x = (8-15) byte, offset from the left
+                ;       - y = (0-7)  byte, lines from top of display (320 wide assumed))
+                ;
+                ; - calls display_timer_digit - $0007c885
+                ;       - display each timer digit in-turn
+                ;
+                ; called by:
+                ;   - do_panel_update
+                ;   - do_initialise_level_timer
+                ;
+display_level_timer                                                 ; original routine address $0007fd28
+                moveq #$00,d0                                       ; d0.l = 0 - holds BCD digit to disply
+.disply_1st     move.b clock_timer_seconds,d0                       ; d0.b = clock timer seconds in BCD from location $0007c885
+                move.w #$1f19,d1                                    ; d1.w = #$1f19 (x = 31, y = 25 - display co-ords)
+                bsr.w display_timer_digit                           ; Display the digit in lower 4 bits of d0, calls $0007fde2
+.display_2nd    move.b clock_timer_seconds,d0                       ; d0.b = clock timer seconds in BCD from location $0007c885
+                lsr.b #$04,d0                                       ; shift 2nd digit into low 4 bits for display
+                move.w #$1e19,d1                                    ; d1.w = #$1e19 (x = 30, y = 25 - display co-ords)
+                bsr.w display_timer_digit                           ; Display the digit in lower 4 bits of d0, calls $0007fde2
+.display_3rd    move.b clock_timer_minutes,d0                       ; d0.b = clock timer minutes in BCD from location $0007c885
+                move.w #$1c19,d1                                    ; d1.w = #$1c19 (x = 28, y = 25 - display co-ords)
+                bsr.w display_timer_digit                           ; Display the digit in lower 4 bits of d0, calls $0007fde2
+.display_4th    move.b clock_timer_minutes,d0                       ; d0.b = clock timer minutes in BCD from location $0007c885
+                lsr.b #$04,d0                                       ; shift 2nd digit into low 4 bits for display
+                move.w #$1b19,d1                                    ; d1.w = #$1b19 (x = 27, y = 25 - display co-ords)
+                bra.w display_timer_digit                           ; Display the digit in lower 4 bits of d0, calls $0007fde2
+                ; uses rts in last call to return
 
 
 
@@ -2177,12 +2191,12 @@ L0007fd9c        add.l #$0007f0a2,d0
 L0007fda2        movea.l d0,a1
 L0007fda4       moveq #$03,d2
 L0007fda6       move.b (a1),(a0)
-L0007fda8        move.b (a1,$0002),(a0,$0028)
-L0007fdae        move.b (a1,$0004),(a0,$0050)
-L0007fdb4        move.b (a1,$0006),(a0,$0078)
-L0007fdba        move.b (a1,$0008),(a0,$00a0)
-L0007fdc0        move.b (a1,$000a),(a0,$00c8)
-L0007fdc6        move.b (a1,$000c),(a0,$00f0)
+L0007fda8        move.b $0002(a1),$0028(a0)
+L0007fdae        move.b $0004(a1),$0050(a0)
+L0007fdb4        move.b $0006(a1),$0078(a0)
+L0007fdba        move.b $0008(a1),$00a0(a0)
+L0007fdc0        move.b $000a(a1),$00c8(a0)
+L0007fdc6        move.b $000c(a1),$00f0(a0)
 L0007fdcc        adda.l #$00000780,a0
 L0007fdd2        adda.l #$0000000e,a1
 L0007fdd8        dbf.w d2,L0007fda6
@@ -2197,7 +2211,13 @@ L0007fde0        rts
                 ; The co-ords passed in d1
                 ;
                 ; IN: d0.b = BCD value to display (byte)
+                ;            - values 10 & 11 are animation for timer separator ':'
+                ;
                 ; IN: d1.w = x,y location to display the digits (x = horizontal bytes offest, y = scanline offset)
+                ;
+                ; called by:
+                ;   - display_level_timer   - (display digits 'xx xx')
+                ;   - do_panel_update       - (display separator ':')
                 ;
 display_timer_digit                                                 ; original routine address $0007fde2
                 and.l #$0000ffff,d0                                 ; clamp d0.l to a 16bit word
@@ -2212,21 +2232,21 @@ display_timer_digit                                                 ; original r
                 and.w #$000f,d0                                     ; d0 = first digit to draw
                 add.w d0,d0                                         ; d0 = word index to digit gfx
                 lea.l digit_gfx_offset_table,a2                     ; a2 = digit gfx offset lookup tablle
-                move.w (a2,d0.W,$00),d0                             ; d0 = digit byte offset into gfx data
+                move.w (a2,d0),d0                                   ; d0 = digit byte offset into gfx data
                 add.l #timer_digit_gfx,d0                           ; d0 = address of digit to draw
                 movea.l d0,a1                                       ; a1 = address of digit to draw
                 moveq #$03,d2                                       ; d2 = 3 + 1 = 4 bitplanes
 .bitplane_loop  move.b (a1),(a0)                                    ; copy gfx data - src to dest - line 0
-                move.b (a1,$0002),(a0,$0028)                        ; copy gfx data - src to dest - line 1
-                move.b (a1,$0004),(a0,$0050)                        ; copy gfx data - src to dest - line 2
-                move.b (a1,$0006),(a0,$0078)                        ; copy gfx data - src to dest - line 3
-                move.b (a1,$0008),(a0,$00a0)                        ; copy gfx data - src to dest - line 4
-                move.b (a1,$000a),(a0,$00c8)                        ; copy gfx data - src to dest - line 5
-                move.b (a1,$000c),(a0,$00f0)                        ; copy gfx data - src to dest - line 6
-                move.b (a1,$000e),(a0,$0118)                        ; copy gfx data - src to dest - line 7
-                move.b (a1,$0010),(a0,$0140)                        ; copy gfx data - src to dest - line 8
-                move.b (a1,$0012),(a0,$0168)                        ; copy gfx data - src to dest - line 9
-                move.b (a1,$0014),(a0,$0190)                        ; copy gfx data - src to dest - line 10
+                move.b $0002(),$0028(a0)                            ; copy gfx data - src to dest - line 1
+                move.b $0004(a1),$0050(a0)                          ; copy gfx data - src to dest - line 2
+                move.b $0006(a1),$0078(a0)                          ; copy gfx data - src to dest - line 3
+                move.b $0008(a1),$00a0(a0)                          ; copy gfx data - src to dest - line 4
+                move.b $000a(a1),$00c8(a0)                          ; copy gfx data - src to dest - line 5
+                move.b $000c(a1),$00f0(a0)                          ; copy gfx data - src to dest - line 6
+                move.b $000e(a1),$0118(a0)                          ; copy gfx data - src to dest - line 7
+                move.b $0010(a1),$0140(a0)                          ; copy gfx data - src to dest - line 8
+                move.b $0012(a1),$0168(a0)                          ; copy gfx data - src to dest - line 9
+                move.b $0014(a1),$0190(a0)                          ; copy gfx data - src to dest - line 10
                 adda.l #$00000780,a0                                ; increment to next bitplane #$780 = 1920 bytes (height = 48 scanlines)
                 adda.l #$00000016,a1                                ; next digit bitplane (16 x 16 pixels )
                 dbf.w d2,.bitplane_loop                             ; do next bitplane, loop to $0007fe1a
@@ -2253,8 +2273,8 @@ digit_gfx_offset_table                                              ; original a
             dc.w $0268          ; digit 7 - offset
             dc.w $02C0          ; digit 8 - offset
             dc.w $0318          ; digit 9 - offset
-            dc.w $0000          ; DIGIT (UNKNOWN) - offset
-            dc.w $03C8          ; DIGIT (UNKNOWN) - offset
+            dc.w $0000          ; Timer Separator Animation 1 - offset
+            dc.w $03C8          ; Timer Seperator Animation 2 - offset
 
 
 other_data

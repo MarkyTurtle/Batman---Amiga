@@ -17,8 +17,8 @@
 				"command": "${config:amiga-assembly.binDir}/vlink",
 				"includes": "*.{s,S,asm,ASM}",
 				"excludes": "",
-				"exefilename": "../uae/dh0/bootblock",
-				"entrypoint": "bootblock.s",
+				"exefilename": "../uae/dh0/panel",
+				"entrypoint": "panel.s",
 				"args": [
 					"-bamigahunk",
 					"-Bstatic"
