@@ -1,6 +1,6 @@
 
 
-                section bootblock,code
+                section panel,code_c
 
 
 
@@ -25,7 +25,7 @@ panel
                 ; Something else seems to be adding extra calls to this make make the 
                 ; timer run down slightly quicker in the cracked version.
                 ;
-Panel_Update                                                        ; $0007c800 called every frame by game code level 3 interrupt
+Panel_Update                                                        ; $0007c800 called every frame by game code level 3 VBL interrupt
                 movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c800
                 bsr.w   do_panel_update                             ; calls $0007fc98
                 movem.l (a7)+,d0-d7/a0-a2
@@ -34,13 +34,19 @@ Panel_Update                                                        ; $0007c800 
 
 
                 ;----------------------- INITIALISE LEVEL TIMER - $0007c80e -----------------------
+                ; initialise the level timer to the value set in d0.w, pause the timer by clearing
+                ; the update value.
+                ; 
                 ; IN: D0.w - Game Level Timer Value (BCD Minutes:Seconds)
+                ;           - high byte = BCD minutes
+                ;           - low byte  = BCD seconds
                 ;
 Initialise_Level_Timer      
                 movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c80e
-                bsr.w   L0007fc78
+                bsr.w   do_initialise_level_timer                   ; calls $0007fc78
                 movem.l (a7)+,d0-d7/a0-a2
                 rts  
+
 
 L0007c81c       
                 movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c81c
@@ -87,14 +93,21 @@ Initialise_Player_Energy
 
 
 
-L0007c862       
+                ;----------------------- LOSE A LIFE - $0007c862 -------------------------
+                ; reduce player lives, reset vars and check no lioves remaining.
+Lose_a_Life                                                         ; original routine address $0007c862       
                 movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c862
-                bsr.w   L0007fb00
+                bsr.w   do_lose_a_life                              ; calls $0007fb00
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
-L0007c870       
-                bra.w L0007fa66                                     ; original routine address $0007c870
+
+
+                ;----------------------- ADD HIT DAMAGE - $0007c870 -------------------------
+                ; Add hit damage to the player, to be subtracted from their energy value.
+                ; IN: D0.w - hit damage to add to player
+Add_Hit_Damage       
+                bra.w do_add_hit_damage                             ; calls $0007fa66 ; original routine address $0007c870
 
 
 
@@ -123,8 +136,10 @@ player_lives_count                          ; original address $0007c876
                 dc.w    $0000               ; possible lives counter
 
 
-L0007c878       dc.w    $0000, $0000
-L0007c87c       dc.w    $0000, $0000
+
+L0007c878       dc.l    $00000000
+L0007c87c       dc.l    $00000000
+
 
 
 frame_tick                                  ; original address $0007c880
@@ -144,7 +159,8 @@ clock_timer_seconds
 
                 even
 L0007c886       dc.w $0000
-L0007c888       dc.w $0000, $ffff
+L0007c888       dc.w $0000
+L0007c88a       dc.w $ffff
 L0007c88c       dc.w $ffff       
 
 
@@ -1783,32 +1799,42 @@ L0007f956        movem.l d0-d7/a0-a2,-(a7)                           ; not calle
                 ; called from main api entry point at address $0007f95a
                 ; also called from routine as address $0007fbbc
                 ; Adds an extra player life & update the panel display.
-do_add_extra_life                                           ; original routine address - $0007f95a
-                lea.l batman_lives_icon_on,a0               ; icon display address.                             - $0007f95a
-                move.w player_lives_count,d0                ; d0 = player lives count (icon index)              - $0007f960
-                add.w #$0001,player_lives_count             ; increment player lives count                      - $0007f966
-                cmp.w #$0003,d0                             ; update display if lives <= 3                      - $0007f96e
-                blt.w display_batman_icon                   ; jmp $0007f9ac                                     - $0007f972
+                ;
+                ; called from
+                ;   Add_Extra_Life  - main api
+                ;   in progress
+                ;
+do_add_extra_life                                                   ; original routine address - $0007f95a
+                lea.l batman_lives_icon_on,a0                       ; icon display address.                             - $0007f95a
+                move.w player_lives_count,d0                        ; d0 = player lives count (icon index)              - $0007f960
+                add.w #$0001,player_lives_count                     ; increment player lives count                      - $0007f966
+                cmp.w #$0003,d0                                     ; update display if lives <= 3                      - $0007f96e
+                blt.w display_batman_icon                           ; jmp $0007f9ac                                     - $0007f972
                 rts
+
 
 
 
                 ;----------- do initialise player lives -----------
                 ; called from main api entry point to initialise
                 ; player lives to 2 and update panel display.
+                ;
+                ; called from
+                ;   Initialise_Player_Lives     - main api
+                ;
 do_initialise_player_lives                                          ; original routine address $0007f978
                 move.w #$0002,player_lives_count                    ; set player lives count = 2
-L0007f980        clr.b panel_status_1                                ; clear panel status byte 1                 - 0007f980
-L0007f986        moveq #$00,d0                                       ; D0 = icon index
-L0007f988        lea.l batman_lives_icon_on,a0                       ; A0 = icon display address
-L0007f98e        bsr.w display_batman_icon                           ; calls $0007f9ac
-L0007f992        moveq #$01,d0                                       ; D0 = icon index
-L0007f994        lea.l batman_lives_icon_on,a0                       ; A0 = icon display address
-L0007f99a        bsr.w display_batman_icon                           ; calls $0007f9ac
-L0007f99e        moveq #$02,d0                                       ; D0 = icon index
-L0007f9a0        lea.l batman_lives_icon_off,a0                      ; Display 'unlit' lives icon (posiiton 3), original icon address $0007f86c
-L0007f9a6        bsr.w display_batman_icon                           ; calls $0007f9ac
-L0007f9aa        rts
+                clr.b panel_status_1                                ; clear panel status byte 1                 - 0007f980
+                moveq #$00,d0                                       ; D0 = icon index
+                lea.l batman_lives_icon_on,a0                       ; A0 = icon display address
+                bsr.w display_batman_icon                           ; calls $0007f9ac
+                moveq #$01,d0                                       ; D0 = icon index
+                lea.l batman_lives_icon_on,a0                       ; A0 = icon display address
+                bsr.w display_batman_icon                           ; calls $0007f9ac
+                moveq #$02,d0                                       ; D0 = icon index
+                lea.l batman_lives_icon_off,a0                      ; Display 'unlit' lives icon (posiiton 3), original icon address $0007f86c
+                bsr.w display_batman_icon                           ; calls $0007f9ac
+                rts
 
 
 
@@ -1820,32 +1846,37 @@ L0007f9aa        rts
                 ; panel gfx = 320 x 48 pixels (1920 bytes per bitplane)
                 ; batman symbol = 32 x 13 pixels (52 bytes per bitplane)
                 ;
-display_batman_icon                                     ; orignal routine address $0007f9ac
-                asl.w #$02,d0                           ; d0 = d0 * 4 (source image index)
-                movea.l a0,a2                           ; a0,a2 = copy source gfx ptr
-                suba.l #$00000034,a2                    ; a2 = subtract 52 from ptr = gfx mask start address (52 bytes before gfx data)
-                lea.l panel_gfx+((40*10)+26),a1         ; a1 = desintaion address = $0007ca44 (1st batman lives icon)
-                ;lea.l $0007ca44,a1                      ; a1 = desintaion address = $0007ca44 (1st batman lives icon)
-                adda.w d0,a1                            ; a1 = destination address + offset to area to update (lives icon)
-                move.w #$000c,d0                        ; d0 = 12 + 1 - loop counter 
-.display_loop   move.l (a2),d1                          ; d1 = 32 bit mask value
-                not.l d1                                ; d1 = invert bits
-                and.l d1,(a1)                           ; mask d1.l with contents of      a1 = $7CA44 (start)
-                and.l d1,$0780(a1)                      ; mask d1.l with contents of a1+1920 = $7D1C4 (start)
-                and.l d1,$0f00(a1)                      ; mask d1.l with contents of a1+3840 = $7D944 (start)
-                and.l d1,$1680(a1)                      ; mask d1.l with contents of a1+5769 = $7E0C4 (start) 
-                move.l (a0),d2                          ; d2 = 32 bits source gfx
-                or.l d2,(a1)                            ; add source gfx to dest address (bitplane 1)
-                move.l $0034(a0),d2                    ; d2 = 32 bit source gfx (52 byte offset) (52/4 = 13 - 32 pixels wide x 13 pixels high )
-                or.l d2,$0780(a1)                      ; add source gfx to dest address (bitplane 2)
-                move.l $0068(a0),d2                    ; d2 = 32 bit source gfx (104 byte offset)
-                or.l d2,$0f00(a1)                      ; add source gfx to dest address (bitplane 3)
-                move.l $009c(a0),d2                    ; d2 = 32 bit source gfx (156 byte offset)
-                or.l d2,$1680(a1)                      ; add source gfx to dest address (biitplane 4)
-                adda.l #$00000028,a1                    ; a1 = add 40 bytes to destination address (next scanline bitplane 1)
-                addq.l #$04,a2                          ; a2 = increase mask ptr
-                addq.l #$04,a0                          ; a0 = increase source gfx ptr
-                dbf.w d0,.display_loop                  ; loop next display line
+                ; called from:
+                ;   do_lose_a_life
+                ;   do_add_extra_life
+                ;   do_intiialise_player_lives
+                ;
+display_batman_icon                                                 ; orignal routine address $0007f9ac
+                asl.w #$02,d0                                       ; d0 = d0 * 4 (source image index)
+                movea.l a0,a2                                       ; a0,a2 = copy source gfx ptr
+                suba.l #$00000034,a2                                ; a2 = subtract 52 from ptr = gfx mask start address (52 bytes before gfx data)
+                lea.l panel_gfx+((40*10)+26),a1                     ; a1 = desintaion address = $0007ca44 (1st batman lives icon)
+                ;lea.l $0007ca44,a1                                 ; a1 = desintaion address = $0007ca44 (1st batman lives icon)
+                adda.w d0,a1                                        ; a1 = destination address + offset to area to update (lives icon)
+                move.w #$000c,d0                                    ; d0 = 12 + 1 - loop counter 
+.display_loop   move.l (a2),d1                                      ; d1 = 32 bit mask value
+                not.l d1                                            ; d1 = invert bits
+                and.l d1,(a1)                                       ; mask d1.l with contents of      a1 = $7CA44 (start)
+                and.l d1,$0780(a1)                                  ; mask d1.l with contents of a1+1920 = $7D1C4 (start)
+                and.l d1,$0f00(a1)                                  ; mask d1.l with contents of a1+3840 = $7D944 (start)
+                and.l d1,$1680(a1)                                  ; mask d1.l with contents of a1+5769 = $7E0C4 (start) 
+                move.l (a0),d2                                      ; d2 = 32 bits source gfx
+                or.l d2,(a1)                                        ; add source gfx to dest address (bitplane 1)
+                move.l $0034(a0),d2                                 ; d2 = 32 bit source gfx (52 byte offset) (52/4 = 13 - 32 pixels wide x 13 pixels high )
+                or.l d2,$0780(a1)                                   ; add source gfx to dest address (bitplane 2)
+                move.l $0068(a0),d2                                 ; d2 = 32 bit source gfx (104 byte offset)
+                or.l d2,$0f00(a1)                                   ; add source gfx to dest address (bitplane 3)
+                move.l $009c(a0),d2                                 ; d2 = 32 bit source gfx (156 byte offset)
+                or.l d2,$1680(a1)                                   ; add source gfx to dest address (biitplane 4)
+                adda.l #$00000028,a1                                ; a1 = add 40 bytes to destination address (next scanline bitplane 1)
+                addq.l #$04,a2                                      ; a2 = increase mask ptr
+                addq.l #$04,a0                                      ; a0 = increase source gfx ptr
+                dbf.w d0,.display_loop                              ; loop next display line
                 rts
 
 
@@ -1856,38 +1887,48 @@ display_batman_icon                                     ; orignal routine addres
                 ; reset the player's energy to 'full' and restore the bitplane ptrs
                 ; and panel display graphics for the energy meter
 do_initialise_player_energy                                         ; original address $0007fa00
-L0007fa00       move.w #$0028,d0                                    ; D0 = 40 + 1 - loop counter (initial energy value)
-L0007fa04        move.w d0,player_remaining_energy                   ; set player remaining energy level as address $0007c88e
-L0007fa0a        clr.w player_hit_damage                             ; L0007C890
-L0007fa10        lea.l batman_energy_gfx,a0                          ; batman energy meter source gfx address
-L0007fa16        lea.l panel_gfx+((40*4)+16),a1                      ; destination bitplanes for player energy display (batman/joker energy meter)
-;0007fa16        lea.l player_energy_display_location,a1             ; destination bitplanes for player energy display (batman/joker energy meter)
-L0007fa1c        move.l a1,player_energy_display_location_ptr        ; store ptr to the energy meter location in the panel display.
-L0007fa22       move.l (a0),(a1)
-L0007fa24        move.l $0004(a0),$0004(a1)
-L0007fa2a        move.l $0148(a0),$0780(a1)
-L0007fa30        move.l $014c(a0),$0784(a1)
-L0007fa36        move.l $0290(a0),$0f00(a1)
-L0007fa3c        move.l $0294(a0),$0f04(a1)
-L0007fa42        move.l $03d8(a0),$1680(a1)
-L0007fa48        move.l $03dc(a0),$1684(a1)
-L0007fa4e        addq.l #$08,a0
-L0007fa50        adda.l #$00000028,a1
-L0007fa56        dbf.w   d0,L0007fa22
-L0007fa5a        move.l #joker_energy_gfx,joker_energy_gfx_ptr       ; store joker energy display gfx ptr in address $0007C896
-
+                move.w #$0028,d0                                    ; D0 = 40 + 1 - loop counter (initial energy value)
+                move.w d0,player_remaining_energy                   ; set player remaining energy level as address $0007c88e
+                clr.w player_hit_damage                             ; L0007C890
+                lea.l batman_energy_gfx,a0                          ; batman energy meter source gfx address
+                lea.l panel_gfx+((40*4)+16),a1                      ; destination bitplanes for player energy display (batman/joker energy meter)
+                ;lea.l player_energy_display_location,a1             ; destination bitplanes for player energy display (batman/joker energy meter)
+                move.l a1,player_energy_display_location_ptr        ; store ptr to the energy meter location in the panel display.
+.copy_loop      move.l (a0),(a1)                                    ; bitplane 1 - copy 32bits gfx source to dest
+                move.l $0004(a0),$0004(a1)                          ; bitplane 1 - copy 32bits gfx source to dest
+                move.l $0148(a0),$0780(a1)                          ; bitplane 2 - copy 32bits gfx source to dest
+                move.l $014c(a0),$0784(a1)                          ; bitplane 2 - copy 32bits gfx source to dest
+                move.l $0290(a0),$0f00(a1)                          ; bitplane 3 - copy 32bits gfx source to dest
+                move.l $0294(a0),$0f04(a1)                          ; bitplane 4 - copy 32bits gfx source to dest
+                move.l $03d8(a0),$1680(a1)                          ; bitplane 4 - copy 32bits gfx source to dest
+                move.l $03dc(a0),$1684(a1)                          ; bitplane 4 - copy 32bits gfx source to dest
+                addq.l #$08,a0                                      ; increase source ptr by 64 bits
+                adda.l #$00000028,a1                                ; increase dest ptr by 320 pixels (40 bytes)
+                dbf.w   d0,.copy_loop                               ; copy next scan line of gfx, jmp $0007fa22
+                move.l #joker_energy_gfx,joker_energy_gfx_ptr       ; initialise joker energy display gfx ptr in address $0007C896
 Exit
-L0007fa64       rts                                 ; L0007fa64
+                rts                                                 ; shared return with 'update_hit_damage'              - $L0007fa64.
 
 
-L0007fa66        tst.w player_remaining_energy       ; test player remaining energy with 0, as address $0007c88e     - 0007fa66
-L0007fa6c        bne.b L007fa76                      ; 0007fa6c
-L0007fa6e        clr.w player_hit_damage             ; clear 16b its as address $0007C890                    - 0007fa6e
-L0007fa74        rts                                 ;                                                       - 0007fa74
 
 
-L007fa76        add.w d0,player_hit_damage          ; add to player hit/damage as address $0007C890         - L007fa76
-L0007fa7c        rts                                 ;                                                       - 0007fa7c
+                ;--------------------- do add hit damage -----------------------
+                ; Add value in d0.w to player hit damage total. 
+                ; The hit damage is gradually subtracted from the player energy
+                ; during the regular panel_update call.
+                ;
+                ; called from
+                ;   Add_Hit_Damage  - main api
+                ;
+do_add_hit_damage                                   ; original routine address $0007fa66
+                tst.w player_remaining_energy       ; test player remaining energy with 0, as address $0007c88e    - 0007fa66
+                bne.b .increase_hit_damage          ; if player has remaining energy, jmp $0007fa76                - 0007fa6c
+                clr.w player_hit_damage             ; clear 16b its as address $0007C890                           - 0007fa6e
+                rts                                 ; return                                                       - 0007fa74
+
+.increase_hit_damage
+                add.w d0,player_hit_damage          ; add to player hit/damage as address $0007C890                - 0007fa76
+                rts                                 ; return                                                       - 0007fa7c
 
 
 
@@ -1902,42 +1943,40 @@ L0007fa7c        rts                                 ;                          
                 ; over a number of display frames.
                 ; The Player's total remaining life energy is stored in $0007C88E 'player_remaining_energy'
                 ;
-update_hit_damage                                   ; original routine address $0007fa7e 
-                move.w  player_hit_damage,d0        ; d0 = stored word value at address $0007C890           - 0007fa7e
-                bpl.w   .check_is_0                 ; if D0 >= 0 jmp L0007fa90,                             - 0007fa84
+update_hit_damage                                                   ; original routine address $0007fa7e 
+                move.w  player_hit_damage,d0                        ; d0 = stored word value at address $0007C890           - 0007fa7e
+                bpl.w   .check_is_0                                 ; if D0 >= 0 jmp L0007fa90,                             - 0007fa84
 .clamp_value_to_0
-                clr.w   player_hit_damage           ; set player hit/damage to 0 at address $0007C890,      - 0007fa88
-                moveq   #$00,d0                     ; d0.l = 0,                                             - 0007fa8e
+                clr.w   player_hit_damage                           ; set player hit/damage to 0 at address $0007C890,      - 0007fa88
+                moveq   #$00,d0                                     ; d0.l = 0,                                             - 0007fa8e
 .check_is_0
-                beq.b   L0007fa64                   ; if d0 = 0, then exit (jmp L0007fa64),                 - 0007fa90
+                beq.b   Exit                                        ; if d0 = 0, then exit (jmp L0007fa64),                 - 0007fa90
 .decrement_value
-                sub.w   #$0001,player_hit_damage    ; reduce player hit/damage as address $0007C890         - 0007fa92
+                sub.w   #$0001,player_hit_damage                    ; reduce player hit/damage as address $0007C890         - 0007fa92
 
 
                 ; copy bitplane graphics (32 pixels wide)
-                ; update the batman energy display
-L0007fa9a        movea.l joker_energy_gfx_ptr,a0                     ; a0 = ptr to joker energy graphics             - 0007fa9a
-L0007faa0        movea.l player_energy_display_location_ptr,a1       ; a1 = dest ptr panel energy meter display,     - 0007faa0
+                ; update the batman energy display (one scanline)
+                movea.l joker_energy_gfx_ptr,a0                     ; a0 = ptr to joker energy graphics                     - 0007fa9a
+                movea.l player_energy_display_location_ptr,a1       ; a1 = dest ptr panel energy meter display,             - 0007faa0
 
-L0007faa6        move.l (a0),(a1)                        ; copy 4 bytes source to dest,                  - 0007faa6
-L0007faa8        move.l $0004(a0),$0004(a1)              ; copy 4 bytes source+4 to dest + 4             - 0007faa8
-L0007faae        move.l $0148(a0),$0780(a1)              ; copy 4 bytes source+328 to dest+328           - 0007faae
-L0007fab4        move.l $014c(a0),$0784(a1)              ; copy 4 bytes source+332 to desc+332           - 0007fab4
-L0007faba        move.l $0290(a0),$0f00(a1)              ; copy 4 bytes source+656 to desc+656           - 0007faba
-L0007fac0        move.l $0294(a0),$0f04(a1)              ; copy 4 bytes source+660 to dest+660           - 0007fac0
-L0007fac6        move.l $03d8(a0),$1680(a1)              ; copy 4 bytes source+984 to dest+984           - 0007fac6
-L0007facc        move.l $03dc(a0),$1684(a1)              ; copy 4 bytes source+988 to dest+988           - 0007facc
-L0007fad2        addq.l #$08,a0                          ; increment source by 8 bytes                   - 0007fad2
-L0007fad4        adda.l #$00000028,a1                    ; increment dest by 40 bytes (320 pixel width)  - 0007fad4
+                move.l (a0),(a1)                                    ; copy 4 bytes source to dest,                          - 0007faa6
+                move.l $0004(a0),$0004(a1)                          ; copy 4 bytes source+4 to dest + 4                     - 0007faa8
+                move.l $0148(a0),$0780(a1)                          ; copy 4 bytes source+328 to dest+328                   - 0007faae
+                move.l $014c(a0),$0784(a1)                          ; copy 4 bytes source+332 to desc+332                   - 0007fab4
+                move.l $0290(a0),$0f00(a1)                          ; copy 4 bytes source+656 to desc+656                   - 0007faba
+                move.l $0294(a0),$0f04(a1)                          ; copy 4 bytes source+660 to dest+660                   - 0007fac0
+                move.l $03d8(a0),$1680(a1)                          ; copy 4 bytes source+984 to dest+984                   - 0007fac6
+                move.l $03dc(a0),$1684(a1)                          ; copy 4 bytes source+988 to dest+988                   - 0007facc
+                addq.l #$08,a0                                      ; increment source by 8 bytes                           - 0007fad2
+                adda.l #$00000028,a1                                ; increment dest by 40 bytes (320 pixel width)          - 0007fad4
 
-L0007fada        move.l a0,joker_energy_gfx_ptr                      ; store updated ptr to joker energy graphics    - 0007fada
-L0007fae0        move.l a1,player_energy_display_location_ptr        ; store updated dest ptr to panel energy meter  - 0007fae0
+                move.l a0,joker_energy_gfx_ptr                      ; store updated ptr to joker energy graphics            - 0007fada
+                move.l a1,player_energy_display_location_ptr        ; store updated dest ptr to panel energy meter          - 0007fae0
 
-L0007fae6        sub.w #$0001,player_remaining_energy    ; subtract 1 from total energy at $0007c88e     - 0007fae6
-L0007faee        bne.w Exit                              ; not equal to 0 then exit (jmp L0007fa64)      - 0007faee
-L0007faf2        bra.w lose_a_life                       ; is equal to 0 then jmp L0007fb00              - 0007faf2
-
-
+                sub.w #$0001,player_remaining_energy                ; subtract 1 from total energy at $0007c88e             - 0007fae6
+                bne.w Exit                                          ; not equal to 0 then exit (jmp L0007fa64)              - 0007faee
+                bra.w do_lose_a_life                                ; is equal to 0 then jmp L0007fb00                      - 0007faf2
 
 
 
@@ -1945,52 +1984,58 @@ L0007faf2        bra.w lose_a_life                       ; is equal to 0 then jm
 
                 ; player has not lives left
 set_no_lives_left
-L0007faf6       bset.b #NO_LIVES_REMAINING,panel_status_1   ; set bit 1 of status byte 1,               L0007faf6
-                rts                                         ; exit                                      007fafe
+                bset.b #NO_LIVES_REMAINING,panel_status_1           ; set bit 1 of status byte 1,               L0007faf6
+                rts                                                 ; exit                                      007fafe
 
-                ; do lost life processing
-lose_a_life                                                 ; original routine address $0007fb00
-L0007fb00       clr.w   player_hit_damage                   ; clear 'energy hit/damage' counter as address $0007C890        - 0007fb00
-L0007fb06        tst.w   player_lives_count                  ; test player lives count                                       - 0007fb06
-L0007fb0c        beq.b   L0007faf6                           ; 0007fb0c 
+                ;---------------------- DO LOSE A LIFE - $0007fb00 ---------------------
+                ; player lost a life, reset variables, check no lives left.
+                ; sets status bits in 'panel_status_1' 
+                ;
+                ; called from:
+                ;   - Lose_a_Life       - main api
+                ;   - update_hit_damage -
+                ;
+do_lose_a_life                                                      ; original routine address $0007fb00
+                clr.w   player_hit_damage                           ; clear 'energy hit/damage' counter as address $0007C890        - 0007fb00
+                tst.w   player_lives_count                          ; test player lives count                                       - 0007fb06
+                beq.b   set_no_lives_left                           ; lives = 0, jmp $0007faf6                                      - 0007fb0c 
+.set_status
+                bset.b  #PLAYER_LIFE_LOST,panel_status_1            ; set bit 2 of status byte 1,                                   - 0007fb0e
+                btst.b  #INFINITE_LIVES,panel_status_2              ; test bit 7 of status byte 2,                                  - 0007fb16
+                bne.b   .exit_do_lose_life                          ; if bit 7 = 1, jmp $0007fb3e                                   - 0007fb1e
+.reduce_player_count
+                subq.w  #$01,player_lives_count                     ; decrement player lives count                                  - 0007fb20
+                move.w  player_lives_count,d0                       ; d0 = player lives count                                       - 0007fb26
+.chk_update_display
+                cmp.w   #$0002,d0                                   ; test lives remaining                                          - 0007fb2c
+                bgt.w   .exit_do_lose_life                          ; if > 2 lives left then do not update display, jmp L0007fb3e   - 0007fb30
+.update_display
+                lea.l   batman_lives_icon_off,a0                    ; a0 = source gfx orignal address $0007f86c                     - 0007fb34
+                bra.w   display_batman_icon                         ; d0 = icon to update, a0 = source gfx, jmp $0007f9ac           - 0007fb3a
+.exit_do_lose_life
+                rts                                                 ; L0007fb3e
 
-                ; player lost life
-L0007fb0e        bset.b  #PLAYER_LIFE_LOST,panel_status_1    ; set bit 2 of status byte 1,               0007fb0e
-L0007fb16        btst.b  #INFINITE_LIVES,panel_status_2      ; set bit 7 of status byte 2,               0007fb16
-L0007fb1e        bne.b   L0007fb3e                           ; 0007fb1e
-
-                ; subtract play lives
-L0007fb20        subq.w  #$01,player_lives_count     ; decrement player lives count              0007fb20
-L0007fb26        move.w  player_lives_count,d0       ; d0 = player lives count                   0007fb26
-
-                ; check if > 2 lives left
-L0007fb2c        cmp.w   #$0002,d0                   ; 0007fb2c
-L0007fb30        bgt.w   L0007fb3e                   ; if > 2 lives left then jmp L0007fb3e      0007fb30
-
-                ; update lives left display?
-L0007fb34        lea.l   batman_lives_icon_off,a0    ; a0 = source gfx orignal address $0007f86c                     0007fb34
-L0007fb3a        bra.w   display_batman_icon         ; d0 = icon to update, a0 = source gfx, jmp $0007f9ac           0007fb3a
-
-L0007fb3e       rts                                 ; L0007fb3e
 
 
 
 
 
 
-L0007fb40       clr.l $0007c87c
-L0007fb46        move.l #$ffffffff,$0007c88a
-L0007fb50        moveq #$00,d0
-L0007fb52        move.b $0007c879,d0
-L0007fb58        move.w #$080e,d1
-L0007fb5c        bsr.w L0007fd66
-L0007fb60        move.b $0007c87a,d0
-L0007fb66        move.w #$0a0e,d1
-L0007fb6a        bsr.w L0007fd66
-L0007fb6e        move.b $0007c87b,d0
-L0007fb74        move.w #$0c0e,d1
-L0007fb78        bsr.w L0007fd66
-L0007fb7c        moveq #$00,d0
+L0007fb40       clr.l L0007c87c
+L0007fb46       move.l #$ffffffff,L0007c88a
+L0007fb50       moveq #$00,d0                                       ; d0.l = $0
+L0007fb52       move.b L0007c878+1,d0                               ; d0.b = byte value, $0007c879
+L0007fb58       move.w #$080e,d1                                    ; d1.w = #$080e (2062)
+L0007fb5c       bsr.w L0007fd66
+L0007fb60       move.b $0007c87a,d0
+L0007fb66       move.w #$0a0e,d1
+L0007fb6a       bsr.w L0007fd66
+L0007fb6e       move.b $0007c87b,d0
+L0007fb74       move.w #$0c0e,d1
+L0007fb78       bsr.w L0007fd66
+L0007fb7c       moveq #$00,d0
+
+
 
 L0007fb7e       move.l d0,$0007c886
 L0007fb84        lea.l $0007c88a,a0
@@ -2067,7 +2112,6 @@ L0007fc78       move.w  d0,clock_timer                              ; d0 = clock
                 clr.w   clock_timer_update_value                    ; pause the level timer                 - 0007fc8a
                 clr.b   panel_status_1                              ; clear panel status byte 1             - 0007fc90
                 rts                                                 ; return                                - 0007fc96
-
 
 
 
@@ -2170,27 +2214,32 @@ display_level_timer                                                 ; original r
 
 
 
-L0007fd66       bsr.w L0007fd70          ; L0007fd66
+L0007fd66       bsr.w L0007fd70                                     ; L0007fd66
 L0007fd6a        lsr.b #$04,d0
 L0007fd6c        sub.w #$0100,d1
 
-L0007fd70       movem.l d0-d1,-(a7)
-L0007fd74        moveq #$00,d2
-L0007fd76        move.b d1,d2
-L0007fd78        lsr.w #$08,d1
-L0007fd7a        mulu.w #$0028,d2
-L0007fd7e        add.l #panel_gfx,d2                                 ; panel_gfx = $0007c89a
-L0007fd84        add.b d1,d2
-L0007fd86        movea.l d2,a0
+
+                ; IN: d1.w - parameter (high byte = X, low byte = Y)
+                ;
+L0007fd70        movem.l d0-d1,-(a7)
+L0007fd74        moveq #$00,d2                          ; d2.l = $0
+L0007fd76        move.b d1,d2                           ; d2 = y (scan line offset)
+L0007fd78        lsr.w #$08,d1                          ; d1 = x (byte offset)
+L0007fd7a        mulu.w #$0028,d2                       ; multiply y * 40 (320 pixels), d2 = scan line value
+L0007fd7e        add.l #panel_gfx,d2                    ; d2 = start scan line into panel_gfx,         panel_gfx = $0007c89a
+L0007fd84        add.b d1,d2                            ; d2 = add byte offset into scan line
+
+L0007fd86        movea.l d2,a0                          ; a0 = destination address.
+
 L0007fd88        and.b #$0f,d0
 L0007fd8c        bne.b L0007fd98
-L0007fd8e        movea.l #$0007f2d2,a1
+L0007fd8e        movea.l #$0007f2d2,a1                  ; base source gfx address
 L0007fd94        bra.w L0007fda4 
-L0007fd98       mulu.w #$0038,d0
+L0007fd98        mulu.w #$0038,d0
 L0007fd9c        add.l #$0007f0a2,d0
 L0007fda2        movea.l d0,a1
-L0007fda4       moveq #$03,d2
-L0007fda6       move.b (a1),(a0)
+L0007fda4        moveq #$03,d2
+L0007fda6        move.b (a1),(a0)
 L0007fda8        move.b $0002(a1),$0028(a0)
 L0007fdae        move.b $0004(a1),$0050(a0)
 L0007fdb4        move.b $0006(a1),$0078(a0)
