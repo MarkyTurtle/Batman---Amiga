@@ -48,9 +48,22 @@ Initialise_Level_Timer
                 rts  
 
 
-L0007c81c       
+
+
+                ;----------------------- DEBUG PLOT_INIT - $0007c81c -----------------------
+                ; Initialise the Player's Score, and display initial score value.
+                ;
+                ; $0007c87c = $00000000
+                ; $0007c88a = $ffffffff
+                ;
+                ; plots lower 3 bytes (6 digits stored in location) 
+                ;   - $0007c879
+                ;   - $0007c87a
+                ;   - $0007c87b
+                ;
+Initialise_Player_Score                                                       
                 movem.l d0-d7/a0-a2,-(a7)                           ; original routine address $0007c81c
-                bsr.w   L0007fb40
+                bsr.w   do_init_player_score                        ; calls $0007fb40
                 movem.l (a7)+,d0-d7/a0-a2
                 rts
 
@@ -136,9 +149,11 @@ player_lives_count                          ; original address $0007c876
                 dc.w    $0000               ; possible lives counter
 
 
+Player_Score
+L0007c878       dc.l    $00000000           ; Player Score Value $0007c878 (BCD 6 digits, first byte unused 000,000)
 
-L0007c878       dc.l    $00000000
-L0007c87c       dc.l    $00000000
+
+L0007c87c       dc.l    $00000000           ; P value, $0007c87c
 
 
 
@@ -158,8 +173,7 @@ clock_timer_seconds
 
 
                 even
-L0007c886       dc.w $0000
-L0007c888       dc.w $0000
+L0007c886       dc.l $00000000
 L0007c88a       dc.w $ffff
 L0007c88c       dc.w $ffff       
 
@@ -1024,6 +1038,7 @@ joker_energy_gfx    ; joker image of energy display 64 x 41 pixels in size - ori
             dc.w $F03F, $F800, $003F, $F87F     ; XXXX .... ..XX XXXX XXXX X... .... .... .... .... ..XX XXXX XXXX X... .XXX XXXX
 
 
+; 0007f0a2 - referenced be code which seems to start inside joker's face!? above
 
 L0007F0DA dc.w $0C00, $1C00, $0400, $0000, $0C00, $0C00, $0000, $0C00           ;  ................
 L0007F0EA dc.w $1C00, $0C00, $0C00, $0400, $0000, $0000, $0C00, $1C00           ;  ................
@@ -1056,9 +1071,31 @@ L0007F28A dc.w $3800, $3800, $6C00, $6C00, $3800, $6C00, $6C00, $3800           
 L0007F29A dc.w $3800, $6C00, $0000, $0400, $0C00, $0C00, $0000, $3800           ;8.l...........8.
 L0007F2AA dc.w $6C00, $6C00, $3C00, $0000, $0000, $0000, $3800, $6C00           ;l.l.<.......8.l.
 L0007F2BA dc.w $6C00, $3C00, $0C00, $0C00, $3800, $3800, $6C00, $6C00           ;l.<.....8.8.l.l.
-L0007F2CA dc.w $3C00, $0C00, $0C00, $3800, $3800, $6C00, $0000, $0400           ;<.....8.8.l.....
-L0007F2DA dc.w $6C00, $6C00, $0000, $3800, $6C00, $6C00, $6C00, $0000           ;l.l...8.l.l.l...
-L0007F2EA dc.w $0000, $0000, $3800, $6C00, $6C00, $6C00, $6C00, $6C00           ;....8.l.l.l.l.l.
+L0007F2CA dc.w $3C00, $0C00, $0C00, $3800
+
+L0007F2D2                   ; 4 lines of bitplane gfx?
+.bitplane1  dc.w $3800  ; ..XX X... .... ....
+            dc.w $6C00  ; .XX. XX.. .... ....
+            dc.w $0000  ; .... .... .... ....
+            dc.w $0400  ; .... .X.. .... ....
+L0007F2DA 
+.bitplane2  dc.w $6C00  ; .XX. XX.. .... ....  
+            dc.w $6C00  ; .XX. XX.. .... ....
+            dc.w $0000  ; .... .... .... ....
+            dc.w $3800  ; ..XX X... .... ....
+
+.bitplane3  dc.w $6C00  ; .XX. XX.. .... ....
+            dc.w $6C00  ; .XX. XX.. .... ....
+            dc.w $6C00  ; .XX. XX.. .... ....
+            dc.w $0000  ; .... .... .... ....
+L0007F2EA 
+            dc.w $0000  ; .... .... .... ....
+            dc.w $0000  ; .... .... .... ....
+            dc.w $3800  ; ..XX X... .... ....
+            dc.w $6C00  ; .XX. XX.. .... ....
+
+
+            dc.w $6C00, $6C00, $6C00, $6C00           ;....8.l.l.l.l.l.
 L0007F2FA dc.w $3800, $3800, $6C00, $6C00, $6C00, $6C00, $6C00, $3800           ;8.8.l.l.l.l.l.8.
 
 
@@ -2019,81 +2056,101 @@ do_lose_a_life                                                      ; original r
 
 
 
+                ;---------------------- do init player score - $0007fb40 ---------------------
+                ;
+                ; Player_Score = $0007c878
+                ;
+                ;   calls do_debug_plot (d0.l = $0)
+                ;
+do_init_player_score                                                ; original routine address $0007fb40
+                clr.l L0007c87c                                     ; fill longword with $00000000
+                move.l #$ffffffff,L0007c88a                         ; fill longword with $ffffffff
+                moveq #$00,d0                                       ; d0.l = $0
+                move.b Player_Score+1,d0                            ; d0.b = byte value, $0007c879
+                move.w #$080e,d1                                    ; d1.w = X,Y (08,0e)
+                bsr.w  char_plot                                    ; calls $0007fd66 (d0 = chars, d1 = x,y)
+                move.b Player_Score+2,d0
+                move.w #$0a0e,d1
+                bsr.w  char_plot                                    ; calls $0007fd66
+                move.b Player_Score+3,d0
+                move.w #$0c0e,d1
+                bsr.w  char_plot                                    ; cllas $0007fd66
+                moveq #$00,d0
 
 
-L0007fb40       clr.l L0007c87c
-L0007fb46       move.l #$ffffffff,L0007c88a
-L0007fb50       moveq #$00,d0                                       ; d0.l = $0
-L0007fb52       move.b L0007c878+1,d0                               ; d0.b = byte value, $0007c879
-L0007fb58       move.w #$080e,d1                                    ; d1.w = #$080e (2062)
-L0007fb5c       bsr.w L0007fd66
-L0007fb60       move.b $0007c87a,d0
-L0007fb66       move.w #$0a0e,d1
-L0007fb6a       bsr.w L0007fd66
-L0007fb6e       move.b $0007c87b,d0
-L0007fb74       move.w #$0c0e,d1
-L0007fb78       bsr.w L0007fd66
-L0007fb7c       moveq #$00,d0
 
+                ; IN: D0.l = value to plot
+                ;
+                ; stores D0.l - Amount to add to Score
+                ;
+do_debug_plot
+L0007fb7e       move.l  d0,$0007c886
+L0007fb84       lea.l   $0007c88a,a0                                 ; value initialised to $ffffffff above (-1)
+L0007fb8a       lea.l   Player_Score+4,a1                           ; a1 = Player Score Value
+L0007fb90       and.l   #$000000ff,d0                                ; d0 = clamp to 0-255
 
+L0007fb96       movem.l d0-d1,-(a7)
+L0007fb9a       move.b Player_Score+1,d0                                ; d0 = first bcd value.
+L0007fba0       and.b #$f0,d0                                      ; mask second digit
+L0007fba4       move #$00,ccr
+;L0007fba4       move.b #$00,ccr
+L0007fba8       abcd.b -(a0),-(a1)                                 ; add bytes from (7c887 - 7c889) to values (7c87d - 7c87f)
+L0007fbaa       abcd.b -(a0),-(a1)
+L0007fbac       abcd.b -(a0),-(a1)
 
-L0007fb7e       move.l d0,$0007c886
-L0007fb84        lea.l $0007c88a,a0
-L0007fb8a        lea.l frame_tick,a1                         ; a1 = $0007c880
-L0007fb90        and.l #$000000ff,d0
-L0007fb96        movem.l d0-d1,-(a7)
-L0007fb9a        move.b $0007c87d,d0
-L0007fba0        and.b #$f0,d0
-L0007fba4        move #$00,ccr
-;L0007fba4        move.b #$00,ccr
-L0007fba8        abcd.b -(a0),-(a1)
-L0007fbaa        abcd.b -(a0),-(a1)
-L0007fbac        abcd.b -(a0),-(a1)
-L0007fbae        move.b $0007c87d,d1
-L0007fbb4        and.b #$f0,d1
-L0007fbb8        cmp.b d0,d1
-L0007fbba        beq.b L0007fbc0
-L0007fbbc        bsr.w do_add_extra_life                     ; calls $0007f95a
-L0007fbc0        movem.l (a7)+,d0-d1
-L0007fbc4        move.b $0007c87f,d0
-L0007fbca        cmp.b $0007c88d,d0
-L0007fbd0        beq.b L0007fbe0
-L0007fbd2        move.b d0,$0007c88d
-L0007fbd8        move.w #$0c1e,d1
-L0007fbdc        bsr.w L0007fd66
-L0007fbe0       move.b $0007c87e,d0
-L0007fbe6        cmp.b $0007c88c,d0
-L0007fbec        beq.b L0007fbfc 
-L0007fbee        move.b d0,$0007c88c
+L0007fbae       move.b Player_Score+1,d1
+L0007fbb4       and.b #$f0,d1
+L0007fbb8       cmp.b d0,d1
+L0007fbba       beq.b L0007fbc0
+L0007fbbc       bsr.w do_add_extra_life                     ; calls $0007f95a
+L0007fbc0       movem.l (a7)+,d0-d1
+L0007fbc4       move.b Player_Score+3,d0
+L0007fbca       cmp.b $0007c88d,d0
+L0007fbd0       beq.b L0007fbe0
+L0007fbd2       move.b d0,$0007c88d
+L0007fbd8       move.w #$0c1e,d1
+L0007fbdc       bsr.w char_plot                            ; calls $0007fd66, d1=x,y, d0 = chars
+L0007fbe0       move.b Player_Score+2,d0
+L0007fbe6       cmp.b $0007c88c,d0
+L0007fbec       beq.b L0007fbfc 
+L0007fbee       move.b d0,$0007c88c
 
-L0007fbf4        move.w #$0a1e,d1
-L0007fbf8        bsr.w L0007fd66
-L0007fbfc        move.b $0007c87d,d0
-L0007fc02        cmp.b $0007c88b,d0
-L0007fc08        beq.b L0007fc18
-L0007fc0a        move.b d0,$0007c88b
-L0007fc10        move.w #$081e,d1
-L0007fc14        bsr.w L0007fd66
+L0007fbf4       move.w #$0a1e,d1
+L0007fbf8       bsr.w char_plot                            ; calls $0007fd66, d1=x,y, d0 = chars
+L0007fbfc       move.b Player_Score+1,d0
+L0007fc02       cmp.b $0007c88b,d0
+L0007fc08       beq.b L0007fc18
+L0007fc0a       move.b d0,$0007c88b
+L0007fc10       move.w #$081e,d1
+L0007fc14       bsr.w  char_plot                           ; calls $0007fd66, d1=x,y, d0 = chars
 L0007fc18       move.l $0007c878,d0
-L0007fc1e        cmp.l $0007c87c,d0
-L0007fc24        bhi.w L0007fc76
-L0007fc28        moveq #$00,d0
-L0007fc2a        move.b $0007c87f,d0
-L0007fc30        cmp.b $0007c87b,d0
-L0007fc36        beq.b L0007fc40
-L0007fc38        move.w #$0c0e,d1
-L0007fc3c        bsr.w L0007fd66
-L0007fc40       move.b $0007c87e,d0
-L0007fc46        cmp.b $0007c87a,d0
-L0007fc4c        beq.b L0007fc56
-L0007fc4e        move.w #$0a0e,d1
-L0007fc52        bsr.w L0007fd66
-L0007fc56       move.b $0007c87d,d0
-L0007fc5c        cmp.b $0007c879,d0
-L0007fc62        beq.b L0007fc6c
-L0007fc64        move.w #$080e,d1
-L0007fc68        bsr.w L0007fd66
-L0007fc6c       move.l $0007c87c,$0007c878
+L0007fc1e       cmp.l $0007c87c,d0
+L0007fc24       bhi.w L0007fc76
+
+.plot_score_hi                                              ; plot highest 2 score digits
+                moveq #$00,d0
+                move.b Player_Score+3,d0
+                cmp.b $0007c87b,d0
+                beq.b .plot_score_mid
+                move.w #$0c0e,d1
+                bsr.w char_plot                             ; calls $0007fd66, d1=x,y, d0=chars
+
+.plot_score_mid                                             ; plot middle 2 score digits
+                move.b Player_Score+2,d0
+                cmp.b $0007c87a,d0
+                beq.b .plot_score_lo 
+                move.w #$0a0e,d1
+                bsr.w  char_plot                            ; calls $0007fd66, d1=x,y, d0=chars
+
+.plot_score_lo                                              ; plot lowest 2 score digits
+                move.b Player_Score+1,d0
+                cmp.b $0007c879,d0
+                beq.b L0007fc6c
+                move.w #$080e,d1
+                bsr.w  char_plot                            ; calls $0007fd66, d1=x,y, d0=chars
+
+L0007fc6c       move.l Player_Score,$0007c878
+
 L0007fc76       rts
 
 
@@ -2214,43 +2271,67 @@ display_level_timer                                                 ; original r
 
 
 
-L0007fd66       bsr.w L0007fd70                                     ; L0007fd66
-L0007fd6a        lsr.b #$04,d0
-L0007fd6c        sub.w #$0100,d1
 
 
-                ; IN: d1.w - parameter (high byte = X, low byte = Y)
+                ;------------------------ char plot -----------------------
+                ; Character plotter - maybe a debug routine?
+                ; plots a 8x7 pixel character into 4 bitplanes into a 
+                ; location inside the panel_gfx
                 ;
-L0007fd70        movem.l d0-d1,-(a7)
-L0007fd74        moveq #$00,d2                          ; d2.l = $0
-L0007fd76        move.b d1,d2                           ; d2 = y (scan line offset)
-L0007fd78        lsr.w #$08,d1                          ; d1 = x (byte offset)
-L0007fd7a        mulu.w #$0028,d2                       ; multiply y * 40 (320 pixels), d2 = scan line value
-L0007fd7e        add.l #panel_gfx,d2                    ; d2 = start scan line into panel_gfx,         panel_gfx = $0007c89a
-L0007fd84        add.b d1,d2                            ; d2 = add byte offset into scan line
+                ; IN: d0.b  - 2 BCD Characters to write
+                ; IN: d1.w  - x,y characters as high/low bytes in word.
+                ; 
+char_plot                                                           ; original routine address 0007fd66
+                bsr.w draw_char                                     ; display first character, call $0007fd70
+.display_2nd_char
+                lsr.b #$04,d0                                       ; d0 = second bcd digit.
+                sub.w #$0100,d1                                     ; d1 = updated x co-ordinate
+                ; fall through to display the second character
 
-L0007fd86        movea.l d2,a0                          ; a0 = destination address.
 
-L0007fd88        and.b #$0f,d0
-L0007fd8c        bne.b L0007fd98
-L0007fd8e        movea.l #$0007f2d2,a1                  ; base source gfx address
-L0007fd94        bra.w L0007fda4 
-L0007fd98        mulu.w #$0038,d0
-L0007fd9c        add.l #$0007f0a2,d0
-L0007fda2        movea.l d0,a1
-L0007fda4        moveq #$03,d2
-L0007fda6        move.b (a1),(a0)
-L0007fda8        move.b $0002(a1),$0028(a0)
-L0007fdae        move.b $0004(a1),$0050(a0)
-L0007fdb4        move.b $0006(a1),$0078(a0)
-L0007fdba        move.b $0008(a1),$00a0(a0)
-L0007fdc0        move.b $000a(a1),$00c8(a0)
-L0007fdc6        move.b $000c(a1),$00f0(a0)
-L0007fdcc        adda.l #$00000780,a0
-L0007fdd2        adda.l #$0000000e,a1
-L0007fdd8        dbf.w d2,L0007fda6
-L0007fddc        movem.l (a7)+,d0-d1
-L0007fde0        rts
+
+
+                ;------------------------ draw char -------------------------
+                ; IN: d0.b  - low 4 bits = BCD Characters to write (digits)
+                ; IN: d1.w  - X,Y plot co-ords (x = bytes offset, y = line count)
+                ;
+                ; NB: Source GFX address doesnot make sense, which is why this
+                ;       is probably a debug routine, not in use by the game (TBD)
+                ;
+draw_char                                                           ; original routine address $0007fd70
+                movem.l d0-d1,-(a7)
+                moveq   #$00,d2                                     ; d2.l = $0
+                move.b  d1,d2                                       ; d2 = y (scan line offset)
+                lsr.w   #$08,d1                                     ; d1 = x (byte offset)
+                mulu.w  #$0028,d2                                   ; multiply y * 40 (320 pixels), d2 = scan line value
+                add.l   #panel_gfx,d2                               ; d2 = start scan line into panel_gfx,         panel_gfx = $0007c89a
+                add.b   d1,d2                                       ; d2 = add byte offset into scan line
+                movea.l d2,a0                                       ; a0 = destination address.
+
+                and.b   #$0f,d0                                     ; d0 = low 4 bits bcd character
+                bne.b   .not_zero
+.is_zero
+                movea.l #$0007F2D2,a1                               ; base source gfx address ****** This memory is not there anymore ******
+                bra.w   .do_plot 
+.not_zero
+                mulu.w #$0038,d0                                    ; d0 = d0 * 56 (56 bytes, 28 words) ,28/4 = 7 pixels high
+                add.l #$0007f0a2,d0
+                movea.l d0,a1                                       ; a1 = source gfx ptr ****** This memory is not there anymore - used by other GFX******
+.do_plot
+                moveq #$03,d2                                       ; 3 + 1 - counter (4 lines of gfx, 4 bitplanes)
+.plot_loop
+                move.b (a1),(a0)                                    ; copy src gfx -> dest line 1.
+                move.b $0002(a1),$0028(a0)                          ; copy src gfx -> dest line 2.
+                move.b $0004(a1),$0050(a0)                          ; copy src gfx -> dest line 3.
+                move.b $0006(a1),$0078(a0)                          ; copy src gfx -> dest line 4.
+                move.b $0008(a1),$00a0(a0)                          ; copy src gfx -> dest line 5.
+                move.b $000a(a1),$00c8(a0)                          ; copy src gfx -> dest line 6.
+                move.b $000c(a1),$00f0(a0)                          ; copy src gfx -> dest line 7.
+                adda.l #$00000780,a0                                ; dest next bitplane
+                adda.l #$0000000e,a1                                ; src next bitplane
+                dbf.w d2,.plot_loop                                 ; plot loop,
+                movem.l (a7)+,d0-d1
+                rts
 
 
 
