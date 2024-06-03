@@ -44,7 +44,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
    - **Dos Crack V1** - 
    - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) - In Progress (game/timer speed up, level 2 onwards)
    - Load time is far too slow, need to change packer
- - Disassemble the Game Panel - In Progress 
+ - Disassemble the Game Panel - **Done**
  - Disassemble the Title Screen.
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
@@ -53,6 +53,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+
+2024-06-03 - First draft of the 'panel' program has been disassembled and can be reassembled in vscode. Some tidying up and splitting out into gfx includes required. Move on to the Title Screen next. Might gain a bit more insight into the VBL interrupts and timings there. 
 
 2024-05-30 - Been disassembling the 'Panel' executable that is loaded to $7Cf7C in memory. It contains the gfx and code that manages the game status panel including keeping track of the player lives, energy, level count down timer. Looking for hints for why the 'cracked' version of the game speeds up on level 2 and beyond.  Can see that a level 3 vertical blank interrupt calls the 'update' routine every frame. At the moment it appear that this routine is being called more frequently in my version of the re-complied ADF images for level 2 and beyond. Will keep searching... probably wont find out why until I disassemble the level code and see exectly where the level 3 interrupt is raised in the game code (apart from by the vbl).
 
