@@ -150,11 +150,11 @@ CLOCK_TIMER_EXPIRED     equ     0
 NO_LIVES_REMAINING      equ     1
 PLAYER_LIFE_LOST        equ     2
 INFINITE_LIVES          equ     7
+                even
 panel_status_1                              ; original address $0007c874
                 dc.b    $00                 ; status byte 1 (bits 0-clock timer expired, 1-no lives left, bit 2-life lost)
 panel_status_2                              ; original address $0007c875
                 dc.b    $00                 ; status byte 2 (bits 7 used for test if set - infinite lives?)
-
 
                 even
 player_lives_count                          ; original address $0007c876
@@ -167,38 +167,31 @@ Player_Score
 High_Score
                 dc.l    $00000000           ; High Score Value value, $0007c87c
 
-
-
 frame_tick                                  ; original address $0007c880
                 dc.w    $0000               ; vbl ticker, ticks every frame from 50 to 0 (1 second at 50hz)
-
 
 clock_timer_update_value                    ; original address $0007c882
                 dc.w    $0000               ; BCD value subtracted from clock_timer when frame_tick = 0
 
-
+                even
 clock_timer
 clock_timer_minutes
                 dc.b    $00                 ; Clock Timer Minutes value, held in BCD Format, original address = $0007c884
 clock_timer_seconds
                 dc.b    $00                 ; Clock Timer Seconds Value, held in BCD Format, original address $0007c885
 
-
                 even
-
 Player_Score_Update_Value
                 dc.l    $00000000           ; original address $0007c886
+
 Player_Score_Display_Value
                 dc.l    $ffffffff           ; copy of player score for display, original address $0007c88a
-
 
 player_remaining_energy                     ; original address $0007c88e
                 dc.w    $0000               ; player's remaining energy level, max/full level = #$28 (40)
 
-
 player_hit_damage                           ; original address $0007C890
                 dc.w    $0000               ; counter (count down, clamped at 0, possible energy hit/damage value)
-
 
 player_energy_display_location_ptr
                 dc.l    $00000000           ; dest ptr to the panel display where the player energy meter is located, original address $0007C892
@@ -648,7 +641,7 @@ do_update_player_score                                              ; original r
                 ;
                 ; IN: D0.w = value to set clock timer (BCD Minutes:Seconds)
                 ;
-do_initialise_level_timer
+do_initialise_level_timer                                           ; original routin address $0007fc78
 L0007fc78       move.w  d0,clock_timer                              ; d0 = clock timer value (minutes and seconds) in BCD format $0007c884                 ; L0007fc78
                 move.w  #$0032,frame_tick                           ; set frame_tick to 50, $0007c880       - 0007fc7e
                 bsr.w   display_level_timer                         ; calls $0007fd28                       - 0007fc86
@@ -878,6 +871,7 @@ display_timer_digit                                                 ; original r
                 ;-------------------- more data ---------------------
                 ; this is a table of byte offsets for the digits
                 ; 0-9 into the charset gfx and 2 separators.
+            even
 digit_gfx_offset_table             ; original address $0007FE6E 
             dc.w    $0370          ; digit 0 - offset 
             dc.w    $0058          ; digit 1 - offset
