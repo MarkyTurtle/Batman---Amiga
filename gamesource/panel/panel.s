@@ -160,12 +160,11 @@ panel_status_2                              ; original address $0007c875
 player_lives_count                          ; original address $0007c876
                 dc.w    $0000               ; possible lives counter
 
+High_Score
+                dc.l    $00000000           ; High Score Value value, $0007c87c
 
 Player_Score
                 dc.l    $00000000           ; Player Score Value $0007c878 (BCD 6 digits, first byte unused 000,000)
-
-High_Score
-                dc.l    $00000000           ; High Score Value value, $0007c87c
 
 frame_tick                                  ; original address $0007c880
                 dc.w    $0000               ; vbl ticker, ticks every frame from 50 to 0 (1 second at 50hz)
@@ -193,11 +192,11 @@ player_remaining_energy                     ; original address $0007c88e
 player_hit_damage                           ; original address $0007C890
                 dc.w    $0000               ; counter (count down, clamped at 0, possible energy hit/damage value)
 
-player_energy_display_location_ptr
-                dc.l    $00000000           ; dest ptr to the panel display where the player energy meter is located, original address $0007C892
-
 joker_energy_gfx_ptr                        
                 dc.l    $00000000           ; source ptr to the joker energy graphics, original address $0007c896
+
+player_energy_display_location_ptr
+                dc.l    $00000000           ; dest ptr to the panel display where the player energy meter is located, original address $0007C892
 
 
 
@@ -214,7 +213,8 @@ joker_energy_gfx_ptr
                 ; batman image of energy display 64 x 41 pixels in size
                 ; 64x41 pixels, 4 bitplanes. 1312 Bytes
                 ;
-                include ./gfx/batman_energy_gfx.s ; original address $0007E69A
+                ;include ./gfx/batman_energy_gfx.s ; original address $0007E69A
+                include ./gfx/batman_energy_gfx1.s ; original address $0007E69A
 
 
                 ;--------------------- JOKER ENERGY GFX ----------------------
@@ -396,7 +396,7 @@ do_initialise_player_energy                                         ; original a
                 move.w  d0,player_remaining_energy                  ; set player remaining energy level as address $0007c88e
                 clr.w   player_hit_damage                           ; L0007C890
                 lea.l   batman_energy_gfx,a0                        ; batman energy meter source gfx address
-                lea.l   panel_gfx+((40*4)+16),a1                    ; destination bitplanes for player energy display (batman/joker energy meter)
+                lea.l   panel_gfx+((40*4)+16),a1                   ; destination bitplanes for player energy display (batman/joker energy meter)
                 move.l  a1,player_energy_display_location_ptr       ; store ptr to the energy meter location in the panel display.
 .copy_loop      move.l  (a0),(a1)                                   ; bitplane 1 - copy 32bits gfx source to dest
                 move.l  $0004(a0),$0004(a1)                         ; bitplane 1 - copy 32bits gfx source to dest
