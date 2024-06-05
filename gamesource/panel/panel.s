@@ -213,8 +213,7 @@ player_energy_display_location_ptr
                 ; batman image of energy display 64 x 41 pixels in size
                 ; 64x41 pixels, 4 bitplanes. 1312 Bytes
                 ;
-                ;include ./gfx/batman_energy_gfx.s ; original address $0007E69A
-                include ./gfx/batman_energy_gfx1.s ; original address $0007E69A
+                include ./gfx/batman_energy_gfx.s ; original address $0007E69A
 
 
                 ;--------------------- JOKER ENERGY GFX ----------------------
@@ -235,66 +234,16 @@ player_energy_display_location_ptr
                 include ./gfx/timer_digits_gfx.s  ; original address $0007F30A
 
 
-
-
-
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-L0007F72A   dc.w $0000
-            dc.w $0000
-            dc.w $0000
-            dc.w $7FFC
-            dc.w $0001
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-
-
-
-
-
                 ;----------------- BATMAN LIVES ON ICON GFX ------------------
                 ; mask: 32 x 13 = 56 bytes
                 ; image: 32 x 13, 4 bitplanes = 208 bytes
                 include ./gfx/batman_lives_icon_on.s  ; original address $0007f734
 
 
-
-
-
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-unused      dc.w    $0007, $FFC0 
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-
-
-
-
-
                 ;----------------- BATMAN LIVES OFF ICON GFX -----------------
                 ; mask: 32 x 13 = 56 bytes
                 ; image: 32 x 13, 4 bitplanes = 208 bytes
                 include ./gfx/batman_lives_icon_off.s ; original address $0007f838
-
-
-
-
-
-
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-L0007f93c   dc.l    $00000000       ; .... .... .... .... .... .... .... ....
-L0007f940   dc.w    $1450
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-                ;-------------------------------------------------
-                ; code here is either unused nonsense or data
-                ; disassembled as code.
-            ; ************** UNUSED/UNREFERENCED MEMORY ************                
-L0007f942        movem.l (a7)+,d0-d7/a0-a2                          ; not called from anywhere in panel.s
-L0007f946        rts                                                ; not called from anywhere in panel.s
-L0007f948        movem.l d0-d7/a0-a2,-(a7)                          ; not called from anywhere in panel.s
-L0007f94c        dc.l   $0                                          ; added to keep same memory space
-;L0007f94c        bsr.w L0007fcca                                    ; no such address (Check it out) half way through instruction @ $0007fcc6
-L0007f950        movem.l (a7)+,d0-d7/a0-a2                          ; not called from anywhere in panel.s
-L0007f954        rts                                                ; not called from anywhere in panel.s
-L0007f956        movem.l d0-d7/a0-a2,-(a7)                          ; not called from anywhere in panel.s
-            ; ************** UNUSED/UNREFERENCED MEMORY ************
-
 
 
 
