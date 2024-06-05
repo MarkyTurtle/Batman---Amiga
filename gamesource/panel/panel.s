@@ -848,7 +848,7 @@ display_timer_digit                                                 ; original r
                 movea.l d0,a1                                       ; a1 = address of digit to draw
                 moveq   #$03,d2                                     ; d2 = 3 + 1 = 4 bitplanes
 .bitplane_loop  move.b  (a1),(a0)                                   ; copy gfx data - src to dest - line 0
-                move.b  $0002(),$0028(a0)                           ; copy gfx data - src to dest - line 1
+                move.b  $0002(a1),$0028(a0)                           ; copy gfx data - src to dest - line 1
                 move.b  $0004(a1),$0050(a0)                         ; copy gfx data - src to dest - line 2
                 move.b  $0006(a1),$0078(a0)                         ; copy gfx data - src to dest - line 3
                 move.b  $0008(a1),$00a0(a0)                         ; copy gfx data - src to dest - line 4
