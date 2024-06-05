@@ -1,7 +1,7 @@
 
 
                 section panel,code_c
-
+                org     $7C7FC                                      ; original load address
 
 
                 ;--------------------- includes and constants ---------------------------
