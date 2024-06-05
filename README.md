@@ -44,8 +44,11 @@ This exercise is not one of speed, but of learning. It looks like this game coul
    - **Dos Crack V1** - 
    - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) - In Progress (game/timer speed up, level 2 onwards)
    - Load time is far too slow, need to change packer
- - Disassemble the Game Panel - **Done**
+ - Disassemble the Game Panel
+    - [Code Project](./gamesource/panel/)
+    - [Test .adf disk image](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
  - Disassemble the Title Screen.
+    - In Progress (next)
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
  - Disassemble the BatCave Level.
@@ -53,6 +56,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+2024-06-05 - Have disassembled the code to the game 'panel' file. I can now re-assemble the file and have tested it on the test .adf disk image here [DosCrackShrinkler_Rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
 
 2024-06-03 - First draft of the 'panel' program has been disassembled and can be reassembled in vscode. Some tidying up and splitting out into gfx includes required. Move on to the Title Screen next. Might gain a bit more insight into the VBL interrupts and timings there. 
 
