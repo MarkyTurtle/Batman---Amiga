@@ -819,8 +819,8 @@ L00004424       rts
 
 
                 ;---------------- initislise music samples ----------------
-                    ; IN: a0    - music sample table address
-                    ; IN: a1
+                    ; IN: a0    - music sample table address $4D52
+                    ; IN: a1    - music/song instrument data $4BFA
                     ;
 L000049cc           move.l  (a0)+,d0                    ; d0 = source long word
 L000049ce           beq.b   L000049ea                   ; if d0 == 0 then exit
@@ -828,18 +828,22 @@ L000049d0           move.w  (a0)+,(a1)                  ; copy d0 to destination
 L000049d2           move.w  (a0)+,$000e(a1)             ; copy d0 to destination + 14
 L000049d6           move.l  a0,-(a7)                    ; save a0 - incremented ptr to stack
                                                         ; d0 is offset to data within the structure
-L000049d8           lea.l   $f8(a0,d0),a0               ; a0 = new data ptr to data inside struct
-L000049dc           move.l  $0004(a0),d0                ; d0 = 4(a0) - start of 'FORM' data structure (sample data)
-L000049e0           addq.l  #$08,d0
+L000049d8           lea.l   $f8(a0,d0),a0               ; a0 = ptr to start of iff sample 'FORM' structure.
+L000049dc           move.l  $0004(a0),d0                ; d0 = Length of 'FORM' data structure (sample data)
+L000049e0           addq.l  #$08,d0                     ; d0 = alter length to include 'FORM' and length header value, d0 = total file len from A0.
 L000049e2           bsr.w   L000049ec
 L000049e6           movea.l (a7)+,a0
 L000049e8           bra.b   L000049cc
+.exit
 L000049ea           rts     
 
 
 
 
-
+                ; ------------------ process sample data -----------
+                ; IN: A0 = ptr to 'FORM' block of sample data
+                ; IN: D0 = length of sample including headers.
+                ;
 L000049ec       move.l  a1,-(a7)
 L000049ee       bsr.w   L00004a30
 L000049f2       movea.l (a7)+,a1
