@@ -832,8 +832,8 @@ L000049d8           lea.l   $f8(a0,d0),a0               ; a0 = ptr to start of i
 L000049dc           move.l  $0004(a0),d0                ; d0 = Length of 'FORM' data structure (sample data)
 L000049e0           addq.l  #$08,d0                     ; d0 = alter length to include 'FORM' and length header value, d0 = total file len from A0.
 L000049e2           bsr.w   L000049ec
-L000049e6           movea.l (a7)+,a0
-L000049e8           bra.b   L000049cc
+L000049e6           movea.l (a7)+,a0                    ; a0 = next sample table entry
+L000049e8           bra.b   L000049cc                   ; loop for next sample data.
 .exit
 L000049ea           rts     
 
