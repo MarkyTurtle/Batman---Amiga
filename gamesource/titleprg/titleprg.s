@@ -1,12 +1,21 @@
 
 
                 section panel,code_c
-                org     $0                                          ; original load address
+                ;org     $3ffc                                   ; original load address
 
 
                 ;--------------------- includes and constants ---------------------------
-                INCDIR      "include"
-                INCLUDE     "hw.i"
+                INCDIR  "include"
+                INCLUDE "hw.i"
+
+
+TEST_TITLEPRG SET 1                                             ; Comment this to remove 'test'
+
+        IFD TEST_TITLEPRG  
+
+                jmp     title_screen_start                      ; Entry point $0001c000
+
+        ENDC
 
 
                 ;-------------------------- title prg start -----------------------------
@@ -17,12 +26,21 @@ titleprg_start
 
 
                 ;----------------------------- entry point ------------------------------
-entry_point
-L00004000       bra.w   start_up                               ; jmp $00004180
-L00004004       bra.w   L00004194
+Initialise_Music_Player                                         ; original routine address $00004000
+L00004000       bra.w   do_initialise_music_player              ; jmp $00004180
+
+Silence_All_Audio                                               ; original routine address $00004004
+L00004004       bra.w   do_silence_all_audio                    ; calls $00004194
+
 L00004008       bra.w   L000041e0
+
 L0000400c       bra.w   L000041e0
-L00004010       bra.w   L0000423e
+
+                ; IN: D0.l (song/sound to play)
+Play_Song                                                       ; original routine address $00004010
+L00004010       bra.w   do_play_song                            ; calls $0000423e, init/play song
+
+
 L00004014       bra.w   L00004222
 L00004018       bra.w   L000042f6
 
@@ -30,152 +48,139 @@ L00004018       bra.w   L000042f6
 L0000401c       dc.w    $ffff
 L0000401e       dc.w    $ffff
 L00004020       dc.w    $8000
-L00004022       dc.w    $0100
-L00004024       dc.w    $8080
-L00004026       dc.w    $0001, $ba1b
-L0000402a       dc.w    $0001, $ba1e
-L0000402e       dc.w    $0000, $0000
-L00004032       dc.w    $0001, $ba41
-L00004036       dc.w    $0500
-L00004038       dc.w    $0001, $b9a6
-L0000403c       dc.w    $0001, $b9aa
-L00004040       dc.w    $0101
-L00004042       dc.w    $0004, $fd00
-L00004046       dc.w    $0000, $0000
-L0000404a       dc.w    $0000, $0000
-L0000404e       dc.w    $0000, $0000
-L00004052       dc.w    $0000, $0000
-L00004056       dc.w    $0000, $0000
-L0000405a       dc.w    $0000, $0000
-L0000405e       dc.w    $0000, $0038
-L00004062       dc.w    $0000, $fb6c
-L00004066       dc.w    $0666, $0000
-L0000406a       dc.w    $4d3a
-L0000406c       dc.w    $0001, $018f
-L00004070       dc.w    $0000, $003a
-L00004074       dc.w    $3a06
-L00004076       dc.w    $0018, $0001
-L0000407a       dc.w    $8050
-L0000407c       dc.w    $0001, $ba27
-L00004080       dc.w    $0001, $ba28
-L00004084       dc.w    $0000, $0000
-L00004088       dc.w    $0001, $bb55 
-L0000408c       dc.w    $0100
-L0000408e       dc.w    $0001, $b9ac
-L00004092       dc.w    $0001, $b9ae
-
-L00004096       dc.w    $0101
-L00004098       dc.w    $0001, $1e00
-L0000409c       dc.w    $0000, $0000
-L000040a0       dc.w    $0000, $0000
-L000040a4       dc.w    $0000, $0000
-L000040a8       dc.w    $0000, $0000
-L000040ac       dc.w    $0000, $0000
-L000040b0       dc.w    $0000, $0000
-L000040b4       dc.w    $0000, $0018
-L000040b8       dc.w    $0000, $ca18
-L000040bc       dc.w    $0a28, $0000, $4d3a
-L000040c2       dc.w    $0001, $01bf
-L000040c6       dc.w    $001e, $0018
-L000040ca       dc.w    $1800
-L000040cc       dc.w    $0006, $0002
-L000040d0       dc.w    $8010
-L000040d2       dc.w    $0001, $ba2a
-L000040d6       dc.w    $0001, $ba2b
-L000040da       dc.w    $0000, $0000
-L000040de       dc.w    $0001, $bbae
-L000040e2       dc.w    $0100
-L000040e4       dc.w    $0001, $b9ac
-L000040e8       dc.w    $0001, $b9ae
-L000040ec       dc.w    $0101
-L000040ee       dc.w    $0001, $1e00
-L000040f2       dc.w    $0000, $0000
-L000040f6       dc.w    $0000, $0000
-L000040fa       dc.w    $0000, $0000
-L000040fe       dc.w    $0000, $0000
-L00004102       dc.w    $0000, $0000
-L00004106       dc.w    $0000, $0000
-L0000410a       dc.w    $0000, $0011
-L0000410e       dc.w    $0000, $ed94
-L00004112       dc.w    $06b8, $0000, $4d3a, $0001
-L0000411a       dc.w    $00d3
-L0000411c       dc.w    $001e, $001e
-L00004120       dc.w    $1e00
-L00004122       dc.w    $000c
-L00004124       dc.w    $0004, $8084
-
-L00004128       dc.w    $0001, $ba34
-L0000412c       dc.w    $0001, $ba37
-L00004130       dc.w    $0000, $0000
-L00004134       dc.w    $0001, $ba41
-L00004138       dc.w    $0500
-L0000413a       dc.w    $0001, $b9b4
-L0000413e       dc.w    $0001, $b9bb
-L00004142       dc.w    $0101
-L00004144       dc.w    $0001, $ff00
-L00004148       dc.w    $0000, $0000
-L0000414c       dc.w    $0000, $0000
-L00004150       dc.w    $0000, $0000
-L00004154       dc.w    $0000, $0000
-L00004158       dc.w    $0000, $0103
-L0000415c       dc.w    $1400
-L0000415e       dc.w    $0605, $0006
-L00004162       dc.w    $003e
-L00004164       dc.w    $0001, $14ca
-L00004168       dc.w    $11d6, $0001
-L0000416c       dc.w    $2de0
-L0000416e       dc.w    $054b, $0279
-L00004172       dc.w    $0000, $0038
-L00004176       dc.w    $3800
-L00004178       dc.w    $0018, $0008
-L0000417c       dc.w    $0000, $0d69
 
 
-
-                ;----------------------------- entry point ------------------------------
-start_up                                                        ; original routine address $00004180
-L00004180       lea.l   default_sample_data,a0                  ; L00004d52,a0
-L00004186       lea.l   instrument_data,a1                      ; L00004bfa,a1
-L0000418c       bsr.w   initialise_music                        ; calls L000049cc
-L00004190       bra.w   L00004194
-
-L00004194       movem.l d0/a0-a1,-(a7)
-L00004198       move.b  #$00,L00004022
-L0000419e       move.b  #$00,L00004023
-L000041a4       lea.l   $4024,a0
-L000041a8       lea.l   $00dff0a8,a1
-L000041ae       bsr.b   L000041c2
-L000041b0       bsr.b   L000041c2
-L000041b2       bsr.b   L000041c2
-L000041b4       bsr.b   L000041c2
-L000041b6       move.w  #$0000,L00004020
-L000041bc       movem.l (a7)+,d0/a0-a1
-L000041c0       rts                                             ; Where does this go? whats on the stack?
-
-
-
-L000041c2       move.w  #$0000,(a0)
-L000041c6       move.w  #$0001,(a0,$004a)
-L000041cc       move.w  #$0000,(a0,$004c)
-L000041d2       move.w  #$0000,(a1)
-L000041d6       adda.w  #$0056,a0
-L000041da       adda.w  #$0010,a1
-L000041de       rts
+song_number                                                     ; original address $00004022
+L00004022       dc.b    $01                                     ; sound/song to play - initialised to $00
+L00004023       dc.W    $00                                     ; initialised to $00
 
 
 
 
+                ; ------ channel/voice data structs --------
+                ; offset | desc
+                ; 0x0000 | channel volume
+                ; 0x004a | unsure (set to 0x0001 when silenced)
+                ; 0x004c | unsure (set to 0x0000 when silenced)
+                ;
+channel_1_status
+L00004024       dc.w    $8080, $0001, $ba1b, $0001
+                dc.w    $ba1e, $0000, $0000, $0001
+                dc.w    $ba41, $0500, $0001, $b9a6
+                dc.w    $0001, $b9aa, $0101, $0004
+                dc.w    $fd00, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0038, $0000
+                dc.w    $fb6c, $0666, $0000, $4d3a
+                dc.w    $0001, $018f, $0000, $003a
+                dc.w    $3a06, $0018, $0001 
+
+channel_2_status
+L0000407a       dc.w    $8050, $0001, $ba27, $0001
+                dc.w    $ba28, $0000, $0000, $0001
+                dc.w    $bb55, $0100, $0001, $b9ac
+                dc.w    $0001, $b9ae, $0101, $0001
+                dc.w    $1e00, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0018, $0000
+                dc.w    $ca18, $0a28, $0000, $4d3a
+                dc.w    $0001, $01bf, $001e, $0018
+                dc.w    $1800, $0006, $0002
+
+channel_3_status
+L000040d0       dc.w    $8010, $0001, $ba2a, $0001
+                dc.w    $ba2b, $0000, $0000, $0001
+                dc.w    $bbae, $0100, $0001, $b9ac
+                dc.w    $0001, $b9ae, $0101, $0001
+                dc.W    $1e00, $0000, $0000, $0000
+                dc.W    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0011, $0000
+                dc.w    $ed94, $06b8, $0000, $4d3a
+                dc.w    $0001, $00d3, $001e, $001e
+                dc.w    $1e00, $000c, $0004
+
+channel_4_status
+L00004126       dc.w    $8084, $0001, $ba34, $0001
+                dc.w    $ba37, $0000, $0000, $0001
+                dc.w    $ba41, $0500, $0001, $b9b4
+                dc.w    $0001, $b9bb, $0101, $0001
+                dc.w    $ff00, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0000, $0000
+                dc.w    $0000, $0000, $0103, $1400
+                dc.w    $0605, $0006, $003e, $0001
+                dc.w    $14ca, $11d6, $0001, $2de0
+                dc.w    $054b, $0279, $0000, $0038
+                dc.w    $3800, $0018, $0008
+
+.other_data
+L0000417c       dc.w    $0000 
+L0000417e       dc.W    $0d69                           ; referenced as a word - cleared when playing new song/sound
+
+
+
+                ;----------------------------- intitialise music player ------------------------------
+do_initialise_music_player                                      ; original routine address $00004180                                                        
+                lea.l   default_sample_data,a0                  ; L00004d52,a0
+                lea.l   instrument_data,a1                      ; L00004bfa,a1
+                bsr.w   initialise_music                        ; calls L000049cc
+                bra.w   do_silence_all_audio                    ; jmp $00004194
+
+
+
+                ;---------------------------- do silence all audio ----------------------------------
+                ; sets all audio channels to 0 volume, probably also stops any playing tracks
+                ; by setting values in channel structure and/or values in 4022, 4023
+                ;
+do_silence_all_audio                                            ; original routine address $00004194
+                movem.l d0/a0-a1,-(a7)
+
+                move.b  #$00,song_number                        ; $00004022 - initialising unknown
+                move.b  #$00,L00004023                          ; initialising unknown
+
+                lea.l   channel_1_status,a0                     ; $4024,a0
+                lea.l   $00dff0a8,a1                            ; a1 = audio volume
+                bsr.b   silence_channel_volume                  ; calls $000041c2
+                bsr.b   silence_channel_volume                  ; calls $000041c2
+                bsr.b   silence_channel_volume                  ; calls $000041c2
+                bsr.b   silence_channel_volume                  ; calls $000041c2
+                move.w  #$0000,L00004020
+                movem.l (a7)+,d0/a0-a1
+                rts                                             ; Where does this go? whats on the stack?
+
+
+
+                ;------------ silence channel volume -------------
+                ; IN: A0 - channel/voice status data
+silence_channel_volume
+                move.w  #$0000,(a0)                             ; set volume in struct
+                move.w  #$0001,$004a(a0)                        ; set unknown in struct
+                move.w  #$0000,$004c(a0)                        ; set unknown in struct
+                move.w  #$0000,(a1)                             ; Volume custom reg = 0
+                adda.w  #$0056,a0                               ; update ptr to next channel struct (86 bytes)
+                adda.w  #$0010,a1                               ; update to next channel volume register
+                rts
+
+
+
+
+                ;------------------------- xxxxxxxxxx -------------------------
+                ; Called from:
+                ;        - do_title_screen_start
+                ;
 L000041e0       movem.l d0/d7/a0-a2,-(a7)
 L000041e4       subq.w  #$01,d0
 L000041e6       bmi.b   L000041ee
 L000041e8       cmp.w   #$0003,d0
 L000041ec       bcs.b   L000041f2
-L000041ee       bsr.b   L00004194
+L000041ee       bsr.b   do_silence_all_audio                    ; calls $00004194
 L000041f0       bra.b   L0000421c
-L000041f2       lea.l   L0001b9dc,a2
+L000041f2       lea.l   song_table,a2                           ; L0001b9dc,a2
 L000041f8       asl.w   #$03,d0
 L000041fa       adda.w  d0,a2
-L000041fc       lea.l   L00004024,a0
+L000041fc       lea.l   channel_1_status,a0                     ; L00004024,a0
 L00004200       lea.l   $00dff0a8,a1
 L00004206       moveq   #$03,d7
 L00004208       tst.w   (a2)+
@@ -183,7 +188,7 @@ L0000420a       bne.b   L00004216
 L0000420c       adda.w  #$0056,a0
 L00004210       adda.w  #$0010,a1
 L00004214       bra.b   L00004218
-L00004216       bsr.b   L000041c2
+L00004216       bsr.b   silence_channel_volume                  ; calls $000041c2
 L00004218       dbf.w   d7,L00004208
 L0000421c       movem.l (a7)+,d0/d7/a0-a2
 L00004220       rts
@@ -201,65 +206,97 @@ L0000423c       rts
 
 
 
-L0000423e       movem.l d0/d7/a0-a2,-(a7)
-L00004242       move.w  #$8000,d1
-L00004246       move.b  d0,$4022
-L0000424a       clr.w   L0000417e
-L0000424e       subq.w  #$01,d0
-L00004250       bmi.b   L00004258
-L00004252       cmp.w   #$0003,d0
-L00004256       bcs.b   L00004260
-L00004258       bsr.w   L00004194
-L0000425c       bra.w   L000042f0
-L00004260       lea.l   L0001b9dc,a0
-L00004266       asl.w   #$03,d0
-L00004268       adda.w  d0,a0
-L0000426a       lea.l   L00004024,a1
-L0000426e       moveq   #$03,d7
-L00004270       move.w  (a0)+,d0
-L00004272       beq.b   L000042e4
-L00004274       lea.l   (a0,d0,$fe),a2
-L00004278       moveq   #$00,d0
-L0000427a       move.w  d0,(a1,$004c)
-L0000427e       move.l  d0,(a1,$0002)
-L00004282       move.l  d0,(a1,$000a)
-L00004286       move.b  d0,(a1,$0013)
-L0000428a       move.b  #$01,(a1,$0012)
-L00004290       move.w  d1,(a1)
-L00004292       move.b  (a2)+,d0
-L00004294       bpl.b   L000042c8
-L00004296       sub.b   #$80,d0
-L0000429a       bne.b   L000042aa
-L0000429c       movea.l (a1,$0002),a2
-L000042a0       cmpa.w  #$0000,a2
-L000042a4       bne.b   L00004292
-L000042a6       clr.w   (a1)
-L000042a8       bra.b   L000042e4
-L000042aa       subq.b  #$01,d0
-L000042ac       bne.b   L000042b4
-L000042ae       move.l  a2,(a1,$0002)
-L000042b2       bra.b   L00004292
-L000042b4       subq.b  #$01,d0
-L000042b6       bne.b   L000042be
-L000042b8       move.b  (a2)+,(a1,$0013)
-L000042bc       bra.b   L00004292
-L000042be       subq.b  #$01,d0
-L000042c0       bne.b   L00004292
-L000042c2       move.b  (a2)+,(a1,$0012)
-L000042c6       bra.b   L00004292
-L000042c8       move.l  a2,(a1,$0006)
-L000042cc       lea.l   $0001ba06,a2
-L000042d2       ext.w   d0
-L000042d4       add.w   d0,d0
-L000042d6       adda.w  d0,a2
-L000042d8       adda.w  (a2),a2
-L000042da       move.l  a2,(a1,$000e)
-L000042de       move.w  #$0001,(a1,$0052)
-L000042e4       lea.l   (a1,$0056),a1
-L000042e8       dbf.w   d7,L00004270
-L000042ec       or.w    d1,$4020
-L000042f0       movem.l (a7)+,d0/d7/a0-a2
-L000042f4       rts
+
+
+                ; IN: D0.l - sound/song to play?
+                ;               - 0 = play nothing/stop
+                ;               - >3 = play nothing/stop
+do_play_song                                                    ; original routine address $0000423e
+                movem.l d0/d7/a0-a2,-(a7)
+                move.w  #$8000,d1
+                move.b  d0,song_number                          ; $00004022
+                clr.w   L0000417e                               ; clear timer/counter?
+.validate_song_number
+                subq.w  #$01,d0
+                bmi.b   .stop_playing                           ; L00004258
+                cmp.w   #$0003,d0                               ; check song number in range 1-3
+                bcs.b   .play_song
+
+.stop_playing
+                bsr.w   do_silence_all_audio                       ; calls $00004194
+                bra.w   .exit
+
+.play_song
+                lea.l   song_table,a0                           ; $0001b9dc - a0 = base ptr
+                asl.w   #$03,d0                                 ; d0 = song no x 8
+                adda.w  d0,a0                                   ; a0 = updated base ptr to song table entry
+
+.init_channels
+                lea.l   channel_1_status,a1                     ; L00004024,a1
+                moveq   #$03,d7                                 ; d7 = channel count + 1
+.channel_loop
+                move.w  (a0)+,d0                                ; d0 = channel offset value (from value address) 
+                beq.b   .skip_to_next_channel                   ; if value = 0, jmp $000042e4
+                lea.l   $fe(a0,d0),a2                           ; a2 = song channel data
+
+                moveq   #$00,d0
+                move.w  d0,$004c(a1)                            ; initialise unknown channel status values
+                move.l  d0,$0002(a1)                            ; initialise unknown channel status values
+                move.l  d0,$000a(a1)                            ; initialise unknown channel status values
+                move.b  d0,$0013(a1)                            ; initialise unknown channel status values
+                move.b  #$01,$0012(a1)                          ; initialise unknown channel status values
+                move.w  d1,(a1)                                 ; (8000) initialise unknown channel status values
+
+.get_next_byte
+                move.b  (a2)+,d0                        ; d0 = song channel data byte  
+.chk_code_0x
+                bpl.b   .is_code_0x                     ; code is '0x', bit 7 = 0, Play Sample?
+.chk_code_80
+                sub.b   #$80,d0
+                bne.b   .chk_code_81
+.is_code_80
+                movea.l $0002(a1),a2
+                cmpa.w  #$0000,a2
+                bne.b   .get_next_byte
+                clr.w   (a1)
+                bra.b   .skip_to_next_channel                   ; jmp $000042e4
+.chk_code_81
+                subq.b  #$01,d0
+                bne.b   .chk_code_82
+.is_code_81
+                move.l  a2,$0002(a1)                            ; store current channel data ptr
+                bra.b   .get_next_byte
+.chk_code_82
+                subq.b  #$01,d0
+                bne.b   .chk_code_83
+.is_code_82
+                move.b  (a2)+,$0013(a1)                         ; initialise unknown channel status values
+                bra.b   L00004292
+.chk_code_83
+                subq.b  #$01,d0
+                bne.b   .get_next_byte
+.is_code_83
+                move.b  (a2)+,(a1,$0012)                        ; initialise unknown channel status values
+                bra.b   .get_next_byte
+.is_code_0x                                                   ; these values for 'Laugh' & 'IWanna'
+                move.l  a2,$0006(a1)                            ; store song channel data ptr
+                lea.l   L0001ba06,a2
+                ext.w   d0
+                add.w   d0,d0
+                adda.w  d0,a2
+                adda.w  (a2),a2
+                move.l  a2,$000e(a1)                            ; ($90,$0B - $90,$0C) - initialise unknown channel status values
+                move.w  #$0001,$0052(a1)                        ; initialise unknown channel status values
+.skip_to_next_channel
+                lea.l   $0056(a1),a1
+                dbf.w   d7,.channel_loop                        ; loop, jmp $00004270
+                or.w    d1,L00004020
+.exit
+                movem.l (a7)+,d0/d7/a0-a2
+                rts
+
+
+
 
 
 L000042f6       lea.l   $00dff000,a6
@@ -269,7 +306,7 @@ L00004306       tst.w   L00004020
 L0000430a       beq.b   L00004354
 L0000430c       addq.w  #$01,$417e
 L00004310       clr.w   L00004020
-L00004314       lea.l   L00004024,a4
+L00004314       lea.l   channel_1_status,a4                             ; L00004024,a4
 L00004318       move.w  (a4),d7
 L0000431a       beq.b   L00004324
 L0000431c       bsr.b   L00004360
@@ -752,7 +789,7 @@ L00004424       rts
 000048c2 51ca fff0                dbf .w d2,#$fff0 == $000048b4 (F)
 000048c6 3238 401c                move.w $401c [ffff],d1
 000048ca 3438 401e                move.w $401e [ffff],d2
-000048ce 41f8 4024                lea.l $4024,a0
+000048ce 41f8 4024                lea.l  channel_1_status,a0                            ;$4024,a0
 000048d2 3601                     move.w d1,d3
 000048d4 0810 0006                btst.b #$0006,(a0) [23]
 000048d8 6702                     beq.b #$02 == $000048dc (T)
@@ -1333,12 +1370,59 @@ L0001B99A dc.w $0031, $0037, $0039, $013C, $1EFE, $0000, $0119, $08FD           
 L0001B9AA dc.w $0000, $011E, $0000, $013E, $0000, $020F, $07FF, $000A           ;.......>........
 L0001B9BA dc.w $FF01, $1902, $F605, $FF00, $0001, $190B, $FE01, $FE00           ;................
 L0001B9CA dc.w $0001, $2A14, $FE01, $FE00, $0001, $3E00, $0001, $3200           ;..*.......>...2.
-L0001B9DA dc.w $0000, $003E, $0048, $0049, $0051, $0000, $0000, $0000           ;...>.H.I.Q......
-L0001B9EA dc.w $000A, $0000, $0000, $0000, $0004, $0780, $0880, $900B           ;................
-L0001B9FA dc.w $8F03, $1896, $8090, $0C8F, $0318, $9680, $0038, $003A           ;.............8.:
-L0001BA0A dc.w $0081, $0156, $01A3, $01BC, $01CF, $FFE4, $FFE9, $0222           ;...V..........."
-L0001BA1A dc.w $8183, $0800, $0101, $0101, $8308, $0080, $8102, $8081           ;................
-L0001BA2A dc.w $0303, $0303, $0303, $0606, $8081, $8308, $0004, $0505           ;................
+
+L0001B9DA dc.w $0000 
+
+                ; 4 values per song entry (channel settings)
+                ; each value is an offset to the channel data below it.
+                ; song1:
+                ;       channel1: 3e + 1b9dc = 1ba1a
+                ;       channel2: 48 + 1b9de = 1ba26
+                ;       channel3: 49 + 1b9e0 = 1ba29
+                ;       channel4: 51 + 1b9e2 = 1ba33
+                ; song2:
+                ;       channel1: off
+                ;       channel2: off
+                ;       channel3: off
+                ;       channel4: 0a + 1b9ea = 1b9f4
+                ;
+                ; song3:
+                ;       channel1: off
+                ;       channel2: off
+                ;       channel3: off
+                ;       channel4: 04 + 1b9f2 = 
+song_table                                      ; original address $0001b9dc
+L0001b9dc       dc.w $003E, $0048, $0049, $0051 
+L0001b9e4       dc.w $0000, $0000, $0000, $000A
+L0001b9ec       dc.w $0000, $0000, $0000, $0004
+
+song2_channel_4       
+L0001B9F4       dc.b $07, $80 
+song3_channel_4
+L0001B9F6       dc.b $08, $80 
+
+L0001B9F8       dc.b $90, $0B   
+
+L0001B9FA       dc.b $8F, $03, $18, $96, $80
+
+L0001B9FF       dc.b $90, $0C, $8F, $03, $18, $96, $80
+
+L0001BA06       dc.w $0038, $003A
+
+L0001BA0A       dc.w $0081, $0156, $01A3, $01BC, $01CF, $FFE4, $FFE9, $0222
+
+
+
+song1_channel_1  ; 1b9dc + 3e = 1ba1a
+L0001BA1A       dc.b $81, $83, $08, $00, $01, $01, $01, $01, $83, $08, $00, $80
+song1_channel_2 
+L0001BA26       dc.b $81, $02, $80
+song1_channel_3
+L0001BA29       dc.b $81, $03, $03, $03, $03, $03, $03, $06, $06, $80
+song1_channel_4
+L0001BA33       dc.b $81, $83, $08, $00, $04, $05, $05    
+
+
 L0001BA3A dc.w $8308, $0080, $8587, $6080, $8F01, $9008, $8E8C, $8406           ;......`.........
 L0001BA4A dc.w $383A, $3F38, $3A3F, $383A, $3F38, $3A3F, $383A, $3F38           ;8:?8:?8:?8:?8:?8
 L0001BA5A dc.w $3A3F, $383A, $3F38, $3A3F, $383A, $3F38, $3A3F, $383A           ;:?8:?8:?8:?8:?8:
@@ -1436,37 +1520,65 @@ L0001BFFA dc.w $0000, $0000, $0000                                              
 
 
                 ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
-L0001c000       bra.w $0001c008 
+title_screen_start                                      ; original routine address $0001c000
+                bra.w do_title_screen_start             ; jmp $0001c008 
 
                 ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
-L0001c004       bra.w $0001d450
+end_game_start                                          ; original routine address $0001c004
+                bra.w $0001d450
 
 
-L0001c008       clr.l $0007c87c [00000000]
-L0001c00e       move.l $0001ca18 [00125000],$0007c878 [00000000]
-L0001c018       lea.l $0001d6de,a7
-L0001c01e       move.b #$f4,$0001d6e8 [f3]
-L0001c026       move.b #$f4,$0001d6ec [f4]
-L0001c02e       moveq #$01,d0
-L0001c030       bsr.w #$02c6 == $0001c2f8
-L0001c034       bsr.w #$00a2 == $0001c0d8
-L0001c038       move.w #$5000,$00dff100
-L0001c040       lea.l $0001d79a,a0
-L0001c046       bsr.w #$1358 == $0001d3a0
-L0001c04a       and.w #$f89f,$0007c874 [0000]
-L0001c052       bsr.w #$014c == $0001c1a0
-L0001c056       bsr.w #$09dc == $0001ca34
-L0001c05a       bsr.w #$052a == $0001c586
-L0001c05e       not.w $0001c09c [0000]
-L0001c064       cmp.b #$f4,$0001d6e8 [f3]
-L0001c06c       bne.b #$f6 == $0001c064 (T)
-L0001c06e       moveq #$01,d0
-L0001c070       bsr.w #$0286 == $0001c2f8
-L0001c074       move.l $0001ca18 [00125000],$0007c878 [00000000]
-L0001c07e       jsr $0007c81c
-L0001c084       jsr $0007c838
-L0001c08a       jsr $00004008
-L0001c090       jmp $00000824
+PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c               ; address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES   EQU     $0007c838               ; address of Panel.Initialise_Player_Lives
+PANEL_STATUS_1                  EQU     $0007c874               ; address of Panel.Panel_Status_1  
+PANEL_PLAYERSCORE               EQU     $0007c878               ; address of Panel.Player_Score
+PANEL_HIGHSCORE                 EQU     $0007c87c               ; address of Panel.High_Score
+LOADER_LOAD_LEVEL_1             EQU     $824                    ; address of Loader.Load_Level_1()
+
+
+
+                ;---------------------------- DO TITLE SCREEN START ----------------------------
+                ; Routine to set up & run the title screen.
+                ;
+                ; Initialised Window start to bottom of screen (probably for scroll up routine)
+                ; H/w Ref, standard DIWSRT & DIWSTOP
+                ; PAL - $2c81, $2cc1
+                ; NTSC- $2c81, $f4c1
+                ;
+do_title_screen_start                                           ; original routine address $0001c008
+L0001c008       clr.l   PANEL_HIGHSCORE                         ; clear Panel.HighScore
+L0001c00e       move.l  highscore_table,PANEL_HIGHSCORE         ; set Panel.HighScore
+L0001c018       lea.l   temp_stack_top,a7                       ; set temp stack space - $0001d6de,a7
+L0001c01e       move.b  #$f4,copper_diwstrt                     ; reset window start line (usually $2c) - $0001d6e8
+L0001c026       move.b  #$f4,copper_diwstop                     ; reset widndow stop line (usually $2c or $f4 PAL/NTSC ) - $0001d6ec
+
+L0001c02e       moveq   #$01,d0                                 ; d0 = frames to wait + 1
+L0001c030       bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+
+L0001c034       bsr.w   initialise_title_screen                 ; calls $0001c0d8
+L0001c038       move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
+
+L0001c040       lea.l   title_screen_colors,a0                  ; $0001d79a - screen colours
+L0001c046       bsr.w   copper_copy                             ; calls $0001d3a0
+
+L0001c04a       and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
+                                                                ; low 3 bits of status 1 (game over, life lost, timer expired)
+                                                                ; bits 6 & 5 of status 2 (don't know what these do yet)
+L0001c052       bsr.w   L0001c1a0
+L0001c056       bsr.w   L0001ca34
+L0001c05a       bsr.w   L0001c586
+L0001c05e       not.w   L0001c09c
+L0001c064       cmp.b   #$f4,copper_diwstrt                     ; L0001d6e8
+L0001c06c       bne.b   L0001c064
+
+L0001c06e       moveq   #$01,d0                                 ; d0 = frames to wait + 1
+L0001c070       bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+
+L0001c074       move.l  highscore_table,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
+L0001c07e       jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
+L0001c084       jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
+L0001c08a       jsr     L00004008
+L0001c090       jmp     LOADER_LOAD_LEVEL_1                     ; jmp $00000824 - Loader.Load_Level_1
 
 L0001c096       jmp $0001d542
 
@@ -1474,39 +1586,41 @@ L0001c09c       or.b #$79,d0
 L0001c0a0       or.b #$9c,d1
 
 L0001c0a4       bne.b #$14 == $0001c0ba (T)
-L0001c0a6       cmp.b #$2c,$0001d6e8 [f3]
+L0001c0a6       cmp.b #$2c,copper_diwstrt                       ; $0001d6e8 
 L0001c0ae       beq.b #$08 == $0001c0b8 (F)
-L0001c0b0       sub.w #$0100,$0001d6e8 [f381]
+L0001c0b0       sub.w #$0100,copper_diwstrt                     ; $0001d6e8
 L0001c0b8       rts  == $00c00276
 
-L0001c0ba       cmp.b #$f4,$0001d6e8 [f3]
+L0001c0ba       cmp.b #$f4,copper_diwstrt                       ; $0001d6e8
 L0001c0c2       beq.b #$12 == $0001c0d6 (F)
 L0001c0c4       bcs.b #$08 == $0001c0ce (F)
-L0001c0c6       move.b #$f0,$0001d6e8 [f3]
-L0001c0ce       add.w #$0400,$0001d6e8 [f381]
+L0001c0c6       move.b #$f0,copper_diwstrt                      ; $0001d6e8
+L0001c0ce       add.w #$0400,copper_diwstrt                     ; $0001d6e8
 L0001c0d6       rts  == $00c00276
 
-L0001c0d8       move.l #$f481f4c1,$00dff08e
-L0001c0e2       move.w #$7fff,d0
-L0001c0e6       move.w d0,$00dff096
-L0001c0ec       move.w d0,$00dff09a
-L0001c0f2       move.w d0,$00dff09c
-L0001c0f8       move.l #$0001c26c,$00000064 [00fc0c8e]
-L0001c102       move.l #$0001c26e,$00000068 [00fc0ce2]
-L0001c10c       move.l #$0001c2a8,$0000006c [00fc0d14]
-L0001c116       move.l #$0001c2e4,$00000070 [00fc0d6c]
-L0001c120       move.l #$0001c2e6,$00000074 [00fc0dfa]
-L0001c12a       move.w #$e028,$00dff09a
-L0001c132       move.w #$83c0,$00dff096
-L0001c13a       move.l #$0001d6e2,$00dff080
-L0001c144       move.w d0,$00dff088
-L0001c14a       move.b #$7f,$00bfed01
-L0001c152       move.b #$7f,$00bfed01
-L0001c15a       jsr $00004000
-L0001c160       move.l #$00001f40,d0
-L0001c166       bra.w #$1176 == $0001d2de (T)
-L0001c16a       clr.w $0001c2f0 [0000]
-L0001c170       rts  == $00c00276
+
+initialise_title_screen                                         ; original routine address $0001c0d8
+L0001c0d8       move.l  #$f481f4c1,$00dff08e
+L0001c0e2       move.w  #$7fff,d0
+L0001c0e6       move.w  d0,$00dff096
+L0001c0ec       move.w  d0,$00dff09a
+L0001c0f2       move.w  d0,$00dff09c
+L0001c0f8       move.l  #$0001c26c,$00000064 [00fc0c8e]
+L0001c102       move.l  #$0001c26e,$00000068 [00fc0ce2]
+L0001c10c       move.l  #$0001c2a8,$0000006c [00fc0d14]
+L0001c116       move.l  #$0001c2e4,$00000070 [00fc0d6c]
+L0001c120       move.l  #$0001c2e6,$00000074 [00fc0dfa]
+L0001c12a       move.w  #$e028,$00dff09a
+L0001c132       move.w  #$83c0,$00dff096
+L0001c13a       move.l  #copper_list,$dff080                     ;#$0001d6e2,$00dff080
+L0001c144       move.w  d0,$00dff088
+L0001c14a       move.b  #$7f,$00bfed01
+L0001c152       move.b   #$7f,$00bfed01
+L0001c15a       jsr     $00004000
+L0001c160       move.l  #$00001f40,d0
+L0001c166       bra.w   #$1176 == $0001d2de (T)
+L0001c16a       clr.w   $0001c2f0 [0000]
+L0001c170       rts
 
 L0001c172       btst.b #$0000,$0001c2ed [00]
 L0001c17a       bne.w #$003c == $0001c1b8 (T)
@@ -1516,12 +1630,19 @@ L0001c188       cmp.w #$005c,$0001c2ec [0000]
 L0001c190       bne.b #$26 == $0001c1b8 (T)
 L0001c192       not.w $0001c2f2 [0000]
 L0001c198       bchg.b #$0000,$0007c875 [00]
-L0001c1a0       btst.b #$0000,$0007c875 [00]
-L0001c1a8       beq.b #$06 == $0001c1b0 (F)
-L0001c1aa       jmp $00004004
 
-L0001c1b0       moveq #$01,d0
-L0001c1b2       jmp $00004010
+
+
+                ;------------------- Game Over/Completion screen? -----------------
+L0001c1a0       btst.b  #$0000,$0007c875                        ; test bit 0 of panel_status_2 (no idea?)
+L0001c1a8       beq.b   L0001c1b0 
+L0001c1aa       jmp     Silence_All_Audio                       ; calls $00004004 - end music
+
+
+L0001c1b0       moveq   #$01,d0                                 ; set tune to play?
+L0001c1b2       jmp     Play_Song                               ; jmp $00004010
+
+
 
 L0001c1b8       clr.w $0001c2f2 [0000]
 L0001c1be       rts  == $00c00276
@@ -1554,7 +1675,7 @@ L0001c228       cmpm.b (a0)+ [23],(a1)+ [00]
 L0001c22a       bne.b #$1e == $0001c24a (T)
 L0001c22c       dbf .w d0,#$fffa == $0001c228 (F)
 L0001c230       bchg.b #$0007,$0007c875 [00]
-L0001c238       move.b #$f4,$0001d6e8 [f3]
+L0001c238       move.b #$f4,copper_diwstrt                      ; $0001d6e8
 L0001c240       move.l #$00001f40,d0
 L0001c246       bsr.w #$1096 == $0001d2de
 L0001c24a       rts  == $00c00276
@@ -1603,16 +1724,34 @@ L0001c2e4       rte  == $027600c0
 L0001c2e6       rte  == $027600c0
 
 
-L0001C2E8 dc.w $0000                                                            ;..
+L0001C2E8 dc.w $0000
 L0001C2EA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000
 
 
-L0001c2f8       cmp.b #$a1,$00dff006
-L0001c300       bne.b #$f6 == $0001c2f8 (T)
-L0001c302       move.w #$001e,d1
-L0001c306       dbf .w d1,#$fffe == $0001c306 (F)
-L0001c30a       dbf .w d0,#$ffec == $0001c2f8 (F)
-L0001c30e       rts  == $00c00276
+
+                ;------------------------- wait raster 161 -------------------------
+                ; Waits for raster 161 (#$a1) in a busy loop, it will also
+                ; wait for multiple frames for the value set in d0.l
+                ;
+                ; It has a dodgy processor wait loop which prevents false +ve's
+                ; with the vertical check on the same raster line (it's a bit shit) 
+                ;
+                ; reading and comparing a byte value might not be the best approach
+                ; on a custom register.
+                ;
+                ; IN: D0.l = number of frames to wait + 1
+                ;
+raster_wait_161                                                 ; original routine address $0001c2f8
+                cmp.b   #$a1,$00dff006                          ; compare VHPOSR with #$a1 (161)
+                bne.b   raster_wait_161
+                move.w  #$001e,d1
+.processor_wait
+                dbf.w  d1,.processor_wait
+                dbf.w  d0,raster_wait_161
+                rts
+
+
+
 
 L0001c310       or.b #$00,d0
 L0001c314       or.b #$00,d0
@@ -1915,9 +2054,17 @@ L0001C9CA dc.w $3030, $0D0D, $2020, $2020, $2034, $5448, $2020, $4249           
 L0001C9DA dc.w $4C20, $2030, $3530, $3030, $300D, $0D20, $2020, $2020           ;L  050000..
 L0001C9EA dc.w $3554, $4820, $204A, $4F4E, $2020, $3032, $3530, $3030           ;5TH  JON  025000
 L0001C9FA dc.w $0D0D, $2020, $2020, $2020, $2020, $2020, $2020, $2020           ;..
-L0001CA0A dc.w $2020, $2020, $2020, $200D, $0D04, $0000, $0000, $0012           ;       .........
-L0001CA1A dc.w $5000, $0010, $0000, $0007, $5000, $0005, $0000, $0002           ;P.......P.......
-L0001CA2A dc.w $5000, $0000, $0000, $0000, $0000
+L0001CA0A dc.w $2020, $2020, $2020, $200D, $0D04, $0000, $0000, 
+
+highscore_table                                         ; original address $0001CA18
+L0001CA18       dc.l $00125000
+L0001CA1C       dc.l $00100000
+L0001CA20       dc.l $00075000
+L0001CA24       dc.l $00050000
+L0001CA28       dc.l $00025000
+
+.other_data
+L0001CA2c       dc.l $00000000, $0000, $0000
 
 L0001ca34       lea.l $00040000,a0
 L0001ca3a       bra.w #$099e == $0001d3da (T)
@@ -2206,12 +2353,24 @@ L0001d390       add.l $0001ca3e [00000000],d0
 L0001d396       dbf .w d7,#$ffe8 == $0001d380 (F)
 L0001d39a       rts  == $000000fe
 L0001d39c       bra.w #$0016 == $0001d3b4 (T)
-L0001d3a0       lea.l $0001d718,a1
-L0001d3a6       move.w #$001f,d0
-L0001d3aa       move.w (a0)+ [0000],(a1) [00c0]
-L0001d3ac       addaq.l #$04,a1
-L0001d3ae       dbf .w d0,#$fffa == $0001d3aa (F)
-L0001d3b2       rts  == $000000fe
+
+
+
+                ;--------------------- copper copy -------------------
+                ; copies colours into the copper for the current
+                ; screen display
+                ; IN: A0 = ptr to screen colours
+                ;
+copper_copy                                                     ; original address $0001d3a0
+                lea.l   copper_colors,a1                        ; 0001d718,a1
+                move.w  #$001f,d0                               ; d0 = 31 + 1 - counter
+.copy_loop
+                move.w  (a0)+,(a1)
+                addaq.l #$04,a1                                 ; update dest ptr to next colour value
+                dbf.w   d0,.copy_loop
+                rts
+
+
 
 L0001d3b4       clr.l $00063190 [00000000]
 L0001d3ba       lea.l $00020000,a0
@@ -2254,8 +2413,8 @@ L0001d442       btst.b #$0006,$00dff002
 L0001d44a       bne.w #$fff6 == $0001d442 (T)
 L0001d44e       rts  == $000000fe
 
-L0001d450       lea.l $0001d6de,a7
-L0001d456       bsr.w #$ec80 == $0001c0d8
+L0001d450       lea.l   temp_stack_top,a7                               ; set temp stack, $0001d6de,a7
+L0001d456       bsr.w   initialise_title_screen                         ; calls $0001c0d8
 L0001d45a       btst.b #$0005,$0007c875 [00]
 L0001d462       beq.b #$0a == $0001d46e (F)
 L0001d464       clr.l $0007c87c [00000000]
@@ -2266,15 +2425,15 @@ L0001d47a       move.l #$00001f40,d0
 L0001d480       bsr.w #$fe5c == $0001d2de
 L0001d484       move.w #$4000,$00dff100
 L0001d48c       lea.l $0001d4cc,a0
-L0001d492       bsr.w #$ff0c == $0001d3a0
+L0001d492       bsr.w   copper_copy                                     ; calls $0001d3a0
 L0001d496       lea.l $00056460,a0
 L0001d49c       bsr.w #$ff3c == $0001d3da
-L0001d4a0       move.b #$2c,$0001d6e8 [f3]
+L0001d4a0       move.b #$2c,copper_diwstrt                              ; $0001d6e8 [f3]
 L0001d4a8       move.b #$f4,$0001d6ec [f4]
 L0001d4b0       move.w #$0064,d0
 L0001d4b4       bsr.w #$ee42 == $0001c2f8
 L0001d4b8       moveq #$03,d0
-L0001d4ba       jsr $00004010
+L0001d4ba       jsr     Play_Song                                       ; calls $00004010
 L0001d4c0       move.w #$0600,d0
 L0001d4c4       bsr.w #$ee32 == $0001c2f8
 L0001d4c8       bra.w #$eb4e == $0001c018 (T)
@@ -2294,15 +2453,15 @@ L0001d4e8       eor.l #$0ccc203c,(a2,$0000) == $00000001 [00000000]
 L0001d4f0       move.l d0,d4
 L0001d4f2       bsr.w #$fdea == $0001d2de
 L0001d4f6       lea.l $00049c40,a0
-L0001d4fc       bsr.w #$fea2 == $0001d3a0
+L0001d4fc       bsr.w   copper_copy                                     ; calls $0001d3a0
 L0001d500       lea.l $00049c80,a0
 L0001d506       bsr.w #$ff14 == $0001d41c
-L0001d50a       move.b #$2c,$0001d6e8 [f3]
+L0001d50a       move.b #$2c,copper_diwstrt                              ; $0001d6e8
 L0001d512       move.b #$2b,$0001d6ec [f4]
 L0001d51a       move.w #$0014,d0
 L0001d51e       bsr.w #$edd8 == $0001c2f8
 L0001d522       moveq #$02,d0
-L0001d524       jsr $00004010
+L0001d524       jsr     Play_Song                                       ; calls $00004010
 L0001d52a       move.w #$0200,d0
 L0001d52e       bsr.w #$edc8 == $0001c2f8
 L0001d532       bra.w #$eae4 == $0001c018 (T)
@@ -2314,177 +2473,109 @@ L0001d548       addq.w #$01,d0
 L0001d54a       bra.w #$fff6 == $0001d542 (T)
 
 
-L0001D54E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D55E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D56E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D57E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D58E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D59E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D5AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D5BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D5CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D5DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D5EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D5FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D60E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D61E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D62E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D63E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D64E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D65E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D66E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D67E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D68E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D69E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D6AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D6BE dc.w $0000, $0000, $00C7, $8978, $00C7, $8978, $00C7, $848C                  ;.......x...x....
-L0001D6CE dc.w $00C7, $871E, $00C7, $8104, $0000, $0000, $0000, $0000                  ;................
-L0001D6DE dc.w $0000, $0000, $00FF, $FF00, $008E, $F381, $0090, $F4C1                  ;................
-L0001D6EE dc.w $00E0, $0006, $00E4, $0006, $00E8, $0006, $00EC, $0006                  ;................
-L0001D6FE dc.w $00F0, $0006, $00E2, $3190, $00E6, $50D0, $00EA, $7010                  ;......1...P...p.
-L0001D70E dc.w $00EE, $8F50, $00F2, $AE90, $0180, $0000, $0182, $0000                  ;...P............
-L0001D71E dc.w $0184, $0000, $0186, $0000, $0188, $0000, $018A, $0000                  ;................
-L0001D72E dc.w $018C, $0B51, $018E, $0D61, $0190, $0E70, $0192, $0F80                  ;...Q...a...p....
-L0001D73E dc.w $0194, $0F90, $0196, $0FA0, $0198, $0FB0, $019A, $0FC0                  ;................
-L0001D74E dc.w $019C, $0FE0, $019E, $0FF0, $01A0, $0045, $01A2, $0900                  ;...........E....
-L0001D75E dc.w $01A4, $0FFF, $01A6, $0033, $01A8, $0067, $01AA, $0222                  ;.......3...g..."
-L0001D76E dc.w $01AC, $0333, $01AE, $0444, $01B0, $0F99, $01B2, $0666                  ;...3...D.......f
-L0001D77E dc.w $01B4, $0706, $01B6, $0504, $01B8, $099A, $01BA, $0403                  ;................
-L0001D78E dc.w $01BC, $0302, $01BE, $0DDE, $FFFF, $FFFE, $0000, $0521                  ;...............!
-L0001D79E dc.w $0310, $0731, $0831, $0A41, $0B51, $0D61, $0E70, $0F80                  ;...1.1.A.Q.a.p..
-L0001D7AE dc.w $0F90, $0FA0, $0FB0, $0FC0, $0FE0, $0FF0, $0045, $0900                  ;.............E..
-L0001D7BE dc.w $0FFF, $0033, $0067, $0222, $0333, $0444, $0F99, $0666                  ;...3.g.".3.D...f
-L0001D7CE dc.w $0706, $0504, $099A, $0403, $0302, $0DDE, $0000, $0000                  ;................
-L0001D7DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D7EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D7FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D80E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D81E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D82E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D83E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D84E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D85E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D86E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D87E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D88E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D89E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D8AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D8BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D8CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D8DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D8EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D8FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D90E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D91E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D92E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D93E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D94E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D95E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D96E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D97E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D98E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D99E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D9AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D9BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D9CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D9DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D9EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001D9FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA0E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA1E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA2E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA3E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA4E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA5E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA6E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA7E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA8E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DA9E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DAAE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DABE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DACE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DADE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DAEE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DAFE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB0E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB1E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB2E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB3E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB4E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB5E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB6E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB7E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB8E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DB9E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DBAE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DBBE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DBCE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DBDE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DBEE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DBFE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC0E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC1E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC2E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC3E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC4E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC5E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC6E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC7E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC8E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DC9E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DCAE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DCBE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DCCE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DCDE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DCEE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DCFE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD0E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD1E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD2E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD3E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD4E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD5E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD6E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD7E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD8E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DD9E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DDAE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DDBE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DDCE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DDDE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DDEE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DDFE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE0E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE1E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE2E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE3E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE4E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE5E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE6E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE7E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE8E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DE9E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DEAE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DEBE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DECE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DEDE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DEEE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DEFE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF0E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF1E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF2E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF3E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF4E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF5E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF6E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF7E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF8E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DF9E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DFAE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DFBE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DFCE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DFDE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DFEE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000                  ;................
-L0001DFFE dc.w $0000 
+L0001D54E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D55E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D56E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D57E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D58E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D59E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D5AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D5BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D5CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D5DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D5EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D5FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D60E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D61E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D62E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D63E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D64E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D65E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D66E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D67E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D68E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D69E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D6AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+L0001D6BE dc.w $0000, $0000, $00C7, $8978, $00C7, $8978, $00C7, $848C   
+L0001D6CE dc.w $00C7, $871E, $00C7, $8104, $0000, $0000, $0000, $0000   
+temp_stack_top                                                          ; original address $0001D6DE
+
+L0001D6DE dc.w $0000
+L0001D6E0 dc.w $0000
 
 
+
+                ; ------------------- copper list -------------------
+copper_list
+                dc.w $00FF
+                dc.w $FF00
+                dc.w DIWSTRT            ; $008E 
+copper_diwstrt                                                  ; original address $0001D6E8
+                dc.w $F381, 
+                dc.w DIWSTOP            ; $0090
+copper_diwstop                                                  ; original address $0001D6EC
+                dc.w $F4C1
+L0001D6EE       dc.w BPL1PTH            ; $00E0
+                dc.W $0006
+                dc.w BPL2PTH            ; $00E4
+                dc.w $0006
+                dc.w BPL3PTH            ; $00E8
+                dc.w $0006
+                dc.w BPL4PTH            ; $00EC
+                dc.w $0006
+L0001D6FE       dc.w BPL5PTH            ; $00F0
+                dc.w $0006
+                dc.w BPL1PTL            ; $00E2
+                dc.w $3190
+                dc.w BPL2PTL            ; $00E6
+                dc.w $50D0
+                dc.w BPL3PTL            ; $00EA
+                dc.w $7010
+L0001D70E       dc.w BPL4PTL            ; $00EE
+                dc.w $8F50
+                dc.w BPL5PTL            ; $00F2
+                dc.w $AE90
+                dc.w COLOR00
+copper_colors                                                   ; original address $0001d718
+                dc.w $0000
+                dc.w COLOR01, $0000
+                dc.w COLOR02, $0000
+                dc.w COLOR03, $0000
+                dc.w COLOR04, $0000
+                dc.w COLOR05, $0000
+                dc.w COLOR06, $0B51
+                dc.w COLOR07, $0D61
+                dc.w COLOR08, $0E70
+                dc.w COLOR09, $0F80 
+                dc.w COLOR10, $0F90
+                dc.w COLOR11, $0FA0
+                dc.w COLOR12, $0FB0
+                dc.w COLOR13, $0FC0
+                dc.w COLOR14, $0FE0
+                dc.w COLOR15, $0FF0
+                dc.w COLOR16, $0045
+                dc.w COLOR17, $0900
+                dc.w COLOR18, $0FFF
+                dc.w COLOR19, $0033
+                dc.w COLOR20, $0067
+                dc.w COLOR21, $0222
+                dc.w COLOR22, $0333
+                dc.w COLOR23, $0444
+                dc.w COLOR24, $0F99
+                dc.w COLOR25, $0666
+                dc.w COLOR26, $0706
+                dc.w COLOR27, $0504
+                dc.w COLOR28, $099A
+                dc.w COLOR29, $0403
+                dc.w COLOR30, $0302
+                dc.w COLOR31, $0DDE
+                dc.w $FFFF, $FFFE
+
+title_screen_colors                                                     ; original address $0001D79A       
+                dc.w $0000, $0521, $0310, $0731, $0831, $0A41, $0B51, $0D61
+                dc.w $0E70, $0F80, $0F90, $0FA0, $0FB0, $0FC0, $0FE0, $0FF0
+                dc.w $0045, $0900, $0FFF, $0033, $0067, $0222, $0333, $0444
+                dc.w $0F99, $0666, $0706, $0504, $099A, $0403, $0302, $0DDE
+
+
+  
