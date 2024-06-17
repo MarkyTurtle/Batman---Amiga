@@ -24,6 +24,11 @@
                 INCLUDE "hw.i"
 
 
+ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
+DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
+
+
+
 TEST_TITLEPRG SET 1                                             ; Comment this to remove 'test'
 
         IFD TEST_TITLEPRG  
@@ -1534,13 +1539,18 @@ L0001BFFA dc.w $0000, $0000, $0000                                              
 
 
 
+
                 ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
-Title_Screen_Start                                      ; original routine address $0001c000
-                bra.w do_title_screen_start             ; jmp $0001c008 
+Title_Screen_Start                                              ; original routine address $0001c000
+                bra.w   do_title_screen_start                   ; jmp $0001c008 
+
+
 
                 ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
-end_game_start                                          ; original routine address $0001c004
+end_game_start                                                   ; original routine address $0001c004
                 bra.w $0001d450
+
+
 
 
 PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c               ; address of Panel.Initialise_Player_Score
@@ -1549,6 +1559,7 @@ PANEL_STATUS_1                  EQU     $0007c874               ; address of Pan
 PANEL_PLAYERSCORE               EQU     $0007c878               ; address of Panel.Player_Score
 PANEL_HIGHSCORE                 EQU     $0007c87c               ; address of Panel.High_Score
 LOADER_LOAD_LEVEL_1             EQU     $824                    ; address of Loader.Load_Level_1()
+
 
 
 
@@ -1585,6 +1596,8 @@ L0001c04a       and.w   #$f89f,PANEL_STATUS_1                   ; clear panel st
 L0001c052       bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
 L0001c056       bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
 L0001c05a       bsr.w   L0001c586
+
+start_game                                                      ; original address $0001c05e
 L0001c05e       not.w   L0001c09c
 L0001c064       cmp.b   #$f4,copper_diwstrt                     ; L0001d6e8
 L0001c06c       bne.b    L0001c064
@@ -1640,15 +1653,17 @@ L0001c166       bra.w   #$1176 == $0001d2de (T)
 L0001c16a       clr.w   $0001c2f0 [0000]
 L0001c170       rts
 
-L0001c172       btst.b #$0000,$0001c2ed [00]
-L0001c17a       bne.w #$003c == $0001c1b8 (T)
-L0001c17e       tst.w $0001c2f2 [0000]
-L0001c184       bne.w #$ffea == $0001c170 (T)
-L0001c188       cmp.w #$005c,$0001c2ec [0000]
-L0001c190       bne.b #$26 == $0001c1b8 (T)
-L0001c192       not.w $0001c2f2 [0000]
-L0001c198       bchg.b #$0000,$0007c875 [00]
 
+
+
+L0001c172       btst.b  #$0000,L0001c2ed
+L0001c17a       bne.w   L0001c1b8
+L0001c17e       tst.w   L0001c2f2
+L0001c184       bne.w   L0001c170
+L0001c188       cmp.w   #$005c,L0001c2ec
+L0001c190       bne.b   L0001c1b8
+L0001c192       not.w   L0001c2f2
+L0001c198       bchg.b  #$0000,panel_status_2                   ; $0007c875
 
 
                 ;------------------- Init Title Music -----------------
@@ -1663,8 +1678,10 @@ init_title_music                                                ; original routi
 
 
 
-L0001c1b8       clr.w $0001c2f2 [0000]
-L0001c1be       rts  == $00c00276
+L0001c1b8       clr.w L0001c2f2
+L0001c1be       rts
+
+
 
 L0001c1c0       btst.b #$0000,$0001c2ed [00]
 L0001c1c8       bne.w #$ffa0 == $0001c16a (T)
@@ -1743,8 +1760,10 @@ L0001c2e4       rte  == $027600c0
 L0001c2e6       rte  == $027600c0
 
 
-L0001C2E8 dc.w $0000
-L0001C2EA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000
+L0001C2E8       dc.w $0000
+L0001C2EA       dc.w $0000, $0000, $0000, $0000, 
+L0001c2f2       dc.w $0000
+L0001c2f4       dc.w $0000, $0000
 
 
 
@@ -1767,160 +1786,247 @@ raster_wait_161                                                 ; original routi
 .processor_wait
                 dbf.w  d1,.processor_wait
                 dbf.w  d0,raster_wait_161
-                rts
+return_rts      rts
 
 
 
 
-L0001c310       or.b #$00,d0
-L0001c314       or.b #$00,d0
+
+xy_coords
+x_coord                                                 ; original address L0001c310
+                dc.w    $0000                           ; x co-ord (byte value)
+y_coord                                                 ; original address L0001c312
+                dc.W    $0000                           ; y co-ord (line value)
+
+start_coords_ptr                                        ; original address L0001c314
+                dc.l    $00000000                       ; $0001c784 - address containing x,y co-ordinates
+
 
 L0001c318       add.w #$0001,d7
 L0001c31c       move.w d7,$00dff180
 L0001c322       rts  == $00c00276
 
-L0001c324       move.l a6,$0001c314 [00000000]
-L0001c32a       move.b (a6)+ [00],$0001c311 [00]
-L0001c330       move.b (a6)+ [00],$0001c313 [00]
-L0001c336       moveq #$00,d0
-L0001c338       move.w $0001c312 [0000],d0
-L0001c33e       mulu.w #$0028,d0
-L0001c342       add.w $0001c310 [0000],d0
-L0001c348       add.l #$00063190,d0
-L0001c34e       exg.l d0,a2
-L0001c350       movea.l a2,a3
-L0001c352       tst.w $0001c782 [0000]
-L0001c358       bne.w #$01b4 == $0001c50e (T)
-L0001c35c       move.b (a6)+ [00],d0
-L0001c35e       cmp.b #$ff,d0
-L0001c362       beq.w #$ffaa == $0001c30e (F)
-L0001c366       cmp.b #$0d,d0
-L0001c36a       beq.w #$0164 == $0001c4d0 (F)
-L0001c36e       cmp.b #$0e,d0
-L0001c372       beq.w #$0168 == $0001c4dc (F)
-L0001c376       cmp.b #$01,d0
-L0001c37a       beq.w #$016c == $0001c4e8 (F)
-L0001c37e       cmp.b #$06,d0
-L0001c382       beq.w #$01fc == $0001c580 (F)
-L0001c386       cmp.b #$02,d0
-L0001c38a       beq.w #$0172 == $0001c4fe (F)
-L0001c38e       cmp.b #$03,d0
-L0001c392       beq.w #$01aa == $0001c53e (F)
-L0001c396       cmp.b #$04,d0
-L0001c39a       beq.w #$01b2 == $0001c54e (F)
-L0001c39e       cmp.b #$05,d0
-L0001c3a2       beq.w #$01e2 == $0001c586 (F)
-L0001c3a6       cmp.b #$40,d0
-L0001c3aa       beq.w #$004a == $0001c3f6 (F)
-L0001c3ae       cmp.b #$26,d0
-L0001c3b2       beq.w #$0032 == $0001c3e6 (F)
-L0001c3b6       cmp.b #$23,d0
-L0001c3ba       beq.w #$019c == $0001c558 (F)
-L0001c3be       cmp.b #$2e,d0
-L0001c3c2       beq.w #$002a == $0001c3ee (F)
-L0001c3c6       and.w #$003f,d0
-L0001c3ca       beq.w #$0168 == $0001c534 (F)
-L0001c3ce       cmp.b #$20,d0
-L0001c3d2       beq.w #$002a == $0001c3fe (F)
-L0001c3d6       cmp.b #$30,d0
-L0001c3da       blt.w #$0028 == $0001c404 (F)
-L0001c3de       sub.w #$0014,d0
-L0001c3e2       bra.w #$0020 == $0001c404 (T)
-L0001c3e6       move.w #$002c,d0
-L0001c3ea       bra.w #$0018 == $0001c404 (T)
-L0001c3ee       move.w #$002a,d0
-L0001c3f2       bra.w #$0010 == $0001c404 (T)
-L0001c3f6       move.b #$2b,d0
-L0001c3fa       bra.w #$0008 == $0001c404 (T)
+
+
+                ; IN: a6 - display co-ords (x,y bytes)
+                ;       - L0001c96e,a6 ; (a6) = $0c30
+                ;
+L0001c324       move.l  a6,start_coords_ptr                     ; $0001c314 ; store a6 address
+L0001c32a       move.b  (a6)+,x_coord+1                         ; store x coord - $0001c311
+L0001c330       move.b  (a6)+,y_coord+1                         ; store y coord - $0001c313
+resume_text_start_line
+L0001c336       moveq   #$00,d0
+L0001c338       move.w  y_coord,d0                              ; $0001c312 ; d0 = y co-ord
+L0001c33e       mulu.w  #$0028,d0                               ; d0 = d0 * 40 (bytes per scan line)
+L0001c342       add.w   x_coord,d0                              ; $0001c310 ; d0 = d0 + x co-ord
+L0001c348       add.l   #DISPLAY_BITPLANE_ADDRESS               ; #$00063190,d0 ; add bitplane base address
+L0001c34e       exg.l   d0,a2                                   ; a2 = display destination address
+L0001c350       movea.l a2,a3                                   ; a3 = display destination address
+resume_text_current_position
+L0001c352       tst.w   typer_extended_command_1                ; $0001c782 - exension command/params (for commands #$02)
+L0001c358       bne.w   wait_or_start_game                      ; jmp $0001c50e
+L0001c35c       move.b  (a6)+,d0                                ; get display param
+L0001c35e       cmp.b   #$ff,d0
+L0001c362       beq.w   return_rts                              ; $0001c30e
+L0001c366       cmp.b   #$0d,d0
+L0001c36a       beq.w   crlf                                    ; jmp $0001c4d0 - crlf - carriage return plus line feed
+L0001c36e       cmp.b   #$0e,d0
+L0001c372       beq.w   lf                                      ; jmp $0001c4dc - lf, line feed
+L0001c376       cmp.b   #$01,d0
+L0001c37a       beq.w   cls                                     ; jmp $0001c4e8
+L0001c37e       cmp.b   #$06,d0
+L0001c382       beq.w   _nop                                    ; jmp $0001c580
+L0001c386       cmp.b   #$02,d0
+L0001c38a       beq.w   L0001c4fe                               ; check fire button/start game?
+L0001c38e       cmp.b   #$03,d0
+L0001c392       beq.w   L0001c53e
+L0001c396       cmp.b   #$04,d0
+L0001c39a       beq.w   #$01b2 == $0001c54e (F)
+L0001c39e       cmp.b   #$05,d0
+L0001c3a2       beq.w   #$01e2 == $0001c586 (F)
+L0001c3a6       cmp.b   #$40,d0
+L0001c3aa       beq.w   #$004a == $0001c3f6 (F)
+L0001c3ae       cmp.b   #$26,d0
+L0001c3b2       beq.w   #$0032 == $0001c3e6 (F)
+L0001c3b6       cmp.b   #$23,d0
+L0001c3ba       beq.w   #$019c == $0001c558 (F)
+L0001c3be       cmp.b   #$2e,d0
+L0001c3c2       beq.w   #$002a == $0001c3ee (F)
+L0001c3c6       and.w   #$003f,d0
+L0001c3ca       beq.w   #$0168 == $0001c534 (F)
+L0001c3ce       cmp.b   #$20,d0
+L0001c3d2       beq.w   #$002a == $0001c3fe (F)
+L0001c3d6       cmp.b   #$30,d0
+L0001c3da       blt.w   #$0028 == $0001c404 (F)
+L0001c3de       sub.w   #$0014,d0
+L0001c3e2       bra.w   #$0020 == $0001c404 (T)
+L0001c3e6       move.w  #$002c,d0
+L0001c3ea       bra.w   #$0018 == $0001c404 (T)
+L0001c3ee       move.w  #$002a,d0
+L0001c3f2       bra.w   #$0010 == $0001c404 (T)
+L0001c3f6       move.b  #$2b,d0
+L0001c3fa       bra.w   #$0008 == $0001c404 (T)
 L0001c3fe       addaq.l #$01,a3
-L0001c400       bra.w #$ff50 == $0001c352 (T)
-L0001c404       mulu.w #$0050,d0
-L0001c408       add.l #$0003f1ea,d0
-L0001c40e       exg.l d0,a1
-L0001c410       moveq #$04,d7
-L0001c412       moveq #$00,d1
+L0001c400       bra.w   resume_text_current_position                    ; jmp $0001c352
+L0001c404       mulu.w  #$0050,d0
+L0001c408       add.l   #ASSET_CHARSET_BASE,d0                          ; #$0003f1ea,d0
+L0001c40e       exg.l   d0,a1
+L0001c410       moveq   #$04,d7
+L0001c412       moveq   #$00,d1
 L0001c414       movea.l a3,a2
-L0001c416       move.b (a1) [00],(a2) [00]
-L0001c418       move.b (a1,$0002) == $00c014e4 [15],(a2,$0028) == $00000029 [fc]
-L0001c41e       move.b (a1,$0004) == $00c014e6 [00],(a2,$0050) == $00000051 [fc]
-L0001c424       move.b (a1,$0006) == $00c014e8 [15],(a2,$0078) == $00000079 [fc]
-L0001c42a       move.b (a1,$0008) == $00c014ea [05],(a2,$00a0) == $000000a1 [fc]
-L0001c430       move.b (a1,$000a) == $00c014ec [00],(a2,$00c8) == $000000c9 [00]
-L0001c436       move.b (a1,$000c) == $00c014ee [83],(a2,$00f0) == $000000f1 [00]
-L0001c43c       move.b (a1,$000e) == $00c014f0 [00],(a2,$0118) == $00000119 [00]
-L0001c442       adda.l #$00000010,a1
-L0001c448       adda.l $0001ca3e [00000000],a2
-L0001c44e       dbf .w d7,#$ffc6 == $0001c416 (F)
+L0001c416       move.b  (a1),(a2)
+L0001c418       move.b  $0002(a1),$0028(a2)
+L0001c41e       move.b  $0004(a1),$0050(a2)
+L0001c424       move.b  $0006(a1),$0078(a2)
+L0001c42a       move.b  $0008(a1),$00a0(a2)
+L0001c430       move.b  $000a(a1),$00c8(a2)
+L0001c436       move.b  $000c(a1),$00f0(a2)
+L0001c43c       move.b  $000e(a1),$0118(a2)
+L0001c442       adda.l  #$00000010,a1
+L0001c448       adda.l  bitplane_size,a2                                ; $0001ca3e,a2
+L0001c44e       dbf.w   d7,L0001c416
 L0001c452       addaq.l #$01,a3
-L0001c454       bra.w #$fefc == $0001c352 (T)
-L0001c458       rts  == $00c00276
+L0001c454       bra.w   resume_text_current_position                    ; loop next char, $0001c352
+L0001c458       rts  
 
-L0001c45a       or.b #$00,d0
 
-L0001c45e       moveq #$00,d3
-L0001c460       moveq #$00,d2
-L0001c462       move.w $0001c45c [0000],d3
-L0001c468       move.w $0001c45a [0000],d2
-L0001c46e       mulu.w #$0028,d3
-L0001c472       add.w d3,d2
-L0001c474       add.l #$00063190,d2
-L0001c47a       exg.l d2,a2
-L0001c47c       and.l #$0000003f,d0
-L0001c482       mulu.w #$0050,d0
-L0001c486       add.l #$0003f1ea,d0
-L0001c48c       exg.l d0,a1
-L0001c48e       moveq #$04,d7
-L0001c490       moveq #$00,d1
-L0001c492       move.b (a1) [00],(a2) [00]
-L0001c494       move.b (a1,$0002) == $00c014e4 [15],(a2,$0028) == $00000029 [fc]
-L0001c49a       move.b (a1,$0004) == $00c014e6 [00],(a2,$0050) == $00000051 [fc]
-L0001c4a0       move.b (a1,$0006) == $00c014e8 [15],(a2,$0078) == $00000079 [fc]
-L0001c4a6       move.b (a1,$0008) == $00c014ea [05],(a2,$00a0) == $000000a1 [fc]
-L0001c4ac       move.b (a1,$000a) == $00c014ec [00],(a2,$00c8) == $000000c9 [00]
-L0001c4b2       move.b (a1,$000c) == $00c014ee [83],(a2,$00f0) == $000000f1 [00]
-L0001c4b8       move.b (a1,$000e) == $00c014f0 [00],(a2,$0118) == $00000119 [00]
-L0001c4be       adda.l #$00000010,a1
-L0001c4c4       adda.l $0001ca3e [00000000],a2
-L0001c4ca       dbf .w d7,#$ffc6 == $0001c492 (F)
-L0001c4ce       rts  == $00c00276
 
-L0001c4d0       add.w   #$0008,$0001c312 [0000]
-L0001c4d8       bra.w   #$fe5c == $0001c336 (T)
-L0001c4dc       adda.l  #$00000140,a3
-L0001c4e2       movea.l a3,a2
-L0001c4e4       bra.w   #$fe6c == $0001c352 (T)
-L0001c4e8       bsr.w   copy_title_screen_bitplanes                     ; calls $0001ca34
-L0001c4ec       move.w  #$0007,$0001c310 [0000]
-L0001c4f4       clr.w   $0001c312 [0000]
-L0001c4fa       bra.w   #$fe3a == $0001c336 (T)
-L0001c4fe       move.b  (a6)+ [00],d0
-L0001c500       move.b  d0,$0001c782 [00]
-L0001c506       move.b  (a6)+ [00],d0
-L0001c508       move.b  d0,$0001c783 [00]
+                ;--------------------- plot character x & y ----------------------
+                ; plot character at x and y co-ords
+char_plot_x_coord                               ; original address $0001c45a
+L0001c45a       dc.w $0000                      ; x co-ord (byte value)
+char_plot_y_coord                               ; original address $0001c45c
+L0001c45c       dc.w $0000                      ; y co-ord (line value)
+
+plot_character
+L0001c45e       moveq   #$00,d3
+L0001c460       moveq   #$00,d2
+L0001c462       move.w  char_plot_y_coord,d2            ; L0001c45c,d3 ; y co-ordinate
+L0001c468       move.w  char_plot_x_coord,d2            ; L0001c45a,d2 ; x co-ordinate
+L0001c46e       mulu.w  #$0028,d3                       ; d3 = d3 * 40 (raster line)
+L0001c472       add.w   d3,d2                           ; d2 = x & y co-ords byte offset
+L0001c474       add.l   #DISPLAY_BITPLANE_ADDRESS,d2    ; #$00063190 ; add bitplane 1 base address
+L0001c47a       exg.l   d2,a2                           ; a2 = dest address, d1 = prev value of a2
+L0001c47c       and.l   #$0000003f,d0                   ; clamp d0 to 0-63
+L0001c482       mulu.w  #$0050,d0                       ; 80 bytes per char (16 bytes per bitplane) 8*8
+L0001c486       add.l   #ASSET_CHARSET_BASE,d0           ; #$0003f1ea ; character set gfx base address
+L0001c48c       exg.l   d0,a1                           ; a1 = character source address
+L0001c48e       moveq   #$04,d7                         ; d7 = 4 + 1 - bitplane loop count
+L0001c490       moveq   #$00,d1                         ; d1 = 0
+.copy_loop
+L0001c492       move.b  (a1),(a2)                       ; copy character data line 1
+L0001c494       move.b  $0002(a1),$0028(a2)             ; copy character data line 2
+L0001c49a       move.b  $0004(a1),$0050(a2)             ; copy character data line 3
+L0001c4a0       move.b  $0006(a1),$0078(a2)             ; copy character data line 4
+L0001c4a6       move.b  $0008(a1),$00a0(a2)             ; copy character data line 5
+L0001c4ac       move.b  $000a(a1),$00c8(a2)             ; copy character data line 6
+L0001c4b2       move.b  $000c(a1),$00f0(a2)             ; copy character data line 7
+L0001c4b8       move.b  $000e(a1),$0118(a2)             ; copy character data line 8
+L0001c4be       adda.l  #$00000010,a1                   ; a1 = start next bitplane of char
+L0001c4c4       adda.l  bitplane_size,a2                ; L0001ca3e,a2
+L0001c4ca       dbf.w   d7,.copy_loop
+L0001c4ce       rts
+
+
+
+                ;----------------- crlf ---------------------
+                ; carriage return plus line feed.
+                ; continue typing at the start of the next
+                ; line on the screen.
+crlf                                                    ; original address $0001c4d0
+                add.w   #$0008,y_coord                  ; $0001c312, add 8 scan lines to y coord
+                bra.w   resume_text_start_line          ; jmp $0001c336
+
+
+
+                ;---------------- line feed -----------------
+                ; continue typing one line down without
+                ; returning to the start of the line.
+lf                                                      ; original address $0001c4dc
+                adda.l  #$00000140,a3                   ; add 320 to raster line (next page)
+                movea.l a3,a2                           ; update dest display ptrs
+                bra.w   resume_text_current_position    ; jmp $0001c352
+
+
+
+                ;--------------- clear screen --------------
+                ; clear screen bitplanes and reset x,y
+                ; coords.
+cls
+                bsr.w   copy_title_screen_bitplanes     ; calls $0001ca34
+                move.w  #$0007,x_coord                  ; $0001c310
+                clr.w   y_coord                         ; $0001c312 
+                bra.w   resume_text_start_line          ; $0001c336 
+
+
+
+                ;-------------- code #$02 -----------------
+                ; code: #$02 - 
+                ; initialise 'wait_or_start_game'
+                ; get the number of frames to wait for
+                ; displaying the current page of text.
+L0001c4fe       move.b  (a6)+,d0
+L0001c500       move.b  d0,typer_extended_command_1     ; $0001c782
+L0001c506       move.b  (a6)+,d0
+L0001c508       move.b  d0,typer_extended_command_2     ; $0001c783
+                ; falls through to 'wait_or_start_game'
+
+
+                ;------------ wait or start game ----------
+                ; when called directly the value in
+                ; 'typer_extended_command_1' holds the
+                ; number of frames to wait and display 
+                ; the current page of text.
+                ; if joystick button is pressed (port 2)
+                ; then jumps to start game code.
+                ;
+wait_or_start_game
 L0001c50e       moveq   #$00,d0
-L0001c510       bsr.w   #$fde6 == $0001c2f8
-L0001c514       bsr.w   #$fc5c == $0001c172
-L0001c518       btst.b  #$0007,$00bfe001
-L0001c520       beq.b   #$0c == $0001c52e (F)
-L0001c522       sub.w   #$0001,$0001c782 [0000]
-L0001c52a       bra.w   #$fe26 == $0001c352 (T)
-L0001c52e       jmp     $0001c05e
+L0001c510       bsr.w   raster_wait_161                 ; calls $0001c2f8
+L0001c514       bsr.w   L0001c172
+L0001c518       btst.b  #$0007,$00bfe001                ; Port 2 Fire Button (Joystick)
+L0001c520       beq.b   .firebutton_pressed             ; $0001c52e ; if button pressed
+L0001c522       sub.w   #$0001,typer_extended_command_1 ; $0001c782 - decrement fame wait time
+L0001c52a       bra.w   resume_text_current_position    ; jmp $0001c352
 
-L0001c534       movea.l $0001c314 [00000000],a6
+.firebutton_pressed
+                jmp     $0001c05e
+
+
+
+
+L0001c534       movea.l start_coords_ptr,a6                     ; $0001c314 [00000000],a6
 L0001c53a       bra.w #$fde8 == $0001c324 (T)
+
+
+
 L0001c53e       move.l a6,$0001c77e [00000000]
 L0001c544       movea.l #$0001c974,a6
-L0001c54a       bra.w #$fe06 == $0001c352 (T)
+L0001c54a       bra.w   resume_text_current_position            ; jmp $0001c352
+
+
 L0001c54e       movea.l $0001c77e [00000000],a6
-L0001c554       bra.w #$fdfc == $0001c352 (T)
-L0001c558       move.w $0001c310 [0000],$0001c45a [0000]
-L0001c562       move.w $0001c312 [0000],$0001c45c [0000]
+L0001c554       bra.w   resume_text_current_position            ; jmp $0001c352
+
+
+L0001c558       move.w  x_coord,char_plot_x_coord              ; $0001c45a
+L0001c562       move.w  y_coord,char_plot_y_coord              ; $0001c45c
 L0001c56c       move.b #$20,d0
 L0001c570       bsr.w #$feec == $0001c45e
-L0001c574       sub.w #$0001,$0001c310 [0000]
-L0001c57c       bra.w #$fdd4 == $0001c352 (T)
-L0001c580       bra.w #$fdd0 == $0001c352 (T)
-L0001c584       rts  == $00c00276
+L0001c574       sub.w #$0001,x_coord                            ; $0001c310
+L0001c57c       bra.w   resume_text_current_position            ; jmp $0001c352
+
+
+                ;-------------------- nop -----------------------
+                ; do nothing, just resume text typing
+_nop                                                            ; original address $0001c580
+L0001c580       bra.w   resume_text_current_position            ; jmp $0001c352
+
+L0001c584       rts
+
+
+
+
 
 
 
@@ -1934,9 +2040,10 @@ L0001c586       lea.l   lowest_high_score,a5                            ; L0001c
                 cmp.l   PANEL_HIGHSCORE,d6                              ; High Score/Player Score
                 bgt.w   .not_high_score                                 ; jmp $0001c5ec
 .is_higher_score
+                ; copy score display text down the list one entry
                 move.l  (a5),$0004(a5)                                  ; shift lowest high score down the table
                 subaq.l #$04,a5                                         ; update pointer to next highest score
-                suba.l  #$00000017,a4                                   ; update pointer to next highest score (display text)
+                suba.l  #$00000017,a4                                   ; #$17 (23) update pointer to next highest score (display text)
                 move.b  $000a(a4),$0021(a4)                             ; copy display test down the table.
                 move.b  $000b(a4),$0022(a4)
                 move.b  $000c(a4),$0023(a4)
@@ -1953,23 +2060,30 @@ L0001c586       lea.l   lowest_high_score,a5                            ; L0001c
                 ; d0 = high score entry counting from bottom of the table 1-5
 .not_high_score
                 tst.w   d0
-                beq.w   .exit                           ; not an high score, jmp $0001c760
+                beq.w   .exit                           ; if d0 = 0 then not an high score, jmp $0001c760
 
+                ; a4 = text display
+                ; a5 = score table
+                ; d0 = score index
 .is_an_high_score
-L0001c5f2       move.l  (a5)$0004(a5)
-L0001c5f6       move.l  $0007c87c,(a5)
-L0001c5fc       move.b  #$20,$000a(a4)
-L0001c602       move.b  #$20,$000b(a4)
-L0001c608       move.b  #$20,$000c(a4)
-L0001c60e       movem.l d0,-(a7)
-L0001c612       move.b  $0003(a5),d0
-L0001c616       move.b  d0,d1
-L0001c618       and.b   #$0f,d0
-L0001c61c       add.w   #$0030,d0
-L0001c620       lsr.b   #$04,d1
-L0001c622       add.w   #$0030,d1
-L0001c626       move.b  d0,$0014(a4)
-L0001c62a       move.b  d1,$0013(a4)
+L0001c5f2       move.l  (a5),$0004(a5)
+L0001c5f6       move.l  PANEL_HIGHSCORE,(a5)            ; set high score in score table
+L0001c5fc       move.b  #$20,$000a(a4)                  ; insert space at text display index 10 - initial 1
+L0001c602       move.b  #$20,$000b(a4)                  ; insert space at text display index 11 - initial 2
+L0001c608       move.b  #$20,$000c(a4)                  ; insert space at text display index 12 - initial 3
+
+.add_score_to_table_bcd
+.digits_1_and_2
+L0001c60e       movem.l d0,-(a7)                        ; save d0 (score entry index)
+L0001c612       move.b  $0003(a5),d0                    ; d0 = score byte (BCD)
+L0001c616       move.b  d0,d1                           ; d1 = copy score byte (BCD)
+L0001c618       and.b   #$0f,d0                         ; d0 = low digit
+L0001c61c       add.w   #$0030,d0                       ; d0 = add Ascii base for '0'
+L0001c620       lsr.b   #$04,d1                         ; d1 = second score digit
+L0001c622       add.w   #$0030,d1                       ; d1 = add Ascii base for '0'
+L0001c626       move.b  d0,$0014(a4)                    ; store score digit 1 - least significant
+L0001c62a       move.b  d1,$0013(a4)                    ; store score digit 2 - second digit
+.digits_3_and_4
 L0001c62e       move.b  $0002(a5),d0
 L0001c632       move.b  d0,d1
 L0001c634       and.b   #$0f,d0
@@ -1978,6 +2092,7 @@ L0001c63c       lsr.b   #$04,d1
 L0001c63e       add.w   #$0030,d1
 L0001c642       move.b  d0,$0012(a4)
 L0001c646       move.b  d1,$0011(a4)
+.digits_5_and_6
 L0001c64a       move.b  $0001(a5),d0
 L0001c64e       move.b  d0,d1
 L0001c650       and.b   #$0f,d0
@@ -1986,20 +2101,23 @@ L0001c658       lsr.b   #$04,d1
 L0001c65a       add.w   #$0030,d1
 L0001c65e       move.b  d0,$0010(a4)
 L0001c662       move.b  d1,$000f(a4)
-L0001c666       adda.l  #$0000000a,a4
-L0001c66c       lea.l   L0001c76a,a0
-L0001c672       movem.l (a7)+,d0
-L0001c676       asl.w   #$01,d0
-L0001c678       move.w  $00(a0,d0.w),L0001c45c
-L0001c680       move.w  #$0011,L0001c45a
-L0001c688       move.w  #$0003,L0001c776
-L0001c690       move.b  #$04,end_highscore_display_text                         ; L0001c9fc
-L0001c698       lea.l   L0001c96e,a6
+
+L0001c666       adda.l  #$0000000a,a4                           ; increase text display ptr by 10 chars
+L0001c66c       lea.l   score_y_coord_table,a0                  ; L0001c76a,a0
+L0001c672       movem.l (a7)+,d0                                ; d0 = restored table entry index
+L0001c676       asl.w   #$01,d0                                 ; d0 = d0 * 2 (index to a0 table)
+L0001c678       move.w  $00(a0,d0.w),char_plot_y_coord          ; L0001c45c - set y co-ord 
+L0001c680       move.w  #$0011,char_plot_x_coord                ; L0001c45a - set x co-ord first char
+L0001c688       move.w  #$0003,name_initial_index               ; L0001c776
+
+L0001c690       move.b  #$04,L0001C9FC                          ; L0001c9fc
+L0001c698       lea.l   L0001c96e,a6                            ; (a6) = $0c30 - x,y display co-ords
 L0001c69e       bsr.w   L0001c324
+
 L0001c6a2       moveq   #$01,d6
 L0001c6a4       bsr.w   L0001c710
 L0001c6a8       moveq   #$04,d0
-L0001c6aa       bsr.w   L0001c2f8
+L0001c6aa       bsr.w   raster_wait_161                         ; calls $0001c2f8
 L0001c6ae       clr.l   L0001c778
 L0001c6b4       clr.w   L0001c77c
 L0001c6ba       move.w  $00dff00c,d0
@@ -2026,28 +2144,43 @@ L0001c712       bsr.w   L0001c45e
 L0001c716       bra.w   L0001c6a8
 L0001c71a       btst.b  #$0007,$00bfe001
 L0001c722       beq.w   L0001c71a
-L0001c726       add.w   L0001c45a
+L0001c726       add.w   char_plot_x_coord                       ; L0001c45a
 L0001c72e       move.b  d6,d0
 L0001c730       cmp.b   #$1c,d0
 L0001c734       bne.w   L0001c73c
 L0001c738       move.w  #$ffe0,d0
 L0001c73c       add.b   #$40,d0
 L0001c740       move.b  d0,(a4)+
-L0001c742       sub.w   #$0001,L0001c776
-L0001c74a       beq.w   L0001c758
+L0001c742       sub.w   #$0001,name_initial_index               ; update next name initial index, L0001c776
+L0001c74a       beq.w   .end_intial_entry                       ; L0001c758
 L0001c74e       move.b  d6,d0
 L0001c750       bsr.w   L0001c45e
 L0001c754       bra.w   L0001c6a8 (T)
-L0001c758       move.w  #$0060,L0001c782
 
-.exit                                                           ; original address L0001c760
+.end_intial_entry                                               ; original address $0001c758
+                move.w  #$0060,typer_extended_command_1         ; $0001c782
+
+.exit                                                           ; original address $0001c760
 L0001c760       lea.l   L0001c784,a6
 L0001c766       bra.w   L0001c324
 
 
+score_y_coord_table                                             ; original address $0001C76A
+L0001C76A       dc.w $0058, $0060, $0050, $0040, $0030, $0020
+name_initial_index                                              ; original address $0001C776
+L0001C776       dc.w $0000
+L0001C778       dc.w $0000 
 
-L0001C76A dc.w $0058, $0060, $0050, $0040, $0030, $0020, $0000, $0000           ;.X.`.P.@.0. ....
-L0001C77A dc.w $0000, $0000, $0000, $0000, $0000, $0101, $010D, $0D0D           ;................
+
+L0001C77A dc.w $0000, $0000, $0000, $0000
+
+typer_extended_command_1                                        ; original address $0001C782
+                dc.b $00
+typer_extended_command_2                                        ; original address $0001C783
+                dc.b $00 
+
+
+L0001c784 dc.w $0101, $010D, $0D0D                                              ;................
 L0001C78A dc.w $0D0D, $0D20, $2020, $2020, $204F, $4345, $414E, $2053           ;...      OCEAN S
 L0001C79A dc.w $4F46, $5457, $4152, $450D, $0D20, $2020, $2020, $2020           ;OFTWARE..
 L0001C7AA dc.w $2020, $5052, $4553, $454E, $5453, $2020, $200D, $0200           ;  PRESENTS   ...
@@ -2078,23 +2211,27 @@ L0001C92A dc.w $414E, $4420, $4658, $2042, $590D, $2020, $2020, $2020           
 L0001C93A dc.w $2020, $2020, $2020, $4A4F, $4E20, $4455, $4E4E, $0D20           ;      JON DUNN.
 L0001C94A dc.w $2020, $2020, $2020, $2020, $2020, $204D, $4154, $5448           ;           MATTH
 L0001C95A dc.w $4557, $2043, $414E, $4E4F, $4E02, $0100, $0103, $0200           ;EW CANNON.......
-L0001C96A dc.w $F001, $00FF, $0C30, $010D, $03FF, $2020, $2020, $2020           ;.....0....
-L0001C97A dc.w $2020, $2048, $4920, $5343, $4F52, $4553, $0D0D, $0D20           ;   HI SCORES...
-L0001C98A dc.w $2020, $2020, $3153, $5420, $2041, $4A53, $2020, $3132           ;    1ST  AJS  12
-L0001C99A dc.w $3530, $3030, $0D0D, $2020, $2020, $2032, $4E44, $2020           ;5000..     2ND
-L0001C9AA dc.w $4D49, $4B20, $2031, $3030, $3030, $300D, $0D20, $2020           ;MIK  100000..
-L0001C9BA dc.w $2020, $3352, $4420, $204A, $4F42, $2020, $3037, $3530           ;  3RD  JOB  0750
-L0001C9CA dc.w $3030, $0D0D, $2020, $2020, $2034, $5448, $2020, $4249           ;00..     4TH  BI
-L0001C9DA dc.w $4C20, $2030, $3530, $3030, $300D, $0D20, $2020, $2020           ;L  050000..     
+L0001C96A dc.w $F001, $00FF                                                     ;....
 
-L0001C9EA       dc.w $3554, $4820, $204A, $4F4E, $2020, $3032, $3530, $3030           ;5TH  JON  025000
-L0001C9FA       dc.w $0D0D 
+display_coords
+L0001C96E       dc.w $0C30                              ; x, y
+display_params
+L0001C970       dc.w $010D, $03FF
 
-end_highscore_display_text                       ; original address $0001C9FC
-L0001C9FC       dc.w $2020, $2020, $2020, $2020, $2020, $2020, $2020
-L0001CA0A       dc.w $2020, $2020, $2020, $200D, $0D
+high_score_display_text
+L0001C974       dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$48,$49,$20,$53,$43,$4F,$52,$45,$53,$0D,$0D,$0D           ;         HI SCORES
+L0001C989       dc.b $20,$20,$20,$20,$20,$31,$53,$54,$20,$20,$41,$4A,$53,$20,$20,$31,$32,$35,$30,$30,$30,$0D,$0D   ;     1ST  AJS  125000
+L0001C9A0       dc.b $20,$20,$20,$20,$20,$32,$4E,$44,$20,$20,$4D,$49,$4B,$20,$20,$31,$30,$30,$30,$30,$30,$0D,$0D   ;     2ND  MIK  100000
+L0001C9B7       dc.b $20,$20,$20,$20,$20,$33,$52,$44,$20,$20,$4A,$4F,$42,$20,$20,$30,$37,$35,$30,$30,$30,$0D,$0D   ;     3RD  JOB  075000
+L0001C9CE       dc.b $20,$20,$20,$20,$20,$34,$54,$48,$20,$20,$42,$49,$4C,$20,$20,$30,$35,$30,$30,$30,$30,$0D,$0D   ;     4TH  BIL  050000
+L0001C9E5       dc.b $20,$20,$20,$20,$20,$35,$54,$48,$20,$20,$4A,$4F,$4E,$20,$20,$30,$32,$35,$30,$30,$30,$0D,$0D   ;     5TH  JON  025000
+end_highscore_display_text                      ; original address $0001C9FC
 
-                dc.b $04, $00, $00, $00, $00 
+high_score_6th_entry                            ; original address $0001C9FC - not displayed, buffer to roll last entry into
+L0001C9FC       dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$0D,$0D
+
+.other_data
+L0001CA13       dc.b $04, $00, $00, $00, $00 
 
 highscore_table                                         ; original address $0001CA18
 L0001CA18       dc.l $00125000
@@ -2103,9 +2240,11 @@ L0001CA20       dc.l $00075000
 L0001CA24       dc.l $00050000
 lowest_high_score                                       ; original address $0001CA28
 L0001CA28       dc.l $00025000
+highscore_table_6th_entry                               ; original address $0001CA2c - not displayed, used to roll last entry into
+L0001CA2c       dc.l $00000000
 
 .other_data
-L0001CA2c       dc.l $00000000, $0000, $0000
+L0001CA2E       dc.w $0000, $0000
 
 
                 ; --------------- Copy Title Screen Bitplanes ----------------
@@ -2116,7 +2255,8 @@ copy_title_screen_bitplanes
 
 
 
-L0001ca3e       dc.w $0000, $0000                ;or.b #$00,d0
+bitplane_size                                   ; original address $0001ca3e
+L0001ca3e       dc.l $00000000                
 L0001ca42       dc.w $0000, $0000                ;or.b #$00,d0
 
 L0001ca46       lea.l $0001cd0e,a0
@@ -2142,28 +2282,28 @@ L0001caba       clr.w $00dff062
 L0001cac0       move.w (a4) [0000],$00dff060
 L0001cac6       move.w (a4) [0000],$00dff066
 L0001cacc       move.w (a2) [0000],$00dff058
-L0001cad2       add.l $0001ca3e [00000000],d0
+L0001cad2       add.l   bitplane_size,d0                        ;$0001ca3e,d0
 L0001cad8       bsr.w #$0968 == $0001d442
 L0001cadc       move.l $0001cd72 [00000000],$00dff04c
 L0001cae6       move.l $0001cd82 [00000000],$00dff050
 L0001caf0       move.l d0,$00dff048
 L0001caf6       move.l d0,$00dff054
 L0001cafc       move.w (a2) [0000],$00dff058
-L0001cb02       add.l $0001ca3e [00000000],d0
+L0001cb02       add.l   bitplane_size,d0                        ;$0001ca3e,d0
 L0001cb08       bsr.w #$0938 == $0001d442
 L0001cb0c       move.l $0001cd76 [00000000],$00dff04c
 L0001cb16       move.l $0001cd82 [00000000],$00dff050
 L0001cb20       move.l d0,$00dff048
 L0001cb26       move.l d0,$00dff054
 L0001cb2c       move.w (a2) [0000],$00dff058
-L0001cb32       add.l $0001ca3e [00000000],d0
+L0001cb32       add.l   bitplane_size,d0                        ; $0001ca3e,d0
 L0001cb38       bsr.w #$0908 == $0001d442
 L0001cb3c       move.l $0001cd7a [00000000],$00dff04c
 L0001cb46       move.l $0001cd82 [00000000],$00dff050
 L0001cb50       move.l d0,$00dff048
 L0001cb56       move.l d0,$00dff054
 L0001cb5c       move.w (a2) [0000],$00dff058
-L0001cb62       add.l $0001ca3e [00000000],d0
+L0001cb62       add.l   bitplane_size,d0                        ; $0001ca3e,d0
 L0001cb68       bsr.w #$08d8 == $0001d442
 L0001cb6c       move.l $0001cd7e [00000000],$00dff04c
 L0001cb76       move.l $0001cd82 [00000000],$00dff050
@@ -2365,26 +2505,26 @@ L0001D2BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           
 L0001D2CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
 
 
-L0001d2de       move.l d0,$0001ca3e [00000000]
+L0001d2de       move.l d0,bitplane_size                         ; $0001ca3e
 L0001d2e4       move.b #$f4,$00dff08e
 L0001d2ec       moveq #$01,d0
-L0001d2ee       bsr.w #$f008 == $0001c2f8
+L0001d2ee       bsr.w   raster_wait_161                                 ; calls $0001c2f8
 L0001d2f2       move.w #$5000,$00dff100
 L0001d2fa       move.w #$0040,$00dff104
 L0001d302       move.w #$0000,$00dff102
-L0001d30a       move.l #$00063190,$0001ca42 [00000000]
+L0001d30a       move.l #DISPLAY_BITPLANE_ADDRESS,$0001ca42              ; #$00063190,$0001ca42 [00000000]
 L0001d314       move.w #$007e,$0001cd0e [0000]
 L0001d31c       move.w #$003c,$0001cd12 [0000]
 L0001d324       move.l #$003800d0,$00dff092
 L0001d32e       clr.w $00dff108
 L0001d334       clr.w $00dff10a
 L0001d33a       move.l #$ffffffff,$00dff044
-L0001d344       move.l #$00063190,d0
+L0001d344       move.l #DISPLAY_BITPLANE_ADDRESS,d0                     ; #$00063190,d0
 L0001d34a       btst.b #$0007,$0007c875 [00]
 L0001d352       beq.b #$1e == $0001d372 (F)
 L0001d354       move.w #$ffb0,$00dff108
 L0001d35c       move.w #$ffb0,$00dff10a
-L0001d364       move.l $0001ca3e [00000000],d1
+L0001d364       move.l  bitplane_size,d1                        ; $0001ca3e,d1
 L0001d36a       sub.l #$00000028,d1
 L0001d370       add.l d1,d0
 L0001d372       moveq #$04,d7
@@ -2396,9 +2536,10 @@ L0001d386       move.w d0,(a0,$0002) == $00c04732 [0000]
 L0001d38a       swap.w d0
 L0001d38c       addaq.l #$04,a0
 L0001d38e       addaq.l #$04,a1
-L0001d390       add.l $0001ca3e [00000000],d0
-L0001d396       dbf .w d7,#$ffe8 == $0001d380 (F)
+L0001d390       add.l   bitplane_size,d0                        ; $0001ca3e,d0
+L0001d396       dbf.w   d7,#$ffe8 == $0001d380 (F)
 L0001d39a       rts  == $000000fe
+
 L0001d39c       bra.w #$0016 == $0001d3b4 (T)
 
 
@@ -2419,7 +2560,7 @@ copper_copy                                                     ; original addre
 
 
 
-L0001d3b4       clr.l $00063190 [00000000]
+L0001d3b4       clr.l DISPLAY_BITPLANE_ADDRESS                  ; $00063190 [00000000]
 L0001d3ba       lea.l $00020000,a0
 L0001d3c0       lea.l $00063194,a1
 L0001d3c6       movea.l a0,a2
@@ -2446,7 +2587,7 @@ L0001d3d8       rts  == $000000fe
                 ;
 copy_bitplanes_to_display                               ; original routine address $0001d3da
                 movem.l d0/a0-a1,-(a7)
-                lea.l   $00063190,a1
+                lea.l   DISPLAY_BITPLANE_ADDRESS,a1     ; $00063190,a1
                 move.w  #$01dc,d0                       ; d0 = $1cd (476) + 1
 .copy_loop
                 movem.l (a0)+,d1-d7                     ; copy 28 bytes src -> registers
@@ -2464,7 +2605,7 @@ copy_bitplanes_to_display                               ; original routine addre
 
 
 L0001d41c       movem.l d0/a1,-(a7)
-L0001d420       lea.l $00063190,a1
+L0001d420       lea.l   DISPLAY_BITPLANE_ADDRESS,a1     ; $00063190,a1
 L0001d426       move.w #$0724,d0
 L0001d42a       movem.l (a0)+,d1-d7
 L0001d42e       movem.l d1-d7,(a1)
@@ -2495,11 +2636,11 @@ L0001d49c       bsr.w   copy_bitplanes_to_display                       ; calls 
 L0001d4a0       move.b  #$2c,copper_diwstrt                              ; $0001d6e8 [f3]
 L0001d4a8       move.b  #$f4,$0001d6ec [f4]
 L0001d4b0       move.w  #$0064,d0
-L0001d4b4       bsr.w   #$ee42 == $0001c2f8
+L0001d4b4       bsr.w   raster_wait_161                                 ; calls $0001c2f8
 L0001d4b8       moveq   #$03,d0
 L0001d4ba       jsr     Play_Song                                       ; calls $00004010
 L0001d4c0       move.w  #$0600,d0
-L0001d4c4       bsr.w   #$ee32 == $0001c2f8
+L0001d4c4       bsr.w   raster_wait_161                                 ; calls $0001c2f8
 L0001d4c8       bra.w   #$eb4e == $0001c018 (T)
 
 
@@ -2524,14 +2665,14 @@ L0001d506       bsr.w #$ff14 == $0001d41c
 L0001d50a       move.b #$2c,copper_diwstrt                              ; $0001d6e8
 L0001d512       move.b #$2b,$0001d6ec [f4]
 L0001d51a       move.w #$0014,d0
-L0001d51e       bsr.w #$edd8 == $0001c2f8
+L0001d51e       bsr.w   raster_wait_161                                 ; calls $0001c2f8
 L0001d522       moveq #$02,d0
 L0001d524       jsr     Play_Song                                       ; calls $00004010
 L0001d52a       move.w #$0200,d0
-L0001d52e       bsr.w #$edc8 == $0001c2f8
+L0001d52e       bsr.w   raster_wait_161                                 ; calls $0001c2f8
 L0001d532       bra.w #$eae4 == $0001c018 (T)
 L0001d536       move.w #$0200,d0
-L0001d53a       bsr.w #$edbc == $0001c2f8
+L0001d53a       bsr.w   raster_wait_161                                 ; calls $0001c2f8
 L0001d53e       bra.w #$ead8 == $0001c018 (T)
 L0001d542       move.w d0,$00dff180
 L0001d548       addq.w #$01,d0
