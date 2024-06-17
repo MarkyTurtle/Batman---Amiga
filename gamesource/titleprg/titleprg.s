@@ -1630,17 +1630,21 @@ L0001c0ce       add.w #$0400,copper_diwstrt                     ; $0001d6e8
 L0001c0d6       rts  == $00c00276
 
 
+
+                ;---------------------- initialise title screen -----------------------
+                ; set up the system, interrupts annd display.
+                ;
 initialise_title_screen                                         ; original routine address $0001c0d8
-L0001c0d8       move.l  #$f481f4c1,$00dff08e
-L0001c0e2       move.w  #$7fff,d0
-L0001c0e6       move.w  d0,$00dff096
-L0001c0ec       move.w  d0,$00dff09a
-L0001c0f2       move.w  d0,$00dff09c
-L0001c0f8       move.l  #$0001c26c,$00000064 [00fc0c8e]
-L0001c102       move.l  #$0001c26e,$00000068 [00fc0ce2]
-L0001c10c       move.l  #$0001c2a8,$0000006c [00fc0d14]
-L0001c116       move.l  #$0001c2e4,$00000070 [00fc0d6c]
-L0001c120       move.l  #$0001c2e6,$00000074 [00fc0dfa]
+L0001c0d8       move.l  #$f481f4c1,$00dff08e                    ; DIWSTRT/DIWSTOP - Initialise
+L0001c0e2       move.w  #$7fff,d0       
+L0001c0e6       move.w  d0,$00dff096                            ; DMACON - DMA off
+L0001c0ec       move.w  d0,$00dff09a                            ; INTENA - Interrupts off
+L0001c0f2       move.w  d0,$00dff09c                            ; INTREQ - Clear Interrupt Requests
+L0001c0f8       move.l  #level_1_interrupt_handler,$00000064    ; Level 1 Interrupt Vector
+L0001c102       move.l  #level_2_interrupt_handler,$00000068    ; Level 2 Interrupt Vector           
+L0001c10c       move.l  #level_3_interrupt_handler,$0000006c    ; Level 3 Interrupt Vector   
+L0001c116       move.l  #level_4_interrupt_handler,$00000070    ; Level 4 Interrupt Vector        
+L0001c120       move.l  #level_5_interrupt_handler,$00000074    ; Level 5 Interrupt Vector
 L0001c12a       move.w  #$e028,$00dff09a
 L0001c132       move.w  #$83c0,$00dff096
 L0001c13a       move.l  #copper_list,$dff080                     ;#$0001d6e2,$00dff080
@@ -1732,8 +1736,11 @@ L0001c262       cmp.b (a0,a5.L[*2],$4a) == $01beac16 (68020+),d0
 L0001c266       cmp.w a1,d1
 L0001c268       and.w d6,d7
 L0001c26a       sub.w (a6) [00c0],d2
-L0001c26c       rte  == $027600c0
 
+level_1_interrupt_handler
+L0001c26c       rte
+
+level_2_interrupt_handler
 L0001c26e       movem.l d0-d7/a0-a6,-(a7)
 L0001c272       move.b $00bfec01,$0001c2ed [00]
 L0001c27c       move.b $00bfed01,$00bfed01
@@ -1744,6 +1751,7 @@ L0001c29e       bsr.w #$ff20 == $0001c1c0
 L0001c2a2       movem.l (a7)+,d0-d7/a0-a6
 L0001c2a6       rte  == $027600c0
 
+level_3_interrupt_handler
 L0001c2a8       movem.l d0-d7/a0-a6,-(a7)
 L0001c2ac       jsr $00004018
 L0001c2b2       bsr.w #$fdea == $0001c09e
@@ -1755,9 +1763,11 @@ L0001c2d8       not.w $0001c2e8 [0000]
 L0001c2de       movem.l (a7)+,d0-d7/a0-a6
 L0001c2e2       rte  == $027600c0
 
-L0001c2e4       rte  == $027600c0
+level_4_interrupt_handler
+L0001c2e4       rte
 
-L0001c2e6       rte  == $027600c0
+level_5_interrupt_handler
+L0001c2e6       rte
 
 
 L0001C2E8       dc.w $0000
