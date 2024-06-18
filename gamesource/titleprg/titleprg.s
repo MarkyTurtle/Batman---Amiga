@@ -1600,7 +1600,9 @@ L0001c04a       and.w   #$f89f,PANEL_STATUS_1                   ; clear panel st
 
 L0001c052       bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
 L0001c056       bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
-L0001c05a       bsr.w   L0001c586
+L0001c05a       bsr.w   hi_score_and_text_typer                 ; calls $0001c586
+
+                ;text typer jumps out to here when start button pressed
 
 start_game                                                      ; original address $0001c05e
 L0001c05e       not.w   L0001c09c
@@ -1913,7 +1915,7 @@ resume_text_current_position
                 cmp.b   #$04,d0
                 beq.w   end_hi_scores                           ; jmp $0001c54e - resume typer after hi score table
                 cmp.b   #$05,d0
-                beq.w   L0001c586                               ; jmp $0001c586 - name up/enter initials
+                beq.w   hi_score_and_text_typer                 ; jmp $0001c586 - name up/enter initials
                 cmp.b   #$40,d0
                 beq.w   .copyright_symbol                       ; jmp $0001c3f6 '@' convert to 2nd character after 'Z' - (c) symbol 
                 cmp.b   #$26,d0
@@ -2051,11 +2053,11 @@ cls
                 ; initialise 'wait_or_start_game'
                 ; get the number of frames to wait for
                 ; displaying the current page of text.
-wait_or_start_game
-L0001c4fe       move.b  (a6)+,d0
-L0001c500       move.b  d0,typer_extended_command_1     ; $0001c782
-L0001c506       move.b  (a6)+,d0
-L0001c508       move.b  d0,typer_extended_command_2     ; $0001c783
+wait_or_start_game                                      ; original routine address $0001c4fe
+                move.b  (a6)+,d0
+                move.b  d0,typer_extended_command_1     ; $0001c782
+                move.b  (a6)+,d0
+                move.b  d0,typer_extended_command_2     ; $0001c783
                 ; falls through to 'wait_or_start_game'
 
 
@@ -2068,22 +2070,22 @@ L0001c508       move.b  d0,typer_extended_command_2     ; $0001c783
                 ; then jumps to start game code.
                 ;
 continue_wait_or_start_game
-L0001c50e       moveq   #$00,d0
-L0001c510       bsr.w   raster_wait_161                 ; calls $0001c2f8
-L0001c514       bsr.w   L0001c172
-L0001c518       btst.b  #$0007,$00bfe001                ; Port 2 Fire Button (Joystick)
-L0001c520       beq.b   .firebutton_pressed             ; $0001c52e ; if button pressed, start game?
-L0001c522       sub.w   #$0001,typer_extended_command_1 ; $0001c782 - decrement fame wait time
-L0001c52a       bra.w   resume_text_current_position    ; jmp $0001c352
+                moveq   #$00,d0
+                bsr.w   raster_wait_161                 ; calls $0001c2f8
+                bsr.w   L0001c172
+                btst.b  #$0007,$00bfe001                ; Port 2 Fire Button (Joystick)
+                beq.b   .firebutton_pressed             ; $0001c52e ; if button pressed, start game?
+                sub.w   #$0001,typer_extended_command_1 ; $0001c782 - decrement fame wait time
+                bra.w   resume_text_current_position    ; jmp $0001c352
 
 .firebutton_pressed
                 jmp     $0001c05e
 
 
 
-.home_cursor
-L0001c534       movea.l start_coords_ptr,a6                     ; $0001c314 [00000000],a6
-L0001c53a       bra.w   text_typer                              ; calls $0001c324 - display text
+.home_cursor                                                    ; original address $0001c534
+                movea.l start_coords_ptr,a6                     ; $0001c314 [00000000],a6
+                bra.w   text_typer                              ; calls $0001c324 - display text
                 ; use text_typer rts to return
 
 
@@ -2091,38 +2093,41 @@ L0001c53a       bra.w   text_typer                              ; calls $0001c32
                 ;--------------------- hi scores -------------------
                 ; CODE: #$03 - start displaying Hi Score Table
                 ;
-hi_scores
-L0001c53e       move.l  a6,temp_typer_text_ptr                  ; $0001c77e ; store current text typer ptr position
-L0001c544       movea.l #high_score_display_text,a6             ; #$0001c974 ; resume text from this location (HI SCORE TABLE)
-L0001c54a       bra.w   resume_text_current_position            ; jmp $0001c352
+hi_scores                                                       ; original routine address $0001c53e
+                move.l  a6,temp_typer_text_ptr                  ; $0001c77e ; store current text typer ptr position
+                movea.l #high_score_display_text,a6             ; #$0001c974 ; resume text from this location (HI SCORE TABLE)
+                bra.w   resume_text_current_position            ; jmp $0001c352
 
 
 
                 ;-------------------end hi scores ------------------
                 ; CODE: #$04 - resume typing text after hi scores
                 ;
-end_hi_scores
-L0001c54e       movea.l temp_typer_text_ptr,a6                  ; $0001c77e ; restore text typer source ptr from saved location
-L0001c554       bra.w   resume_text_current_position            ; jmp $0001c352
+end_hi_scores                                                   ; original routine address $0001c54e
+                movea.l temp_typer_text_ptr,a6                  ; $0001c77e ; restore text typer source ptr from saved location
+                bra.w   resume_text_current_position            ; jmp $0001c352
 
 
 
-maybe_backspace
-L0001c558       move.w  x_coord,char_plot_x_coord               ; $0001c45a
-L0001c562       move.w  y_coord,char_plot_y_coord               ; $0001c45c
-L0001c56c       move.b  #$20,d0
-L0001c570       bsr.w   plot_character                          ; calls $0001c45e
-L0001c574       sub.w   #$0001,x_coord                          ; $0001c310
-L0001c57c       bra.w   resume_text_current_position            ; jmp $0001c352
+maybe_backspace                                                 ; original routine address $0001c558
+                move.w  x_coord,char_plot_x_coord               ; $0001c45a
+                move.w  y_coord,char_plot_y_coord               ; $0001c45c
+                move.b  #$20,d0
+                bsr.w   plot_character                          ; calls $0001c45e
+                sub.w   #$0001,x_coord                          ; $0001c310
+                bra.w   resume_text_current_position            ; jmp $0001c352
 
 
 
                 ;-------------------- nop -----------------------
                 ; do nothing, just resume text typing
 _nop                                                            ; original address $0001c580
-L0001c580       bra.w   resume_text_current_position            ; jmp $0001c352
+                bra.w   resume_text_current_position            ; jmp $0001c352
 
-L0001c584       rts
+
+
+                ;-------- dangling rts instruction --------------
+                rts
 
 
 
@@ -2134,8 +2139,8 @@ L0001c584       rts
                 ; If Player score is a high score then insert is into the 
                 ; highscore table.
                 ;
-
-L0001c586       lea.l   lowest_high_score,a5                            ; L0001ca28,a5 ; Player Score
+hi_score_and_text_typer                                                 ; original routine address $0001c586
+                lea.l   lowest_high_score,a5                            ; L0001ca28,a5 ; Player Score
                 lea.l   end_highscore_display_text,a4                   ; L0001c9fc,a4 ; end of score table display text
                 moveq   #$00,d0
 .score_check_loop
@@ -2163,7 +2168,7 @@ L0001c586       lea.l   lowest_high_score,a5                            ; L0001c
                 ; d0 = high score entry counting from bottom of the table 1-5
 .not_high_score
                 tst.w   d0
-                beq.w   .exit                                           ; if d0 = 0 then not an high score, jmp $0001c760
+                beq.w   display_title_screen_text                       ; if d0 = 0 then not an high score, jmp $0001c760
 
                 ; a4 = text display
                 ; a5 = score table
@@ -2207,17 +2212,19 @@ L0001c586       lea.l   lowest_high_score,a5                            ; L0001c
                 move.b  d0,$0010(a4)                                    ; store score digit 1 - least significant
                 move.b  d1,$000f(a4)                                    ; store score digit 2 - second digit
 
-L0001c666       adda.l  #$0000000a,a4                                   ; increase text display ptr by 10 chars
-L0001c66c       lea.l   score_y_coord_table,a0                          ; L0001c76a,a0
-L0001c672       movem.l (a7)+,d0                                        ; d0 = restored table entry index
-L0001c676       asl.w   #$01,d0                                         ; d0 = d0 * 2 (index to a0 table)
-L0001c678       move.w  $00(a0,d0.w),char_plot_y_coord                  ; L0001c45c - set y co-ord 
-L0001c680       move.w  #$0011,char_plot_x_coord                        ; L0001c45a - set x co-ord first char
-L0001c688       move.w  #$0003,name_initial_index                       ; L0001c776 - number of letters to enter
-L0001c690       move.b  #$04,high_score_6th_entry                       ; $0001C9FC - insert text typer code to not display last entry
-
-L0001c698       lea.l   display_coords,a6                               ; L0001c96e ; (a6) = $0c30 - x,y display co-ords
-L0001c69e       bsr.w   text_typer                                      ; $0001c324 ; type text
+.init_enter_initials
+                adda.l  #$0000000a,a4                                   ; increase text display ptr by 10 chars
+                lea.l   score_y_coord_table,a0                          ; L0001c76a,a0
+                movem.l (a7)+,d0                                        ; d0 = restored table entry index
+                asl.w   #$01,d0                                         ; d0 = d0 * 2 (index to a0 table)
+                move.w  $00(a0,d0.w),char_plot_y_coord                  ; L0001c45c - set y co-ord 
+                move.w  #$0011,char_plot_x_coord                        ; L0001c45a - set x co-ord first char
+                move.w  #$0003,name_initial_index                       ; L0001c776 - number of letters to enter
+                move.b  #$04,high_score_6th_entry                       ; $0001C9FC - insert text typer code to not display last entry
+                                                                        ; CODE #$04 makes typer End HighScore table
+.display_hiscore_table
+                lea.l   display_hiscores,a6                             ; L0001c96e ; (a6) = $0c30 - x,y display co-ords
+                bsr.w   text_typer                                      ; $0001c324 ; type text
 
 L0001c6a2       moveq   #$01,d6
 L0001c6a4       bsr.w   L0001c710
@@ -2271,11 +2278,23 @@ L0001c754       bra.w   .initials_entry_loop                    ; L0001c6a8
 
 .end_intial_entry                                               ; original address $0001c758
                 move.w  #$0060,typer_extended_command_1         ; $0001c782
+                ; fall through to 'display_title_screen_text' below
 
-.exit                                                           ; original address $0001c760
-L0001c760       lea.l   L0001c784,a6
-L0001c766       bra.w   text_typer                              ; jmp $0001c324 - display text
+
+
+
+                ;--------------------- display title screen text -----------------------------
+                ; start the text typer routine that cycles through the text displayyed over
+                ; the title screen as a set of text pages. Includes the display of the 
+                ; high score table etc. 
+                ; strangely the typer routine also waits for the joystick button to be
+                ; pressed for the start game.
+                ;
+display_title_screen_text                                       ; original address $0001c760
+                lea.l   title_screen_text,a6                    ; $0001c784 - a6 = title screen text for display
+                bra.w   text_typer                              ; jmp $0001c324 - display text
                 ; uses text_typer rts to return?
+
 
 
 
@@ -2297,44 +2316,57 @@ typer_extended_command_2                                        ; original addre
                 dc.b $00 
 
 
-L0001c784 dc.w $0101, $010D, $0D0D                                              ;................
-L0001C78A dc.w $0D0D, $0D20, $2020, $2020, $204F, $4345, $414E, $2053           ;...      OCEAN S
-L0001C79A dc.w $4F46, $5457, $4152, $450D, $0D20, $2020, $2020, $2020           ;OFTWARE..
-L0001C7AA dc.w $2020, $5052, $4553, $454E, $5453, $2020, $200D, $0200           ;  PRESENTS   ...
-L0001C7BA dc.w $8001, $060D, $0D0D, $0D0D, $0D20, $2020, $2020, $2020           ;.........
-L0001C7CA dc.w $2020, $2042, $4154, $4D41, $4E0D, $0D20, $2020, $2020           ;   BATMAN..
-L0001C7DA dc.w $2020, $2054, $4845, $204D, $4F56, $4945, $2E02, $0080           ;   THE MOVIE....
-L0001C7EA dc.w $010D, $0D20, $2020, $544D, $2026, $2040, $2044, $4320           ;...   TM & @ DC
-L0001C7FA dc.w $434F, $4D49, $4353, $2049, $4E43, $2E0D, $2020, $2020           ;COMICS INC..
-L0001C80A dc.w $2020, $2020, $2020, $2031, $3938, $3920, $0D0D, $0D20           ;       1989 ...
-L0001C81A dc.w $2020, $4020, $4F43, $4541, $4E20, $534F, $4654, $5741           ;  @ OCEAN SOFTWA
-L0001C82A dc.w $5245, $2031, $3938, $390D, $0D0D, $2020, $2020, $2045           ;RE 1989...     E
-L0001C83A dc.w $5343, $2E2E, $4142, $4F52, $5420, $4741, $4D45, $0D0D           ;SC..ABORT GAME..
-L0001C84A dc.w $2020, $2020, $2020, $4631, $2E2E, $5041, $5553, $4520           ;      F1..PAUSE
-L0001C85A dc.w $4741, $4D45, $0D0D, $2020, $2020, $2020, $4632, $2E2E           ;GAME..      F2..
-L0001C86A dc.w $544F, $4747, $4C45, $204D, $5553, $4943, $0D02, $0100           ;TOGGLE MUSIC....
-L0001C87A dc.w $010D, $2020, $2043, $4F44, $494E, $4720, $4259, $0D20           ;..   CODING BY.
-L0001C88A dc.w $2020, $2020, $2020, $2020, $2020, $204D, $494B, $4520           ;           MIKE
-L0001C89A dc.w $4C41, $4D42, $0D20, $2020, $2020, $2020, $2020, $2020           ;LAMB.
-L0001C8AA dc.w $204A, $4F42, $4245, $4545, $450D, $2020, $2020, $2020           ; JOBBEEEE.
-L0001C8BA dc.w $2020, $2020, $2020, $5348, $4F52, $5459, $0D0D, $2020           ;      SHORTY..
-L0001C8CA dc.w $2047, $5241, $5048, $4943, $5320, $4259, $0D20, $2020           ; GRAPHICS BY.
-L0001C8DA dc.w $2020, $2020, $2020, $2020, $2044, $4157, $4E20, $4452           ;         DAWN DR
-L0001C8EA dc.w $414B, $450D, $2020, $2020, $2020, $2020, $2020, $2020           ;AKE.
-L0001C8FA dc.w $4249, $4C4C, $2048, $4152, $4249, $534F, $4E0D, $2020           ;BILL HARBISON.
-L0001C90A dc.w $2020, $2020, $2020, $2020, $2020, $4A4F, $484E, $2050           ;          JOHN P
-L0001C91A dc.w $414C, $4D45, $520D, $0D20, $2020, $4D55, $5349, $4320           ;ALMER..   MUSIC
-L0001C92A dc.w $414E, $4420, $4658, $2042, $590D, $2020, $2020, $2020           ;AND FX BY.
-L0001C93A dc.w $2020, $2020, $2020, $4A4F, $4E20, $4455, $4E4E, $0D20           ;      JON DUNN.
-L0001C94A dc.w $2020, $2020, $2020, $2020, $2020, $204D, $4154, $5448           ;           MATTH
-L0001C95A dc.w $4557, $2043, $414E, $4E4F, $4E02, $0100, $0103, $0200           ;EW CANNON.......
-L0001C96A dc.w $F001, $00FF                                                     ;....
+title_screen_text                                               ; original address $0001c784
+L0001c784       dc.b $01,$01                                    ; display co-ords (x,y)
+                dc.b $01                                        ; clear screen command
+                dc.b $0D,$0D,$0D,$0D,$0D,$0D                    ; #$0D = carriage return
+                dc.b '      OCEAN SOFTWARE',$0D,$0D                   
+                dc.b '         PRESENTS   ',$0D                       
+                dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
 
-high_score_initials_text
-display_coords
-L0001C96E       dc.w $0C30                              ; x, y
-display_params
-L0001C970       dc.w $010D, $03FF
+                dc.b $01                                        ; #$01 = clear the screen
+                dc.b $06                                        ; #$06 = No Operation (nop)
+                dc.b $0D,$0D,$0D,$0D,$0D,$0D
+                dc.b '          BATMAN',$0D,$0D
+                dc.b '        THE MOVIE',
+                dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
+
+                dc.b $01                                        ; #$01 = clear the screen
+                dc.b $0D,$0D
+                dc.b '   TM & @ DC COMICS INC',$2E,$0D          ; #$2E = full stop symbol
+                dc.b '           1989 ',$0D,$0D,$0D
+                dc.b '   @ OCEAN SOFTWARE 1989',$0D,$0D
+                dc.b '     ESC',$2E,$2E,'ABORT GAME',$0D,$0D    ; #$2E = full stop symbol
+                dc.b '      F1',$2E,$2E,'PAUSE GAME',$0D,$0D
+                dc.b '      F2',$2E,$2E,'TOGGLE MUSIC',$0D
+                dc.b $02,$01,$00                                ; #$02 = wait for 5 (256) seconds
+
+                dc.b $01                                        ; #$01 = clear screen
+                dc.b $0D
+                dc.b '   CODING BY',$0D
+                dc.b '            MIKE LAMB',$0D 
+                dc.b '           JOBBEEEE',$0D
+                dc.b '            SHORTY',$0D,$0D
+                dc.b '   GRAPHICS BY',$0D
+                dc.b '            DAWN DRAKE',$0D
+                dc.b '            BILL HARBISON',$0D
+                dc.b '            JOHN PALMER',$0D,$0D
+                dc.b '   MUSIC AND FX BY',$0D
+                dc.b '            JON DUNN',$0D
+                dc.b '            MATTHEW CANNON' 
+                dc.b $02,$01,$00                        ; #$02 = wait for 5 (256) seconds
+                
+                dc.b $01                                ; #$01 = clear screen
+                dc.b $03                                ; #$03 = display hi score table
+                dc.b $02,$00,$f0                        ; #$02 = wait for 2.5 seconds
+
+                dc.w $01                                ; #$01 - clear screen
+                dc.b $00,$FF                            ; #$ff = end typer                                                     
+
+
+display_hiscores                                        ; original address $0001C96E
+                dc.b $0C,$30                            ; x, y               
+                dc.b $01,$0D,$03,$FF                    ; $01 - clear screen, $0D - carriage return, $03 - hi scores, $ff - end
 
 
                 ;----------------------- HIGH SCORE DISPLAY TABLE --------------------------
