@@ -1858,10 +1858,9 @@ xy_coords
 x_coord                                                 ; original address L0001c310
                 dc.w    $0000                           ; x co-ord (byte value)
 y_coord                                                 ; original address L0001c312
-                dc.W    $0000                           ; y co-ord (line value)
-
-start_coords_ptr                                        ; original address L0001c314
-                dc.l    $00000000                       ; $0001c784 - address containing x,y co-ordinates
+                dc.w    $0000                           ; y co-ord (line value)
+current_text_ptr                                        ; original address L0001c314
+                dc.l    $00000000                       ; $0001c784 - address of start of text being displayed (used for looping back to start)
 
 
 L0001c318       add.w #$0001,d7
@@ -1881,7 +1880,7 @@ L0001c322       rts  == $00c00276
                 ;          1 byte  - #$ff - end text display
                 ;
 text_typer                                                      ; original routine address $0001c324
-                move.l  a6,start_coords_ptr                     ; $0001c314 ; store a6 address
+                move.l  a6,current_text_ptr                     ; $0001c314 ; store a6 address (used for looping when CODE #$00)
                 move.b  (a6)+,x_coord+1                         ; store x coord - $0001c311
                 move.b  (a6)+,y_coord+1                         ; store y coord - $0001c313
 
@@ -1925,7 +1924,7 @@ resume_text_current_position
                 cmp.b   #$2e,d0
                 beq.w   .fullstop_symbol                        ; jmp $0001c3ee '.' convert to 1st character after 'Z'
                 and.w   #$003f,d0
-                beq.w   .home_cursor                            ; jmp $0001c534 '?' - return cursor to the initial/home position
+                beq.w   loop_text_typer                      ; jmp $0001c534 - #$00 = ***** Loop Text Typer ***** 
                 cmp.b   #$20,d0
                 beq.w   .space_symbol                           ; jmp $0001c3fe ' ' - increment x position.       
                 cmp.b   #$30,d0
@@ -2083,8 +2082,11 @@ continue_wait_or_start_game
 
 
 
-.home_cursor                                                    ; original address $0001c534
-                movea.l start_coords_ptr,a6                     ; $0001c314 [00000000],a6
+                ;--------------- loop text typer -----------------
+                ; CODE #$00 - restart text typer from initial
+                ;             saved text prt
+loop_text_typer                                                 ; original address $0001c534
+                movea.l current_text_ptr,a6                     ; $0001c314 [00000000],a6
                 bra.w   text_typer                              ; calls $0001c324 - display text
                 ; use text_typer rts to return
 
@@ -2361,12 +2363,20 @@ L0001c784       dc.b $01,$01                                    ; display co-ord
                 dc.b $02,$00,$f0                        ; #$02 = wait for 2.5 seconds
 
                 dc.w $01                                ; #$01 - clear screen
-                dc.b $00,$FF                            ; #$ff = end typer                                                     
+                dc.b $00                                ; #$00 - loop text to start
+                dc.b $FF                                ; #$ff - end typer (never reaches here)                                                     
+
+
 
 
 display_hiscores                                        ; original address $0001C96E
                 dc.b $0C,$30                            ; x, y               
-                dc.b $01,$0D,$03,$FF                    ; $01 - clear screen, $0D - carriage return, $03 - hi scores, $ff - end
+                dc.b $01                                ; $01 - clear screen
+                dc.b $0D                                ; $0D - carriage return
+                dc.b $03                                ; $03 - display hi scores
+                dc.b $FF                                ; $ff - end typer
+
+
 
 
                 ;----------------------- HIGH SCORE DISPLAY TABLE --------------------------
@@ -2386,7 +2396,10 @@ high_score_6th_entry                                                            
                 dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$0D,$0D
                 dc.b $04                        ; #$04 - typer code - resume typer after high score table
 
+
+
 L0001CA14       dc.b $00, $00, $00, $00 
+
 
 
 highscore_table                                         ; original address $0001CA18
@@ -2398,6 +2411,7 @@ lowest_high_score                                       ; original address $0001
 L0001CA28       dc.l $00025000
 highscore_table_6th_entry                               ; original address $0001CA2c - not displayed, used to roll last entry into
 L0001CA2c       dc.l $00000000
+
 
 .other_data
 L0001CA2E       dc.w $0000, $0000
