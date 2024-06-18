@@ -1631,8 +1631,9 @@ L0001c0d6       rts  == $00c00276
 
 
 
-                ;---------------------- initialise title screen -----------------------
+                ;--------------------------- initialise title screen ----------------------------
                 ; set up the system, interrupts annd display.
+                ; NB: Level 6 interrupt enabled, but no handler (set previously in disk loader)
                 ;
 initialise_title_screen                                         ; original routine address $0001c0d8
 L0001c0d8       move.l  #$f481f4c1,$00dff08e                    ; DIWSTRT/DIWSTOP - Initialise
@@ -1645,12 +1646,12 @@ L0001c102       move.l  #level_2_interrupt_handler,$00000068    ; Level 2 Interr
 L0001c10c       move.l  #level_3_interrupt_handler,$0000006c    ; Level 3 Interrupt Vector   
 L0001c116       move.l  #level_4_interrupt_handler,$00000070    ; Level 4 Interrupt Vector        
 L0001c120       move.l  #level_5_interrupt_handler,$00000074    ; Level 5 Interrupt Vector
-L0001c12a       move.w  #$e028,$00dff09a
+L0001c12a       move.w  #$e028,$00dff09a                        ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
 L0001c132       move.w  #$83c0,$00dff096
 L0001c13a       move.l  #copper_list,$dff080                     ;#$0001d6e2,$00dff080
 L0001c144       move.w  d0,$00dff088
 L0001c14a       move.b  #$7f,$00bfed01
-L0001c152       move.b   #$7f,$00bfed01
+L0001c152       move.b  #$7f,$00bfed01
 L0001c15a       jsr     $00004000
 L0001c160       move.l  #$00001f40,d0
 L0001c166       bra.w   #$1176 == $0001d2de (T)
@@ -1660,7 +1661,7 @@ L0001c170       rts
 
 
 
-L0001c172       btst.b  #$0000,L0001c2ed
+L0001c172       btst.b  #$0000,raw_keyboard_serial_data          ; L0001c2ed
 L0001c17a       bne.w   L0001c1b8
 L0001c17e       tst.w   L0001c2f2
 L0001c184       bne.w   L0001c170
@@ -1687,38 +1688,44 @@ L0001c1be       rts
 
 
 
-L0001c1c0       btst.b #$0000,$0001c2ed [00]
-L0001c1c8       bne.w #$ffa0 == $0001c16a (T)
-L0001c1cc       tst.w $0001c2f0 [0000]
-L0001c1d2       bne.b #$76 == $0001c24a (T)
-L0001c1d4       move.w $0001c2ec [0000],d0
-L0001c1da       and.b #$fe,d0
-L0001c1de       move.w d0,$0001c2f0 [0000]
-L0001c1e4       lea.l $0001c258,a0
-L0001c1ea       cmp.b (a0) [23],d0
-L0001c1ec       beq.w #$0010 == $0001c1fe (F)
-L0001c1f0       cmp.b #$ff,(a0) [23]
-L0001c1f4       beq.w #$0054 == $0001c24a (F)
+                ;----------------------- handle level 2 interrupt ----------------------
+                ; Called from:
+                ;       level_2_interrupt_handler
+                ;
+handle_level_2_interrupt
+L0001c1c0       btst.b  #$0000,raw_keyboard_serial_data                  ; $0001c2ed
+L0001c1c8       bne.w   L0001c16a
+L0001c1cc       tst.w   L0001c2f0
+L0001c1d2       bne.b   L0001c24a
+L0001c1d4       move.w  L0001c2ec,d0
+L0001c1da       and.b   #$fe,d0
+L0001c1de       move.w  d0,L0001c2f0
+L0001c1e4       lea.l   L0001c258,a0
+L0001c1ea       cmp.b   (a0),d0
+L0001c1ec       beq.w   L0001c1fe
+L0001c1f0       cmp.b   #$ff,(a0)
+L0001c1f4       beq.w   L0001c24a
 L0001c1f8       addaq.l #$02,a0
-L0001c1fa       bra.w #$ffee == $0001c1ea (T)
-L0001c1fe       move.b (a0,$0001) == $00fe9717 [6b],d1
-L0001c202       lea.l $0001c24d,a0
-L0001c208       moveq #$05,d0
-L0001c20a       move.b (a0) [23],(a0,-$0001) == $00fe9715 [75]
+L0001c1fa       bra.w   L0001c1ea
+L0001c1fe       move.b  $0001(a0),d1
+L0001c202       lea.l   L0001c24d,a0
+L0001c208       moveq   #$05,d0
+L0001c20a       move.b  (a0),-$0001(a0)
 L0001c20e       addaq.l #$01,a0
-L0001c210       dbf .w d0,#$fff8 == $0001c20a (F)
-L0001c214       move.b d1,$0001c251 [20]
-L0001c21a       lea.l $0001c24c,a0
-L0001c220       lea.l $0001c252,a1
-L0001c226       moveq #$05,d0
-L0001c228       cmpm.b (a0)+ [23],(a1)+ [00]
-L0001c22a       bne.b #$1e == $0001c24a (T)
-L0001c22c       dbf .w d0,#$fffa == $0001c228 (F)
-L0001c230       bchg.b #$0007,$0007c875 [00]
-L0001c238       move.b #$f4,copper_diwstrt                      ; $0001d6e8
-L0001c240       move.l #$00001f40,d0
-L0001c246       bsr.w #$1096 == $0001d2de
-L0001c24a       rts  == $00c00276
+L0001c210       dbf.w   d0,L0001c20a
+L0001c214       move.b  d1,L0001c251
+L0001c21a       lea.l   L0001c24c,a0
+L0001c220       lea.l   L0001c252,a1
+L0001c226       moveq   #$05,d0
+L0001c228       cmpm.b  (a0)+,(a1)+
+L0001c22a       bne.b   L0001c24a
+L0001c22c       dbf.w   d0,L0001c228
+L0001c230       bchg.b  #$0007,$0007c875                        ; Enable CHEAT?
+L0001c238       move.b  #$f4,copper_diwstrt                     ; $0001d6e8
+L0001c240       move.l  #$00001f40,d0
+L0001c246       bsr.w   L0001d2de
+L0001c24a       rts 
+
 
 L0001c24c       dc.w $2020                     ;move.l -(a0) [40044e75],d0
 L0001c24e       dc.w $2020                     ;move.l -(a0) [40044e75],d0
@@ -1740,16 +1747,38 @@ L0001c26a       sub.w (a6) [00c0],d2
 level_1_interrupt_handler
 L0001c26c       rte
 
+                ;---------------------- level 2 interrupt handler -------------------
+                ; PORTS/TIMERS - Level 2 Interrupt Handler
+                ; CIA-A Timers & Ports
+                ;
+                ; The ICR Register is cleared by reading the register, but this
+                ; code immediately sets it back to the value it just read.
+                ; The implications of this are that if this inteerrupt was not
+                ; raised by the CIAA then bit 7 will = 0, this means that when
+                ; that value is written back to the register then it will
+                ; mask the interrupts tht just occurred.
+                ; Conversly if the interrupt was raised by the CIAA then Bit 7 
+                ; will be 1, this set the interrupt enable for the interrupts
+                ; that were raised. This code looks dodgy/hacky
+                ;
+                ; later the ICR is then set to #$08 which masks the SP bit
+                ; this sets the SP bit to 0, which is the keyboard interrupt
+                ; serial register bit. So this interrupt is being disabled here
+                ; as far as I can make out.
+                ;
 level_2_interrupt_handler
 L0001c26e       movem.l d0-d7/a0-a6,-(a7)
-L0001c272       move.b $00bfec01,$0001c2ed [00]
-L0001c27c       move.b $00bfed01,$00bfed01
-L0001c286       move.w #$0808,$00dff09c
-L0001c28e       move.b #$08,$00bfed01
-L0001c296       move.b #$60,$00bfee01
-L0001c29e       bsr.w #$ff20 == $0001c1c0
+L0001c272       move.b  $00bfec01,raw_keyboard_serial_data                      ; SDR - $0001c2ed ; keyboard serial data
+L0001c27c       move.b  $00bfed01,$00bfed01                                     ; ICR - WTF-1!, clear the interrupt control if not a CIAA/Set Interrupts if is CIAA
+L0001c286       move.w  #$0808,$00dff09c                                        ; INTREQ - Clear PORTS(2), 
+                                                                                ; WTF-2! - Clear RBF(5) (keyboard serial) - Level 5 Interrupt!
+L0001c28e       move.b  #$08,$00bfed01                                          ; ICR - Mask SP bit = 0 (keyboard serial)
+L0001c296       move.b  #$60,$00bfee01                                          ; CRA - Timer A Control - LOAD=1, SPMODE=1
+L0001c29e       bsr.w   handle_level_2_interrupt                                ; calls $0001c1c0
 L0001c2a2       movem.l (a7)+,d0-d7/a0-a6
-L0001c2a6       rte  == $027600c0
+L0001c2a6       rte
+
+
 
 level_3_interrupt_handler
 L0001c2a8       movem.l d0-d7/a0-a6,-(a7)
@@ -1771,7 +1800,11 @@ L0001c2e6       rte
 
 
 L0001C2E8       dc.w $0000
-L0001C2EA       dc.w $0000, $0000, $0000, $0000, 
+L0001C2EA       dc.w $0000
+                dc.b $00
+raw_keyboard_serial_data                                                ; original address $0001c2ed
+L0001c2ed       dc.b $00
+                dc.w $0000, $0000, 
 L0001c2f2       dc.w $0000
 L0001c2f4       dc.w $0000, $0000
 
@@ -2515,42 +2548,44 @@ L0001D2BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           
 L0001D2CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
 
 
-L0001d2de       move.l d0,bitplane_size                         ; $0001ca3e
-L0001d2e4       move.b #$f4,$00dff08e
-L0001d2ec       moveq #$01,d0
+                ; Called from:
+                ;       handle_level_2_interrupt
+L0001d2de       move.l  d0,bitplane_size                                ; $0001ca3e
+L0001d2e4       move.b  #$f4,$00dff08e
+L0001d2ec       moveq   #$01,d0
 L0001d2ee       bsr.w   raster_wait_161                                 ; calls $0001c2f8
-L0001d2f2       move.w #$5000,$00dff100
-L0001d2fa       move.w #$0040,$00dff104
-L0001d302       move.w #$0000,$00dff102
-L0001d30a       move.l #DISPLAY_BITPLANE_ADDRESS,$0001ca42              ; #$00063190,$0001ca42 [00000000]
-L0001d314       move.w #$007e,$0001cd0e [0000]
-L0001d31c       move.w #$003c,$0001cd12 [0000]
-L0001d324       move.l #$003800d0,$00dff092
-L0001d32e       clr.w $00dff108
-L0001d334       clr.w $00dff10a
-L0001d33a       move.l #$ffffffff,$00dff044
-L0001d344       move.l #DISPLAY_BITPLANE_ADDRESS,d0                     ; #$00063190,d0
-L0001d34a       btst.b #$0007,$0007c875 [00]
-L0001d352       beq.b #$1e == $0001d372 (F)
-L0001d354       move.w #$ffb0,$00dff108
-L0001d35c       move.w #$ffb0,$00dff10a
-L0001d364       move.l  bitplane_size,d1                        ; $0001ca3e,d1
-L0001d36a       sub.l #$00000028,d1
-L0001d370       add.l d1,d0
-L0001d372       moveq #$04,d7
-L0001d374       lea.l $0001d6ee,a0
-L0001d37a       lea.l $0001d702,a1
-L0001d380       move.w d0,(a1,$0002) == $00c014e4 [152a]
-L0001d384       swap.w d0
-L0001d386       move.w d0,(a0,$0002) == $00c04732 [0000]
-L0001d38a       swap.w d0
+L0001d2f2       move.w  #$5000,$00dff100
+L0001d2fa       move.w  #$0040,$00dff104
+L0001d302       move.w  #$0000,$00dff102
+L0001d30a       move.l  #DISPLAY_BITPLANE_ADDRESS,$0001ca42             ; #$00063190,$0001ca42 [00000000]
+L0001d314       move.w  #$007e,L0001cd0e
+L0001d31c       move.w  #$003c,L0001cd12
+L0001d324       move.l  #$003800d0,$00dff092
+L0001d32e       clr.w   $00dff108
+L0001d334       clr.w   $00dff10a
+L0001d33a       move.l  #$ffffffff,$00dff044
+L0001d344       move.l  #DISPLAY_BITPLANE_ADDRESS,d0                    ; #$00063190,d0
+L0001d34a       btst.b  #$0007,L0007c875
+L0001d352       beq.b   L0001d372
+L0001d354       move.w  #$ffb0,$00dff108
+L0001d35c       move.w  #$ffb0,$00dff10a
+L0001d364       move.l  bitplane_size,d1                                ; $0001ca3e,d1
+L0001d36a       sub.l   #$00000028,d1
+L0001d370       add.l   d1,d0
+L0001d372       moveq   #$04,d7
+L0001d374       lea.l   L0001d6ee,a0
+L0001d37a       lea.l   L0001d702,a1
+L0001d380       move.w  d0,$0002(a1)
+L0001d384       swap.w  d0
+L0001d386       move.w  d0,$0002(a0)
+L0001d38a       swap.w  d0
 L0001d38c       addaq.l #$04,a0
 L0001d38e       addaq.l #$04,a1
 L0001d390       add.l   bitplane_size,d0                        ; $0001ca3e,d0
-L0001d396       dbf.w   d7,#$ffe8 == $0001d380 (F)
-L0001d39a       rts  == $000000fe
+L0001d396       dbf.w   d7,L0001d380
+L0001d39a       rts
 
-L0001d39c       bra.w #$0016 == $0001d3b4 (T)
+L0001d39c       bra.w   L0001d3b4
 
 
 
