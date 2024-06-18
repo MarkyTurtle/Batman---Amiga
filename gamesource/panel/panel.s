@@ -161,10 +161,10 @@ player_lives_count                          ; original address $0007c876
                 dc.w    $0000               ; possible lives counter
 
 High_Score
-                dc.l    $00000000           ; High Score Value value, $0007c87c
+                dc.l    $00000000           ; High Score Value value, $0007c878
 
 Player_Score
-                dc.l    $00000000           ; Player Score Value $0007c878 (BCD 6 digits, first byte unused 000,000)
+                dc.l    $00000000           ; Player Score Value $0007c87c (BCD 6 digits, first byte unused 000,000)
 
 frame_tick                                  ; original address $0007c880
                 dc.w    $0000               ; vbl ticker, ticks every frame from 50 to 0 (1 second at 50hz)
