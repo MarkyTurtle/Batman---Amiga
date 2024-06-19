@@ -1541,7 +1541,7 @@ L0001BFFA dc.w $0000, $0000, $0000                                              
 
 
                 ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
-Title_Screen_Start                                              ; original routine address $0001c000
+title_screen_start                                              ; original routine address $0001c000
                 bra.w   do_title_screen_start                   ; jmp $0001c008 
 
 
@@ -1566,57 +1566,79 @@ PANEL_STATUS_2_GAME_COMPLETED   EQU     $6                      ; game completed
 PANEL_STATUS_2_GAME_OVER        EQU     $5                      ; game over/completion  - return from game
 
 
-                ;---------------------------- DO TITLE SCREEN START ----------------------------
-                ; Routine to set up & run the title screen.
+
+
+                ;---------------------------- do title screenn start ----------------------------
+                ; Routine to set up & run the title screen the first time the game is started.
+                ; the routine 'return_to_title_screen' is called after game over/completion. 
                 ;
-                ; Initialised Window start to bottom of screen (probably for scroll up routine)
+                ; Sets Window start to bottom of screen (probably for scroll up routine)
                 ; H/w Ref, standard DIWSRT & DIWSTOP
                 ; PAL - $2c81, $2cc1
                 ; NTSC- $2c81, $f4c1
                 ;
 do_title_screen_start                                           ; original routine address $0001c008
-L0001c008       clr.l   PANEL_HIGHSCORE                         ; clear Panel.HighScore
-L0001c00e       move.l  highscore_table,PANEL_HIGHSCORE         ; set Panel.HighScore
+                clr.l   PANEL_HIGHSCORE                         ; clear Panel.HighScore
+                move.l  highscore_table,PANEL_HIGHSCORE         ; set Panel.HighScore to top high-score
+                ; continue as 'return_to_title_screen' below
 
+
+
+
+                ;------------------------- return to title screen ----------------------------
+                ; called after game over/compltion to return to the title screen.
+                ;
 return_to_title_screen                                          ; original address $0001c018
                 lea.l   temp_stack_top,a7                       ; set temp stack space - $0001d6de,a7
 
-                                                                ; Initialise Window Scroll (start window = bottom of NTSC display)
-L0001c01e       move.b  #$f4,copper_diwstrt                     ; reset window start line (usually $2c) - $0001d6e8
-L0001c026       move.b  #$f4,copper_diwstop                     ; reset widndow stop line (usually $2c or $f4 PAL/NTSC ) - $0001d6ec
-
-L0001c02e       moveq   #$01,d0                                 ; d0 = frames to wait + 1
-L0001c030       bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
-
-L0001c034       bsr.w   initialise_title_screen                 ; calls $0001c0d8
-L0001c038       move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
-
-L0001c040       lea.l   title_screen_colors,a0                  ; $0001d79a - screen colours
-L0001c046       bsr.w   copper_copy                             ; calls $0001d3a0
-
-L0001c04a       and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
+.init_display_window                                            ; Initialise Window Scroll (start window = bottom of NTSC display)
+                move.b  #$f4,copper_diwstrt                     ; reset window start line (usually $2c) - $0001d6e8
+                move.b  #$f4,copper_diwstop                     ; reset widndow stop line (usually $2c or $f4 PAL/NTSC ) - $0001d6ec
+.wait_frame
+                moveq   #$01,d0                                 ; d0 = frames to wait + 1
+                bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+.init_system
+                bsr.w   initialise_title_screen                 ; calls $0001c0d8
+.init_display
+                move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
+                lea.l   title_screen_colors,a0                  ; $0001d79a - screen colours
+                bsr.w   copper_copy                             ; calls $0001d3a0
+.init_game_status
+                and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
                                                                 ; low 3 bits of status 1 (game over, life lost, timer expired)
                                                                 ; bits 6 & 5 of status 2 (don't know what these do yet) - Think it's end game flags (success/fail etc)
+.init_music
+                bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
+.init_background
+                bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
 
-L0001c052       bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
-L0001c056       bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
-L0001c05a       bsr.w   hi_score_and_text_typer                 ; calls $0001c586
 
+                ;************ TITLE SCREEN WAIT LOOP *****************
+                ; Manage hi-score entry and text typer display.
+                ; The text typer controls the main title-screen wait
+                ; loop, waits for joystick button press to jump
+                ; to 'start_game' below.
+.title_screen_loop
+                bsr.w   hi_score_and_text_typer                 ; calls $0001c586
+
+
+                ;************* START GAME - LOAD LEVEL 1 *************
                 ;text typer jumps out to here when start button pressed
-
 start_game                                                      ; original address $0001c05e
-L0001c05e       not.w   L0001c09c
-L0001c064       cmp.b   #$f4,copper_diwstrt                     ; L0001d6e8
-L0001c06c       bne.b    L0001c064
-
-L0001c06e       moveq   #$01,d0                                 ; d0 = frames to wait + 1
-L0001c070       bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
-
-L0001c074       move.l  highscore_table,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
-L0001c07e       jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
-L0001c084       jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
-L0001c08a       jsr     L00004008
-L0001c090       jmp     LOADER_LOAD_LEVEL_1                     ; jmp $00000824 - Loader.Load_Level_1
+                not.w   L0001c09c
+.wait_diwstrt
+                cmp.b   #$f4,copper_diwstrt                     ; L0001d6e8
+                bne.b    .wait_diwstrt                          ; if starting before title screen has openned, then wait 
+.wait_frame
+                moveq   #$01,d0                                 ; d0 = frames to wait + 1
+                bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+.init_game
+                move.l  highscore_table,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
+                jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
+                jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
+                jsr     L00004008                               ; stop music?
+.load_level_1
+                jmp     LOADER_LOAD_LEVEL_1                     ; jmp $00000824 - Loader.Load_Level_1
 
 
 
@@ -2078,7 +2100,7 @@ continue_wait_or_start_game
                 bra.w   resume_text_current_position    ; jmp $0001c352
 
 .firebutton_pressed
-                jmp     $0001c05e
+                jmp     start_game                      ; jmp $0001c05e
 
 
 
@@ -2221,7 +2243,7 @@ hi_score_and_text_typer                                                 ; origin
                 asl.w   #$01,d0                                         ; d0 = d0 * 2 (index to a0 table)
                 move.w  $00(a0,d0.w),char_plot_y_coord                  ; L0001c45c - set y co-ord 
                 move.w  #$0011,char_plot_x_coord                        ; L0001c45a - set x co-ord first char
-                move.w  #$0003,name_initial_index                       ; L0001c776 - number of letters to enter
+                move.w  #$0003,name_initials_count                      ; L0001c776 - number of letters to enter
                 move.b  #$04,high_score_6th_entry                       ; $0001C9FC - insert text typer code to not display last entry
                                                                         ; CODE #$04 makes typer End HighScore table
 .display_hiscore_table
@@ -2237,62 +2259,62 @@ hi_score_and_text_typer                                                 ; origin
 .initials_entry_loop                                                    ; original address $0001c6a8
                 moveq   #$04,d0
                 bsr.w   raster_wait_161                                 ; calls $0001c2f8 - wait 4 frames
-                clr.l   joystick_left                                   ; clear both joystick left & right flags - L0001c778
-                clr.w   L0001c77c
+                clr.l   joystick_left                                   ; clear both joystick left & right flags - $0001c778
+                clr.w   unused_var_flag                                 ; clear the 16 bit word - appears unused else where - $0001c77c
                 move.w  $00dff00c,d0                                    ; d0 = JOT1DAT
                 btst.l  #$0001,d0                                       ; joystick right (active high)
-                sne.b   joystick_right                                  ; L0001c77a
+                sne.b   joystick_right                                  ; $0001c77a
                 btst.l  #$0008,d0                                       ; joystick left (active high)
-                sne.b   joystick_left                                   ; L0001c778
+                sne.b   joystick_left                                   ; $0001c778
 
 .test_joystick_button
                 btst.b  #$0007,$00bfe001
-                beq.w   .wait_joystick_button_released         ; L0001c71a
+                beq.w   .wait_joystick_button_released                  ; L0001c71a
 
-                move.w  joystick_left,d0                        ;L0001c778,d0
-                or.w    joystick_right,d0                       ;L0001c77a,d0
-                beq.b   .initials_entry_loop                    ; no joystick input - loop, L0001c6a8
+                move.w  joystick_left,d0                                ; $0001c778,d0
+                or.w    joystick_right,d0                               ; $0001c77a,d0
+                beq.b   .initials_entry_loop                            ; no joystick input - loop, L0001c6a8
 
-                tst.w   joystick_left                           ; L0001c778
-                bne.w   .stick_left                             ; L0001c706
+                tst.w   joystick_left                                   ; $0001c778
+                bne.w   .stick_left                                     ; L0001c706
 
 .stick_right
-                cmp.w   #$001b,d6                               ; check last character index
-                beq.w   .initials_entry_loop                    ; if at last character then loop
-                addq.w  #$01,d6                                 ; increment current character
-                bra.w   .draw_current_character                 ; calls $0001c710
+                cmp.w   #$001b,d6                                       ; check last character index
+                beq.w   .initials_entry_loop                            ; if at last character then loop
+                addq.w  #$01,d6                                         ; increment current character
+                bra.w   .draw_current_character                         ; calls $0001c710
 
 .stick_left
-                cmp.w   #$0001,d6                               ; check is at 1st character
-                beq.w   .initials_entry_loop                    ; if is first character then don't update, just loop
-                subq.w  #$01,d6                                 ; decrement current character
+                cmp.w   #$0001,d6                                       ; check is at 1st character
+                beq.w   .initials_entry_loop                            ; if is first character then don't update, just loop
+                subq.w  #$01,d6                                         ; decrement current character
 
-.draw_current_character                                         ; original address $0001c710
+.draw_current_character                                                 ; original address $0001c710
                 move.b  d6,d0
-                bsr.w   plot_character                          ; calls $0001c45e
-                bra.w   .initials_entry_loop                    ; L0001c6a8
+                bsr.w   plot_character                                  ; calls $0001c45e
+                bra.w   .initials_entry_loop                            ; L0001c6a8
 
 .wait_joystick_button_released
                 btst.b  #$0007,$00bfe001
-                beq.w   .wait_joystick_button_released          ; L0001c71a
+                beq.w   .wait_joystick_button_released                  ; L0001c71a
 
 .increment_next_char
-                add.w   #$0001,char_plot_x_coord                ; L0001c45a - advance to next character entry
-                move.b  d6,d0                                   ; d0,d6 = current character
-                cmp.b   #$1c,d0                                 ; test current char = #$1c (28)
+                add.w   #$0001,char_plot_x_coord                        ; L0001c45a - advance to next character entry
+                move.b  d6,d0                                           ; d0,d6 = current character
+                cmp.b   #$1c,d0                                         ; test current char = #$1c (28)
                 bne.w   .not_end
-                move.w  #$ffe0,                                 ; insert -32 (equals a space char when #$40 is added back to it below)
+                move.w  #$ffe0,                                         ; insert -32 (equals a space char when #$40 is added back to it below)
 .not_end
                 add.b   #$40,d0
-                move.b  d0,(a4)+                                ; update display text
-                sub.w   #$0001,name_initial_index               ; update next name initial index, L0001c776
-                beq.w   .end_intial_entry                       ; L0001c758
+                move.b  d0,(a4)+                                        ; update display text
+                sub.w   #$0001,name_initials_count                      ; update next name initial index, L0001c776
+                beq.w   .end_intial_entry                               ; L0001c758
                 move.b  d6,d0
-                bsr.w   plot_character                          ; calls $0001c45e
-                bra.w   .initials_entry_loop                    ; L0001c6a8 
+                bsr.w   plot_character                                  ; calls $0001c45e
+                bra.w   .initials_entry_loop                            ; L0001c6a8 
 
-.end_intial_entry                                               ; original address $0001c758
-                move.w  #$0060,typer_extended_command_1         ; $0001c782
+.end_intial_entry                                                       ; original address $0001c758
+                move.w  #$0060,typer_extended_command_1                 ; $0001c782
                 ; fall through to 'display_title_screen_text' below
 
 
@@ -2305,28 +2327,31 @@ hi_score_and_text_typer                                                 ; origin
                 ; strangely the typer routine also waits for the joystick button to be
                 ; pressed for the start game.
                 ;
-display_title_screen_text                                       ; original address $0001c760
-                lea.l   title_screen_text,a6                    ; $0001c784 - a6 = title screen text for display
-                bra.w   text_typer                              ; jmp $0001c324 - display text
+display_title_screen_text                                               ; original address $0001c760
+                lea.l   title_screen_text,a6                            ; $0001c784 - a6 = title screen text for display
+                bra.w   text_typer                                      ; jmp $0001c324 - display text
                 ; uses text_typer rts to return?
 
 
 
 
 score_y_coord_table                                             ; original address $0001C76A
-L0001C76A       dc.w $0058, $0060, $0050, $0040, $0030, $0020
-name_initial_index                                              ; original address $0001C776
-L0001C776       dc.w $0000
+                dc.w $0058, $0060, $0050, $0040, $0030, $0020   ; table of y co-ord values for each line of the hi-score table on the screen, bottom to top (not sure if 1st entry is used)
+
+name_initials_count                                             ; original address $0001C776
+                dc.w $0000                                      ; count of hi-score initials entered during the entry loop. initialised to 3, exits loop when 0
 
 ; used during enter high score initial loop
-joystick_left
-L0001C778       dc.w $0000                                      ; joystick left (SET TRUE)
+joystick_left                                                   ; original address $0001C778
+                dc.w $0000                                      ; joystick left (SET TRUE)
 joystick_right
-L0001c77a       dc.w $0000                                      ; joystick right (SET TRUE)
-L0001C77C       dc.w $0000
+                dc.w $0000                                      ; joystick right (SET TRUE)
+
+unused_var_flag                                                 ; original address $0001C77C
+                dc.w $0000                                      ; cleared when joystick values are read during hi-score initials entry loop - appears unused apart from being cleared in the loop.
 
 temp_typer_text_ptr                                             ; original address $0001c77e
-L0001c77e       dc.l $00000000                                  ; store ptr to typer text while command types hi-score table
+                dc.l $00000000                                  ; store ptr to typer text while command types hi-score table
 
 typer_extended_command_1                                        ; original address $0001C782
                 dc.b $00
@@ -2395,11 +2420,16 @@ display_hiscores                                        ; original address $0001
 
 
 
-                ;----------------------- HIGH SCORE DISPLAY TABLE --------------------------
+                ;------------------------- HIGH SCORE DISPLAY TABLE ----------------------------
                 ; The text typer displays this text when encountering CODE #$03, it ends
                 ; and resumes where it left off when encountering CODE #$04.
                 ; - title     = 21 chars (incl control codes)
                 ; - lines 1-6 = 23 chars (incl control codes)
+                ; - The 6th line entry is only used to roll the last entry into when inserting
+                ;   a new high score into the table.
+                ;   The insertion routine stuffs the code #$04 into the start of the 6th 
+                ;   entry, preventing the text typer routine from displaying it on screen.
+                ;
 high_score_display_text                                                                                            ; original address $0001C974
                 dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$48,$49,$20,$53,$43,$4F,$52,$45,$53,$0D,$0D,$0D           ;         HI SCORES
                 dc.b $20,$20,$20,$20,$20,$31,$53,$54,$20,$20,$41,$4A,$53,$20,$20,$31,$32,$35,$30,$30,$30,$0D,$0D   ;     1ST  AJS  125000
@@ -2414,10 +2444,19 @@ high_score_6th_entry                                                            
 
 
 
+
 L0001CA14       dc.b $00, $00, $00, $00 
 
 
 
+
+                ;--------------- High Score Table -------------
+                ; High score table where the top 5 scores are
+                ; stored in BCD format.
+                ; The 6th entry is only used to roll the
+                ; last score into when inserting a new
+                ; hi-score into the table.
+                ;
 highscore_table                                         ; original address $0001CA18
 L0001CA18       dc.l $00125000
 L0001CA1C       dc.l $00100000
@@ -2429,7 +2468,11 @@ highscore_table_6th_entry                               ; original address $0001
 L0001CA2c       dc.l $00000000
 
 
-.other_data
+
+
+                ; -------------- other data 1 ----------------------
+                ; currently unknown/unused data
+.other_data1
 L0001CA2E       dc.w $0000, $0000
 
 
@@ -2445,8 +2488,18 @@ copy_title_screen_bitplanes
 
 
 bitplane_size                                   ; original address $0001ca3e
-L0001ca3e       dc.l $00000000                
+                dc.l $00000000                  ; The size of the current display bitplane in bytes          
+
+
+
+
+                ; -------------- other data 2 ----------------------
+                ; currently unknown/unused data
+.other_data2
 L0001ca42       dc.w $0000, $0000                ;or.b #$00,d0
+
+
+
 
 L0001ca46       lea.l $0001cd0e,a0
 L0001ca4c       lea.l $0001cd2e,a2
@@ -2862,51 +2915,53 @@ wait_blitter
                 ; screens on return from the game back to the title screen.
                 ;
 do_return_to_title_screen                                                       ; original routine address $0001d450
-L0001d450       lea.l   temp_stack_top,a7                                       ; set temp stack, $0001d6de,a7
-L0001d456       bsr.w   initialise_title_screen                                 ; calls $0001c0d8
-L0001d45a       btst.b  #PANEL_STATUS_2_GAME_OVER,PANEL_STATUS_2                ; #$0005,$0007c875 
-L0001d462       beq.b   do_gameover_completion                                  ; calls $0001d46e
-L0001d464       clr.l   PANEL_HIGHSCORE                                         ; $0007c87c
-L0001d46a       bra.w   return_to_title_screen                                  ; $0001c018
+                lea.l   temp_stack_top,a7                                       ; set temp stack, $0001d6de,a7
+                bsr.w   initialise_title_screen                                 ; calls $0001c0d8
+                btst.b  #PANEL_STATUS_2_GAME_OVER,PANEL_STATUS_2                ; #$0005,$0007c875 
+                beq.b   do_gameover_completion                                  ; calls $0001d46e
+                clr.l   PANEL_HIGHSCORE                                         ; $0007c87c
+                bra.w   return_to_title_screen                                  ; $0001c018
 
 
 
-do_gameover_completion
-L0001d46e       btst.b  #PANEL_STATUS_2_GAME_COMPLETED,PANEL_STATUS_2           ; #$0006,$0007c875 
-L0001d476       beq.w   L0001d4ec
-
+                ;------------------- do game over/completion -------------------
+                ; check panel_status_2 bit to see if the game was completed
+                ; or whether it's a game over.
+do_gameover_completion                                                          ; original routine address $0001d46e
+                btst.b  #PANEL_STATUS_2_GAME_COMPLETED,PANEL_STATUS_2           ; #$0006,$0007c875 
+                beq.w   display_endgame_joker                                   ; jmp $0001d4ec
 
 
 
                 ;---------------------- display completion screen -----------------------
                 ; displays the game completion screen, plays the batman voice (song 3)
                 ; waits for ~15 seconds, returns to title screen.
-display_completion_screen
-L0001d47a       move.l  #$00001f40,d0                                           ; d0 = bitplane size (bytes) (8000)
-L0001d480       bsr.w   reset_title_screen_display                              ; calls $0001d2de
-L0001d484       move.w  #$4000,$00dff100                                        ; set 4 bitplane screen
-L0001d48c       lea.l   palette_16_colours,a0                                   ; L0001d4cc ; 16 colour palette address
-L0001d492       bsr.w   copper_copy                                             ; calls $0001d3a0
-L0001d496       lea.l   $00056460,a0                                            ; a0 = source gfx
-L0001d49c       bsr.w   copy_bitplanes_to_display                               ; calls $0001d3da
-L0001d4a0       move.b  #$2c,copper_diwstrt                                     ; $0001d6e8 - set window open
-L0001d4a8       move.b  #$f4,copper_diwstop                                     ; $0001d6ec 
-L0001d4b0       move.w  #$0064,d0                                               ; d0 = 100
-L0001d4b4       bsr.w   raster_wait_161                                         ; wait for 100 frames (2 seconds) - calls $0001c2f8
-L0001d4b8       moveq   #$03,d0                                                 ; d0 = song 3
-L0001d4ba       jsr     Play_Song                                               ; init play song 4 - calls $00004010
-L0001d4c0       move.w  #$0600,d0                                               ; d0 = 1536 
-L0001d4c4       bsr.w   raster_wait_161                                         ; wait for 1536 frames (15 seconds) - calls $0001c2f8
-L0001d4c8       bra.w   return_to_title_screen                                  ; jmp $0001c018
+display_completion_screen                                                       ; original routine address $0001d47a
+                move.l  #$00001f40,d0                                           ; d0 = bitplane size (bytes) (8000)
+                bsr.w   reset_title_screen_display                              ; calls $0001d2de
+                move.w  #$4000,$00dff100                                        ; set 4 bitplane screen
+                lea.l   palette_16_colours,a0                                   ; L0001d4cc ; 16 colour palette address
+                bsr.w   copper_copy                                             ; calls $0001d3a0
+                lea.l   $00056460,a0                                            ; a0 = source gfx
+                bsr.w   copy_bitplanes_to_display                               ; calls $0001d3da
+                move.b  #$2c,copper_diwstrt                                     ; $0001d6e8 - set window open
+                move.b  #$f4,copper_diwstop                                     ; $0001d6ec 
+                move.w  #$0064,d0                                               ; d0 = 100
+                bsr.w   raster_wait_161                                         ; wait for 100 frames (2 seconds) - calls $0001c2f8
+                moveq   #$03,d0                                                 ; d0 = song 3
+                jsr     Play_Song                                               ; init play song 4 - calls $00004010
+                move.w  #$0600,d0                                               ; d0 = 1536 
+                bsr.w   raster_wait_161                                         ; wait for 1536 frames (15 seconds) - calls $0001c2f8
+                bra.w   return_to_title_screen                                  ; jmp $0001c018
 
 
 
 
                 ;------------------- 16 colour palette -----------------------
                 ; 16 colour palatte for the above.
-palette_16_colours
-L0001d4cc       dc.w $0000, $0ec2, $0e80, $0a40, $0820, $0e60, $0ea8, $0eca 
-L0001d4dc       dc.w $0ea0, $0eee, $0222, $0444, $0666, $0888, $0AAA, $0CCC
+palette_16_colours                                                              ; original address $0001d4cc
+                dc.w $0000, $0ec2, $0e80, $0a40, $0820, $0e60, $0ea8, $0eca 
+                dc.w $0ea0, $0eee, $0222, $0444, $0666, $0888, $0AAA, $0CCC
 
 
 
@@ -2915,31 +2970,32 @@ L0001d4dc       dc.w $0ea0, $0eee, $0222, $0444, $0666, $0888, $0AAA, $0CCC
                 ; displays the game over screen, plays the joker laugh (song 2)
                 ; waits for ~10 seconds, returns to title screen.
 display_endgame_joker                                                   ; original address $0001d4f0
-L0001d4ec       move.l  #$2800,d0                                       ; d0,d4 = bitplane size (bytes)
-L0001d4f2       bsr.w   reset_title_screen_display                      ; calls $0001d2de
-L0001d4f6       lea.l   $00049c40,a0                                    ; a0 = display palette colour table
-L0001d4fc       bsr.w   copper_copy                                     ; calls $0001d3a0
-L0001d500       lea.l   $00049c80,a0                                    ; a0 = display screen gfx
-L0001d506       bsr.w   copy_gfx_to_display                             ; calls $0001d41c
-L0001d50a       move.b  #$2c,copper_diwstrt                             ; $0001d6e8
-L0001d512       move.b  #$2b,copper_diwstop                             ; $0001d6ec
-L0001d51a       move.w  #$0014,d0
-L0001d51e       bsr.w   raster_wait_161                                 ; calls $0001c2f8
-L0001d522       moveq   #$02,d0
-L0001d524       jsr     Play_Song                                       ; calls $00004010
-L0001d52a       move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
-L0001d52e       bsr.w   raster_wait_161                                 ; calls $0001c2f8
-L0001d532       bra.w   return_to_title_screen                          ; jmp $0001c018
+                move.l  #$2800,d0                                       ; d0,d4 = bitplane size (bytes)
+                bsr.w   reset_title_screen_display                      ; calls $0001d2de
+                lea.l   $00049c40,a0                                    ; a0 = display palette colour table
+                bsr.w   copper_copy                                     ; calls $0001d3a0
+                lea.l   $00049c80,a0                                    ; a0 = display screen gfx
+                bsr.w   copy_gfx_to_display                             ; calls $0001d41c
+                move.b  #$2c,copper_diwstrt                             ; $0001d6e8
+                move.b  #$2b,copper_diwstop                             ; $0001d6ec
+                move.w  #$0014,d0
+                bsr.w   raster_wait_161                                 ; calls $0001c2f8
+                moveq   #$02,d0
+                jsr     Play_Song                                       ; calls $00004010
+                move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
+                bsr.w   raster_wait_161                                 ; calls $0001c2f8
+                bra.w   return_to_title_screen                          ; jmp $0001c018
 
 
 
 
                 ;--------------------- wait 10 seconds ---------------------
                 ; waits for 512 frames to pass.
+                ; *** unused code ***
 wait_10_seconds
-L0001d536       move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
-L0001d53a       bsr.w   raster_wait_161                                 ; calls $0001c2f8
-L0001d53e       bra.w   return_to_title_screen                          ; jmp $0001c018
+                move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
+                bsr.w   raster_wait_161                                 ; calls $0001c2f8
+                bra.w   return_to_title_screen                          ; jmp $0001c018
 
 
 
@@ -2955,7 +3011,12 @@ do_fatal_error                                                          ; origin
 
 
 
-
+                ;----------------------- title screen stack ------------------
+                ; memory area used for the title screen stack memory.
+                ; sp/a7 is set to the address 'temp_stack_top' at the end of 
+                ; this block of data.
+                ;
+temp_stack_bottom                                                       ; original address $0001D54E
 L0001D54E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
 L0001D55E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
 L0001D56E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
@@ -2983,8 +3044,11 @@ L0001D6BE dc.w $0000, $0000, $00C7, $8978, $00C7, $8978, $00C7, $848C
 L0001D6CE dc.w $00C7, $871E, $00C7, $8104, $0000, $0000, $0000, $0000   
 temp_stack_top                                                          ; original address $0001D6DE
 
+
+
 L0001D6DE dc.w $0000
 L0001D6E0 dc.w $0000
+
 
 
 
@@ -2999,7 +3063,7 @@ copper_diwstrt                                                  ; original addre
 copper_diwstop                                                  ; original address $0001D6EC
                 dc.w $F4C1
 copper_bplh_ptrs
-L0001D6EE       dc.w BPL1PTH            ; $00E0
+                dc.w BPL1PTH            ; $00E0
                 dc.W $0006
                 dc.w BPL2PTH            ; $00E4
                 dc.w $0006
@@ -3010,13 +3074,13 @@ L0001D6EE       dc.w BPL1PTH            ; $00E0
                 dc.w BPL5PTH            ; $00F0
                 dc.w $0006
 copper_bpll_ptrs
-L0001d702       dc.w BPL1PTL            ; $00E2
+                dc.w BPL1PTL            ; $00E2
                 dc.w $3190
                 dc.w BPL2PTL            ; $00E6
                 dc.w $50D0
                 dc.w BPL3PTL            ; $00EA
                 dc.w $7010
-L0001D70E       dc.w BPL4PTL            ; $00EE
+                dc.w BPL4PTL            ; $00EE
                 dc.w $8F50
                 dc.w BPL5PTL            ; $00F2
                 dc.w $AE90
@@ -3058,6 +3122,7 @@ copper_colors                                                   ; original addre
 
 
 
+
                 ;------------------------ title screen colours ---------------------
                 ; table of colours copied into the copper list colour registers.
                 ; the palette used for the title screen display.
@@ -3069,4 +3134,4 @@ title_screen_colors                                                     ; origin
                 dc.w $0F99, $0666, $0706, $0504, $099A, $0403, $0302, $0DDE
 
 
-  
+
