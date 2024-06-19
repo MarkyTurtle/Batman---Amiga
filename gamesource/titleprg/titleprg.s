@@ -2228,55 +2228,68 @@ hi_score_and_text_typer                                                 ; origin
                 lea.l   display_hiscores,a6                             ; L0001c96e ; (a6) = $0c30 - x,y display co-ords
                 bsr.w   text_typer                                      ; $0001c324 ; type text
 
-L0001c6a2       moveq   #$01,d6
-L0001c6a4       bsr.w   L0001c710
-.initials_entry_loop
-L0001c6a8       moveq   #$04,d0
-L0001c6aa       bsr.w   raster_wait_161                         ; calls $0001c2f8
-L0001c6ae       clr.l   L0001c778
-L0001c6b4       clr.w   L0001c77c
-L0001c6ba       move.w  $00dff00c,d0
-L0001c6c0       btst.l  #$0001,d0
-L0001c6c4       sne.b   L0001c77a
-L0001c6ca       btst.l  #$0008,d0
-L0001c6ce       sne.b   L0001c778
+                moveq   #$01,d6                                         ; d6 = initialise the current displayed character(initials entry)
+                bsr.w   .draw_current_character                         ; calls $0001c710 
+                *** This never returns (looks like it should be a bra?) ***
+                *** Enters the .initials_entry_loop ***
+                *** Eventually jumps out at .end_intial_entry
+
+.initials_entry_loop                                                    ; original address $0001c6a8
+                moveq   #$04,d0
+                bsr.w   raster_wait_161                                 ; calls $0001c2f8 - wait 4 frames
+                clr.l   joystick_left                                   ; clear both joystick left & right flags - L0001c778
+                clr.w   L0001c77c
+                move.w  $00dff00c,d0                                    ; d0 = JOT1DAT
+                btst.l  #$0001,d0                                       ; joystick right (active high)
+                sne.b   joystick_right                                  ; L0001c77a
+                btst.l  #$0008,d0                                       ; joystick left (active high)
+                sne.b   joystick_left                                   ; L0001c778
 
 .test_joystick_button
-L0001c6d4       btst.b  #$0007,$00bfe001
-L0001c6dc       beq.w   .wait_joystick_button_released         ; L0001c71a
+                btst.b  #$0007,$00bfe001
+                beq.w   .wait_joystick_button_released         ; L0001c71a
 
-L0001c6e0       move.w  L0001c778,d0
-L0001c6e6       or.w    L0001c77a,d0
-L0001c6ec       beq.b   .initials_entry_loop                    ; L0001c6a8
-L0001c6ee       tst.w   L0001c778
-L0001c6f4       bne.w   L0001c706
-L0001c6f8       cmp.w   #$001b,d6
-L0001c6fc       beq.w   .initials_entry_loop                    ; L0001c6a8
-L0001c700       addq.w  #$01,d6
-L0001c702       bra.w   L0001c710
-L0001c706       cmp.w   #$0001,d6
-L0001c70a       beq.w   .initials_entry_loop                    ; L0001c6a8
-L0001c70e       subq.w  #$01,d6
-L0001c710       move.b  d6,d0
-L0001c712       bsr.w   plot_character                          ; calls $0001c45e
-L0001c716       bra.w   .initials_entry_loop                    ; L0001c6a8
+                move.w  joystick_left,d0                        ;L0001c778,d0
+                or.w    joystick_right,d0                       ;L0001c77a,d0
+                beq.b   .initials_entry_loop                    ; no joystick input - loop, L0001c6a8
+
+                tst.w   joystick_left                           ; L0001c778
+                bne.w   .stick_left                             ; L0001c706
+
+.stick_right
+                cmp.w   #$001b,d6                               ; check last character index
+                beq.w   .initials_entry_loop                    ; if at last character then loop
+                addq.w  #$01,d6                                 ; increment current character
+                bra.w   .draw_current_character                 ; calls $0001c710
+
+.stick_left
+                cmp.w   #$0001,d6                               ; check is at 1st character
+                beq.w   .initials_entry_loop                    ; if is first character then don't update, just loop
+                subq.w  #$01,d6                                 ; decrement current character
+
+.draw_current_character                                         ; original address $0001c710
+                move.b  d6,d0
+                bsr.w   plot_character                          ; calls $0001c45e
+                bra.w   .initials_entry_loop                    ; L0001c6a8
 
 .wait_joystick_button_released
-L0001c71a       btst.b  #$0007,$00bfe001
-L0001c722       beq.w   .wait_joystick_button                   ; L0001c71a
+                btst.b  #$0007,$00bfe001
+                beq.w   .wait_joystick_button_released          ; L0001c71a
 
-L0001c726       add.w   char_plot_x_coord                       ; L0001c45a
-L0001c72e       move.b  d6,d0
-L0001c730       cmp.b   #$1c,d0
-L0001c734       bne.w   L0001c73c
-L0001c738       move.w  #$ffe0,d0
-L0001c73c       add.b   #$40,d0
-L0001c740       move.b  d0,(a4)+
-L0001c742       sub.w   #$0001,name_initial_index               ; update next name initial index, L0001c776
-L0001c74a       beq.w   .end_intial_entry                       ; L0001c758
-L0001c74e       move.b  d6,d0
-L0001c750       bsr.w   plot_character                          ; calls $0001c45e
-L0001c754       bra.w   .initials_entry_loop                    ; L0001c6a8 
+.increment_next_char
+                add.w   #$0001,char_plot_x_coord                ; L0001c45a - advance to next character entry
+                move.b  d6,d0                                   ; d0,d6 = current character
+                cmp.b   #$1c,d0                                 ; test current char = #$1c (28)
+                bne.w   .not_end
+                move.w  #$ffe0,                                 ; insert -32 (equals a space char when #$40 is added back to it below)
+.not_end
+                add.b   #$40,d0
+                move.b  d0,(a4)+                                ; update display text
+                sub.w   #$0001,name_initial_index               ; update next name initial index, L0001c776
+                beq.w   .end_intial_entry                       ; L0001c758
+                move.b  d6,d0
+                bsr.w   plot_character                          ; calls $0001c45e
+                bra.w   .initials_entry_loop                    ; L0001c6a8 
 
 .end_intial_entry                                               ; original address $0001c758
                 move.w  #$0060,typer_extended_command_1         ; $0001c782
@@ -2304,10 +2317,13 @@ score_y_coord_table                                             ; original addre
 L0001C76A       dc.w $0058, $0060, $0050, $0040, $0030, $0020
 name_initial_index                                              ; original address $0001C776
 L0001C776       dc.w $0000
-L0001C778       dc.w $0000 
 
-
-L0001C77A dc.w $0000, $0000
+; used during enter high score initial loop
+joystick_left
+L0001C778       dc.w $0000                                      ; joystick left (SET TRUE)
+joystick_right
+L0001c77a       dc.w $0000                                      ; joystick right (SET TRUE)
+L0001C77C       dc.w $0000
 
 temp_typer_text_ptr                                             ; original address $0001c77e
 L0001c77e       dc.l $00000000                                  ; store ptr to typer text while command types hi-score table
