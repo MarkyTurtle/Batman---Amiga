@@ -1885,9 +1885,12 @@ current_text_ptr                                        ; original address L0001
                 dc.l    $00000000                       ; $0001c784 - address of start of text being displayed (used for looping back to start)
 
 
-L0001c318       add.w #$0001,d7
-L0001c31c       move.w d7,$00dff180
-L0001c322       rts  == $00c00276
+
+
+unused_background_flash                                 ; original routine address $0001c318
+                add.w #$0001,d7
+                move.w d7,$00dff180
+                rts 
 
 
 
