@@ -47,18 +47,20 @@ titleprg_start
 
                 ;----------------------------- Music Player Jump Table ------------------------------
 Initialise_Music_Player                                         ; original routine address $00004000
-L00004000       bra.w   do_initialise_music_player              ; jmp $00004180
+                bra.w   do_initialise_music_player              ; jmp $00004180
 
 Silence_All_Audio                                               ; original routine address $00004004
-L00004004       bra.w   do_silence_all_audio                    ; calls $00004194
+                bra.w   do_silence_all_audio                    ; calls $00004194
 
-L00004008       bra.w   L000041e0
+Stop_Audio                                                      ; original address $00004008
+                bra.w   do_stop_audio                           ; $000041e0 ; appears to expect d0 to be a song number.
 
-L0000400c       bra.w   L000041e0
+Stop_Audio_2                                                    ; original address $0000400c
+                bra.w   do_stop_audio                           ; $000041e0
 
                 ; IN: D0.l (song/sound to play)
 Play_Song                                                       ; original routine address $00004010
-L00004010       bra.w   do_play_song                            ; calls $0000423e, init/play song
+                bra.w   do_play_song                            ; calls $0000423e, init/play song
 
 
 L00004014       bra.w   L00004222
@@ -174,6 +176,8 @@ do_silence_all_audio                                            ; original routi
 
                 ;------------ silence channel volume -------------
                 ; IN: A0 - channel/voice status data
+                ; IN: A1 - AUDxVOL custom register
+                ;
 silence_channel_volume
                 move.w  #$0000,(a0)                             ; set volume in struct
                 move.w  #$0001,$004a(a0)                        ; set unknown in struct
@@ -186,32 +190,48 @@ silence_channel_volume
 
 
 
-                ;------------------------- xxxxxxxxxx -------------------------
+                ;----------------------------- xxxxxxxxxx -----------------------------
+                ; Stop Playing Audio, this appears to be another routine that
+                ; silences the audio. It looks buggy in the main loop as I can't
+                ; see it updating the ptrs in the loop. I may be tired.
+                ;
+                ; If song number (d0) is not in range 1-3 then silence audio and exit.
+                ;
                 ; Called from:
                 ;        - do_title_screen_start
                 ;
-L000041e0       movem.l d0/d7/a0-a2,-(a7)
-L000041e4       subq.w  #$01,d0
-L000041e6       bmi.b   L000041ee
-L000041e8       cmp.w   #$0003,d0
-L000041ec       bcs.b   L000041f2
-L000041ee       bsr.b   do_silence_all_audio                    ; calls $00004194
-L000041f0       bra.b   L0000421c
-L000041f2       lea.l   song_table,a2                           ; L0001b9dc,a2
-L000041f8       asl.w   #$03,d0
-L000041fa       adda.w  d0,a2
-L000041fc       lea.l   channel_1_status,a0                     ; L00004024,a0
-L00004200       lea.l   $00dff0a8,a1
-L00004206       moveq   #$03,d7
-L00004208       tst.w   (a2)+
-L0000420a       bne.b   L00004216
-L0000420c       adda.w  #$0056,a0
-L00004210       adda.w  #$0010,a1
-L00004214       bra.b   L00004218
-L00004216       bsr.b   silence_channel_volume                  ; calls $000041c2
-L00004218       dbf.w   d7,L00004208
-L0000421c       movem.l (a7)+,d0/d7/a0-a2
-L00004220       rts
+                ; IN: D0.w      - Song Number
+                ;
+do_stop_audio                                                   ; original routine address $000041e0
+                movem.l d0/d7/a0-a2,-(a7)
+                subq.w  #$01,d0
+                bmi.b   .silence_audio                          ; jmp $000041ee
+                cmp.w   #$0003,d0
+                bcs.b   .silence_channels                       ; jmp $000041f2
+.silence_audio
+                bsr.b   do_silence_all_audio                    ; calls $00004194
+                bra.b   .exit
+.silence_channels
+                lea.l   song_table,a2                           ; L0001b9dc,a2
+                asl.w   #$03,d0
+                adda.w  d0,a2
+                lea.l   channel_1_status,a0                     ; L00004024,a0
+                lea.l   $00dff0a8,a1                            ; a1 = AUD0VOL
+                moveq   #$03,d7                                 ; d7 = 3 + 1 ; 4 sound channels
+.audio_channel_loop
+                tst.w   (a2)+                                   ; Test Song Structure Volume - $00004208
+                bne.b   .silence_audio_channel                  ; if volume !=0 then silence the channel
+                adda.w  #$0056,a0                               ; offset into channel status
+                adda.w  #$0010,a1                               ; increment to next AUDxVOL register
+                bra.b   .continue                               ; continue loop processing - $00004218
+.silence_audio_channel
+                bsr.b   silence_channel_volume                  ; calls $000041c2       - L00004216
+.continue
+                dbf.w   d7,.audio_channel_loop                  ; jmp $00004208         - L00004218
+.exit
+                movem.l (a7)+,d0/d7/a0-a2
+                rts
+
 
 
 L00004222       tst.w   L00004126
@@ -1412,9 +1432,9 @@ L0001B9DA dc.w $0000
                 ;       channel3: off
                 ;       channel4: 04 + 1b9f2 = 
 song_table                                      ; original address $0001b9dc
-L0001b9dc       dc.w $003E, $0048, $0049, $0051 
-L0001b9e4       dc.w $0000, $0000, $0000, $000A
-L0001b9ec       dc.w $0000, $0000, $0000, $0004
+L0001b9dc       dc.w $003E, $0048, $0049, $0051         ; 00
+L0001b9e4       dc.w $0000, $0000, $0000, $000A         ; 08
+L0001b9ec       dc.w $0000, $0000, $0000, $0004         ; 16
 
 song2_channel_4       
 L0001B9F4       dc.b $07, $80 
@@ -1625,7 +1645,7 @@ return_to_title_screen                                          ; original addre
                 ;************* START GAME - LOAD LEVEL 1 *************
                 ;text typer jumps out to here when start button pressed
 start_game                                                      ; original address $0001c05e
-                not.w   L0001c09c
+                not.w   start_game_flag                         ; invert bits, value not used anywhere else in the title screen. $0001c09c
 .wait_diwstrt
                 cmp.b   #$f4,copper_diwstrt                     ; L0001d6e8
                 bne.b    .wait_diwstrt                          ; if starting before title screen has openned, then wait 
@@ -1636,7 +1656,7 @@ start_game                                                      ; original addre
                 move.l  highscore_table,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
                 jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
                 jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
-                jsr     L00004008                               ; stop music?
+                jsr     Stop_Audio                              ; calls $00004008
 .load_level_1
                 jmp     LOADER_LOAD_LEVEL_1                     ; jmp $00000824 - Loader.Load_Level_1
 
@@ -1651,9 +1671,11 @@ fatal_error
 
 
 
+start_game_flag                                                 ; original address $0001c09c
+                dc.w $0000                                      ; bits are inverted (not.w) on game_start *** UNUSED ***
+unused_001                                                      ; original address $0001c0a0
+                dc.w $0001                                      ; unused by title screen *** UNUSED ***
 
-L0001c09c       or.b #$79,d0
-L0001c0a0       or.b #$9c,d1
 
 L0001c0a4       bne.b #$14 == $0001c0ba (T)
 L0001c0a6       cmp.b #$2c,copper_diwstrt                       ; $0001d6e8 
