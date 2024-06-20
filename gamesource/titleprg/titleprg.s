@@ -1716,17 +1716,19 @@ L0001c152       move.b  #$7f,$00bfed01
 L0001c15a       jsr     Initialise_Music_Player                 ; calls $00004000
 L0001c160       move.l  #$00001f40,d0                           ; d0 = bitplane size in bytes (8000)
 L0001c166       bra.w   reset_title_screen_display              ; calls $0001d2de
-L0001c16a       clr.w   $0001c2f0
-L0001c170       rts
+
+clear_keycode_and_exit                                          ; original address $0001c16a
+                clr.w   raw_key_code_store                      ;$L0001c2f0 - clear raw keycode store
+                rts
 
 
 
 
-L0001c172       btst.b  #$0000,raw_keyboard_serial_data          ; L0001c2ed
+L0001c172       btst.b  #$0000,raw_keyboard_serial_data_byte         ; L0001c2ed
 L0001c17a       bne.w   L0001c1b8
 L0001c17e       tst.w   L0001c2f2
 L0001c184       bne.w   L0001c170
-L0001c188       cmp.w   #$005c,L0001c2ec
+L0001c188       cmp.w   #$005c,raw_keyboard_serial_data_word            ; $0001c2ec
 L0001c190       bne.b   L0001c1b8
 L0001c192       not.w   L0001c2f2
 L0001c198       bchg.b  #$0000,panel_status_2                   ; $0007c875
@@ -1751,64 +1753,134 @@ L0001c1be       rts
 
 
 
+
                 ;----------------------- handle level 2 interrupt ----------------------
+                ;
+                ;       
+                ;
                 ; Called from:
                 ;       level_2_interrupt_handler
                 ;
-handle_level_2_interrupt
-L0001c1c0       btst.b  #$0000,raw_keyboard_serial_data                  ; $0001c2ed
-L0001c1c8       bne.w   L0001c16a
-L0001c1cc       tst.w   L0001c2f0
-L0001c1d2       bne.b   L0001c24a
-L0001c1d4       move.w  L0001c2ec,d0
-L0001c1da       and.b   #$fe,d0
-L0001c1de       move.w  d0,L0001c2f0
-L0001c1e4       lea.l   L0001c258,a0
-L0001c1ea       cmp.b   (a0),d0
-L0001c1ec       beq.w   L0001c1fe
-L0001c1f0       cmp.b   #$ff,(a0)
-L0001c1f4       beq.w   L0001c24a
-L0001c1f8       addaq.l #$02,a0
-L0001c1fa       bra.w   L0001c1ea
-L0001c1fe       move.b  $0001(a0),d1
-L0001c202       lea.l   L0001c24d,a0
-L0001c208       moveq   #$05,d0
-L0001c20a       move.b  (a0),-$0001(a0)
-L0001c20e       addaq.l #$01,a0
-L0001c210       dbf.w   d0,L0001c20a
-L0001c214       move.b  d1,L0001c251
-L0001c21a       lea.l   L0001c24c,a0
-L0001c220       lea.l   L0001c252,a1
-L0001c226       moveq   #$05,d0
-L0001c228       cmpm.b  (a0)+,(a1)+
-L0001c22a       bne.b   L0001c24a
-L0001c22c       dbf.w   d0,L0001c228
-L0001c230       bchg.b  #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2           ; #$0007,$0007c875 ; Enable CHEAT?
-L0001c238       move.b  #$f4,copper_diwstrt                                     ; $0001d6e8
-L0001c240       move.l  #$00001f40,d0                                           ; bitplane size in bytes (8000)
-L0001c246       bsr.w   reset_title_screen_display                              ; calls $0001d2de ; reset title screen display
-L0001c24a       rts 
+handle_level_2_interrupt                                                ; original routine address $0001c1c0
+                btst.b  #$0000,raw_keyboard_serial_data_byte            ; test lsb of raw keyboard data - $0001c2ed
+                bne.w   clear_keycode_and_exit                          ; if lsb = 1 then clear $0001c2f0.w and exit (key up?) - jmp $0001c16a
+
+                tst.w   raw_key_code_store                              ; test raw keycode store - $0001c2f0
+                bne.b   .exit                                           ; if keycode store is not empty, exit - jmp $0001c24a
+
+                ; check if keycode is an expected code
+                ; if so enqueue it
+                ; if not then exit
+.process_raw_key_code
+                move.w  raw_keyboard_serial_data_word,d0                ; d0 = raw keyboard key code - $0001c2ec
+                and.b   #$fe,d0                                         ; d0 = mask lsb and high byte
+                move.w  d0,raw_key_code_store                           ; $0001c2f0 ; store raw key code
+                lea.l   raw_key_code_table                              ; $0001c258 ; raw keycode table (ends with $FFxx)
+
+.match_keycodes_loop                                                    ; original address $0001c1ea
+                cmp.b   (a0),d0
+                beq.w   .enqueue_key_code                               ; $0001c1fe ; key code is in the list, pop it in the queue
+
+.unmatched_keycode                                                      ; original address $0001c1f0
+                cmp.b   #$ff,(a0)                                       ; continue checking until the end of list ($ff value is part of code - dodgy/bug)
+                beq.w   .exit                                           ; then exit - jmp $0001c24a
+
+                addaq.l #$02,a0                                         ; match next value with keycode
+                bra.w   .match_keycodes_loop                            ; jmp $0001c1ea ; loop
 
 
-L0001c24c       dc.w $2020                     ;move.l -(a0) [40044e75],d0
-L0001c24e       dc.w $2020                     ;move.l -(a0) [40044e75],d0
-L0001c250       dc.w $2020                     ;move.l -(a0) [40044e75],d0
-L0001c252       dc.w $4958                     ;illegal
-L0001c254       dc.w $4c4c                     ;illegal
-L0001c256       dc.w $4c4c                     ;illegal
-L0001c258       dc.w $be58                     ;cmp.w (a0)+ [236b],d7
-L0001c25a       dc.w $ae31                     ;illegal
+                ; this is a queue of entered valid keycodes
+                ; valid key codes are added to the end of the queue
+.enqueue_key_code                                                       ; original address $0001c1fe
+                move.b  $0001(a0),d1                                    ; d1 = key code table second byte match
+                lea.l   keyboard_buffer_start+1,a0                        ; $0001c24d
+                moveq   #$05,d0                                         ; d0 = loop counter (6 times)
 
-L0001c25c       sub.w (a1) [00c0],d1
-L0001c25e       sub.w a4,d0
-L0001c260       add.b -(a0) [75],d0
-L0001c262       cmp.b (a0,a5.L[*2],$4a) == $01beac16 (68020+),d0
-L0001c266       cmp.w a1,d1
-L0001c268       and.w d6,d7
-L0001c26a       sub.w (a6) [00c0],d2
+.shift_chars_loop                                                       ; original address $0001c20a
+                move.b  (a0),-$0001(a0)                                 ; shift bytes down in memory by 1 character
+                addaq.l #$01,a0                                         
+                dbf.w   d0,.shift_chars_loop                            ; $0001c20a ; Loop for all characters
+                move.b  d1,keyboard_buffer_start+5                      ; $0001c251 ; d1 = key code table second byte match. add to end of queue
 
+
+                ; check if cheat code has been entered 
+                ; in the queue, compares against
+                ; stored values.
+.check_cheat_code
+                lea.l   keyboard_buffer_start,a0                        ; $0001c24c
+                lea.l   cheat_code,a1                                   ; $0001c252
+                moveq   #$05,d0                                         ; d0 = 5 + 1 (loop counter)
+.compare_loop
+                cmpm.b  (a0)+,(a1)+
+                bne.b   .exit                                           ; jmp $0001c24a
+                dbf.w   d0,.compare_loop                                ; loop 6 times, jmp $0001c228
+                ; if we get here then the secret cheat code has been entered.
+                ; 'jammmm' - 6 char code
+.toggle_infinite_lives
+                bchg.b  #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2           ; #$0007,$0007c875 ; Enable CHEAT?
+                move.b  #$f4,copper_diwstrt                                     ; reset title screen window (closed) $0001d6e8
+                move.l  #$00001f40,d0                                           ; bitplane size in bytes (8000)
+                bsr.w   reset_title_screen_display                              ; calls $0001d2de ; reset title screen display
+.exit
+                rts 
+
+
+
+
+keyboard_buffer_start                                   ; original address $0001c24c
+                dc.b $20,$20,$20,$20,$20,$20
+
+cheat_code                                              ; original address $0001c252
+                dc.b $49,$58,$4c,$4c,$4c,4c             ; IXLLLL 'JAMMMM'
+
+
+
+
+                ;-------------------- cheat - raw key codes ----------------------
+                ; key code table - used to match keys pressed with expected
+                ; cheat code values.
+                ; - the second byte is 
+                ;
+                ; - the cheat keycodes are mapped to other characters (i presume to obsuscate)
+                ; - J - maps to 'I'
+                ; - A - maps to 'X'
+                ; - M - maps to 'L'
+                ;
+                ; - the cheat code matched against is then 'IXLLL'
+                ;
+                ; - why bother doing this is anyones guess, does anyone really care that much 
+                ; - about hiding cheat codes?
+                ;
+raw_key_code_table
+L0001c258       dc.b $be,$58        ; X
+L0001c25a       dc.b $ae,$31        ; 1            
+L0001c25c       dc.b $92,$51        ; Q
+L0001c25e       dc.b $90,$4C        ; L
+L0001c260       dc.b $D0,$20        ; ' '
+L0001c262       dc.b $B0,$30        ; 0
+L0001c264       dc.b $DA,$4A        ; J
+L0001c266       dc.b $B2,$49        ; I
+L0001c268       dc.b $CE,$46        ; F
+L0001c26a       dc.b $94,$56        ; V
+;L0001c26c       dc.b $4E,$73                   ; back to code (below)
+;L0001c26e       dc.b $48,$E7                   ; back to code (below)
+;L0001c270       dc.b $FF,$FE                   ; back to code (below) (ends with $FFxx)
+
+
+
+
+
+
+
+
+                ;---------------------- level 2 interrupt handler -------------------
+                ; Do nothing. This should probably clear the INTREQ bits for
+                ; Level 1 interrupts
 level_1_interrupt_handler
 L0001c26c       rte
+
+
+
 
                 ;---------------------- level 2 interrupt handler -------------------
                 ; PORTS/TIMERS - Level 2 Interrupt Handler
@@ -1816,22 +1888,27 @@ L0001c26c       rte
                 ;
                 ; The ICR Register is cleared by reading the register, but this
                 ; code immediately sets it back to the value it just read.
-                ; The implications of this are that if this inteerrupt was not
+                ; The implications of this are that if this interrupt was not
                 ; raised by the CIAA then bit 7 will = 0, this means that when
                 ; that value is written back to the register then it will
-                ; mask the interrupts tht just occurred.
+                ; mask the interrupts that just occurred, and prevent them
+                ; from occurring again.
+                ;
                 ; Conversly if the interrupt was raised by the CIAA then Bit 7 
-                ; will be 1, this set the interrupt enable for the interrupts
-                ; that were raised. This code looks dodgy/hacky
+                ; will be 1, this will enable the interrupt enable bit for the 
+                ; interrupts that were raised. This code looks dodgy/hacky
                 ;
                 ; later the ICR is then set to #$08 which masks the SP bit
                 ; this sets the SP bit to 0, which is the keyboard interrupt
                 ; serial register bit. So this interrupt is being disabled here
                 ; as far as I can make out.
                 ;
+                ; Obviously this works for reading the keyboard etc, but...
+                ; it doesn't appear correct as per the h/w refs that I've read.
+                ;
 level_2_interrupt_handler
 L0001c26e       movem.l d0-d7/a0-a6,-(a7)
-L0001c272       move.b  $00bfec01,raw_keyboard_serial_data                      ; SDR - $0001c2ed ; keyboard serial data
+L0001c272       move.b  $00bfec01,raw_keyboard_serial_data_byte                 ; SDR - $0001c2ed ; keyboard serial data
 L0001c27c       move.b  $00bfed01,$00bfed01                                     ; ICR - WTF-1!, clear the interrupt control if not a CIAA/Set Interrupts if is CIAA
 L0001c286       move.w  #$0808,$00dff09c                                        ; INTREQ - Clear PORTS(2), 
                                                                                 ; WTF-2! - Clear RBF(5) (keyboard serial) - Level 5 Interrupt!
@@ -1840,6 +1917,7 @@ L0001c296       move.b  #$60,$00bfee01                                          
 L0001c29e       bsr.w   handle_level_2_interrupt                                ; calls $0001c1c0
 L0001c2a2       movem.l (a7)+,d0-d7/a0-a6
 L0001c2a6       rte
+
 
 
 
@@ -1864,10 +1942,17 @@ L0001c2e6       rte
 
 L0001C2E8       dc.w $0000
 L0001C2EA       dc.w $0000
-                dc.b $00
-raw_keyboard_serial_data                                                ; original address $0001c2ed
-L0001c2ed       dc.b $00
-                dc.w $0000, $0000, 
+
+raw_keyboard_serial_data_word                                           ; original address $0001C2EC
+                dc.b $00                                                ; keyboard raw key code word (high byte always 0)
+raw_keyboard_serial_data_byte                                           ; original address $0001c2ed
+                dc.b $00                                                ; keyboard raw key code byte
+
+                dc.w $0000 
+
+raw_key_code_store                                                      ; original address $0001c2f0
+L0001c2f0       dc.w $0000                                              ; keyboard reading data/flags
+
 L0001c2f2       dc.w $0000
 L0001c2f4       dc.w $0000, $0000
 
@@ -2775,12 +2860,13 @@ L0001D2CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           
 
 
                 ;---------------------- reset title screen display ------------------------
-                ; resets the display window to closed, set general display parameters
+                ; 
+                ;
+                ; 1) resets the display window to closed, set general display parameters
                 ; in custom registers.
                 ; Checks if cheat is enabled, and if so flips the display.
                 ;
                 ; Called from:
-                ;       handle_level_2_interrupt
                 ;
                 ; IN: D0.l = bitplane size (bytes)
                 ;
