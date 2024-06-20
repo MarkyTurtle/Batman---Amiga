@@ -155,7 +155,7 @@ panel_status_1                              ; original address $0007c874
                 dc.b    $00                 ; status byte 1 (bits 0-clock timer expired, 1-no lives left, bit 2-life lost)
 panel_status_2                              ; original address $0007c875
                 dc.b    $00                 ; status byte 2 (bits 7 used for test if set - infinite lives?)
-
+                                            ; bit 0 = music/sound fx. (0 = music, 1 = sfx)
                 even
 player_lives_count                          ; original address $0007c876
                 dc.w    $0000               ; possible lives counter
