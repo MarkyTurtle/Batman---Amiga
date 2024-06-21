@@ -93,6 +93,7 @@ Play_Song                                                       ; original routi
 
 L0000401c       dc.w    $ffff
 L0000401e       dc.w    $ffff
+
 L00004020       dc.w    $8000
 
 
@@ -162,7 +163,8 @@ L00004126       dc.w    $8084, $0001, $ba34, $0001
                 dc.w    $3800, $0018, $0008
 
 .other_data
-L0000417c       dc.w    $0000 
+L0000417c       dc.w    $0000                           ; flag cleared on start of frame play routine
+
 L0000417e       dc.W    $0d69                           ; referenced as a word - cleared when playing new song/sound
 
 
@@ -258,15 +260,29 @@ do_stop_audio                                                   ; original routi
 
 
 
-L00004222       tst.w   L00004126
-L00004226       beq.b   L0000422e
-L00004228       cmp.b   L00004023,d0
-L0000422c       bcs.b   L0000423c
-L0000422e       movem.l d0/d7/a0-a2,-(a7)
-L00004232       move.w  #$4000,d1
-L00004236       move.b  d0,L00004023
-L0000423a       bra.b  do_init_current_song             ; calls $0000424a
-L0000423c       rts
+
+
+
+                ;------------------------ restart song? ---------------------
+                ; restart song/old init song.
+                ; **** APPEARS UNUSED ****
+                ;
+                ; IN:  D0.w - song number?
+                ;
+                                                        ; original routine address $00004222
+L00004222       tst.w   L00004126                       ; test a flag - unknown
+                beq.b   .continue_execution             ; if flag == 0 then continue execution, jmp $0000422e
+
+                cmp.b   L00004023,d0                    ; compare $4023 with song number? (4023 > d0?)
+                bcs.b   .exit                           ; if $4023 > d0
+
+.continue_execution                                     ; original address $0000422e
+                movem.l d0/d7/a0-a2,-(a7)
+                move.w  #$4000,d1                       ; d1 = unknown (flags?)
+                move.b  d0,L00004023                    ; store song number? in $4023?
+                bra.b  do_init_current_song             ; calls $0000424a
+.exit                                                   ; original address $0000423c
+                rts
 
 
 
@@ -280,7 +296,7 @@ L0000423c       rts
                 ;               - >3 = play nothing/stop
 do_init_song                                                    ; original routine address $0000423e
                 movem.l d0/d7/a0-a2,-(a7)
-                move.w  #$8000,d1
+                move.w  #$8000,d1                               ; d1 = unknown(flags?)
                 move.b  d0,song_number                          ; $00004022
 do_init_current_song
                 clr.w   L0000417e                               ; clear timer/counter?
@@ -313,7 +329,7 @@ do_init_current_song
                 move.l  d0,$000a(a1)                            ; initialise unknown channel status values
                 move.b  d0,$0013(a1)                            ; initialise unknown channel status values
                 move.b  #$01,$0012(a1)                          ; initialise unknown channel status values
-                move.w  d1,(a1)                                 ; (8000) initialise unknown channel status values
+                move.w  d1,(a1)                                 ; (d1 = 8000/d1 = 4000) initialise unknown channel status values
 
 .get_next_byte                                          ; original address $00004292
                 move.b  (a2)+,d0                        ; d0 = song channel data byte  
@@ -369,12 +385,14 @@ do_init_current_song
 
                 ;--------------------------- do play song -----------------------
                 ;
-do_play_song
-L000042f6       lea.l   $00dff000,a6
-L000042fc       lea.l   $00004bba,a5
-L00004302       clr.w   L0000417c
-L00004306       tst.w   L00004020
-L0000430a       beq.b   L00004354
+do_play_song                                                    ; original routine address $000042f6
+L000042f6       lea.l   $00dff000,a6                            ; a6 = custom base
+L000042fc       lea.l   L00004bba,a5                            ; a5 = song status base?
+L00004302       clr.w   L0000417c                               ; clear flag
+
+L00004306       tst.w   L00004020                               ; test $4020
+L0000430a       beq.b   L00004354                               ; if $4020 == 0 then jmp $00004354
+
 L0000430c       addq.w  #$01,$417e
 L00004310       clr.w   L00004020
 L00004314       lea.l   channel_1_status,a4                             ; L00004024,a4
@@ -401,7 +419,9 @@ L0000434a       beq.b   L00004354
 L0000434c       bsr.b   L00004360
 L0000434e       move.w  d7,(a4)
 L00004350       or.w    d7,L00004020
-L00004354       and.w   #$c000,L00004020
+
+
+L00004354       and.w   #$c000,L00004020                        ; mask all apart from top 2 MSBs
 L0000435a       bsr.w   L00004852
 L0000435e       rts
 
@@ -1239,6 +1259,8 @@ process_body_chunk                              ; original routine address L0004
 L00004B8A       dc.w  $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB          ;.....;.....=....
 L00004B9A       dc.w  $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1          ;.g.(.......M....
 L00004BAA       dc.w  $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA          ;.....y.U.4......
+
+; used in frame play routine
 L00004BBA       dc.w  $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B        ;.......x.c.O.<.+
 L00004BCA       dc.w  $011A, $010A, $00FB, $00ED, $00E0, $00D3, $00C7, $00BC          ;................
 L00004BDA       dc.w  $00B2, $00A8, $009E, $0095, $008D, $0085, $007E, $0077          ;.............~.w
