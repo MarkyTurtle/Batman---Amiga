@@ -392,16 +392,17 @@ L000042f6       lea.l   $00dff000,a6                            ; a6 = custom ba
 L000042fc       lea.l   L00004bba,a5                            ; a5 = song status base?
 L00004302       clr.w   L0000417c                               ; clear flag
 
-L00004306       tst.w   L00004020                               ; test $4020
+L00004306       tst.w   L00004020                               ; test $4020 (status flags?)
 L0000430a       beq.b   L00004354                               ; if $4020 == 0 then jmp $00004354
 
 L0000430c       addq.w  #$01,L0000417e
-L00004310       clr.w   L00004020                               ; clear $4020
+L00004310       clr.w   L00004020                               ; clear $4020 (status flags)
 L00004314       lea.l   channel_1_status,a4                     ; a4 = channel 1 status - L00004024,a4
 L00004318       move.w  (a4),d7                                 ; d7 = 1st value word
 L0000431a       beq.b   L00004324
 
-L0000431c       bsr.b   L00004360
+L0000431c       bsr.b   L00004360                               ; command loop
+
 L0000431e       move.w  d7,(a4)
 L00004320       or.w    d7,L00004020
 
@@ -430,6 +431,8 @@ L00004354       and.w   #$c000,L00004020                        ; mask all apart
 L0000435a       bsr.w   L00004852
 L0000435e       rts
 
+
+
                 ; IN: a4 = channel status base address
                 ; IN: d7 = 1st 16bit word value of channel status
 L00004360       tst.w   $0052(a4)                       ; test 82(a4)
@@ -445,19 +448,23 @@ L00004374       bclr.l  #$0007,d7                       ; d7 = clear bit 7
 play_song_command_loop
 L00004378       move.b  (a3)+,d0                        ; d0 = next music command?
 L0000437a       bpl.w   L00004560                       ; MSB = 0, jmp $00004560
-L0000437e       bclr.l  #$0003,d7
-L00004382       cmp.b   #$a0,d0
-L00004386       bcc.b   play_song_command_loop          ; jmp $00004378
-L00004388       lea.l   $0014(pc),a0
-L0000438c       sub.b   #$80,d0
-L00004390       ext.w   d0
-L00004392       add.w   d0,d0
-L00004394       adda.w  d0,a0
-L00004396       move.w  (a0),d0
-L00004398       beq.b   play_song_command_loop          ; jmp $00004378
-L0000439a       jmp     $00(a0,d0)
 
-jump_table
+L0000437e       bclr.l  #$0003,d7                       ; clear bit 3 on start commands
+L00004382       cmp.b   #$a0,d0                         ; sub #$a0 from d0
+L00004386       bcc.b   play_song_command_loop          ; if d0 > #$a0 (160) then loop (ignore command) ,jmp $00004378
+
+L00004388       lea.l   jump_table(pc),a0               ; $0014(pc),a0
+L0000438c       sub.b   #$80,d0                         ; d0 = d0 - 128 (max 32 commands)
+L00004390       ext.w   d0
+L00004392       add.w   d0,d0                           ; d0 = jump table index
+L00004394       adda.w  d0,a0                           ; a0 = address of jump table command offset entry
+L00004396       move.w  (a0),d0                         ; d0 = offset to music command routine.
+L00004398       beq.b   play_song_command_loop          ; if d0 == 0 then ignore command, jmp $00004378
+L0000439a       jmp     $00(a0,d0)                      ; execute music command
+
+
+                ;---------------- music command jump table (max 32 commands) ------------------
+jump_table                                              ; original address $0000439e
 L0000439e       dc.w music_command_01-jump_table        ; offset - $0040 ; 439E + 40 = 43DE
 L000043a0       dc.w music_command_02-jump_table+2      ; offset - $00ba ; 43A0 + BA = 445A 
 L000043a2       dc.w music_command_03-jump_table+4      ; offset - $00c0 ; 43A2 + C0 = 4462      
@@ -537,109 +544,123 @@ L00004452       adda.w  d0,a3
 L00004454       adda.w  (a3),a3
 L00004456       bra.w   play_song_command_loop          ; $00004378
 
-music_command_02
-L0000445a       move.l  a3,$000a(a4)
-L0000445e       bra.w   play_song_command_loop          ; $00004378
 
-music_command_03
-L00004462       bra.w   play_song_command_loop          ; $00004378
-
-music_command_04
-L00004466       bra.w   play_song_command_loop          ; $00004378
-
-music_command_05
-L0000446a       bset.l  #$0005,d7
-L0000446e       move.b  (a3)+,$0051(a4)
+music_command_02                                        ; original address $0000445a
+                move.l  a3,$000a(a4)                    ; store current command/song ptr in 10(a4)
                 bra.w   play_song_command_loop          ; $00004378
 
-music_command_06
-L00004476       bclr.l  #$0005,d7
-L0000447a       bra.w   play_song_command_loop          ; $00004378
 
-music_command_07
-L0000447e       add.w   #$0100,$0052(a4)
-L00004484       bra.w   play_song_command_loop          ; $00004378
+music_command_03                                        ; no operation - original address $00004462
+                bra.w   play_song_command_loop          ; $00004378
 
-music_command_08
-L00004488       bclr.l  #$0004,d7
-L0000448c       bset.l  #$0007,d7
-L00004490       clr.w   $004c(a4)
-L00004494       bra.w   L0000469c
 
-music_command_09
-L00004498       bset.l  #$0003,d7
-L0000449c       move.b  (a3)+,$0024(a4)
-L000044a0       move.b  (a3)+,$0025(a4)
-L000044a4       bra.w   play_song_command_loop          ; $00004378
+music_command_04                                        ; no operation - original address $00004466
+                bra.w   play_song_command_loop          ; $00004378
 
-music_command_10
-L000044a8       and.w   #$fff8,d7
-L000044ac       bset.l  #$0000,d7
-L000044b0       move.b  (a3)+,$0021(a4)
-L000044b4       move.b  (a3)+,$0022(a4)
-L000044b8       bra.w   play_song_command_loop          ; $00004378
 
-music_command_11
-L000044bc       bclr.l  #$0000,d7
-L000044c0       bra.w   play_song_command_loop          ; $00004378
+music_command_05                                        ; original address $0000446a
+                bset.l  #$0005,d7                       ; set status bit 5
+                move.b  (a3)+,$0051(a4)                 ; #$51 (81) - store command param in 81(a4)
+                bra.w   play_song_command_loop          ; $00004378
 
-music_command_14
-L000044c4       and.w   #$fff8,d7
-L000044c8       bset.l  #$0001,d7
-L000044cc       lea.l   $0001b986,a0
-L000044d2       moveq   #$00,d0
-L000044d4       move.b  (a3)+,d0
-L000044d6       add.w   d0,d0
-L000044d8       adda.w  d0,a0
-L000044da       adda.w  (a0),a0
-L000044dc       move.b  (a0)+,$0032(a4)
-L000044e0       move.b  (a0)+,$0030(a4)
-L000044e4       move.l  a0,$0028(a4)
-L000044e8       bra.w   play_song_command_loop          ; $00004378
 
-music_command_15
-L000044ec       bclr.l  #$0001,d7
-L000044f0       bra.w   play_song_command_loop          ; $00004378
+music_command_06                                        ; original address $00004476
+                bclr.l  #$0005,d7                       ; clear status bit 5
+                bra.w   play_song_command_loop          ; $00004378
+
+
+music_command_07                                        ; original address $0000447e
+                add.w   #$0100,$0052(a4)                ; increase offset 84(a4) by 256
+                bra.w   play_song_command_loop          ; $00004378
+
+
+music_command_08                                        ; original address $00004488
+                bclr.l  #$0004,d7                       ; clear status bit 4
+                bset.l  #$0007,d7                       ; set status bit 7
+                clr.w   $004c(a4)                       ; clear word at #$4c (76) 
+                bra.w   L0000469c
+
+
+music_command_09                                        ; original address $00004498
+                bset.l  #$0003,d7
+                move.b  (a3)+,$0024(a4)                 ; store - command 09 parameter
+                move.b  (a3)+,$0025(a4)                 ; store - command 09 parameter
+                bra.w   play_song_command_loop          ; $00004378
+
+
+music_command_10                                        ; original address $000044a8
+                and.w   #$fff8,d7                       ; clear bits 0-6 of d7
+                bset.l  #$0000,d7
+                move.b  (a3)+,$0021(a4)                 ; store - command 10 parameter
+                move.b  (a3)+,$0022(a4)                 ; store - command 10 parameter
+                bra.w   play_song_command_loop          ; $00004378
+
+
+music_command_11                                        ; original address $000044bc
+                bclr.l  #$0000,d7
+                bra.w   play_song_command_loop          ; $00004378
+
+
+music_command_14                                        ; original address $000044c4
+                and.w   #$fff8,d7
+                bset.l  #$0001,d7
+                lea.l   L0001b986,a0
+                moveq   #$00,d0
+                move.b  (a3)+,d0
+                add.w   d0,d0
+                adda.w  d0,a0
+                adda.w  (a0),a0
+                move.b  (a0)+,$0032(a4)                 ; store parameter
+                move.b  (a0)+,$0030(a4)                 ; store parameter
+                move.l  a0,$0028(a4)
+                bra.w   play_song_command_loop          ; $00004378
+
+
+music_command_15                                        ; original address $000044ec
+                bclr.l  #$0001,d7
+                bra.w   play_song_command_loop          ; $00004378
 
 music_command_12
-L000044f4       and.w   #$fff8,d7
-L000044f8       bset.l  #$0002,d7
-L000044fc       move.b  (a3)+,$0036(a4)
-L00004500       move.b  (a3)+,$0034(a4)
-L00004504       move.b  (a3)+,$0035(a4)
-L00004508       bra.w   play_song_command_loop          ; $00004378
+                and.w   #$fff8,d7
+                bset.l  #$0002,d7
+                move.b  (a3)+,$0036(a4)
+                move.b  (a3)+,$0034(a4)
+                move.b  (a3)+,$0035(a4)
+                bra.w   play_song_command_loop          ; $00004378
+
 
 music_command_13
-L0000450c       bclr.l  #$0002,d7
-L00004510       bra.w   play_song_command_loop          ; $00004378
+                bclr.l  #$0002,d7
+                bra.w   play_song_command_loop          ; $00004378
+
 
 music_command_16
-L00004514       lea.l   $0001b98c,a0
-L0000451a       moveq   #$00,d0
-L0000451c       move.b  (a3)+,d0
-L0000451e       add.w   d0,d0
-L00004520       adda.w  d0,a0
-L00004522       adda.w  (a0),a0
-L00004524       move.l  a0,$0014(a4) 
-L00004528       bra.w   play_song_command_loop          ; $00004378
+                lea.l   $0001b98c,a0
+                moveq   #$00,d0
+                move.b  (a3)+,d0
+                add.w   d0,d0
+                adda.w  d0,a0
+                adda.w  (a0),a0
+                move.l  a0,$0014(a4) 
+                bra.w   play_song_command_loop          ; $00004378
 
 
 music_command_17
-L0000452c       lea.l   $00004bea,a0
-L00004532       moveq   #$00,d0
-L00004534       move.b  (a3)+,d0
-L00004536       asl.w   #$04,d0
-L00004538       adda.w  d0,a0
-L0000453a       move.w  (a0)+,$003c(a4) 
-L0000453e       move.l  (a0)+,$003e(a4) 
-L00004542       move.w  (a0)+,$0042(a4) 
-L00004546       move.l  (a0)+,$0044(a4) 
-L0000454a       move.w  (a0)+,$0048(a4) 
-L0000454e       bclr.l  #$0006,d7
-L00004552       tst.w   (a0)
-L00004554       beq.w   play_song_command_loop          ; $00004378
-L00004558       bset.l  #$0006,d7
-L0000455c       bra.w   play_song_command_loop          ; $00004378
+                lea.l   $00004bea,a0
+                moveq   #$00,d0
+                move.b  (a3)+,d0
+                asl.w   #$04,d0
+                adda.w  d0,a0
+                move.w  (a0)+,$003c(a4) 
+                move.l  (a0)+,$003e(a4) 
+                move.w  (a0)+,$0042(a4) 
+                move.l  (a0)+,$0044(a4) 
+                move.w  (a0)+,$0048(a4) 
+                bclr.l  #$0006,d7
+                tst.w   (a0)
+                beq.w   play_song_command_loop          ; $00004378
+                bset.l  #$0006,d7
+                bra.w   play_song_command_loop          ; $00004378
 
 
 
@@ -740,6 +761,8 @@ L0000468a       move.w  #$0001,$001e(a4)
 L00004690       clr.w   $004c(a4)
 L00004694       move.w  $0054(a4),d0
 L00004698       or.w    d0,$417c
+
+
 L0000469c       moveq   #$00,d0
 L0000469e       move.b  $0051(a4),d0
 L000046a2       btst.l  #$0005,d7
