@@ -398,15 +398,17 @@ L0000430a       beq.b   L00004354                               ; if $4020 == 0 
 L0000430c       addq.w  #$01,L0000417e
 L00004310       clr.w   L00004020                               ; clear $4020 (status flags)
 L00004314       lea.l   channel_1_status,a4                     ; a4 = channel 1 status - L00004024,a4
-L00004318       move.w  (a4),d7                                 ; d7 = 1st value word
+
+L00004318       move.w  (a4),d7                                 ; d7 = channel current active command bits
 L0000431a       beq.b   L00004324
 
+.do_commands
 L0000431c       bsr.b   L00004360                               ; command loop
 
 L0000431e       move.w  d7,(a4)
 L00004320       or.w    d7,L00004020
 
-
+.no_active_commands
 L00004324       lea.l   L0000407a,a4
 L00004328       move.w  (a4),d7
 L0000432a       beq.b   L00004334
@@ -446,8 +448,8 @@ L00004370       movea.l $000e(a4),a3                    ; a3 = 14(a4) is an addr
 L00004374       bclr.l  #$0007,d7                       ; d7 = clear bit 7
 
 play_song_command_loop
-L00004378       move.b  (a3)+,d0                        ; d0 = next music command?
-L0000437a       bpl.w   L00004560                       ; MSB = 0, jmp $00004560
+L00004378       move.b  (a3)+,d0                        ; d0 = next music command
+L0000437a       bpl.w   do_command_processing           ; $00004560 ; MSB = 0, jmp $00004560
 
 L0000437e       bclr.l  #$0003,d7                       ; clear bit 3 on start commands
 L00004382       cmp.b   #$a0,d0                         ; sub #$a0 from d0
@@ -664,105 +666,161 @@ music_command_17
 
 
 
-L00004560       btst.l  #$0006,d7
-L00004564       bne.b   L0000456a
-L00004566       add.b   $0013(a4),d0
-L0000456a       move.b  d0,$004f(a4)
-L0000456e       btst.l  #$0000,d7
-L00004572       beq.b   L0000457e
-L00004574       add.b   $0021(a4),d0
-L00004578       move.b  $0022(a4),$0023(a4)
-L0000457e       move.b  d0,$0050(a4)
-L00004582       ext.w   d0
-L00004584       sub.w   $003c(a4),d0
-L00004588       add.w   d0,d0
-L0000458a       cmp.w   #$ffd0,d0
-L0000458e       blt.b   L00004596
-L00004590       cmp.w   #$002c,d0
-L00004594       ble.b   L000045ac
-L00004596       move.b  $004f(a4),d1
-L0000459a       move.b  $0050(a4),d2
-L0000459e       move.w  $003c(a4),d3
-L000045a2       move.w  $0054(a4),d4
-L000045a6       movea.l $0006(a4),a2
-L000045aa       illegal
-L000045ac       move.w  $00(a5,d0.w),$004a(a4)
-L000045b2       btst.l  #$0002,d7
-L000045b6       beq.b   L00004612
-L000045b8       move.b  $0050(a4),d0
+
+                ; IN: D0.b = data from command list
+                ; IN: D7.l = command status bits
+                ;
+do_command_processing                                   ; original routine address $00004560
+                ; ------ CMD 17 --------
+                btst.l  #$0006,d7                       ; test for CMD 17
+                bne.b   .not_cmd_17                     ; $0000456a ; no... skip next instruction
+.is_cmd_17
+                add.b   $0013(a4),d0                    ; #$13 (19) - added to command value
+.not_cmd_17                                             ; original address $0000456a
+                move.b  d0,$004f(a4)                    ; store copy of current command byte value
 
 
-L000045bc       add.b   $0034(a4),d0
-L000045c0       ext.w   d0
-L000045c2       sub.w   $003c(a4),d0
-L000045c6       add.w   d0,d0
-L000045c8       cmp.w   #$ffd0,d0
-L000045cc       blt.b   L00045D4C
-L000045ce       cmp.w   #$002c,d0
-L000045d2       ble.b   L000045EA
-L000045d4       move.b  $004f(a4),d1
-L000045d8       move.b  $0050(a4),d2
+                ;------- CMD 10 --------
+.chk_cmd_10
+                btst.l  #$0000,d7                       ; chk CMD 10
+                beq.b   .not_cmd_10
+.is_cmd_10
+                add.b   $0021(a4),d0                    ; d0 = CMD 10 param 1     - #$21 (33)
+                move.b  $0022(a4),$0023(a4)             ; duplcate CMD 10 param 2 - #$22 (34)
 
-L000045dc       move.w  $003c(a4),d3
-L000045e0       move.w  $0054(a4),d4
-L000045e4       movea.l $0006(a4),a2
-L000045e8       illegal
-L000045ea       move.w  $00(a5,d0.W),d0
-L000045ee       sub.w   $004a(a4),d0
-L000045f2       asr.w   #$01,d0
-L000045f4       ext.l   d0
-L000045f6       move.b  $0035(a4),d1
-L000045fa       ext.w   d1
+.not_cmd_10                                             ; original routine address $0000457e
+                move.b  d0,$0050(a4)                    ; update working copy of current command value
+                ext.w   d0
+                sub.w   $003c(a4),d0                    ; d0 = d0 - CMD 17 param 1  - #$3c (60)
+                add.w   d0,d0                           ; d0 = d0 * 2 - index to song status data $4bba
 
-L000045fc       divs.w  d1,d0
-L000045fe       move.w  d0,$003a(a4)
-L00004602       move.b  d1,$0039(a4)
-L00004606       add.b   d1,d1
-L00004608       move.b  d1,$0038(a4)
-L0000460c       move.b  $0036(a4),$0037(a4)
-L00004612       btst.l  #$0003,d7
-L00004616       beq.b   L00004668
-L00004618       move.b  $0050(a4),d0
-L0000461c       add.b   $0024(a4),d0
+.validate_command
+                cmp.w   #$ffd0,d0                       ; compare -48
+                blt.b   .debug_assert                   ; $00004596 ; ******* BRANCH IS NEVER TAKEN *******
+                cmp.w   #$002c,d0                       ; compare +44
+                ble.b   continue_command_processing_01  ; L000045ac ; this branch is always taken -------->>>>>>>
 
-L00004620       ext.w   d0
-L00004622       sub.w   $003c(a4),d0
-L00004626       add.w   d0,d0
-L00004628       cmp.w   #$ffd0,d0
-L0000462c       blt.b   L00004634
-L0000462e       cmp.w   #$002c,d0
-L00004632       ble.b   L0000464a
-L00004634       move.b  $004f(a4),d1
-L00004638       move.b  $0050(a4),d2
-L0000463c       move.w  $003c(a4),d3
+.debug_assert_fail                                      ; original routine address $00004596
+                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  $0050(a4),d2
+                move.w  $003c(a4),d3
+                move.w  $0054(a4),d4
+                movea.l $0006(a4),a2
+                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
-L00004640       move.w  $0054(a4),d4
-L00004644       movea.l $0006(a4),a2
-L00004648       illegal
-L0000464a       move.w  $00(a5,d0.W),d0
-L0000464e       sub.w   $004a(a4),d0
-L00004652       ext.l   d0
-L00004654       moveq   #$00,d1
-L00004656       move.b  $0025(a4),d1
-L0000465a       divs.w  d1,d0
-L0000465c       move.w  d0,$0026(a4)
 
-L00004660       neg.w   d0
-L00004662       muls.w  d1,d0
-L00004664       sub.w   d0,$004a(a4)
-L00004668       btst.l  #$0001,d7
-L0000466c       beq.b   L00004680
-L0000466e       move.b  #$01,$0033(a4)
-L00004674       move.l  $0028(a4),$002c(a4)
-L0000467a       move.b  $0030(a4),$0031(a4)
-L00004680       bset.l  #$0004,d7
+
+
+                ; IN: D0.w is index to table $4bba (offset range -48 to + 44)
+continue_command_processing_01                          ; original address $000045ac
+                move.w  $00(a5,d0.w),$004a(a4)          ; lookup table value from $4bba (range -48 to +44) - frequency/playback speed?
+
+.chk_cmd_12
+                btst.l  #$0002,d7                       ; chk CMD 12
+                beq.b   continue_command_processing_02  ; $00004612 ; no... skip cmd 12
+
+                ;--------- CMD 12 ---------
+.is_cmd_12                                              ; original routine address $000045b8
+                move.b  $0050(a4),d0                    ; d0 = copy of command byte
+                add.b   $0034(a4),d0                    ; d0 = command byte + cmd 12 parameter
+                ext.w   d0
+                sub.w   $003c(a4),d0                    ; d0 = d0 - 60
+                add.w   d0,d0                           ; d0 = d0 * 2
+.validate_command
+                cmp.w   #$ffd0,d0                       ; compare -48
+                blt.b   .debug_assert                   ; L000045D4 ; ******* BRANCH IS NEVER TAKEN *******
+                cmp.w   #$002c,d0                       ; compare +44
+                ble.b   .continue_cmd12                 ; L000045EA ; this branch is always taken ------>>>>>>>>>
+
+.debug_assert_fail
+                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  $0050(a4),d2
+                move.w  $003c(a4),d3
+                move.w  $0054(a4),d4
+                movea.l $0006(a4),a2
+                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
+
+.continue_cmd12                                         ; original address $45ea
+                move.w  $00(a5,d0.W),d0                 ; d0 = look up from $4bba
+                sub.w   $004a(a4),d0                    ; subtract previous lookup value $4bba
+                asr.w   #$01,d0                         ; d0 = d0/2
+                ext.l   d0
+                move.b  $0035(a4),d1                    ; d1 = CMD 12 param                  
+                ext.w   d1                              ; d1 = sign extend
+                divs.w  d1,d0                           ; d0 = d0/d1                         
+                move.w  d0,$003a(a4)                    ; #$3a (58) - results of divs
+                move.b  d1,$0039(a4)                    ; #$39 (57) - working copy of CMD 12 param
+                add.b   d1,d1                           ; d1 = d1 * 2
+                move.b  d1,$0038(a4)                    ; #$38 (56) - working copy of CMD 12 param * 2
+                move.b  $0036(a4),$0037(a4)             ; #$37 (55) - working copy of CMD 12 param 
+.end_cmd_12
+
+
+
+continue_command_processing_02                          ; original address $00004612
+                btst.l  #$0003,d7                       ; chk CMD 09
+                beq.b   continue_command_processing_03  ; no... jmp $00004668
+
+
+                ;---------- CMD 09 ------------
+.is_cmd_09                                              ; original address $00004618
+                move.b  $0050(a4),d0                    ; d0 = current command byte
+                add.b   $0024(a4),d0                    ; d0 = d0 + CMD 09 Param #$24 (36)
+                ext.w   d0                              ; 
+                sub.w   $003c(a4),d0                    ; d0 = d0 - CMD 17 Param #$3c (60)
+                add.w   d0,d0                           ; d0 = d0 * 2
+
+.validate_command                                       ; original address $00004628
+                cmp.w   #$ffd0,d0                       ; validate -48
+                blt.b   .debug_assert_fail              ; $00004634 ; ******* BRANCH IS NEVER TAKEN *******
+                cmp.w   #$002c,d0                       ; validate +44
+                ble.b   .continue_cmd_09                ; this branch is always taken ------>>>>>>>>>
+
+.debug_assert_fail                                      ; original address $00004634
+                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  $0050(a4),d2
+                move.w  $003c(a4),d3
+                move.w  $0054(a4),d4
+                movea.l $0006(a4),a2
+                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
+
+
+.continue_cmd_09                                        ; original address $0000464a
+                move.w  $00(a5,d0.W),d0                 ; d0 = look up from $4bba
+
+                sub.w   $004a(a4),d0                    ; d0 = d0 - last lookup $4bba
+                ext.l   d0
+                moveq   #$00,d1
+                move.b  $0025(a4),d1                    ; d1 = CMD 09 param #$25 (31)
+                divs.w  d1,d0                           ; d0 = d0/d1
+                move.w  d0,$0026(a4)                    ; store remainder value #$26 ()
+                neg.w   d0                              ; d0 = remainder * -1
+                muls.w  d1,d0                           ; d0 = d0 * d1
+                sub.w   d0,$004a(a4)                    ; sub d0 from #$4a (74) - previous $4bba lookup value
+.end_cmd_09
+
+
+
+
+continue_command_processing_03                          ; original address $00004668
+                btst.l  #$0001,d7                       ; chk CMD 14
+                beq.b   continue_command_processing_04  ; no.... jmp $00004680
+
+                ; --------- CMD 14 ---------
+.is_cmd_14                                              ; original address $0000466e
+                move.b  #$01,$0033(a4)                  ; set CMD 14 working value - #$33 (51)
+                move.l  $0028(a4),$002c(a4)             ; working copy CMD 14 param - #$2c (44)
+                move.b  $0030(a4),$0031(a4)             ; working copy CMD 14 param - #$31 (49)
+.end_cmd_14
+
+
+continue_command_processing_04                          ; original address $00004680
+L00004680       bset.l  #$0004,d7                       ; cleared by CMD 08
 L00004684       move.l  $0014(a4),$0018(a4)
 L0000468a       move.w  #$0001,$001e(a4)
 L00004690       clr.w   $004c(a4)
 L00004694       move.w  $0054(a4),d0
 L00004698       or.w    d0,$417c
-
-
 L0000469c       moveq   #$00,d0
 L0000469e       move.b  $0051(a4),d0
 L000046a2       btst.l  #$0005,d7
@@ -791,19 +849,21 @@ L000046e8       move.b  $0050(a4),d1
 L000046ec       move.b  d0,$0050(a4)
 L000046f0       ext.w   d0
 L000046f2       sub.w   $003c(a4),d0
-
 L000046f6       add.w   d0,d0
+
 L000046f8       cmp.w   #$ffd0,d0
 L000046fc       blt.b   L00004704
 L000046fe       cmp.w   #$002c,d0
 L00004702       ble.b   L0000471a
+
 L00004704       move.b  $004f(a4),d1
 L00004708       move.b  $0050(a4),d2
 L0000470c       move.w  $003c(a4),d3
 L00004710       move.w  $0054(a4),d4
 L00004714       movea.l $0006(a4),a2
-
 L00004718       illegal
+
+
 L0000471a       move.w  $00(a5,d0.W),d0
 L0000471e       bra.w   L000047a8
 L00004722       btst.l  #$0001,d7
@@ -813,7 +873,6 @@ L0000472c       bne.b   L000047a8
 L0000472e       movea.l $002c(a4),a0
 L00004732       move.b  (a0)+,d0
 L00004734       subq.b  #$01,$0031(a4)
-
 L00004738       bne.b   L00004744
 L0000473a       movea.l $0028(a4),a0
 L0000473e       move.b  $0030(a4),$0031(a4)
@@ -823,20 +882,23 @@ L0000474e       add.b   $0050(a4),d0
 L00004752       ext.w   d0
 L00004754       sub.w   $003c(a4),d0
 L00004758       add.w   d0,d0
-L0000475a       cmp.w   #$ffd0,d0
 
+L0000475a       cmp.w   #$ffd0,d0
 L0000475e       blt.b   L00004766
 L00004760       cmp.w   #$002c,d0
 L00004764       ble.b   L0000477c
+
 L00004766       move.b  $004f(a4),d1
 L0000476a       move.b  $0050(a4),d2
 L0000476e       move.w  $003c(a4),d3
 L00004772       move.w  $0054(a4),d4
 L00004776       movea.l $0006(a4),a2
 L0000477a       illegal
-L0000477c       move.w  $00(a5,d0.W),d0
 
+
+L0000477c       move.w  $00(a5,d0.W),d0
 L00004780       bra.w   L000047a8
+
 L00004784       btst.l  #$0002,d7
 L00004788       beq.b   L000047a8
 L0000478a       subq.b  #$01,$0037(a4)
@@ -847,6 +909,7 @@ L00004798       bne.b   L000047a4
 L0000479a       neg.w   $003a(a4)
 L0000479e       move.b  $0038(a4),$0039(a4)
 L000047a4       add.w   $003a(a4),d0
+
 L000047a8       move.w  d0,$004a(a4)
 L000047ac       btst.l  #$0004,d7
 L000047b0       beq.w   L00004850
@@ -863,6 +926,7 @@ L000047d2       move.b  #$01,$001d(a4)
 L000047d8       move.b  (a0)+,$0020(a4)
 L000047dc       move.l  a0,$0018(a4)
 L000047e0       bra.b   L0000483a
+
 L000047e2       neg.b   d0
 L000047e4       move.w  d0,$001e(a4)
 L000047e8       move.b  #$01,$0020(a4)
@@ -874,6 +938,7 @@ L000047f8       move.b  d0,$001c(a4)
 L000047fc       move.b  #$01,$001d(a4)
 L00004802       move.l  a0,$0018(a4)
 L00004806       bra.b   L0000483a
+
 L00004808       move.b  (a0),d0
 L0000480a       beq.b   L00004816
 L0000480c       bpl.b   L00004810
@@ -882,6 +947,7 @@ L00004810       sub.w   $0052(a4),d0
 L00004814       bmi.b   L0000481c
 L00004816       bclr.l  #$0004,d7
 L0000481a       bra.b   L00004850
+
 L0000481c       neg.w   d0
 L0000481e       move.w  d0,$001e(a4)
 L00004822       move.b  #$00,$001c(a4)
@@ -1320,16 +1386,23 @@ process_body_chunk                              ; original routine address L0004
 
 
 
-                ; unknown data
-L00004B8A       dc.w  $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB          ;.....;.....=....
-L00004B9A       dc.w  $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1          ;.g.(.......M....
-L00004BAA       dc.w  $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA          ;.....y.U.4......
+                ; COMMAND TABLE - 
+                ;    - commands where MSB = 0
+                ;    - why is $4bba - used as base pointer (mid point)
+                ;    - possible note frequenies? (12 semi-tones per octave)
+                ; -48 bytes from $4BBA
+L00004B8A       dc.w  $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB
+L00004B9A       dc.w  $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1
+L00004BAA       dc.w  $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA
+; used in frame play routine - Centre point of Table
+L00004BBA       dc.w  $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B
+L00004BCA       dc.w  $011A, $010A, $00FB 
+                dc.w  $00ED, $00E0, $00D3, $00C7, $00BC
+L00004BDA       dc.w  $00B2, $00A8, $009E, $0095, $008D, $0085, $007E 
+                ; +46 bytes from $4bba
 
-; used in frame play routine
-L00004BBA       dc.w  $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B        ;.......x.c.O.<.+
-L00004BCA       dc.w  $011A, $010A, $00FB, $00ED, $00E0, $00D3, $00C7, $00BC          ;................
-L00004BDA       dc.w  $00B2, $00A8, $009E, $0095, $008D, $0085, $007E, $0077          ;.............~.w
-L00004BEA       dc.w  $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $0000          ;.!..M<....M<....
+L00004BE8       dc.w $0077, $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $0000
+
 
 
 
