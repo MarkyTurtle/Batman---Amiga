@@ -164,6 +164,7 @@ L00004126       dc.w    $8084, $0001, $ba34, $0001
 
 .other_data
 L0000417c       dc.w    $0000                           ; flag cleared on start of frame play routine
+                                                        ; also it's or'ed with #$54 of channel status 
 
 L0000417e       dc.W    $0d69                           ; referenced as a word
                                                         ; cleared when playing new song/sound
@@ -815,24 +816,39 @@ continue_command_processing_03                          ; original address $0000
 
 
 continue_command_processing_04                          ; original address $00004680
-L00004680       bset.l  #$0004,d7                       ; cleared by CMD 08
-L00004684       move.l  $0014(a4),$0018(a4)
-L0000468a       move.w  #$0001,$001e(a4)
-L00004690       clr.w   $004c(a4)
-L00004694       move.w  $0054(a4),d0
-L00004698       or.w    d0,$417c
-L0000469c       moveq   #$00,d0
-L0000469e       move.b  $0051(a4),d0
+                bset.l  #$0004,d7                       ; cleared by CMD 08
+                move.l  $0014(a4),$0018(a4)             ; working copy of pointer?
+                move.w  #$0001,$001e(a4)                ; initialise value
+                clr.w   $004c(a4)       
+                move.w  $0054(a4),d0            
+                or.w    d0,L0000417c
+                moveq   #$00,d0                         ; d0 = #$0.l
+                move.b  $0051(a4),d0                    ; d0 = byte CMD 05
+
+
+.chk_cmd_05                                             ; original address $000046a2
 L000046a2       btst.l  #$0005,d7
-L000046a6       bne.b   L000046aa
-L000046a8       move.b  (a3)+,d0
-L000046aa       add.w   d0,$0052(a4)
-L000046ae       move.l  a3,$000e(a4)
+L000046a6       bne.b   .not_cmd_05                     ; jmp $000046aa
+                ;-------- CMD 05 -----------
+.is_cmd_05                                              ; original address $000046a8
+                move.b  (a3)+,d0                        ; d0 = next CMD Byte
+
+.not_cmd_05                                             ; original address $000046aa
+                add.w   d0,$0052(a4)                    ; store d0 in #$52 (82)
+                move.l  a3,$000e(a4)                    ; store ptr to current CMD
+
+.chk_cmd_08
 L000046b2       btst.l  #$0007,d7
-L000046b6       bne.w   L00004850
-L000046ba       move.w  $004a(a4),d0
+L000046b6       bne.w   exit_command_processing         ; jmp $00004850
+
+L000046ba       move.w  $004a(a4),d0                    ; d0 = value from table $4bba
+
+.chk_cmd_09
 L000046be       btst.l  #$0003,d7
-L000046c2       beq.b   L000046d6
+L000046c2       beq.b   chk_cmd_10                      ; L000046d6
+
+                ;--------- CMD 09 ---------
+.is_cmd_09
 L000046c4       subq.b  #$01,$0025(a4)
 L000046c8       bne.b   L000046ce
 L000046ca       bclr.l  #$0003,d7
@@ -840,8 +856,12 @@ L000046ce       sub.w   $0026(a4),d0
 L000046d2       bra.w   L000047a8
 
 
+chk_cmd_10
 L000046d6       btst.l  #$0000,d7
-L000046da       beq.b   L00004722
+L000046da       beq.b   continue_command_processing_05  ; L00004722
+
+                ;---------- CMD 10 ---------
+.is_cmd_10
 L000046dc       subq.b  #$01,$0023(a4)
 L000046e0       bcc.w   L000047a8
 L000046e4       move.b  $004f(a4),d0
@@ -851,21 +871,26 @@ L000046f0       ext.w   d0
 L000046f2       sub.w   $003c(a4),d0
 L000046f6       add.w   d0,d0
 
-L000046f8       cmp.w   #$ffd0,d0
-L000046fc       blt.b   L00004704
-L000046fe       cmp.w   #$002c,d0
-L00004702       ble.b   L0000471a
+.validate_command
+L000046f8       cmp.w   #$ffd0,d0               ; validate -48
+L000046fc       blt.b   .debug_assert_fail      ; L00004704 - this branch is never taken                       
+L000046fe       cmp.w   #$002c,d0               ; valdate +44
+L00004702       ble.b   .continue_cmd_10        ; $0000471a  this branch is always taken ------>>>>>>>>>
 
-L00004704       move.b  $004f(a4),d1
+.debug_assert_fail
+L00004704       move.b  $004f(a4),d1             ******* BRANCH IS NEVER TAKEN *******
 L00004708       move.b  $0050(a4),d2
 L0000470c       move.w  $003c(a4),d3
 L00004710       move.w  $0054(a4),d4
 L00004714       movea.l $0006(a4),a2
-L00004718       illegal
+L00004718       illegal                         ; ******* DEBUG/ASSERT BAD COMMAND
 
 
+.continue_cmd_10
 L0000471a       move.w  $00(a5,d0.W),d0
 L0000471e       bra.w   L000047a8
+
+continue_command_processing_05
 L00004722       btst.l  #$0001,d7
 L00004726       beq.b   L00004784
 L00004728       subq.b  #$01,$0033(a4)
@@ -961,6 +986,8 @@ L00004840       move.b  $001c(a4),$001d(a4)
 L00004846       move.b  $0020(a4),d0
 L0000484a       ext.w   d0
 L0000484c       add.w   d0,$004c(a4)
+
+exit_command_processing
 L00004850       rts  
 
 
