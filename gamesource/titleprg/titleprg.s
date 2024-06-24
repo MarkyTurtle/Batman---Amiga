@@ -334,10 +334,10 @@ do_init_current_song
                 move.b  #$01,$0012(a1)                          ; initialise unknown channel status values
                 move.w  d1,(a1)                                 ; (d1 = 8000/d1 = 4000) initialise unknown channel status values
 
-.get_next_byte                                          ; original address $00004292
-                move.b  (a2)+,d0                        ; d0 = song channel data byte  
+.get_next_byte                                                  ; original address $00004292
+                move.b  (a2)+,d0                                ; d0 = song channel data byte  
 .chk_code_0x
-                bpl.b   .is_code_0x                     ; code is '0x', bit 7 = 0, Play Sample?
+                bpl.b   .is_code_0x                             ; code is '0x', bit 7 = 0, Play Sample?
 .chk_code_80
                 sub.b   #$80,d0
                 bne.b   .chk_code_81
@@ -370,7 +370,7 @@ do_init_current_song
                 lea.l   L0001BA06,a2
                 ext.w   d0
                 add.w   d0,d0
-                adda.w  d0,a2
+                adda.w  d0,a2                                   ; add byte offset to current ptr
                 adda.w  (a2),a2
                 move.l  a2,$000e(a1)                            ; ($90,$0B - $90,$0C) - initialise unknown channel status values
                 move.w  #$0001,$0052(a1)                        ; initialise unknown channel status values
@@ -1643,44 +1643,79 @@ L0001B9DA dc.w $0000
                 ;       channel2: off
                 ;       channel3: off
                 ;       channel4: 04 + 1b9f2 = 
-song_table                                      ; original address $0001b9dc
-L0001b9dc       dc.w $003E, $0048, $0049, $0051         ; 00
-L0001b9e4       dc.w $0000, $0000, $0000, $000A         ; 08
-L0001b9ec       dc.w $0000, $0000, $0000, $0004         ; 16
+song_table                                              ; original address $0001b9dc
+song_00                                                 ; original address $0001b9dc
+.offset_00      dc.w $003E                              ; original address $0001b9dc + $3e = $1ba1a
+.offset_01      dc.w $0048                              ; original address $0001b9de + $48 = $1ba26
+.offset_02      dc.w $0049                              ; original address $0001b9e0 + $49 = $1ba29
+.offset_03      dc.w $0051                              ; original address $0001b9e2
 
-song2_channel_4       
-L0001B9F4       dc.b $07, $80 
-song3_channel_4
+song_01                                                 ; original address $0001b9e4
+.offset         dc.w $0000                              ; offset = 0, no song initialisation
+                dc.w $0000, $0000, $000A     
+
+song_02                                                 ; original address $0001b9ec
+.offset         dc.w $0000                              ; offset = 0, no song initialisation
+                dc.W $0000, $0000, $0004   
+
+
+
+       
+L0001B9F4       dc.b $07, $80
 L0001B9F6       dc.b $08, $80 
-
 L0001B9F8       dc.b $90, $0B   
-
 L0001B9FA       dc.b $8F, $03, $18, $96, $80
-
 L0001B9FF       dc.b $90, $0C, $8F, $03, $18, $96, $80
 
-L0001BA06       dc.w $0038, $003A
 
-L0001BA0A       dc.w $0081, $0156, $01A3, $01BC, $01CF, $FFE4, $FFE9, $0222
+                ;------------ song 1 start -------------
+                ; possibly the start of song 1 data
+song1_start                                                     ; original address $0001BA06
+L0001BA06       dc.w $0038              ; offset value - #$1ba3e = #$1ba06 + #$38 - channel 1 data?
+                dc.w $003A              ; offset value - #$1ba42 = #$1ba08 + #$3a - channel 2 data?
+L0001BA0A       dc.w $0081              ; offset value - #$1ba8b = #$1ba0a + #$81 - channel 3 data?
+                dc.w $0156 
+                dc.w $01A3, $01BC, $01CF, $FFE4, $FFE9, $0222
 
 
 
-song1_channel_1  ; 1b9dc + 3e = 1ba1a
-L0001BA1A       dc.b $81, $83, $08, $00, $01, $01, $01, $01, $83, $08, $00, $80
-song1_channel_2 
-L0001BA26       dc.b $81, $02, $80
-song1_channel_3
-L0001BA29       dc.b $81, $03, $03, $03, $03, $03, $03, $06, $06, $80
-song1_channel_4
+                ;-------- Song 1 Channel 1 Init Data -------
+                ; offset from song table: 1b9dc + 3e = 1ba1a
+                ;
+song_1_channel_1_init  
+L0001BA1A       dc.b $81                                ; store ptr in channel data #$0002
+                dc.b $83, $08                           ; store next byte in channel data #$0012
+                dc.b $00                                ; end - channel 2 offset from = song1_start + #$0000                       
+                dc.b $01, $01, $01, $01, $83, $08, $00, $80 
+
+song_1_channel_2_init  
+L0001ba26       dc.b $81                                ; store ptr in channel data #$0002
+                dc.b $02                                ; end - channel 3 offset from = song1_start + #$0004
+                dc.b $80
+
+song_1_channel_3_init
+L0001BA29       dc.b $81                                ; store ptr in channel data #$0002
+                dc.b $03
+                dc.b $03, $03, $03, $03, $03, $06, $06, $80
+
 L0001BA33       dc.b $81, $83, $08, $00, $04, $05, $05    
+L0001BA3A       dc.b $83, $08, $00, $80
 
 
-L0001BA3A dc.w $8308, $0080, $8587, $6080, $8F01, $9008, $8E8C, $8406           ;......`.........
+song_1_channel_1_data                                   ; original address $0001BA3E - offset 0 - song1_start
+                dc.b $85,$87,$60
+                dc.b $80
+song_1_channel_2_data                                   ; original address $0001BA42 - offset 2 - song1_start
+                dc.b $8F,$01,$90,$08,$8E,$8C,$84,$06
+
 L0001BA4A dc.w $383A, $3F38, $3A3F, $383A, $3F38, $3A3F, $383A, $3F38           ;8:?8:?8:?8:?8:?8
 L0001BA5A dc.w $3A3F, $383A, $3F38, $3A3F, $383A, $3F38, $3A3F, $383A           ;:?8:?8:?8:?8:?8:
 L0001BA6A dc.w $3F38, $3A3F, $383A, $3F38, $3A3F, $383A, $3F38, $3A3F           ;?8:?8:?8:?8:?8:?
 L0001BA7A dc.w $383A, $3F38, $3A3F, $383A, $3F38, $3A3F, $383A, $3F3A           ;8:?8:?8:?8:?8:?:
-L0001BA8A dc.w $808F, $0290, $030C, $0690, $0540, $0690, $0641, $0690           ;.........@...A..
+L0001BA8A dc.b $80
+
+song_1_channel_3_data                                   ; original address $0001BA8B - offset 6
+L0001BA8B dc.b $8F,$02,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90 
 L0001BA9A dc.w $0540, $0690, $0418, $0C90, $0641, $0C90, $030C, $0690           ;.@.......A......
 L0001BAAA dc.w $0540, $0690, $0641, $0690, $0540, $0690, $0418, $0C90           ;.@...A...@......
 L0001BABA dc.w $0641, $0690, $0540, $0690, $030C, $0690, $0540, $0690           ;.A...@.......@..
