@@ -91,8 +91,11 @@ Play_Song                                                       ; original routi
                 bra.w   do_play_song                            ; $000042f6
 
 
+master_audio_volume_mask_1                                      ; original address L0000401c
 L0000401c       dc.w    $ffff
-L0000401e       dc.w    $ffff
+
+master_audio_volume_mask_2                                      ; original address L0000401e
+                dc.w    $ffff                                   ; master channel volume mask
 
 L00004020       dc.w    $8000
 
@@ -106,12 +109,17 @@ L00004023       dc.W    $00                                     ; initialised to
 
                 ; ------ channel/voice data structs --------
                 ; offset | desc
-                ; 0x0000 | channel volume
-                ; 0x004a | unsure (set to 0x0001 when silenced)
-                ; 0x004c | unsure (set to 0x0000 when silenced)
+                ; 0x0000 | bit #$0006 - choose master_volume_mask 1 or 2 (0 = use mask 1, 1 = use mask 2)
+                ; 0x003e | 32bit Audio Sample Data Ptr        - AUDxLC
+                ; 0x0042 | 16bit Audio Sample Len             - AUDxLEN (sample?/repeat?)
+                ; 0x0044 | 32bit Audio Sample Data Ptr        - AUDxLC
+                ; 0x0048 | 16bit Audio Sample Len             - AUDxLEN (sample?/repeat?) 
+                ; 0x004a | 16bit Audio Frequency Period       - AUDxPER
+                ; 0x004c | 16bit channel volume               - AUDxVOL
                 ;
-channel_1_status
-L00004024       dc.w    $8080, $0001, $ba1b, $0001
+                ;
+channel_1_status                                        ; original address L00004024
+                dc.w    $8080, $0001, $ba1b, $0001
                 dc.w    $ba1e, $0000, $0000, $0001
                 dc.w    $ba41, $0500, $0001, $b9a6
                 dc.w    $0001, $b9aa, $0101, $0004
@@ -123,8 +131,8 @@ L00004024       dc.w    $8080, $0001, $ba1b, $0001
                 dc.w    $0001, $018f, $0000, $003a
                 dc.w    $3a06, $0018, $0001 
 
-channel_2_status
-L0000407a       dc.w    $8050, $0001, $ba27, $0001
+channel_2_status                                        ; original address L0000407a
+                dc.w    $8050, $0001, $ba27, $0001
                 dc.w    $ba28, $0000, $0000, $0001
                 dc.w    $bb55, $0100, $0001, $b9ac
                 dc.w    $0001, $b9ae, $0101, $0001
@@ -136,8 +144,8 @@ L0000407a       dc.w    $8050, $0001, $ba27, $0001
                 dc.w    $0001, $01bf, $001e, $0018
                 dc.w    $1800, $0006, $0002
 
-channel_3_status
-L000040d0       dc.w    $8010, $0001, $ba2a, $0001
+channel_3_status                                        ; original address L000040d0
+                dc.w    $8010, $0001, $ba2a, $0001
                 dc.w    $ba2b, $0000, $0000, $0001
                 dc.w    $bbae, $0100, $0001, $b9ac
                 dc.w    $0001, $b9ae, $0101, $0001
@@ -149,8 +157,8 @@ L000040d0       dc.w    $8010, $0001, $ba2a, $0001
                 dc.w    $0001, $00d3, $001e, $001e
                 dc.w    $1e00, $000c, $0004
 
-channel_4_status
-L00004126       dc.w    $8084, $0001, $ba34, $0001
+channel_4_status                                        ; original address L00004126
+                dc.w    $8084, $0001, $ba34, $0001
                 dc.w    $ba37, $0000, $0000, $0001
                 dc.w    $ba41, $0500, $0001, $b9b4
                 dc.w    $0001, $b9bb, $0101, $0001
@@ -164,7 +172,7 @@ L00004126       dc.w    $8084, $0001, $ba34, $0001
 
 .other_data
 audio_dma                                               ; original address $0000417c
-L0000417c       dc.w    $0000                           ; Changes to DMACON (Active DMA Channels)
+                dc.w    $0000                           ; Changes to DMACON (Active DMA Channels)
                                                         ; flag cleared on start of frame play routine
                                                         ; also it's or'ed with #$54 of channel status 
 
@@ -275,7 +283,7 @@ do_stop_audio                                                   ; original routi
                 ; IN:  D0.w - song number?
                 ;
                                                         ; original routine address $00004222
-L00004222       tst.w   L00004126                       ; test a flag - unknown
+L00004222       tst.w   channel_4_status                ; L00004126 ; test a flag - unknown
                 beq.b   .continue_execution             ; if flag == 0 then continue execution, jmp $0000422e
 
                 cmp.b   L00004023,d0                    ; compare $4023 with song number? (4023 > d0?)
@@ -394,7 +402,7 @@ do_init_current_song
 do_play_song                                                    ; original routine address $000042f6
 L000042f6       lea.l   $00dff000,a6                            ; a6 = custom base
 L000042fc       lea.l   L00004bba,a5                            ; a5 = song status base?
-L00004302       clr.w   L0000417c                               ; clear flag (audio dma)
+L00004302       clr.w   audio_dma                               ; L0000417c ; clear flag (audio dma)
 
 L00004306       tst.w   L00004020                               ; test $4020 (status flags?)
 L0000430a       beq.b   L00004354                               ; if $4020 == 0 then jmp $00004354
@@ -413,19 +421,19 @@ L0000431e       move.w  d7,(a4)
 L00004320       or.w    d7,L00004020
 
 .no_active_commands
-L00004324       lea.l   L0000407a,a4
+L00004324       lea.l   channel_2_status,a4                     ;L0000407a,a4
 L00004328       move.w  (a4),d7
 L0000432a       beq.b   L00004334
 L0000432c       bsr.b   L00004360
 L0000432e       move.w  d7,(a4)
 L00004330       or.w    d7,L00004020
-L00004334       lea.l   L000040d0,a4
+L00004334       lea.l   channel_3_status,a4                     ;L000040d0,a4
 L00004338       move.w  (a4),d7
 L0000433a       beq.b   L00004344
 L0000433c       bsr.b   L00004360
 L0000433e       move.w  d7,(a4)
 L00004340       or.w    d7,L00004020
-L00004344       lea.l   L00004126,a4
+L00004344       lea.l   channel_4_status,a4                     ;L00004126,a4
 L00004348       move.w  (a4),d7
 L0000434a       beq.b   L00004354
 L0000434c       bsr.b   L00004360
@@ -434,7 +442,7 @@ L00004350       or.w    d7,L00004020
 
 
 L00004354       and.w   #$c000,L00004020                        ; mask all apart from top 2 MSBs
-L0000435a       bsr.w   L00004852
+L0000435a       bsr.w   update_audio_custom_registers           ; L00004852
 L0000435e       rts
 
 
@@ -824,7 +832,7 @@ continue_command_processing_04                          ; original address $0000
                 move.w  #$0001,$001e(a4)                ; initialise value
                 clr.w   $004c(a4)       
                 move.w  $0054(a4),d0            
-                or.w    d0,L0000417c                    ; audio dma
+                or.w    d0,audio_dma                    ; L0000417c ; audio dma
                 moveq   #$00,d0                         ; d0 = #$0.l
                 move.b  $0051(a4),d0                    ; d0 = byte CMD 05
 
@@ -1000,90 +1008,109 @@ L00004850       rts
                 ; ----------------------- set custom register values -------------------
                 ; IN: a6 - Custom Base
                 ; IN: 
-L00004852       move.w  L0000417c,d0                            ; Audio DMA?  #$0054 of channel_data
-L00004856       beq.b   L000048c6
+update_audio_custom_registers                                   ; original routine address $00004852
+                move.w  audio_dma,d0                            ; L0000417c ; Audio DMA?  #$0054 of channel_data
+                beq.b   set_channel_volume                      ; L000048c6
 
                 ; init channel dma and interrupts if $417c != 0
-.init_channel_dma
-L00004858       move.w  d0,DMACON(a6)                           ; enable audio channel(s) DMA - $0096(a6)
-L0000485c       move.w  d0,d1
-L0000485e       lsl.w   #$07,d1
-L00004860       move.w  d1,INTREQ(a6)                           ; clear audio interrupt flags - $009c(a6)
-L00004864       moveq   #$00,d2
-L00004866       moveq   #$01,d3
+set_channel_dma                                                 ; original asddress $00004858
+                move.w  d0,DMACON(a6)                           ; enable audio channel(s) DMA - $0096(a6)
+                move.w  d0,d1
+                lsl.w   #$07,d1
+                move.w  d1,INTREQ(a6)                           ; clear audio interrupt flags - $009c(a6)
+                moveq   #$00,d2
+                moveq   #$01,d3
 
-.chk_aud0_dma
-L00004868       btst.l  #$0000,d0
-L0000486c       beq.b   .chk_aud1_dma                           ; aud 0 dma is off - $00004876
+.chk_aud0_dma                                                   ; original address L00004868
+                btst.l  #$0000,d0
+                beq.b   .chk_aud1_dma                           ; aud 0 dma is off - $00004876
 
-.is_aud0_dma
-L0000486e       move.w  d3,AUD0PER(a6)                          ; AUD0PER - set to #$0001 - audio 0 frequency period value - ; $00a6(a6)
-L00004872       move.w  d2,AUD0DAT(a6)                          ; AUD0DAT - set to #$0000 - audio 0 data value - ; $00aa(a6)
+.is_aud0_dma                                                    ; original address L0000486e
+                move.w  d3,AUD0PER(a6)                          ; AUD0PER - set to #$0001 - audio 0 frequency period value - ; $00a6(a6)
+                move.w  d2,AUD0DAT(a6)                          ; AUD0DAT - set to #$0000 - audio 0 data value - ; $00aa(a6)
 
-.chk_aud1_dma
-L00004876       btst.l  #$0001,d0
-L0000487a       beq.b   .chk_aud2_dma                           ; L00004884
+.chk_aud1_dma                                                   ; original address L00004876
+                btst.l  #$0001,d0
+                beq.b   .chk_aud2_dma                           ; L00004884
 
-.is_aud1_dma
-L0000487c       move.w  d3,AUD1PER(a6)                          ; $00b6(a6)
-L00004880       move.w  d2,AUD1DAT(a6)                          ; $00ba(a6)
+.is_aud1_dma                                                    ; original address L0000487c
+                move.w  d3,AUD1PER(a6)                          ; $00b6(a6)
+                move.w  d2,AUD1DAT(a6)                          ; $00ba(a6)
 
-.chk_aud2_dma
-L00004884       btst.l  #$0002,d0
-L00004888       beq.b   .chk_aud3_dma                           ; L00004892
+.chk_aud2_dma                                                   ; original address L00004884
+                btst.l  #$0002,d0
+                beq.b   .chk_aud3_dma                           ; L00004892
 
-.is_aud2_dma
-L0000488a       move.w  d3,$00c6(a6)
-L0000488e       move.w  d2,$00ca(a6)
+.is_aud2_dma                                                    ; original address L0000488a
+                move.w  d3,AUD2PER(a6)                          ; $00c6(a6)
+                move.w  d2,AUD2DAT(a6)                          ; $00ca(a6)
 
-.chk_aud3_dma
-L00004892       btst.l  #$0003,d0
-L00004896       beq.b   L000048a0
-.is_aud3_dma
-L00004898       move.w  d3,$00d6(a6)
-L0000489c       move.w  d2,$00da(a6)
+.chk_aud3_dma                                                   ; original address L00004892
+                btst.l  #$0003,d0
+                beq.b   .audio_interrupt_wait                   ; L000048a0
+.is_aud3_dma                                                    ; original address L00004898
+                move.w  d3,AUD3PER(a6)                          ; $00d6(a6)
+                move.w  d2,AUD3DAT(a6)                          ; $00da(a6)
 
-.interrupt_wait
-L000048a0       move.w  INTREQR(a6),d2                          ; INTREQR - Interrupt flag bits
-L000048a4       and.w   d1,d2                                   ; mask disabled audio interrupts
-L000048a6       cmp.w   d1,d2                                   ; wait for interrupts to occur on all enabled audio channels
-L000048a8       bne.b   .interrupt_wait                         ; L000048a0
+.audio_interrupt_wait                                           ; original address L000048a0
+                move.w  INTREQR(a6),d2                          ; INTREQR - Interrupt flag bits
+                and.w   d1,d2                                   ; mask disabled audio interrupts
+                cmp.w   d1,d2                                   ; wait for interrupts to occur on all enabled audio channels
+                bne.b   .audio_interrupt_wait                   ; L000048a0
 
-L000048aa       moveq   #$02,d2                                 ; loop counter 2 + 1
-L000048ac       move.w  VHPOSR(a6),d3                           ; $0006(a6),d3
-L000048b0       and.w   #$ff00,d3                               ; mask horizontal position
+.raster_wait                                                    ; original address L000048aa
+                moveq   #$02,d2                                 ; loop counter 2 + 1
+                move.w  VHPOSR(a6),d3                           ; $0006(a6),d3
+                and.w   #$ff00,d3                               ; mask horizontal position
+.loop                                                           ; original address L000048b4
+                move.w  VHPOSR(a4),d4                           ; $0006(a6),d4
+                and.w   #$ff00,d4                               ; mask horizontal position
+                cmp.w   d4,d3
+                beq.b   .loop                                   ; wait for next raster line, L000048b4
+                move.w  d4,d3
+                dbf.w   d2,.loop                                ; L000048b4 ; wait for approx 3.5 raster lines
 
-.loop
-L000048b4       move.w  VHPOSR(a4),d4                           ; $0006(a6),d4
-L000048b8       and.w   #$ff00,d4                               ; mask horizontal position
-L000048bc       cmp.w   d4,d3
-L000048be       beq.b   .loop                                   ; wait for next raster line, L000048b4
-L000048c0       move.w  d4,d3
-L000048c2       dbf.w   d2,.loop                                ; L000048b4 ; wait for approx 3.5 raster lines
+set_channel_volume                                              ; original address L000048c6
+                move.w  master_audio_volume_mask_1,d1           ; L0000401c - master audio volume mask 1 (#$ffff = on)
+                move.w  master_audio_volume_mask_2,d2           ; L0000401e - master audio volume mask 2 (#$ffff = on)
+                lea.l   channel_1_status,a0                     ; $4024,a0
+                move.w  d1,d3
+.chk_volume_mask
+                btst.b  #$0006,(a0)                             ; test which volume mask to use (allows volume off/reduced volume by setting a channel bit) 
+                beq.b   .use_volume_mask_1                      ; $000048dc
+
+.use_volume_mask_2                                              ; original address L000048da
+                move.w  d2,d3                                   ; d2,d3 = master volume mask
+.use_volume_mask_1                                              ; original address L000048dc
+                and.w   $004c(a0),d3                            ; d3 = channnel volume
+
+.set_volume                                                     ; original address L000048e0
+                move.w  d3,AUD0VOL(a6)                          ; $00a8(a6) - set audio volume
+
+.set_pitch                                                      ; original address L000048e4
+                move.w  $004a(a0),AUD0PER(a6)                   ; $00a6(a6) - set sample pitch
+
+.chk_new_sample                                                 ; original address L000048ea
+                btst.l  #$0000,d0                               ; d0 = still contains channel interrupt/DMA status bits
+                beq.b   .set_sample_2                           ; L000048fe
+
+                ; set sample start/repeat
+.set_sample_1                                                   ; original address L000048f0
+                move.w  $0042(a0),AUD0LEN(a6)                   ; set DMA Sample Audio Length $00a4(a6)
+                move.l  $003e(a0),AUD0LC(a6)                    ; set DMA Sample Data Ptr $00a0(a6)
+                bra.b   L0000490a
+
+                ; set sample start/repeat
+.set_sample_2                                                   ; original address L000048fe
+                move.w  $0048(a0),AUD0LEN(a6)                   ; $00a4(a6)
+                move.l  $0044(a0),AUD0LC(a6)                    ; $00a0(a6)
 
 
-L000048c6       move.w  L0000401c,d1
-L000048ca       move.w  L0000401e,d2
-L000048ce       lea.l   channel_1_status,a0                            ;$4024,a0
-L000048d2       move.w  d1,d3
-L000048d4       btst.b  #$0006,(a0)
-L000048d8       beq.b   L000048dc
-L000048da       move.w  d2,d3
-L000048dc       and.w   $004c(a0),d3
-L000048e0       move.w  d3,$00a8(a6)
-L000048e4       move.w  $004a(a0),$00a6(a6)
-L000048ea       btst.l  #$0000,d0
-L000048ee       beq.b   L000048fe
-L000048f0       move.w  $0042(a0),$00a4(a6)
-L000048f6       move.l  $003e(a0),$00a0(a6)
-L000048fc       bra.b   L0000490a
-
-L000048fe       move.w  $0048(a0),$00a4(a6)
-L00004904       move.l  $0044(a0),$00a0(a6)
-L0000490a       lea.l   $407a,a0
+L0000490a       lea.l   channel_2_status,a0                     ; L0000407a,a0
 L0000490e       move.w  d1,d3
 L00004910       btst.b  #$0006,(a0)
 L00004914       beq.b   L00004918
+
 L00004916       move.w  d2,d3
 L00004918       and.w   $004c(a0),d3
 L0000491c       move.w  d3,$00b8(a6)
@@ -1095,7 +1122,7 @@ L00004932       move.l  $003e(a0),$00b0(a6)
 L00004938       bra.b   L00004946
 L0000493a       move.w  $0048(a0),$00b4(a6)
 L00004940       move.l  $0044(a0),$00b0(a6)
-L00004946       lea.l   $40d0,a0
+L00004946       lea.l   channel_3_status,a0                     ;$40d0,a0
 L0000494a       move.w  d1,d3
 L0000494c       btst.b  #$0006,(a0)
 L00004950       beq.b   L00004954
@@ -1110,7 +1137,7 @@ L0000496e       move.l  $003e(a0),$00c0(a6)
 L00004974       bra.b   L00004982
 L00004976       move.w  $0048(a0),$00c4(a6)
 L0000497c       move.l  $0044(a0),$00c0(a6)
-L00004982       lea.l   $4126,a0
+L00004982       lea.l   channel_4_status,a0                     ;$4126,a0
 L00004986       move.w  d1,d3
 L00004988       btst.b  #$0006,(a0)
 L0000498c       beq.b   L00004990
@@ -1127,7 +1154,7 @@ L000049b2       move.w  $0048(a0),$00d4(a6)
 L000049b8       move.l  $0044(a0),$00d0(a6)
 L000049be       or.w    #$8000,d0
 L000049c2       move.w  d0,$0096(a6)
-L000049c6       clr.w   L0000417c                                       ; Audio DMA Changes
+L000049c6       clr.w   audio_dma                               ; L0000417c ; Audio DMA Changes
 L000049ca       rts
 
 
