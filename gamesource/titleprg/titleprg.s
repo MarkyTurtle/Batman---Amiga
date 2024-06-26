@@ -163,7 +163,9 @@ L00004126       dc.w    $8084, $0001, $ba34, $0001
                 dc.w    $3800, $0018, $0008
 
 .other_data
-L0000417c       dc.w    $0000                           ; flag cleared on start of frame play routine
+audio_dma                                               ; original address $0000417c
+L0000417c       dc.w    $0000                           ; Changes to DMACON (Active DMA Channels)
+                                                        ; flag cleared on start of frame play routine
                                                         ; also it's or'ed with #$54 of channel status 
 
 L0000417e       dc.W    $0d69                           ; referenced as a word
@@ -392,7 +394,7 @@ do_init_current_song
 do_play_song                                                    ; original routine address $000042f6
 L000042f6       lea.l   $00dff000,a6                            ; a6 = custom base
 L000042fc       lea.l   L00004bba,a5                            ; a5 = song status base?
-L00004302       clr.w   L0000417c                               ; clear flag
+L00004302       clr.w   L0000417c                               ; clear flag (audio dma)
 
 L00004306       tst.w   L00004020                               ; test $4020 (status flags?)
 L0000430a       beq.b   L00004354                               ; if $4020 == 0 then jmp $00004354
@@ -822,7 +824,7 @@ continue_command_processing_04                          ; original address $0000
                 move.w  #$0001,$001e(a4)                ; initialise value
                 clr.w   $004c(a4)       
                 move.w  $0054(a4),d0            
-                or.w    d0,L0000417c
+                or.w    d0,L0000417c                    ; audio dma
                 moveq   #$00,d0                         ; d0 = #$0.l
                 move.b  $0051(a4),d0                    ; d0 = byte CMD 05
 
@@ -994,45 +996,74 @@ L00004850       rts
 
 
 
-L00004852       move.w  $417c,d0
+
+                ; ----------------------- set custom register values -------------------
+                ; IN: a6 - Custom Base
+                ; IN: 
+L00004852       move.w  L0000417c,d0                            ; Audio DMA?  #$0054 of channel_data
 L00004856       beq.b   L000048c6
-L00004858       move.w  d0,$0096(a6)
+
+                ; init channel dma and interrupts if $417c != 0
+.init_channel_dma
+L00004858       move.w  d0,DMACON(a6)                           ; enable audio channel(s) DMA - $0096(a6)
 L0000485c       move.w  d0,d1
 L0000485e       lsl.w   #$07,d1
-L00004860       move.w  d1,$009c(a6)
+L00004860       move.w  d1,INTREQ(a6)                           ; clear audio interrupt flags - $009c(a6)
 L00004864       moveq   #$00,d2
 L00004866       moveq   #$01,d3
+
+.chk_aud0_dma
 L00004868       btst.l  #$0000,d0
-L0000486c       beq.b   L00004876
-L0000486e       move.w  d3,$00a6(a6)
-L00004872       move.w  d2,$00aa(a6)
+L0000486c       beq.b   .chk_aud1_dma                           ; aud 0 dma is off - $00004876
+
+.is_aud0_dma
+L0000486e       move.w  d3,AUD0PER(a6)                          ; AUD0PER - set to #$0001 - audio 0 frequency period value - ; $00a6(a6)
+L00004872       move.w  d2,AUD0DAT(a6)                          ; AUD0DAT - set to #$0000 - audio 0 data value - ; $00aa(a6)
+
+.chk_aud1_dma
 L00004876       btst.l  #$0001,d0
-L0000487a       beq.b   L00004884
-L0000487c       move.w  d3,$00b6(a6)
-L00004880       move.w  d2,$00ba(a6)
+L0000487a       beq.b   .chk_aud2_dma                           ; L00004884
+
+.is_aud1_dma
+L0000487c       move.w  d3,AUD1PER(a6)                          ; $00b6(a6)
+L00004880       move.w  d2,AUD1DAT(a6)                          ; $00ba(a6)
+
+.chk_aud2_dma
 L00004884       btst.l  #$0002,d0
-L00004888       beq.b   L0000489
+L00004888       beq.b   .chk_aud3_dma                           ; L00004892
+
+.is_aud2_dma
 L0000488a       move.w  d3,$00c6(a6)
 L0000488e       move.w  d2,$00ca(a6)
+
+.chk_aud3_dma
 L00004892       btst.l  #$0003,d0
 L00004896       beq.b   L000048a0
+.is_aud3_dma
 L00004898       move.w  d3,$00d6(a6)
 L0000489c       move.w  d2,$00da(a6)
-L000048a0       move.w  $001e(a6),d2
-L000048a4       and.w   d1,d2
-L000048a6       cmp.w   d1,d2
-L000048a8       bne.b   L000048a0
-L000048aa       moveq   #$02,d2
-L000048ac       move.w  $0006(a6),d3
-L000048b0       and.w   #$ff00,d3
-L000048b4       move.w  $0006(a6),d4
-L000048b8       and.w   #$ff00,d4
+
+.interrupt_wait
+L000048a0       move.w  INTREQR(a6),d2                          ; INTREQR - Interrupt flag bits
+L000048a4       and.w   d1,d2                                   ; mask disabled audio interrupts
+L000048a6       cmp.w   d1,d2                                   ; wait for interrupts to occur on all enabled audio channels
+L000048a8       bne.b   .interrupt_wait                         ; L000048a0
+
+L000048aa       moveq   #$02,d2                                 ; loop counter 2 + 1
+L000048ac       move.w  VHPOSR(a6),d3                           ; $0006(a6),d3
+L000048b0       and.w   #$ff00,d3                               ; mask horizontal position
+
+.loop
+L000048b4       move.w  VHPOSR(a4),d4                           ; $0006(a6),d4
+L000048b8       and.w   #$ff00,d4                               ; mask horizontal position
 L000048bc       cmp.w   d4,d3
-L000048be       beq.b   L000048b4
+L000048be       beq.b   .loop                                   ; wait for next raster line, L000048b4
 L000048c0       move.w  d4,d3
-L000048c2       dbf.w   d2,L000048b4
-L000048c6       move.w  $401c,d1
-L000048ca       move.w  $401e,d2
+L000048c2       dbf.w   d2,.loop                                ; L000048b4 ; wait for approx 3.5 raster lines
+
+
+L000048c6       move.w  L0000401c,d1
+L000048ca       move.w  L0000401e,d2
 L000048ce       lea.l   channel_1_status,a0                            ;$4024,a0
 L000048d2       move.w  d1,d3
 L000048d4       btst.b  #$0006,(a0)
@@ -1096,7 +1127,7 @@ L000049b2       move.w  $0048(a0),$00d4(a6)
 L000049b8       move.l  $0044(a0),$00d0(a6)
 L000049be       or.w    #$8000,d0
 L000049c2       move.w  d0,$0096(a6)
-L000049c6       clr.w   $417c
+L000049c6       clr.w   L0000417c                                       ; Audio DMA Changes
 L000049ca       rts
 
 
@@ -2136,7 +2167,7 @@ init_title_music                                                        ; origin
 .init_song_01
                 moveq   #$01,d0                                         ; set tune to play? 
                 jmp     Init_Song                                       ; jmp $00004010
-                ; uses rts in Play_Song to return to caller.
+                ; uses rts in Init_Song to return to caller.
 
 
 
