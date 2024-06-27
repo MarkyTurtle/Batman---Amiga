@@ -109,7 +109,9 @@ L00004023       dc.W    $00                                     ; initialised to
 
                 ; ------ channel/voice data structs --------
                 ; offset | desc
-                ; 0x0000 | bit #$0006 - choose master_volume_mask 1 or 2 (0 = use mask 1, 1 = use mask 2)
+                ; 0x0000 | bit 15 - init new song ( 1 = init new song)
+                ;        | bit 14 - init same song ( 1 = init same song)
+                ;        | bit 06 - choose master_volume_mask 1 or 2 (0 = use mask 1, 1 = use mask 2)
                 ; 0x003e | 32bit Audio Sample Data Ptr        - AUDxLC
                 ; 0x0042 | 16bit Audio Sample Len             - AUDxLEN (sample?/repeat?)
                 ; 0x0044 | 32bit Audio Sample Data Ptr        - AUDxLC
@@ -118,6 +120,15 @@ L00004023       dc.W    $00                                     ; initialised to
                 ; 0x004c | 16bit channel volume               - AUDxVOL
                 ;
                 ;
+
+CHANNEL_CTRL_WORD       EQU     $0
+CHANNEL_SAMPLE_PTR_1    EQU     $3e
+CHANNEL_SAMPLE_LEN_1    EQU     $42
+CHANNEL_SAMPLE_PTR_2    EQU     $44
+CHANNEL_SAMPLE_LEN_2    EQU     $48
+CHANNEL_SAMPLE_PERIOD   EQU     $4a
+CHANNEL_VOLUME          EQU     $4c
+
 channel_1_status                                        ; original address L00004024
                 dc.w    $8080, $0001, $ba1b, $0001
                 dc.w    $ba1e, $0000, $0000, $0001
@@ -338,12 +349,12 @@ do_init_current_song
                 lea.l   -2(a0,d0),a2                            ; a2 = song channel init data
 
                 moveq   #$00,d0
-                move.w  d0,$004c(a1)                            ; initialise unknown channel status values
+                move.w  d0,CHANNEL_VOLUME(a1)                   ; initialise channel volume
                 move.l  d0,$0002(a1)                            ; initialise unknown channel status values
                 move.l  d0,$000a(a1)                            ; initialise unknown channel status values
                 move.b  d0,$0013(a1)                            ; initialise unknown channel status values
                 move.b  #$01,$0012(a1)                          ; initialise unknown channel status values
-                move.w  d1,(a1)                                 ; (d1 = 8000/d1 = 4000) initialise unknown channel status values
+                move.w  d1,CHANNEL_CTRL_WORD(a1)                ; (d1 = 8000/d1 = 4000) initialise unknown channel status values
 
 .get_next_byte                                                  ; original address $00004292
                 move.b  (a2)+,d0                                ; d0 = song channel init data byte  
@@ -401,7 +412,7 @@ do_init_current_song
                 ;
 do_play_song                                                    ; original routine address $000042f6
 L000042f6       lea.l   $00dff000,a6                            ; a6 = custom base
-L000042fc       lea.l   L00004bba,a5                            ; a5 = song status base?
+L000042fc       lea.l   note_period_table+48,a5                 ; L00004bba ; a5 = mid note frequency table (-48 to + 44)
 L00004302       clr.w   audio_dma                               ; L0000417c ; clear flag (audio dma)
 
 L00004306       tst.w   L00004020                               ; test $4020 (status flags?)
@@ -704,7 +715,7 @@ do_command_processing                                   ; original routine addre
                 move.b  d0,$0050(a4)                    ; update working copy of current command value
                 ext.w   d0
                 sub.w   $003c(a4),d0                    ; d0 = d0 - CMD 17 param 1  - #$3c (60)
-                add.w   d0,d0                           ; d0 = d0 * 2 - index to song status data $4bba
+                add.w   d0,d0                           ; d0 = d0 * 2 - relative index to middle of note frequency table $00004bba
 
 .validate_command
                 cmp.w   #$ffd0,d0                       ; compare -48
@@ -723,9 +734,9 @@ do_command_processing                                   ; original routine addre
 
 
 
-                ; IN: D0.w is index to table $4bba (offset range -48 to + 44)
+                ; IN: D0.w is index to middle of note frequency table $00004bba (offset range -48 to + 44)
 continue_command_processing_01                          ; original address $000045ac
-                move.w  $00(a5,d0.w),$004a(a4)          ; lookup table value from $4bba (range -48 to +44) - frequency/playback speed?
+                move.w  $00(a5,d0.w),$004a(a4)          ; lookup note fequency value from $00004bba (range -48 to +44) - frequency/playback speed?
 
 .chk_cmd_12
                 btst.l  #$0002,d7                       ; chk CMD 12
@@ -753,7 +764,7 @@ continue_command_processing_01                          ; original address $0000
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .continue_cmd12                                         ; original address $45ea
-                move.w  $00(a5,d0.W),d0                 ; d0 = look up from $4bba
+                move.w  $00(a5,d0.W),d0                 ; d0 = note period value from $00004bba
                 sub.w   $004a(a4),d0                    ; subtract previous lookup value $4bba
                 asr.w   #$01,d0                         ; d0 = d0/2
                 ext.l   d0
@@ -798,9 +809,9 @@ continue_command_processing_02                          ; original address $0000
 
 
 .continue_cmd_09                                        ; original address $0000464a
-                move.w  $00(a5,d0.W),d0                 ; d0 = look up from $4bba
+                move.w  $00(a5,d0.W),d0                 ; d0 = note period value from $00004bba
 
-                sub.w   $004a(a4),d0                    ; d0 = d0 - last lookup $4bba
+                sub.w   $004a(a4),d0                    ; d0 = d0 - current note period value $00004bba
                 ext.l   d0
                 moveq   #$00,d1
                 move.b  $0025(a4),d1                    ; d1 = CMD 09 param #$25 (31)
@@ -808,7 +819,7 @@ continue_command_processing_02                          ; original address $0000
                 move.w  d0,$0026(a4)                    ; store remainder value #$26 ()
                 neg.w   d0                              ; d0 = remainder * -1
                 muls.w  d1,d0                           ; d0 = d0 * d1
-                sub.w   d0,$004a(a4)                    ; sub d0 from #$4a (74) - previous $4bba lookup value
+                sub.w   d0,$004a(a4)                    ; sub d0 from #$4a (74) - previous $00004bba current note period value $00004bba
 .end_cmd_09
 
 
@@ -852,7 +863,7 @@ L000046a6       bne.b   .not_cmd_05                     ; jmp $000046aa
 L000046b2       btst.l  #$0007,d7
 L000046b6       bne.w   exit_command_processing         ; jmp $00004850
 
-L000046ba       move.w  $004a(a4),d0                    ; d0 = value from table $4bba
+L000046ba       move.w  $004a(a4),d0                    ; d0 = current note period value from table $00004bba
 
 .chk_cmd_09
 L000046be       btst.l  #$0003,d7
@@ -1070,40 +1081,42 @@ set_channel_dma                                                 ; original asddr
                 move.w  d4,d3
                 dbf.w   d2,.loop                                ; L000048b4 ; wait for approx 3.5 raster lines
 
+
 set_channel_volume                                              ; original address L000048c6
                 move.w  master_audio_volume_mask_1,d1           ; L0000401c - master audio volume mask 1 (#$ffff = on)
                 move.w  master_audio_volume_mask_2,d2           ; L0000401e - master audio volume mask 2 (#$ffff = on)
+ 
+
+
+                ; IN: D0 = DMA/interrupt bits (channel enabled)
+                ; IN: D1 = master volume mask 1
+do_channel_1
                 lea.l   channel_1_status,a0                     ; $4024,a0
                 move.w  d1,d3
 .chk_volume_mask
                 btst.b  #$0006,(a0)                             ; test which volume mask to use (allows volume off/reduced volume by setting a channel bit) 
                 beq.b   .use_volume_mask_1                      ; $000048dc
-
 .use_volume_mask_2                                              ; original address L000048da
                 move.w  d2,d3                                   ; d2,d3 = master volume mask
 .use_volume_mask_1                                              ; original address L000048dc
-                and.w   $004c(a0),d3                            ; d3 = channnel volume
-
+                and.w   CHANNEL_VOLUME(a0),d3                   ; d3 = channnel volume
 .set_volume                                                     ; original address L000048e0
                 move.w  d3,AUD0VOL(a6)                          ; $00a8(a6) - set audio volume
-
 .set_pitch                                                      ; original address L000048e4
-                move.w  $004a(a0),AUD0PER(a6)                   ; $00a6(a6) - set sample pitch
-
+                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD0PER(a6)   ; $00a6(a6) - set sample pitch
 .chk_new_sample                                                 ; original address L000048ea
                 btst.l  #$0000,d0                               ; d0 = still contains channel interrupt/DMA status bits
                 beq.b   .set_sample_2                           ; L000048fe
-
                 ; set sample start/repeat
 .set_sample_1                                                   ; original address L000048f0
-                move.w  $0042(a0),AUD0LEN(a6)                   ; set DMA Sample Audio Length $00a4(a6)
-                move.l  $003e(a0),AUD0LC(a6)                    ; set DMA Sample Data Ptr $00a0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD0LEN(a6)    ; set DMA Sample Audio Length $00a4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD0LC(a6)     ; set DMA Sample Data Ptr $00a0(a6)
                 bra.b   do_channel_2                            ; jmp $0000490a
-
                 ; set sample start/repeat
 .set_sample_2                                                   ; original address L000048fe
-                move.w  $0048(a0),AUD0LEN(a6)                   ; $00a4(a6)
-                move.l  $0044(a0),AUD0LC(a6)                    ; $00a0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD0LEN(a6)    ; $00a4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD0LC(a6)     ; $00a0(a6)
+
 
 
                 ; IN: D0 = DMA/interrupt bits (channel enabled)
@@ -1116,53 +1129,90 @@ do_channel_2                                                    ; original addre
                 beq.b   .use_volume_mask_1                      ; L00004918
 .use_volume_mask_2                                              ; original address L00004916
                 move.w  d2,d3
-.use_volume_mask_1                                              ;original address L00004918
-L00004918       and.w   $004c(a0),d3
+.use_volume_mask_1                                              ; original address L00004918
+                and.w   CHANNEL_VOLUME(a0),d3
+.set_volume                                                     ; original address L0000491c 
+                move.w  d3,AUD1VOL(a6)                          ; $00b8(a6)
+.set_pitch                                                      ; original address L00004920
+                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD1PER(a6)   ; $00b6(a6)
+.chk_new_sample                                                 ; original address L00004926
+                btst.l  #$0001,d0
+                beq.b   .set_sample_2                           ; L0000493a
+.set_sample_1                                                   ; original address L0000492c
+                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD1LEN(a6)    ; $00b4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD1LC(a6)     ; $00b0(a6)
+                bra.b   do_channel_3                            ; L00004946
+.set_sample_2                                                   ; original address L0000493a
+                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD1LEN(a6)    ; $00b4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD1LC(a6)     ; $00b0(a6)
 
-L0000491c       move.w  d3,$00b8(a6)
 
-L00004920       move.w  $004a(a0),$00b6(a6)
-L00004926       btst.l  #$0001,d0
-L0000492a       beq.b   L0000493a
-L0000492c       move.w  $0042(a0),$00b4(a6)
-L00004932       move.l  $003e(a0),$00b0(a6)
-L00004938       bra.b   L00004946
-L0000493a       move.w  $0048(a0),$00b4(a6)
-L00004940       move.l  $0044(a0),$00b0(a6)
-L00004946       lea.l   channel_3_status,a0                     ;$40d0,a0
-L0000494a       move.w  d1,d3
-L0000494c       btst.b  #$0006,(a0)
-L00004950       beq.b   L00004954
-L00004952       move.w  d2,d3
-L00004954       and.w   $004c(a0),d3
-L00004958       move.w  d3,$00c8(a6)
-L0000495c       move.w  $004a(a0),$00c6(a6)
-L00004962       btst.l  #$0002,d0
-L00004966       beq.b   L00004976
-L00004968       move.w  $0042(a0),$00c4(a6)
-L0000496e       move.l  $003e(a0),$00c0(a6)
-L00004974       bra.b   L00004982
-L00004976       move.w  $0048(a0),$00c4(a6)
-L0000497c       move.l  $0044(a0),$00c0(a6)
-L00004982       lea.l   channel_4_status,a0                     ;$4126,a0
-L00004986       move.w  d1,d3
-L00004988       btst.b  #$0006,(a0)
-L0000498c       beq.b   L00004990
-L0000498e       move.w  d2,d3
-L00004990       and.w   $004c(a0),d3
-L00004994       move.w  d3,$00d8(a6)
-L00004998       move.w  $004a(a0),$00d6(a6)
-L0000499e       btst.l  #$0003,d0
-L000049a2       beq.b   L000049b2
-L000049a4       move.w  $0042(a0),$00d4(a6)
-L000049aa       move.l  $003e(a0),$00d0(a6)
-L000049b0       bra.b   L000049be
-L000049b2       move.w  $0048(a0),$00d4(a6)
-L000049b8       move.l  $0044(a0),$00d0(a6)
-L000049be       or.w    #$8000,d0
-L000049c2       move.w  d0,$0096(a6)
-L000049c6       clr.w   audio_dma                               ; L0000417c ; Audio DMA Changes
-L000049ca       rts
+
+                ; IN: D0 = DMA/interrupt bits (channel enabled)
+                ; IN: D1 = master volume mask 1
+do_channel_3                                                    ; original address  L00004946
+                lea.l   channel_3_status,a0                     ;$40d0,a0
+                move.w  d1,d3
+.chk_volume_mask                                                ; original address  L0000494c
+                btst.b  #$0006,(a0)
+                beq.b   .set_volume                             ; L00004954
+.use_volume_mask_2                                              ; original address  L00004952
+                move.w  d2,d3
+.use_volume_mask_1                                              ; original address  L00004954
+                and.w   CHANNEL_VOLUME(a0),d3
+.set_volume                                                     ; original address  L00004958
+                move.w  d3,AUD2VOL(a6)                          ; $00c8(a6)
+.set_pitch                                                      ; original address  L0000495c
+                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD2PER(a6)   ; $00c6(a6)
+.chk_new_sample                                                 ; original address  L00004962
+                btst.l  #$0002,d0
+                beq.b   .set_sample_2                           ; L00004976
+.set_sample_1                                                   ; original address  L00004968
+                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD2LEN(a6)    ; $00c4(a6)
+                move.l  $CHANNEL_SAMPLE_PTR_1(a0),AUD2LC(a6)    ; $00c0(a6)
+                bra.b   do_channel_4                            ; jmp L00004982
+.set_sample_2                                                   ; original address  L00004976
+                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD2LEN(a6)    ; $00c4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD2LC(a6)     ; $00c0(a6)
+
+
+
+                ; IN: D0 = DMA/interrupt bits (channel enabled)
+                ; IN: D1 = master volume mask 1
+do_channel_4
+                lea.l   channel_4_status,a0                     ;$4126,a0
+                move.w  d1,d3
+.chk_volume_mask 
+                btst.b  #$0006,(a0)
+                beq.b   .use_volume_mask_1                      ; L00004990
+.use_volume_mask_2 
+                move.w  d2,d3
+.use_volume_mask_1
+                and.w   CHANNEL_VOLUME(a0),d3
+.set_volume
+                move.w  d3,AUD3VOL(a6)                          ; $00d8(a6)
+.set_pitch
+                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD3PER(a6)   ; $00d6(a6)
+.chk_new_sample 
+                btst.l  #$0003,d0
+                beq.b   .set_sample_2                           ; L000049b2
+.set_sample_1 
+                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD3LEN(a6)    ; $00d4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD3LC(a6)     ; $00d0(a6)
+                bra.b   do_enable_dma                           ; L000049be
+.set_sample_2 
+                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD3LEN(a6)    ; $00d4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD3LC(a6)     ; $00d0(a6)
+
+
+                ; Enable channel DMA
+do_enable_dma
+                or.w    #$8000,d0                               ; d0 = add SET flag to Audio DMA
+                move.w  d0,DMACON(a6)                           ; $0096(a6) ; enable Audio DMA
+
+                clr.w   audio_dma                               ; L0000417c ; Clear Audio DMA Changes - for next processing loop
+                rts
+
 
 
 
@@ -1176,11 +1226,11 @@ L000049ca       rts
 initialise_music                                        ; original routine address L000049cc
                 move.l  (a0)+,d0                        ; d0 = sound sample byte offset
                 beq.b   .exit                           ; if d0 == 0 then exit
-                move.w  (a0)+,(a1)                      ; copy sample volume
-                move.w  (a0)+,$000e(a1)                 ; copy param value2 (unknown, 0 or -1)
+                move.w  (a0)+,INSTR_VOLUME(a1)          ; copy sample volume
+                move.w  (a0)+,INSTR_SAMPLE_UNKNOWN(a1)  ; copy param value2 (unknown, 0 or -1)
                 move.l  a0,-(a7)                        ; save a0 - incremented ptr to stack
                                                         ; d0 is offset to data within the structure
-                lea.l   -8(a0,d0.l),a0                 ; a0 = ptr to start of iff sample 'FORM' structure. #$f8 = -8
+                lea.l   -8(a0,d0.l),a0                  ; a0 = ptr to start of iff sample 'FORM' structure. #$f8 = -8
                 move.l  $0004(a0),d0                    ; d0 = Length of 'FORM' data structure (sample data)
                 addq.l  #$08,d0                         ; d0 = alter length to include 'FORM' and length header value, d0 = total file len from A0.
                 bsr.w   process_instrument              ; calls L000049ec
@@ -1480,21 +1530,63 @@ process_body_chunk                              ; original routine address L0004
 
 
                 ; COMMAND TABLE - 
-                ;    - commands where MSB = 0
-                ;    - why is $4bba - used as base pointer (mid point)
-                ;    - possible note frequenies? (12 semi-tones per octave)
-                ; -48 bytes from $4BBA
-L00004B8A       dc.w  $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB
-L00004B9A       dc.w  $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1
-L00004BAA       dc.w  $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA
+                ;       - audio channel period values - note frequenies
+                ;       - indexes to $00004bba clamped to -48 bytes or +44 bytes to remain in table range
+                ;       - I've got the table running B to B (may be I'm a semi-tone out C to C - most likely)
+note_period_table                                               ; original address L00004B8A
+                dc.w    $06FE           ; B     (1790)
+                dc.w    $0699           ; C     (1689)
+                dc.w    $063B           ; C#    (1595)
+                dc.w    $05E1           ; D     (1505)
+                dc.w    $058D           ; D#    (1421)
+                dc.w    $053D           ; E     (1341)          ; note_period_table+10
+                dc.w    $04F2           ; F     (1266)
+                dc.W    $04AB           ; F#    (1195)
+                dc.w    $0467           ; G     (1127)
+                dc.W    $0428           ; G#    (1064)
+                dc.W    $03EC           ; A     (1004)          ; note_period_table+20
+                dc.W    $03B4           ; A#    (948)
+                dc.W    $037F           ; B     (895)
+                dc.w    $034D           ; C     (845)
+                dc.W    $031D           ; C#    (797)
+                dc.w    $02F1           ; D     (753)           ; note_period_table+30
+                dc.w    $02C6           ; D#    (710)
+                dc.w    $029E           ; E     (670)
+                dc.w    $0279           ; F     (633)
+                dc.w    $0255           ; F#    (633)
+                dc.w    $0234           ; G     (564)           ; note_period_table+40
+                dc.w    $0214           ; G#    (532)
+                dc.w    $01F6           ; A     (502)
+                dc.w    $01DA           ; A#    (474)
 ; used in frame play routine - Centre point of Table
-L00004BBA       dc.w  $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B
-L00004BCA       dc.w  $011A, $010A, $00FB 
-                dc.w  $00ED, $00E0, $00D3, $00C7, $00BC
-L00004BDA       dc.w  $00B2, $00A8, $009E, $0095, $008D, $0085, $007E 
-                ; +46 bytes from $4bba
+L00004BBA       dc.w    $01BF           ; B     (447)           ; note_period_table+48
+                dc.w    $01A6           ; C     (422)
+                dc.w    $018F           ; C#    (399)
+                dc.w    $0178           ; D     (376)
+                dc.w    $0163           ; D#    (355)
+                dc.W    $014F           ; E     (335)
+                dc.w    $013C           ; F     (316)
+                dc.w    $012B           ; F#    (299)
+                dc.w    $011A           ; G     (282)
+                dc.w    $010A           ; G#    (266)
+                dc.W    $00FB           ; A     (251)
+                dc.w    $00ED           ; A#    (237)
+                dc.w    $00E0           ; B     (224)
+                dc.w    $00D3           ; C     (211)
+                dc.w    $00C7           ; C#    (199)
+                dc.w    $00BC           ; D     (188)
+                dc.w    $00B2           ; D#    (178)
+                dc.w    $00A8           ; E     (168)
+                dc.W    $009E           ; F     (158)
+                dc.W    $0095           ; F#    (149)
+                dc.W    $008D           ; G     (141)
+                dc.w    $0085           ; G#    (133)
+                dc.W    $007E           ; A     (126)
+                dc.w    $0077           ; A#    (119)
 
-L00004BE8       dc.w $0077, $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $0000
+
+                ; unknown data
+L00004BEA       dc.w $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $0000
 
 
 
@@ -1515,7 +1607,7 @@ L00004BE8       dc.w $0077, $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $00
                 ;
                 ; I think the following table is used during the playing of the song(s),
                 ; and keeps track of the instrument settings for each sample 
-                ; (which may change during the playhing of the song?)
+                ; (which may change during the playing of the song?)
                 ;
                 ; I think the following format.
                 ;
@@ -1528,6 +1620,14 @@ L00004BE8       dc.w $0077, $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $00
                 ; 12            | 2             | Sample Repeat Length in Words
                 ; 14            | 2             | Unknown Parameter, values either 0 or -1
                 ;
+
+INSTR_VOLUME            EQU     $0
+INSTR_SAMPLE_PTR        EQU     $2
+INSTR_SAMPLE_LEN        EQU     $6
+INSTR_SAMPLE_REPEAT_PTR EQU     $8
+INSTR_SAMPLE_REPEAT_LEN EQU     $C
+INSTR_SAMPLE_UNKNOWN    EQU     $E
+
 instrument_data                                                                 ; original address L00004BFA
 .instrument_01  dc.w  $0018, $0000, $4E1E, $1C5C, $0000, $4D3A, $0001, $0000    ; original address L00004BFA
 .instrument_02  dc.w  $0018, $0000, $873E, $1703, $0000, $4D3A, $0001, $0000    ; original address L00004C0A
