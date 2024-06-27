@@ -1098,7 +1098,7 @@ set_channel_volume                                              ; original addre
 .set_sample_1                                                   ; original address L000048f0
                 move.w  $0042(a0),AUD0LEN(a6)                   ; set DMA Sample Audio Length $00a4(a6)
                 move.l  $003e(a0),AUD0LC(a6)                    ; set DMA Sample Data Ptr $00a0(a6)
-                bra.b   L0000490a
+                bra.b   do_channel_2                            ; jmp $0000490a
 
                 ; set sample start/repeat
 .set_sample_2                                                   ; original address L000048fe
@@ -1106,14 +1106,21 @@ set_channel_volume                                              ; original addre
                 move.l  $0044(a0),AUD0LC(a6)                    ; $00a0(a6)
 
 
-L0000490a       lea.l   channel_2_status,a0                     ; L0000407a,a0
-L0000490e       move.w  d1,d3
-L00004910       btst.b  #$0006,(a0)
-L00004914       beq.b   L00004918
-
-L00004916       move.w  d2,d3
+                ; IN: D0 = DMA/interrupt bits (channel enabled)
+                ; IN: D1 = master volume mask 1
+do_channel_2                                                    ; original address L0000490a
+                lea.l   channel_2_status,a0                     ; L0000407a,a0
+                move.w  d1,d3
+.chk_volume_mask
+                btst.b  #$0006,(a0)                             ; original address L00004910
+                beq.b   .use_volume_mask_1                      ; L00004918
+.use_volume_mask_2                                              ; original address L00004916
+                move.w  d2,d3
+.use_volume_mask_1                                              ;original address L00004918
 L00004918       and.w   $004c(a0),d3
+
 L0000491c       move.w  d3,$00b8(a6)
+
 L00004920       move.w  $004a(a0),$00b6(a6)
 L00004926       btst.l  #$0001,d0
 L0000492a       beq.b   L0000493a
