@@ -459,9 +459,9 @@ do_init_current_song
                 ;--------------------------- do play song -----------------------
                 ;
 do_play_song                                                    ; original routine address $000042f6
-L000042f6       lea.l   $00dff000,a6                            ; a6 = custom base
-L000042fc       lea.l   note_period_table+48,a5                 ; L00004bba ; a5 = mid note frequency table (-48 to + 44)
-L00004302       clr.w   audio_dma                               ; L0000417c ; clear flag (audio dma)
+                lea.l   $00dff000,a6                            ; a6 = custom base
+                lea.l   note_period_table+48,a5                 ; L00004bba ; a5 = mid note frequency table (-48 to + 44)
+                clr.w   audio_dma                               ; L0000417c ; clear flag (audio dma)
 
 L00004306       tst.w   L00004020                               ; test $4020 (status flags?)
 L0000430a       beq.b   L00004354                               ; if $4020 == 0 then jmp $00004354
