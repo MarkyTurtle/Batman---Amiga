@@ -122,12 +122,18 @@ L00004023       dc.W    $00                                     ; initialised to
                 ;
 
 CHANNEL_CTRL_WORD       EQU     $0
+CHANNEL_INIT_DATA_PTR   EQU     $2                      ; 32bit address of channel init data (e.g. song_00_chanel_00_init_data)
+CHANNEL_CURRENT_DATA_PTR EQU    $6
+CHANNEL_MUSIC_DATA_PTR  EQU     $e
 CHANNEL_SAMPLE_PTR_1    EQU     $3e
 CHANNEL_SAMPLE_LEN_1    EQU     $42
 CHANNEL_SAMPLE_PTR_2    EQU     $44
 CHANNEL_SAMPLE_LEN_2    EQU     $48
 CHANNEL_SAMPLE_PERIOD   EQU     $4a
 CHANNEL_VOLUME          EQU     $4c
+CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialised to #$0001
+
+CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in bytes
 
 channel_1_status                                        ; original address L00004024
                 dc.w    $8080, $0001, $ba1b, $0001
@@ -316,9 +322,14 @@ L00004222       tst.w   channel_4_status                ; L00004126 ; test a fla
                 ; set the current song number, and initialise for playing.
                 ; if song number is out of range then stop the audio.
                 ;
+                ; initialises each audio channel's data ptrs
+                ; sets cmd param 82/83
+                ; sets $00004020 
+                ;
                 ; IN: D0.l - sound/song to play?
                 ;               - 0 = play nothing/stop
                 ;               - >3 = play nothing/stop
+                ;
 do_init_song                                                    ; original routine address $0000423e
                 movem.l d0/d7/a0-a2,-(a7)
                 move.w  #$8000,d1                               ; d1 = unknown(flags?)
@@ -350,56 +361,93 @@ do_init_current_song
 
                 moveq   #$00,d0
                 move.w  d0,CHANNEL_VOLUME(a1)                   ; initialise channel volume
-                move.l  d0,$0002(a1)                            ; initialise unknown channel status values
+                move.l  d0,CHANNEL_INIT_DATA_PTR(a1)            ; $0002(a1) ; initialise unknown channel status values
                 move.l  d0,$000a(a1)                            ; initialise unknown channel status values
                 move.b  d0,$0013(a1)                            ; initialise unknown channel status values
                 move.b  #$01,$0012(a1)                          ; initialise unknown channel status values
                 move.w  d1,CHANNEL_CTRL_WORD(a1)                ; (d1 = 8000/d1 = 4000) initialise unknown channel status values
 
+
+                ; ------ CMD Process Loop ------
 .get_next_byte                                                  ; original address $00004292
                 move.b  (a2)+,d0                                ; d0 = song channel init data byte  
+
+
+
+                ;------- Check 0x CMD --------
 .chk_code_0x
                 bpl.b   .is_code_0x                             ; code is '0x', bit 7 = 0, Play Sample?
+
+
+
+                ;------ Check for Loop -----
 .chk_code_80
                 sub.b   #$80,d0
                 bne.b   .chk_code_81
+
+                ;--------- CMD loop ------- 
 .is_code_80
-                movea.l $0002(a1),a2
+                movea.l CHANNEL_INIT_DATA_PTR(a1),a2
                 cmpa.w  #$0000,a2
                 bne.b   .get_next_byte
-                clr.w   (a1)
+.is_null_ptr
+                clr.w   CHANNEL_CTRL_WORD(a1)                   ; reset channel control bits
                 bra.b   .skip_to_next_channel                   ; jmp $000042e4
+
+
+
+                ;------ Check for Save Ptr ------
 .chk_code_81
                 subq.b  #$01,d0
                 bne.b   .chk_code_82
+
+                ;--------- CMD Save Ptr --------
+                ; used to save address for loop
 .is_code_81
-                move.l  a2,$0002(a1)                            ; store current channel data ptr
+                move.l  a2,CHANNEL_INIT_DATA_PTR(a1)            ; store current channel data ptr
                 bra.b   .get_next_byte
+
+
+
+                ;------ Check for CMD 82 -------
 .chk_code_82
                 subq.b  #$01,d0
                 bne.b   .chk_code_83
+
+                ;------- CMD 82 save param -----
 .is_code_82
                 move.b  (a2)+,$0013(a1)                         ; initialise unknown channel status values
                 bra.b   .get_next_byte                          ; jmp $00004292
+
+
+
+                ;------ Check for CMD 83 -------
 .chk_code_83
                 subq.b  #$01,d0
                 bne.b   .get_next_byte
+
+                ;------ CMD 83 save param ------
 .is_code_83
                 move.b  (a2)+,$0012(a1)                         ; initialise unknown channel status values
                 bra.b   .get_next_byte
+
+
+
+                ;----------- CMD 0x --------
+                ; d0 = Command (index to channel data table)
 .is_code_0x                                                     ; 
-                move.l  a2,$0006(a1)                            ; store song channel data ptr
-                lea.l   L0001BA06,a2
+                move.l  a2,CHANNEL_CURRENT_DATA_PTR(a1)         ; $0006(a1) ; store song channel data ptr
+                lea.l   song_channel_data_base,a2               ; L0001BA06,a2
                 ext.w   d0
                 add.w   d0,d0                                   ; d0 = d0 * 2 (another table index)
                 adda.w  d0,a2                                   ; add index offset to L0001BA06
                 adda.w  (a2),a2
-                move.l  a2,$000e(a1)                            ; ($90,$0B - $90,$0C) - initialise unknown channel status values
-                move.w  #$0001,$0052(a1)                        ; initialise unknown channel status values
+                move.l  a2,CHANNEL_MUSIC_DATA_PTR(a1)           ; $000e(a1) ; ($90,$0B - $90,$0C) - initialise unknown channel status values
+                move.w  #$0001,CHANNEL_CMD_POS(a1)              ; $0052(a1) ; initialise command counter/tempo?
 .skip_to_next_channel
-                lea.l   $0056(a1),a1
+                lea.l   CHANNEL_STATUS_SIZE(a1),a1              ; $0056(a1),a1
                 dbf.w   d7,.channel_loop                        ; loop, jmp $00004270
-                or.w    d1,L00004020
+                or.w    d1,L00004020                            ; (d1 = 8000/d1 = 4000)
 .exit
                 movem.l (a7)+,d0/d7/a0-a2
                 rts
@@ -562,7 +610,7 @@ L0000443e       move.b  (a3)+,$0012(a4)
 L00004442       bra.b   L00004402
 
 L00004444       move.l  a3,$0006(a4)
-L00004448       lea.l   $0001ba06,a3
+L00004448       lea.l   song_channel_data_base,a3        ; $0001ba06,a3
 L0000444e       ext.w   d0
 L00004450       add.w   d0,d0
 L00004452       adda.w  d0,a3
@@ -1933,9 +1981,9 @@ L0001B9FF       dc.b $90,$0C,$8F,$03,$18,$96,$80        ; Pattern/Command Data?
 
 
 
-                ;------------ songs data base address -------------
+                ;------------ songs channel data base address -------------
                 ; base address in init_song 
-song_data_base                          ; original address $0001BA06
+song_channel_data_base                  ; original address $0001BA06
 L0001BA06       dc.w $0038              ; offset value - #$1ba3e = song 00 channel 0 & 3 data
                 dc.w $003A              ; unknown offset
 L0001BA0A       dc.w $0081              ; offset value - #$1ba8b = song 00 channel 1 data
