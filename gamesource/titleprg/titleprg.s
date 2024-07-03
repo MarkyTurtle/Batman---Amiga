@@ -468,14 +468,13 @@ L0000430a       beq.b   L00004354                               ; if $4020 == 0 
 
 L0000430c       addq.w  #$01,L0000417e
 L00004310       clr.w   L00004020                               ; clear $4020 (status flags)
-L00004314       lea.l   channel_1_status,a4                     ; a4 = channel 1 status - L00004024,a4
 
+                ; -------- channel 1 ---------
+L00004314       lea.l   channel_1_status,a4                     ; a4 = channel 1 status - L00004024,a4
 L00004318       move.w  (a4),d7                                 ; d7 = channel current active command bits
 L0000431a       beq.b   L00004324
-
 .do_commands
 L0000431c       bsr.b   L00004360                               ; command loop
-
 L0000431e       move.w  d7,(a4)
 L00004320       or.w    d7,L00004020
 
@@ -500,7 +499,7 @@ L0000434e       move.w  d7,(a4)
 L00004350       or.w    d7,L00004020
 
 
-L00004354       and.w   #$c000,L00004020                        ; mask all apart from top 2 MSBs
+L00004354       and.w   #$c000,L00004020                        ; %1100 = $c (12) mask all apart from top 2 MSBs
 L0000435a       bsr.w   update_audio_custom_registers           ; L00004852
 L0000435e       rts
 
@@ -509,10 +508,10 @@ L0000435e       rts
                 ; IN: a4 = channel status base address
                 ; IN: d7 = 1st 16bit word value of channel status
 L00004360       tst.w   $0052(a4)                       ; test 82(a4)
-L00004364       beq.w   L000046b2                       ; if 82(82) == 0 then jmp L000046b2
+L00004364       beq.w   check_command_08                ; if 82(82) == 0 then jmp L000046b2
 
 L00004368       subq.w  #$01,$0052(a4)                  ; decrement 82(a4)
-L0000436c       bne.w   L000046b2                       ; if > 0 then  jmp L000046b2
+L0000436c       bne.w   check_command_08                ; if > 0 then  jmp L000046b2
 
                                                         ; 82(a4) reached 0 
 L00004370       movea.l $000e(a4),a3                    ; a3 = 14(a4) is an address                   
@@ -912,6 +911,7 @@ skip_cmds_09_to_17                                        ; original address $00
                 add.w   d0,$0052(a4)                    ; store d0 in #$52 (82)
                 move.l  a3,$000e(a4)                    ; store ptr to current CMD
 
+check_command_08
 .chk_cmd_08                                             ; original address $000046b2
                 btst.l  #$0007,d7
                 bne.w   exit_command_processing         ; jmp $00004850
@@ -971,137 +971,140 @@ chk_cmd_10                                              ; original address$00004
 
 .continue_cmd_10                                        ; original address $0000471a           
                 move.w  $00(a5,d0.W),d0
-                bra.w   store_sample_period               ; L000047a8
+                bra.w   store_sample_period             ; L000047a8
 
 
-continue_command_processing_05
+continue_command_processing_05                          ; original address L00004722
 
                 ; ---------- check CMD 14 ----------
-.chk_cmd_14
-L00004722       btst.l  #$0001,d7
-L00004726       beq.b   continue_command_processing_06          ; L00004784
+.chk_cmd_14                                             ; original address L00004722
+                btst.l  #$0001,d7
+                beq.b   continue_command_processing_06  ; L00004784
 
 
                 ;------------- CMD 14 ----------
-L00004728       subq.b  #$01,$0033(a4)
-L0000472c       bne.b   store_sample_period               ; L000047a8
-L0000472e       movea.l $002c(a4),a0
-L00004732       move.b  (a0)+,d0
-L00004734       subq.b  #$01,$0031(a4)
-L00004738       bne.b   L00004744
-L0000473a       movea.l $0028(a4),a0
-L0000473e       move.b  $0030(a4),$0031(a4)
-L00004744       move.l  a0,$002c(a4)
-L00004748       move.b  $0032(a4),$0033(a4)
-L0000474e       add.b   $0050(a4),d0
-L00004752       ext.w   d0
-L00004754       sub.w   $003c(a4),d0
-L00004758       add.w   d0,d0
+.is_cmd_14                                              ; original address L00004728
+                subq.b  #$01,$0033(a4)                  ; original address L00004728
+                bne.b   store_sample_period             ; L000047a8
+                movea.l $002c(a4),a0
+                move.b  (a0)+,d0
+                subq.b  #$01,$0031(a4)
+                bne.b   .L00004744
+                movea.l $0028(a4),a0
+                move.b  $0030(a4),$0031(a4)
+.L00004744      move.l  a0,$002c(a4)
+                move.b  $0032(a4),$0033(a4)
+                add.b   $0050(a4),d0
+                ext.w   d0
+                sub.w   $003c(a4),d0
+                add.w   d0,d0
 
 .validate_command                                       ; original address $000046f8
-L0000475a       cmp.w   #$ffd0,d0                       ; validate -48
-L0000475e       blt.b   .debug_assert_fail              ; L00004766 - this branch is never taken
-L00004760       cmp.w   #$002c,d0                       ; valdate +44
-L00004764       ble.b   L0000477c                       ; $0000471a  this branch is always taken ------>>>>>>>>>
+                cmp.w   #$ffd0,d0                       ; validate -48
+                blt.b   .debug_assert_fail              ; L00004766 - this branch is never taken
+                cmp.w   #$002c,d0                       ; valdate +44
+                ble.b   .end_cmd_14                     ; $0000471a  this branch is always taken ------>>>>>>>>>
 
-.debug_assert_fail                                      ; original address 
-L00004766       move.b  $004f(a4),d1
-L0000476a       move.b  $0050(a4),d2
-L0000476e       move.w  $003c(a4),d3
-L00004772       move.w  $0054(a4),d4
-L00004776       movea.l $0006(a4),a2
-L0000477a       illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
+.debug_assert_fail                                      ; original address L00004766
+                move.b  $004f(a4),d1
+                move.b  $0050(a4),d2
+                move.w  $003c(a4),d3
+                move.w  $0054(a4),d4
+                movea.l $0006(a4),a2
+                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
-
-L0000477c       move.w  $00(a5,d0.W),d0
-L00004780       bra.w   store_sample_period             ; L000047a8
+.end_cmd_14                                             ; original address L0000477c
+                move.w  $00(a5,d0.W),d0
+                bra.w   store_sample_period             ; L000047a8
 
 
 
 continue_command_processing_06                          ; original address L00004784
 
                 ;---------- Check CMD 12 ---------
-.chk_cmd_12
-L00004784       btst.l  #$0002,d7
-L00004788       beq.b   store_sample_period             ; L000047a8
+.chk_cmd_12                                             ; original address L00004784
+                btst.l  #$0002,d7
+                beq.b   store_sample_period             ; L000047a8
 
                 ;------------ CMD 12 -------------
-L0000478a       subq.b  #$01,$0037(a4)
-L0000478e       bcc.b   store_sample_period             ; L000047a8
-L00004790       addq.b  #$01,$0037(a4)
-L00004794       subq.b  #$01,$0039(a4)
-L00004798       bne.b   L000047a4
-L0000479a       neg.w   $003a(a4)
-L0000479e       move.b  $0038(a4),$0039(a4)
-L000047a4       add.w   $003a(a4),d0
+.is_cmd_12                                              ; original address L0000478a
+                subq.b  #$01,$0037(a4)
+                bcc.b   store_sample_period             ; L000047a8
+                addq.b  #$01,$0037(a4)
+                subq.b  #$01,$0039(a4)
+                bne.b   .L000047a4
+                neg.w   $003a(a4)
+                move.b  $0038(a4),$0039(a4)
+.L000047a4      add.w   $003a(a4),d0
 
 
-
-store_sample_period                                             ; original address L000047a8
-L000047a8       move.w  d0,CHANNEL_SAMPLE_PERIOD(a4)            ; $004a(a4)
+store_sample_period                                     ; original address L000047a8
+                move.w  d0,CHANNEL_SAMPLE_PERIOD(a4)    ; $004a(a4)
 
 
                 ; -------- Check CMD 08,12,10,14 --------
-L000047ac       btst.l  #$0004,d7
-L000047b0       beq.w   exit_command_processing                 ; Not CMD 08,12,10,14 - jmp $00004850
+.chk_08_10_12_14                                        ; original address L000047ac
+                btst.l  #$0004,d7
+                beq.w   exit_command_processing         ; Not CMD 08,12,10,14 - jmp $00004850
 
                 ; -------- Is xxxx CMD ----------
-L000047b4       subq.w  #$01,$001e(a4)
-L000047b8       bne.w   L0000483a
-L000047bc       movea.l $0018(a4),a0
-L000047c0       moveq   #$00,d0
-L000047c2       move.b  (a0)+,d0
-L000047c4       beq.b   L00004808
-L000047c6       bmi.b   L000047e2
-L000047c8       move.w  d0,$001e(a4)
-L000047cc       move.b  #$01,$001c(a4)
-L000047d2       move.b  #$01,$001d(a4)
-L000047d8       move.b  (a0)+,$0020(a4)
-L000047dc       move.l  a0,$0018(a4)
-L000047e0       bra.b   L0000483a
+.is_cmd_08_10_12_14                                     ; original address L000047b4
+                subq.w  #$01,$001e(a4)
+                bne.w   .L0000483a
+                movea.l $0018(a4),a0
+                moveq   #$00,d0
+                move.b  (a0)+,d0
+                beq.b   .L00004808
+                bmi.b   .L000047e2
+                move.w  d0,$001e(a4)
+                move.b  #$01,$001c(a4)
+                move.b  #$01,$001d(a4)
+                move.b  (a0)+,$0020(a4)
+                move.l  a0,$0018(a4)
+                bra.b   .L0000483a
 
 
-L000047e2       neg.b   d0
-L000047e4       move.w  d0,$001e(a4)
-L000047e8       move.b  #$01,$0020(a4)
-L000047ee       move.b  (a0)+,d0
-L000047f0       bpl.b   L000047f8
-L000047f2       neg.b   d0
-L000047f4       neg.b   $0020(a4)
-L000047f8       move.b  d0,$001c(a4)
-L000047fc       move.b  #$01,$001d(a4)
-L00004802       move.l  a0,$0018(a4)
-L00004806       bra.b   L0000483a
+.L000047e2      neg.b   d0
+                move.w  d0,$001e(a4)
+                move.b  #$01,$0020(a4)
+                move.b  (a0)+,d0
+                bpl.b   .L000047f8
+                neg.b   d0
+                neg.b   $0020(a4)
+.L000047f8      move.b  d0,$001c(a4)
+                move.b  #$01,$001d(a4)
+                move.l  a0,$0018(a4)
+                bra.b   .L0000483a
 
 
-L00004808       move.b  (a0),d0
-L0000480a       beq.b   L00004816
-L0000480c       bpl.b   L00004810
-L0000480e       neg.b   d0
-L00004810       sub.w   $0052(a4),d0
-L00004814       bmi.b   L0000481c
-L00004816       bclr.l  #$0004,d7
-L0000481a       bra.b   exit_command_processing                 ;L00004850
+.L00004808      move.b  (a0),d0
+                beq.b   .L00004816
+                bpl.b   .L00004810
+                neg.b   d0
+.L00004810      sub.w   $0052(a4),d0
+                bmi.b   .L0000481c
+.L00004816      bclr.l  #$0004,d7
+                bra.b   exit_command_processing                 ;L00004850
 
 
-L0000481c       neg.w   d0
-L0000481e       move.w  d0,$001e(a4)
-L00004822       move.b  #$00,$001c(a4)
-L00004828       move.b  #$00,$001d(a4)
-L0000482e       move.b  #$00,$0020(a4)
-L00004834       move.l  a0,$0018(a4)
-L00004838       bra.b   exit_command_processing                 ; L00004850
+.L0000481c      neg.w   d0
+                move.w  d0,$001e(a4)
+                move.b  #$00,$001c(a4)
+                move.b  #$00,$001d(a4)
+                move.b  #$00,$0020(a4)
+                move.l  a0,$0018(a4)
+                bra.b   exit_command_processing         ; L00004850
 
 
-L0000483a       subq.b  #$01,$001d(a4)
-L0000483e       bne.b   exit_command_processing                 ; L00004850
-L00004840       move.b  $001c(a4),$001d(a4)
-L00004846       move.b  $0020(a4),d0
-L0000484a       ext.w   d0
-L0000484c       add.w   d0,CHANNEL_VOLUME(a4)                   ; $004c(a4)
+.L0000483a      subq.b  #$01,$001d(a4)
+                bne.b   exit_command_processing         ; L00004850
+                move.b  $001c(a4),$001d(a4)
+                move.b  $0020(a4),d0
+                ext.w   d0
+                add.w   d0,CHANNEL_VOLUME(a4)           ; $004c(a4)
 
-exit_command_processing
-L00004850       rts  
+exit_command_processing                                 ; original address L00004850
+                rts  
 
 
 
@@ -1479,12 +1482,13 @@ process_list_chunk
                 ; IN: D0 = length of sample including headers.
                 ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
                 ;
-process_form_chunk                              ; original routine address L00004aac
+
+process_form_chunk                           ; original routine address L00004aac
                 movem.l d0/a0,-(a7)
                 move.l  (a0)+,d0                ; d0 = length of FORM data
                 move.l  d0,d1                   ; d1 = length of FORM data
                 btst.l  #$0000,d1               ; check of length is odd
-                beq.b   .n o_pad_byte           ; even length (no pad byte required)
+                beq.b   .no_pad_byte            ; even length (no pad byte required)
 .add_pad_byte
                 addq.l  #$01,d1                 ; odd length (add pad byte)
 .no_pad_byte
@@ -1536,7 +1540,7 @@ process_8svx_chunk
                 ;
 process_inner_8svx_chunk                                ; original routine address L00004af2
                 cmp.l   'FORM',d1                       ;#$464f524d,d1
-                beq.b   process_form_chunk              ; jmp L00004aac
+                beq     process_form_chunk              ; jmp L00004aac
                 cmp.l   'LIST',d1                       ;#$4c495354,d1
                 beq.b   process_list_chunk              ; jmp L00004a8c
                 cmp.l   'CAT ',d1                       ;#$43415420,d1
@@ -2306,7 +2310,7 @@ start_game_flag                                                 ; original addre
                 ;
 do_window_scroll
                 tst.w   start_game_flag                         ; test if game has started, $0001c09c
-                bne.b   L0001c0ba
+                bne.b  do_scroll_down                           ; jmp L0001c0ba
 .do_scroll_up                                                   ; original address $0001c0a6
                 cmp.b   #$2c,copper_diwstrt                     ; test window start position byte, $0001d6e8 
                 beq.b   .exit                                   ; if window is fully 'open' (scrolled to top), jmp $0001c0b8
@@ -3359,24 +3363,24 @@ L0001ca42       dc.w $0000, $0000                ;or.b #$00,d0
 
                 ; l0001cd0e = $7e (126) - reset_title_screen_display
                 ; l0001cd12 = $3c (60)  - reset title screen display (L0001cd0e+4)          
-L0001ca46       lea.l   L0001cd0e,a0
-L0001ca4c       lea.l   L0001cd2e,a2
-L0001ca52       lea.l   L0001cd16,a3
-L0001ca58       lea.l   L0001cd34,a4
-L0001ca5e       lea.l   L0001cd3a,a5
-L0001ca64       lea.l   L0001cd40,a6
+L0001ca46       lea.l   L0001CD0E,a0
+L0001ca4c       lea.l   L0001CD2E,a2
+L0001ca52       lea.l   L0001CD16,a3
+L0001ca58       lea.l   L0001CD34,a4
+L0001ca5e       lea.l   L0001CD3A,a5
+L0001ca64       lea.l   L0001CD40,a6
 
 L0001ca6a       moveq   #$00,d7
 L0001ca6c       bsr.w   L0001cb94
 
 L0001ca70       move.w  #$0fca,d1
-L0001ca74       or.w    L0001cd8c,d1
+L0001ca74       or.w    L0001CD8C,d1
 L0001ca7a       move.w  d1,$00dff040
-L0001ca80       move.w  $0001cd8c,$00dff042
-L0001ca8a       move.l  $0001cd86,d0
+L0001ca80       move.w  L0001CD8C,$00dff042
+L0001ca8a       move.l  L0001CD86,d0
 L0001ca90       beq.w   L0001cb92
-L0001ca94       move.l  $0001cd6e,$00dff04c
-L0001ca9e       move.l  $0001cd82,$00dff050
+L0001ca94       move.l  L0001CD6E,$00dff04c
+L0001ca9e       move.l  L0001CD82,$00dff050
 L0001caa8       move.l  d0,$00dff048
 L0001caae       move.l  d0,$00dff054
 L0001cab4       clr.w   $00dff064
@@ -3386,29 +3390,29 @@ L0001cac6       move.w  (a4),$00dff066
 L0001cacc       move.w  (a2),$00dff058
 L0001cad2       add.l   bitplane_size,d0                        ;$0001ca3e,d0
 L0001cad8       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cadc       move.l  $0001cd72,$00dff04c
-L0001cae6       move.l  $0001cd82,$00dff050
+L0001cadc       move.l  L0001CD72,$00dff04c
+L0001cae6       move.l  L0001CD82,$00dff050
 L0001caf0       move.l  d0,$00dff048
 L0001caf6       move.l  d0,$00dff054
 L0001cafc       move.w  (a2),$00dff058
 L0001cb02       add.l   bitplane_size,d0                        ;$0001ca3e,d0
 L0001cb08       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cb0c       move.l  $0001cd76,$00dff04c
-L0001cb16       move.l  $0001cd82,$00dff050
+L0001cb0c       move.l  L0001CD76,$00dff04c
+L0001cb16       move.l  L0001CD82,$00dff050
 L0001cb20       move.l  d0,$00dff048
 L0001cb26       move.l  d0,$00dff054
 L0001cb2c       move.w  (a2),$00dff058
 L0001cb32       add.l   bitplane_size,d0                        ; $0001ca3e,d0
 L0001cb38       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cb3c       move.l  $0001cd7a,$00dff04c
-L0001cb46       move.l  $0001cd82,$00dff050
+L0001cb3c       move.l  L0001CD7A,$00dff04c
+L0001cb46       move.l  L0001CD82,$00dff050
 L0001cb50       move.l  d0,$00dff048
 L0001cb56       move.l  d0,$00dff054
 L0001cb5c       move.w  (a2),$00dff058
 L0001cb62       add.l   bitplane_size,d0                        ; $0001ca3e,d0
 L0001cb68       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cb6c       move.l  $0001cd7e,$00dff04c
-L0001cb76       move.l  $0001cd82,$00dff050
+L0001cb6c       move.l  L0001CD7E,$00dff04c
+L0001cb76       move.l  L0001CD82,$00dff050
 L0001cb80       move.l  d0,$00dff048
 L0001cb86       move.l  d0,$00dff054
 L0001cb8c       move.w  (a2),$00dff058
@@ -3428,14 +3432,14 @@ L0001cb96       move.w  #$0028,(a4)
 L0001cb9a       movem.l a0,-(a7)
 L0001cb9e       move.w  (a6),d0
 L0001cba0       mulu.w  #$001c,d0
-L0001cba4       lea.l   L0001cd44,a0
-L0001cbaa       move.l  $00(a0,d0.l),L0001cd66
-L0001cbb2       move.l  $04(a0,d0.l),L0001cd66+8                ; L0001cd6e
-L0001cbba       move.l  $08(a0,d0.l),L0001cd66+12               ; L0001cd72
-L0001cbc2       move.l  $0c(a0,d0.l),L0001cd66+16               ; L0001cd76
-L0001cbca       move.l  $10(a0,d0.l),L0001cd66+20               ; L0001cd7a
-L0001cbd2       move.l  $14(a0,d0.l),L0001cd66+24               ; L0001cd7e
-L0001cbda       move.l  $18(a0,d0.l),L0001cd66+28               ; L0001cd82
+L0001cba4       lea.l   L0001CD44,a0
+L0001cbaa       move.l  $00(a0,d0.l),L0001CD66
+L0001cbb2       move.l  $04(a0,d0.l),L0001CD66+8                ; L0001cd6e
+L0001cbba       move.l  $08(a0,d0.l),L0001CD66+12               ; L0001cd72
+L0001cbc2       move.l  $0c(a0,d0.l),L0001CD66+16               ; L0001cd76
+L0001cbca       move.l  $10(a0,d0.l),L0001CD66+20               ; L0001cd7a
+L0001cbd2       move.l  $14(a0,d0.l),L0001CD66+24               ; L0001cd7e
+L0001cbda       move.l  $18(a0,d0.l),L0001CD66+28               ; L0001cd82
 L0001cbe2       movem.l (a7)+,a0
 
 L0001cbe6       move.w  (a0),d0                 ; d0 = 1st word
@@ -3446,7 +3450,7 @@ L0001cbf0       move.w  $0004(a0),d1            ; d1 = 2nd word
 L0001cbf4       add.w   #$0100,d1               ; d1 = d1 + 256
 L0001cbf8       ext.w   d0                      ; sign extend byte to word
 L0001cbfa       add.w   #$0100,d0               ; d0 = d0 + 256
-L0001cbfe       move.w  L0001cd66+2,d4          ; L0001cd68,d4
+L0001cbfe       move.w  L0001CD66+2,d4          ; L0001cd68,d4
 L0001cc04       move.w  d1,d3                   ; d3 = d1
 L0001cc06       cmp.w   #$01c7,d3       
 L0001cc0a       bgt.w   clear_and_exit          ; L0001cc22
@@ -3458,7 +3462,7 @@ L0001cc1c       sub.w   d3,d4
 L0001cc1e       beq.b   clear_and_exit          ; L0001cc22
 L0001cc20       bpl.b   L0001cc2a
 clear_and_exit
-L0001cc22       clr.l   L0001cd86
+L0001cc22       clr.l   L0001CD86
 L0001cc28       rts  
 
 
@@ -3470,15 +3474,15 @@ L0001cc36       sub.w   #$0100,d3
 L0001cc3a       bmi.w   L0001cc22
 L0001cc3e       move.w  d3,d4
 L0001cc40       beq.w   L0001cc22
-L0001cc44       sub.w   L0001cd68,d3
+L0001cc44       sub.w   L0001CD68,d3
 L0001cc4a       neg.w   d3
-L0001cc4c       mulu.w  L0001cd66,d3
-L0001cc52       add.l   d3,$0001cd6e
-L0001cc58       add.l   d3,$0001cd72
-L0001cc5e       add.l   d3,$0001cd76
-L0001cc64       add.l   d3,$0001cd7a
-L0001cc6a       add.l   d3,$0001cd7e
-L0001cc70       add.l   d3,$0001cd82
+L0001cc4c       mulu.w  L0001CD66,d3
+L0001cc52       add.l   d3,$0001CD6E
+L0001cc58       add.l   d3,$0001CD72
+L0001cc5e       add.l   d3,$0001CD76
+L0001cc64       add.l   d3,$0001CD7A
+L0001cc6a       add.l   d3,$0001CD7E
+L0001cc70       add.l   d3,$0001CD82
 L0001cc76       move.w  #$0100,d1
 L0001cc7a       clr.w   (a5)
 L0001cc7c       cmp.w   #$0128,d0
@@ -3491,33 +3495,33 @@ L0001cc92       bmi.w   L0001cc22
 L0001cc96       nop
 L0001cc98       move.w  #$0100,d0
 L0001cc9c       move.w  d0,d3
-L0001cc9e       add.w   L0001cd66,d3
+L0001cc9e       add.w   L0001CD66,d3
 L0001cca4       cmp.w   #$0128,d3
 L0001cca8       blt.w   L0001ccb0
 L0001ccac       bra.w   L0001cc22
-L0001ccb0       move.w  L0001cd66,d6
+L0001ccb0       move.w  L0001CD66,d6
 L0001ccb6       sub.w   d6,(a4)
 L0001ccb8       sub.w   #$0100,d0
 L0001ccbc       sub.w   #$0100,d1
 L0001ccc0       mulu.w  #$0028,d1
 L0001ccc4       add.l   d1,d0
-L0001ccc6       move.l  $0001ca42,d1
+L0001ccc6       move.l  $0001CA42,d1
 L0001cccc       add.l   d0,d1
-L0001ccce       move.l  d1,$0001cd86
+L0001ccce       move.l  d1,$0001CD86
 L0001ccd4       asl.w   #$08,d2
 L0001ccd6       asl.w   #$04,d2
-L0001ccd8       move.w  d2,$0001cd8c
-L0001ccde       move.w  $0001cd66,d5
+L0001ccd8       move.w  d2,L0001CD8C
+L0001ccde       move.w  $0001CD66,d5
 L0001cce4       mulu.w  d4,d5
-L0001cce6       move.l  d5,$0001cd6a
-L0001ccec       move.w  $0001cd66,d5
+L0001cce6       move.l  d5,$0001CD6a
+L0001ccec       move.w  $0001CD66,d5
 L0001ccf2       lsr.w   #$01,d5
 L0001ccf4       asl.w   #$06,d4
 L0001ccf6       or.w    d4,d5
 L0001ccf8       move.w  d5,(a2)
 L0001ccfa       rts
 
-L0001ccfc       lea.l   L0001cd2e,a0
+L0001ccfc       lea.l   L0001CD2E,a0
 L0001cd02       move.w  #$0002,d7
 L0001cd06       clr.w   (a0)+
 L0001cd08       dbf.w   d7,L0001cd06
@@ -3547,22 +3551,26 @@ L0001CD2E       dc.w $0000, $0000, $0000
 L0001CD34       dc.w $0000, $0000, $0000
 L0001CD3A       dc.w $0000, $0000, $0000
 L0001CD40       dc.w $0000              ; index for copy above L0001CD0E -> L0001CD66
-                dc.w $0000, $000C
+                dc.w $0000
+L0001CD44       dc.w $000C
 
 L0001CD46 dc.w $001C, $0005, $0000, $0005
 L0001CD4E dc.w $0150, $0005, $02A0, $0005, $03F0, $0005, $0540, $0001           ;.P...........@..
 L0001CD5E dc.w $CD8E, $0000, $0000, $0000
 
                 ; Values from L0001CD0E - is copied to these values here.
-L0001CD66       dc.l $00000000
+L0001CD66       dc.w $0000
+L0001CD68       dc.w $0000
 L0001CD6A       dc.l $00000000          ; skipped by data copy
-L0001CD6E       dc.l $00000000, $00000000
-L0001CD76       dc.l $00000000, $00000000 
-                dc.l $00000000, $00000000
+L0001CD6E       dc.l $00000000
+L0001CD72       dc.l $00000000
+L0001CD76       dc.l $00000000
+L0001CD7A       dc.l $00000000 
+L0001CD7E       dc.l $00000000             
+L0001CD82       dc.l $00000000
 
-
-
-L0001cd86 dc.w $0000, $0000, $0000, $0000           
+L0001CD86 dc.w $0000, $0000, $0000
+L0001CD8C dc.w $0000           
 L0001CD8E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
 L0001CD9E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
 L0001CDAE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
@@ -3672,8 +3680,8 @@ reset_title_screen_display                                              ; origin
                 move.w  #$0040,$00dff104                                ; BPLCON2 - Playfield 2 - priority (dual playfield?)
                 move.w  #$0000,$00dff102                                ; BPLCON1 - Clear scroll delay
                 move.l  #DISPLAY_BITPLANE_ADDRESS,$0001ca42             ; #$00063190,$0001ca42 [00000000]
-                move.w  #$007e,L0001cd0e                                ; #$7e (126)
-                move.w  #$003c,L0001cd0e+4                              ; #$3c (60)
+                move.w  #$007e,L0001CD0E                                ; #$7e (126)
+                move.w  #$003c,L0001CD0E+4                              ; #$3c (60)
                 move.l  #$003800d0,$00dff092                            ; DDFSTRT/DDFSTOP - DMA bitplane fetch
                 clr.w   $00dff108                                       ; BPL1MOD - CLR not the best on custom regs
                 clr.w   $00dff10a                                       ; BPL2MOD
