@@ -17,23 +17,182 @@
 
                 section panel,code_c
                 ;org     $3ffc                                   ; original load address
-                opt     o-
+                ;opt     o-
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR  "include"
                 INCLUDE "hw.i"
 
+TEST_TITLEPRG SET 1    
 
 ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
+
+        IFND TEST_TITLEPRG
 DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
+        ELSE
+DISPLAY_BITPLANE_ADDRESS        EQU     test_display
+        ENDC
 
-
-
-TEST_TITLEPRG SET 1                                             ; Comment this to remove 'test'
+                                         ; Comment this to remove 'test'
 
         IFD TEST_TITLEPRG  
 
+kill_system
+                lea     $dff000,a6
+                move.w  #$7fff,INTENA(a6)
+                move.w  #$7fff,DMACON(a6)
+                move.w  #$7fff,INTREQ(a6)   
+                lea     kill_system,a7                              ; initialise stack 
+                lea     .mouse_loop,a1
+                bsr     init_system
+
+.mouse_loop
+                subq    #1,d0
+                move.w  d0,$dff180
+                btst    #$6,$bfe001
+                bne.s   .mouse_loop
+
+.start_title_screen
                 jmp     title_screen_start                      ; Entry point $0001c000
+
+
+
+                ;------------------ init system -------------------------
+                ; kill system taken from the original loader with a
+                ; few modifications (i.e. no CIA timers set up and a
+                ; generic interrupt handler installed)
+init_system                                                         ; original routine address $00001F26
+                lea     $00dff000,A6                                ; A6 = custom chip base address
+                lea     $00bfd100,A5                                ; A5 = CIAB PRB - used as base address to CIAB
+                lea     $00bfe101,A4                                ; A4 = CIAA PRB - used as base address to CIAA
+
+                moveq.l #$00,D0
+
+                move.w  #$7fff,INTENA(A6)                           ; disable interrupts
+                move.w  #$1fff,DMACON(A6)                           ; disable DMA
+                move.w  #$7fff,INTENA(A6)                           ; disable interrupts again?
+
+
+                ; enter supervisor mode
+                lea.l   .supervisor_trap(PC),A0                     ; A0 = address of supervisor trap $00001F58
+                move.l  A0,$00000080                                ; Set TRAP 0 vector
+                movea.l A7,A0                                       ; store stack pointer
+                trap    #$00                                        ; do the trap (jmp to next instruction in supervisor mode)
+                                                                    ; this trap never returns.
+
+                ; enter supervisor mode
+                ; D0.l = $00000000
+.supervisor_trap                                                    ; original address $00001F58
+                movea.l A0,A7                                       ; restore the stack (i.e. rts return address etc)
+                move.w  #$0200,BPLCON0(A6)                          ; 0 bitplanes, COLOR_ON=1, low res
+                move.w  D0,BPLCON1(A6)                              ; clear delay/scroll registers
+                move.w  D0,BPLCON2(A6)                              ; reset sprite/bitplane priorities, genlock etc.
+                move.w  D0,COLOR00(A6)                              ; background colour = black
+                move.w  #$4000,DSKLEN(A6)                           ; disable disk DMA (as per h/w ref)
+                move.l  D0,BLTCON0(A6)                              ; clear BLTCON0 & BLTCON1
+                move.w  #$0041,BLTSIZE(A6)                          ; Perform 1 x 1 word blit (DMA off) bit odd.
+
+                move.w  #$8340,DMACON(A6)                           ; enable MASTER,BITPLANE,BLITTER DMA
+                move.w  #$7fff,ADKCON(A6)                           ; clear disk controller bits
+
+                ; reset sprites positions
+.reset_sprites
+                moveq.l #$07,D1                                     ; D1 = counter 7 + 1 (8 sprites)
+                lea.l   SPR0POS(A6),A0                              ; A0 = first sprite position
+.reset_sprite_loop
+                move.w  D0,(A0)
+                addq.l #$08,A0                                      ; next sprite pointer
+                dbf.w  D1,.reset_sprite_loop                       ; reset next sprite position, $00001F8E
+
+                ; silence audio
+.reset_audio
+                moveq.l  #$03,D1                                    ; D1 = counter 3 + 1 (4 audio channels)
+                lea.l    AUD0VOL(A6),A0                              ; A0 = channel 1 audio volume register.
+.reset_audio_loop
+                move.w  D0,(A0)                                     ; set audio channel volume to 0
+                lea.l   $0010(A0),A0                                ; A0 = next channel audio volume address
+                dbf.w   D1,.reset_audio_loop                        ; reset next audio channel volume, $00001F9C
+
+                ; reset CIAA
+                ; A4 = CIAA PRB - used as base address to CIAA
+.reset_ciaa
+                move.b  #$7f,$0c00(A4)                              ; ICR = clear interrupts
+                move.b  D0,$0d00(A4)                                ; CRA = clear timer A control bits
+                move.b  D0,$0e00(A4)                                ; CRB = clear timer B control bits
+                move.b  D0,-$0100(A4)                               ; PRA = clear /LED /OVL (/OVL shouldn't be played with - ROM overlay in memory flag)
+                move.b  #$03,$0100(A4)                              ; DDRA = set /LED /OVL as output, set disk status as inputs (as the system intends)
+                move.b  D0,(A4)                                     ; PRB = set parallel data lines to 0
+                move.b  #$ff,$0200(A4)                              ; DDRB = set direction line to output
+
+                ; reset CIAB
+                ; A5 = CIAB PRB - used as base address to CIAB
+.reset_ciab
+                move.b  #$7f,$0c00(A5)                              ; ICR = clear interrupts
+                move.b  D0,$0d00(A5)                                ; CRA = clear Timer A control bits
+                move.b  D0,$0e00(A5)                                ; CRB = clear Timer B control bits
+                move.b  #$c0,-$0100(A5)                             ; PRA = set keyboard serial /DTR /RTS lines
+                move.b  #$c0,$0100(A5)                              ; DDRA = set /DTR /RTS lines to output
+                move.b  #$ff,(A5)                                   ; PRB = deselect all drives & motor, /SIDE = Bottom, /DIR = outwards, 
+                move.b  #$ff,$0200(A5)                              ; DDRB = set drive control bits to output
+.set_exceptions
+                lea     interrupt_handler(pc),a0
+                move.l  a0,$64
+                move.l  a0,$68
+                move.l  a0,$6C
+                move.l  a0,$70
+                move.l  a0,$74
+                move.l  a0,$78
+ 
+.joy_test
+                move.w  #$ff00,POTGO(A6)                            ; Enable output for Paula Pins on Port 2 (9,5), Port 1 (9,5), set pins high
+                move.w  D0,JOYTEST(A6)                             ; D0.W = $DF90 (maybe a bug? D0.l is set above) write to all 4 joystick-mouse counters at once. (JOY0DAT, JOY1DAT)
+
+.reset_drive_motors                
+                ; switch drives off
+                ; A5 = CIAB PRB - used as base address to CIAB
+                or.b    #$ff,(A5)                                   ; deselect disk drives 
+                and.b   #$87,(A5)                                   ; latch motors off on drives 0-3
+                and.b   #$87,(A5)                                   ; latch motors off on drivee 0-3
+                or.b    #$ff,(A5)                                   ; deselect disk drived
+
+.reset_ciaa_timer_b
+                ; A4 = CIAA PRB - used as base address to CIAA
+                MOVE.B  #$f0,$0500(A4)                              ; Timer B Low Byte
+                MOVE.B  #$37,$0600(A4)                              ; Timer B High Byte - 14320 clock ticks = approx 20ms 
+                MOVE.B  #$11,$0e00(A4)                              ; Load, Start Timer B continuous mode.
+
+.reset_ciab_timer_b
+                ; A5 = CIAB PRB - used as base address to CIAB
+                MOVE.B  #$91,$0500(A5)                              ; Timer B Low Byte
+                MOVE.B  #$00,$0600(A5)                              ; Timer B High Byte - 145 clock ticks = approx 200us
+                MOVE.B  #$00,$0e00(A5)                              ; CRB - clear control reg (Timer B) - not started. (think it's used to trigger a keyboard ack)
+
+.enable_interrupts
+                move.w  #$7fff,INTREQ(A6)                           ; Clear Interrupt Request bits
+.enable_ciaa_interrupts
+                tst.b   $0c00(A4)                                   ; CIAA ICR - clear interrupt flags
+                ;MOVE.B  #$8a,$0c00(A4)                              ; CIAA ICR - Enable SP (Keyboard), ALRM (TOD)
+
+.enable_ciab_interrupts
+                tst.b   $0c00(A5)                                   ; CIAB ICR - clear interrupt flags
+                ;MOVE.B  #$93,$0c00(A5)                              ; CIAB ICR - Enable FLG (DSKINDEX), TB (TimerA), TA (TimerB)
+              
+.exit_init_system
+                ;move.w  #$e078,INTENA(a6)
+                move.w  #$2000,sr
+                rts
+
+
+                ;------------- interrupt handler ------------------
+                ; just clear any raised interrupt flags and exit
+interrupt_handler
+                movem.l d0-d7/a0-a6,-(a7)
+                lea     $dff000,a6
+                move.w  #$7fff,INTREQ(a6)
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
 
         ENDC
 
@@ -83,6 +242,7 @@ Play_Song                                                       ; original routi
                 bra.w   do_play_song                            ; $000042f6
 
 
+                even
 master_audio_volume_mask_1                                      ; original address L0000401c
                 dc.w    $ffff                                   ; master channel volume mask 1
 master_audio_volume_mask_2                                      ; original address L0000401e
@@ -127,6 +287,7 @@ CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialise
 
 CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in bytes
 
+                even
 channel_1_status                                        ; original address L00004024
                 dc.w    $8080, $0001, $ba1b, $0001
                 dc.w    $ba1e, $0000, $0000, $0001
@@ -185,7 +346,7 @@ audio_dma                                               ; original address $0000
                                                         ; flag cleared on start of frame play routine
                                                         ; also it's or'ed with #$54 of channel status 
 
-L0000417e       dc.W    $0d69                           ; referenced as a word
+L0000417e       dc.w    $0d69                           ; referenced as a word
                                                         ; cleared when playing new song/sound
                                                         ; incremented duting frame play routine every time 4020 is cleared
 
@@ -1417,9 +1578,9 @@ process_inner_chunk
                 ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
                 ;
 process_sample_chunk                            ; original routine address L00004a50
-                cmp.l   'FORM',d1               ; #$464f524d,d1
+                cmp.l   #'FORM',d1               ; #$464f524d,d1
                 beq.w   process_form_chunk      ; jmp L00004aac ; process FORM chunk
-                cmp.l   'CAT ',d1               ; #$43415420,d1
+                cmp.l   #'CAT ',d1               ; #$43415420,d1
                 beq.w   process_cat_chunk       ; jmp L00004a6e ; process CAT chunk
                 move.w  #$0001,sample_status    ; L00004a2e ; error status flag?
                 clr.l   d0                      ; clear remaining byte length
@@ -1503,7 +1664,7 @@ process_form_chunk                           ; original routine address L00004aa
                 sub.l   d1,(a7)                 ; subtract chunk length from remaining bytes on stack
                 move.l  (a0)+,d1                ; d1 = inner chunk identifer
                 subq.l  #$04,d0                 ; d0 = updated remaining bytes
-                cmp.l   '8SVX',d1               ; #$38535658,d1
+                cmp.l   #'8SVX',d1               ; #$38535658,d1
                 beq.w   process_8svx_chunk      ; jmp L00004ade ; process 8SVX chunk
                 move.w  #$0002,sample_status    ; L00004a2e ; error/status flag
                 movem.l (a7)+,d0/a0
@@ -1545,15 +1706,15 @@ process_8svx_chunk
                 ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
                 ;
 process_inner_8svx_chunk                                ; original routine address L00004af2
-                cmp.l   'FORM',d1                       ;#$464f524d,d1
+                cmp.l   #'FORM',d1                       ;#$464f524d,d1
                 beq     process_form_chunk              ; jmp L00004aac
-                cmp.l   'LIST',d1                       ;#$4c495354,d1
+                cmp.l   #'LIST',d1                       ;#$4c495354,d1
                 beq.b   process_list_chunk              ; jmp L00004a8c
-                cmp.l   'CAT ',d1                       ;#$43415420,d1
+                cmp.l   #'CAT ',d1                       ;#$43415420,d1
                 beq.w   process_cat_chunk               ; jmp L00004a6e
-                cmp.l   'VHDL',d1                       ;#$56484452,d1
+                cmp.l   #'VHDL',d1                       ;#$56484452,d1
                 beq.w   process_vhdl_chunk              ; jmp L00004b42
-                cmp.l   'BODY',d1                       ;#$424f4459,d1
+                cmp.l   #'BODY',d1                       ;#$424f4459,d1
                 beq.w   process_body_chunk              ; L00004b68
 .skip_unused_chunks
                 movem.l d0/a0,-(a7)
@@ -1629,7 +1790,7 @@ process_body_chunk                              ; original routine address L0004
                 rts
 
 
-
+                even
                 ; COMMAND TABLE - 
                 ;       - audio channel period values - note frequenies
                 ;       - indexes to $00004bba clamped to -48 bytes or +44 bytes to remain in table range
@@ -1791,6 +1952,7 @@ default_sample_data                                                             
                 ; End Address:   $000086D5
                 ; Name:          WHATRU 
                 ; sample_01:     original address $00004DB6
+                even
                 include "./music/sample_01.s"
 
 
@@ -1799,6 +1961,7 @@ default_sample_data                                                             
                 ; End Address:   $0000B543
                 ; Name:          IMBATMAN 
                 ; sample_02:     ; original address $000086D6
+                even
                 include "./music/sample_02.s"
 
 
@@ -1807,6 +1970,7 @@ default_sample_data                                                             
                 ; End Address:   $0000C9AF
                 ; Name:          HITBASS-C1
                 ; sample_03      ; original address $0000B544
+                even
                 include "./music/sample_03.s"
 
 
@@ -1815,6 +1979,7 @@ default_sample_data                                                             
                 ; End Address:   $0000DE67
                 ; Name:          HITSNARE-C2
                 ; sample_04     ; original address $0000C9B0
+                even
                 include "./music/sample_04.s"
 
 
@@ -1823,6 +1988,7 @@ default_sample_data                                                             
                 ; End Address:   $0000E125
                 ; Name:          KIT-HIHAT-C4 
                 ; sample_05      ; original address $0000DE68
+                even
                 include "./music/sample_05.s"
                 
                 
@@ -1831,6 +1997,7 @@ default_sample_data                                                             
                 ; End Address:   $0000ED2B
                 ; Name:          KIT-OPENHAT-D4
                 ; sample_06      ; original address $0000E126
+                even
                 include "./music/sample_06.s"
 
                 
@@ -1840,6 +2007,7 @@ default_sample_data                                                             
                 ; End Address:   $0000FB04
                 ; Name:          BASS2-F
                 ; sample_07      ; original address $0000ED2C
+                even
                 include "./music/sample_07.s"
 
                 
@@ -1848,6 +2016,7 @@ default_sample_data                                                             
                 ; End Address:   $00010837
                 ; Name:          TIMELESS-GS
                 ; sample_08      ; original address $0000FB04
+                even
                 include "./music/sample_08.s"
 
 
@@ -1856,6 +2025,7 @@ default_sample_data                                                             
                 ; End Address:   $00011461
                 ; Name:          TIMEBASS-GS
                 ; sample_09      ; original address $00010838
+                even
                 include "./music/sample_09.s"
                 
                 
@@ -1864,6 +2034,7 @@ default_sample_data                                                             
                 ; End Address:   $00013875
                 ; Name:          CRUNCHGUITAR-C4
                 ; sample_10      ; original address $00011462
+                even
                 include "./music/sample_10.s"
 
 
@@ -1872,6 +2043,7 @@ default_sample_data                                                             
                 ; End Address:   $00017F51
                 ; Name:          LAUGH
                 ; sample_11      ; original address $00013876
+                even
                 include "./music/sample_11.s"
 
 
@@ -1880,6 +2052,7 @@ default_sample_data                                                             
                 ; End Address:   $0001B985
                 ; Name:          IWANNA
                 ; sample_12      ; original address $00017F52
+                even
                 include "./music/sample_12.s"
 
                 ; ------------- end of sample data ---------------
@@ -1889,7 +2062,7 @@ default_sample_data                                                             
 
 
 
-
+                even
                 ; ----------------------- unknown data -------------------------------
 L0001B986 dc.w $0002, $0202                                                     ;................
 L0001B98A dc.w $000C, $0014, $0018, $001C, $001E, $0020, $0025, $002B           ;........... .%.+
@@ -1907,7 +2080,7 @@ L0001B9DA dc.w $0000
 
 
 
-
+                even
                 ; ---------------------- song table ----------------------
                 ; 4 values per song entry (channel settings)
                 ; each 2byte value is an offset to the channel data for the song
@@ -1971,7 +2144,7 @@ song_01_channel_03_init_data                            ; original address $0001
                 dc.b $80                                
 
 
-
+ 
                 ;----------- Song 02 - Game Complete - Batman IWanna - Channel 3 Init Data  ------------
 song_02_channel_03_init_data                            ; original address $0001B9F6
                 dc.b $08
@@ -1990,7 +2163,7 @@ L0001B9FF       dc.b $90,$0C,$8F,$03,$18,$96,$80        ; Pattern/Command Data?
 
 
 
-
+                even
                 ;------------ songs channel data base address -------------
                 ; base address in init_song 
 song_channel_data_base                  ; original address $0001BA06
@@ -2103,7 +2276,7 @@ L0001BC2A       dc.b $0C,$0F,$06,$1B,$06,$0F,$06,$19,$06,$0F,$06,$1B,$06,$0F,$06
 
 
 
-
+                even
                 ; ----------------------- unused memory -----------------------------
 L0001BC3A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
 L0001BC4A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
@@ -2554,7 +2727,7 @@ raw_key_code_table
 
 
 
-
+                even
                 ;*********************************************************************************************************************
                 ;*********************************************************************************************************************
                 ;*********************************************************************************************************************
@@ -2676,7 +2849,7 @@ level_5_interrupt_handler                                       ; original addre
 
 
 
-
+                even
 vertical_blank_toggle                                   ; original address $0001C2E8
                 dc.w $0000                              ; value appears unused by the title screen (toggled every frame)
 
@@ -2690,6 +2863,7 @@ raw_keyboard_serial_data_word                                           ; origin
 raw_keyboard_serial_data_byte                                           ; original address $0001c2ed
                 dc.b $00                                                ; keyboard raw key code byte
 
+                even
                 dc.w $0000 
 
 raw_key_code_store                                                      ; original address $0001c2f0
@@ -2727,7 +2901,7 @@ return_rts      rts
 
 
 
-
+                even
 xy_coords
 x_coord                                                 ; original address L0001c310
                 dc.w    $0000                           ; x co-ord (byte value)
@@ -3334,9 +3508,14 @@ L0001CA2E       dc.w $0000, $0000                       ; **** UNUSED??? ****
 
                 even
                 ; --------------- Copy Title Screen Bitplanes ----------------
+                ; A0 = Source Address
 copy_title_screen_bitplanes
-                lea.l $00040000,a0
-                bra.w copy_bitplanes_to_display                 ; calls $0001d3da
+        IFND     TEST_TITLEPRG
+                lea.l   $00040000,a0
+        ELSE
+                lea.l   test_bitplanes,a0
+        ENDC
+                bra.w   copy_bitplanes_to_display                 ; calls $0001d3da
                 ; uses routine rts to return to caller
 
 
@@ -3351,7 +3530,7 @@ bitplane_size                                   ; original address $0001ca3e
                 ; -------------- other data 2 ----------------------
                 ; currently unknown/unused data
 .other_data2
-L0001ca42       dc.w $0000, $0000                ;or.b #$00,d0
+L0001CA42       dc.w $0000, $0000                ;or.b #$00,d0
 
 
 
@@ -3511,16 +3690,16 @@ L0001ccb8       sub.w   #$0100,d0
 L0001ccbc       sub.w   #$0100,d1
 L0001ccc0       mulu.w  #$0028,d1
 L0001ccc4       add.l   d1,d0
-L0001ccc6       move.l  $0001CA42,d1
+L0001ccc6       move.l  L0001CA42,d1
 L0001cccc       add.l   d0,d1
-L0001ccce       move.l  d1,$0001CD86
+L0001ccce       move.l  d1,L0001CD86
 L0001ccd4       asl.w   #$08,d2
 L0001ccd6       asl.w   #$04,d2
 L0001ccd8       move.w  d2,L0001CD8C
-L0001ccde       move.w  $0001CD66,d5
+L0001ccde       move.w  L0001CD66,d5
 L0001cce4       mulu.w  d4,d5
-L0001cce6       move.l  d5,$0001CD6a
-L0001ccec       move.w  $0001CD66,d5
+L0001cce6       move.l  d5,L0001CD6A
+L0001ccec       move.w  L0001CD66,d5
 L0001ccf2       lsr.w   #$01,d5
 L0001ccf4       asl.w   #$06,d4
 L0001ccf6       or.w    d4,d5
@@ -3685,7 +3864,7 @@ reset_title_screen_display                                              ; origin
                 move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
                 move.w  #$0040,$00dff104                                ; BPLCON2 - Playfield 2 - priority (dual playfield?)
                 move.w  #$0000,$00dff102                                ; BPLCON1 - Clear scroll delay
-                move.l  #DISPLAY_BITPLANE_ADDRESS,$0001ca42             ; #$00063190,$0001ca42 [00000000]
+                move.l  #DISPLAY_BITPLANE_ADDRESS,L0001CA42             ; #$00063190,$0001ca42 [00000000]
                 move.w  #$007e,L0001CD0E                                ; #$7e (126)
                 move.w  #$003c,L0001CD0E+4                              ; #$3c (60)
                 move.l  #$003800d0,$00dff092                            ; DDFSTRT/DDFSTOP - DMA bitplane fetch
@@ -3793,8 +3972,9 @@ copy_bitplanes_to_display                               ; original routine addre
                 adda.l  #$0000001c,a1                   ; #$1c = 28 (28 bytes to dest ptr) 
                 movem.l (a0)+,d1-d7                     ; copy 28 bytes src > registers
                 movem.l d1-d7,(a1)                      ; copy 28 bytes reg -> dest
-                adda.l  #$0000001c,a1                   ;  #$1c = 28 (28 bytes to dest ptr) 
-                dbf.w   d0,.copy_loop                    ; copy loop (477 times x 28 bytes = 40,068)
+                adda.l  #$0000001c,a1                   ; #$1c = 28 (28 bytes to dest ptr) 
+                dbf.w   d0,.copy_loop                   ; copy loop (477 times x 28 bytes = 40,068)
+
                 movem.l (a7)+,d0/a0-a1
                 rts
 
@@ -4054,3 +4234,8 @@ title_screen_colors                                                     ; origin
 
 
 
+                even
+test_bitplanes  dcb.w   40068,$ff00
+
+
+test_display    dcb.w   40000,$f0f0
