@@ -56,6 +56,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+2024-07-10 - Been away for the weekend, now back and can re-assemble the title screen and execute it (without GFX or music playing). The GFX is missing as these are loaded into memory separately (to get the GFX will require a custom build of the title screen).  The music is not currently playing and is causing an exception to be thrown during the do_play_song routine which is called to play the current song during each VBL interrupt (level 3).  Will have to do a bit of tracing to find out whats going wrong (it's either some bad code disassembly or bad song data I guess).
 
 2024-07-03 - Have disassembled the code to the game 'titleprg' (title screen code & music). The code assembles without error and is 90% documented, there are areas of the music format that are still to be uncovered. Also I haven't yet tested the re-assembled version of the title screen code.
 
