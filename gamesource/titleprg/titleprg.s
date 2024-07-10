@@ -761,21 +761,22 @@ music_command_01                                        ; original addrss L00004
                 moveq   #$00,d7
                 rts  
 
-.L00004426       subq.b  #$01,d0                        ; original address L00004428
+.L00004426      subq.b  #$01,d0                        ; original address L00004428
                 bne.b   .L00004430
                 move.l  a3,$0002(a4)
                 bra.b   .L00004402
 
-.L00004430       subq.b  #$01,d0                        ; original address L00004430
+.L00004430      subq.b  #$01,d0                        ; original address L00004430
                 bne.b   .L0000443a
                 move.b  (a3)+,$0013(a4)
                 bra.b   .L00004402
-.L0000443a       subq.b  #$01,d0
+
+.L0000443a      subq.b  #$01,d0
                 bne.b   .L00004402
                 move.b  (a3)+,$0012(a4)
                 bra.b   .L00004402
 
-.L00004444       move.l  a3,$0006(a4)
+.L00004444      move.l  a3,$0006(a4)
                 lea.l   song_channel_data_base,a3        ; $0001ba06,a3
                 ext.w   d0
                 add.w   d0,d0
