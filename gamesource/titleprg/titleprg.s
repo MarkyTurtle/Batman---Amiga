@@ -711,14 +711,14 @@ jump_table                                              ; original address $0000
                 dc.w music_command_07-jump_table+12     ; offset - $00d4 ; 43aa + D4 = 447E
                 dc.w music_command_08-jump_table+14     ; offset - $00dc ; 43ac + DC = 4488        
                 dc.w music_command_09-jump_table+16     ; offset - $00ea ; 43ae + ea = 4498
-                dc.w music_command_10-jump_table+16     ; offset - $00f8 ; 43b0 + f8 = 44A8
-                dc.w music_command_11-jump_table+16     ; offset - $010a ; 43b2 + 10a = 44BC
-                dc.w music_command_12-jump_table+16     ; offset - $0140 ; 43b4 + 140 = 44F4
-                dc.w music_command_13-jump_table+16     ; offset - $0156 ; 43b6 + 156 = 450C
-                dc.w music_command_14-jump_table+16     ; offset - $010c ; 43b8 + 10c = 44C4
-                dc.w music_command_15-jump_table+16     ; offset - $0132 ; 43ba + 132 = 44EC
-                dc.w music_command_16-jump_table+16     ; offset - $0158 ; 43bc + 158 = 4514
-                dc.w music_command_17-jump_table+16     ; offset - $016e ; 43be + 16e = 452c
+                dc.w music_command_10-jump_table+18     ; offset - $00f8 ; 43b0 + f8 = 44A8
+                dc.w music_command_11-jump_table+20     ; offset - $010a ; 43b2 + 10a = 44BC
+                dc.w music_command_12-jump_table+22     ; offset - $0140 ; 43b4 + 140 = 44F4
+                dc.w music_command_13-jump_table+24     ; offset - $0156 ; 43b6 + 156 = 450C
+                dc.w music_command_14-jump_table+26     ; offset - $010c ; 43b8 + 10c = 44C4
+                dc.w music_command_15-jump_table+28     ; offset - $0132 ; 43ba + 132 = 44EC
+                dc.w music_command_16-jump_table+30     ; offset - $0158 ; 43bc + 158 = 4514
+                dc.w music_command_17-jump_table+32     ; offset - $016e ; 43be + 16e = 452c
                 dc.w $0000
                 dc.w $0000
                 dc.w $0000
