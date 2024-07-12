@@ -254,7 +254,7 @@ L00004020       dc.w    $8000                                   ; cleared when a
 
 song_number                                                     ; original address $00004022
                 dc.b    $01                                     ; sound/song to play - initialised to $00
-L00004023       dc.W    $00                                     ; initialised to $00
+L00004023       dc.b    $00                                     ; initialised to $00
 
 
 
@@ -277,10 +277,10 @@ CHANNEL_CTRL_WORD       EQU     $0
 CHANNEL_INIT_DATA_PTR   EQU     $2                      ; 32bit address of channel init data (e.g. song_00_chanel_00_init_data)
 CHANNEL_CURRENT_DATA_PTR EQU    $6
 CHANNEL_MUSIC_DATA_PTR  EQU     $e
-CHANNEL_SAMPLE_PTR_1    EQU     $3e
-CHANNEL_SAMPLE_LEN_1    EQU     $42
-CHANNEL_SAMPLE_PTR_2    EQU     $44
-CHANNEL_SAMPLE_LEN_2    EQU     $48
+CHANNEL_SAMPLE_PTR_A    EQU     $3e
+CHANNEL_SAMPLE_LEN_A    EQU     $42
+CHANNEL_SAMPLE_PTR_B    EQU     $44
+CHANNEL_SAMPLE_LEN_B    EQU     $48
 CHANNEL_SAMPLE_PERIOD   EQU     $4a
 CHANNEL_VOLUME          EQU     $4c
 CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialised to #$0001
@@ -515,7 +515,7 @@ do_init_current_song
                 beq.b   .skip_to_next_channel                   ; if value = 0, jmp $000042e4
 
                 ;------- init audio channel ------
-                lea.l   -2(a0,d0),a2                            ; a2 = song channel init data
+                lea.l   -2(a0,d0.w),a2                          ; a2 = song channel init data
                 moveq   #$00,d0
                 move.w  d0,CHANNEL_VOLUME(a1)                   ; initialise channel volume
                 move.l  d0,CHANNEL_INIT_DATA_PTR(a1)            ; $0002(a1) ; initialise unknown channel status values
@@ -530,18 +530,18 @@ do_init_current_song
                 move.b  (a2)+,d0                                ; d0 = song channel init data byte  
 
                 ;------- Check 0x CMD --------
-.chk_code_0x
+.chk_code_0x                                                    ; addr $000042c8
                 bpl.b   .is_code_0x                             ; code is '0x', bit 7 = 0, Play Sample?
 
 
                 ;------ Check for Loop -----
-.chk_code_80
+.chk_code_80                                                    ; addr $00004296
                 sub.b   #$80,d0
                 bne.b   .chk_code_81
 
 
                 ;--------- Clear channel CTRL Word ------- 
-.is_code_80
+.is_code_80                                                     ; addr $0000429c
                 movea.l CHANNEL_INIT_DATA_PTR(a1),a2
                 cmpa.w  #$0000,a2
                 bne.b   .get_next_byte
@@ -551,7 +551,7 @@ do_init_current_song
 
 
                 ;------ Check for Save Ptr ------
-.chk_code_81
+.chk_code_81                                                    ; addr $000042aa
                 subq.b  #$01,d0
                 bne.b   .chk_code_82
 
@@ -564,7 +564,7 @@ do_init_current_song
 
 
                 ;------ Check for CMD 82 -------
-.chk_code_82
+.chk_code_82                                                    ; addr $000042b4
                 subq.b  #$01,d0
                 bne.b   .chk_code_83
 
@@ -576,7 +576,7 @@ do_init_current_song
 
 
                 ;------ Check for CMD 83 -------
-.chk_code_83
+.chk_code_83                                                    ; addr $000042be
                 subq.b  #$01,d0                                 ; original address 000042BE
                 bne.b   .get_next_byte
 
@@ -601,11 +601,11 @@ do_init_current_song
                 move.l  a2,CHANNEL_MUSIC_DATA_PTR(a1)           ; $000e(a1) ; ($90,$0B - $90,$0C) - initialise unknown channel status values
                 move.w  #$0001,CHANNEL_CMD_POS(a1)              ; $0052(a1) ; initialise command counter/tempo?
 
-.skip_to_next_channel
+.skip_to_next_channel                                           ; addr $000042e4
                 lea.l   CHANNEL_STATUS_SIZE(a1),a1              ; $0056(a1),a1
                 dbf.w   d7,.channel_loop                        ; loop, jmp $00004270
                 or.w    d1,L00004020                            ; (d1 = 8000/d1 = 4000)
-.exit
+.exit                                                           ; addr $000042f0
                 movem.l (a7)+,d0/d7/a0-a2
                 rts
 
@@ -636,6 +636,7 @@ do_play_song                                                    ; original routi
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
                 or.w    d7,L00004020
 
+                ; ------- channel 2 ---------
 .no_active_commands                                             ; original address L00004324
 .L00004324      lea.l   channel_2_status,a4                     ;L0000407a,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7
@@ -643,6 +644,8 @@ do_play_song                                                    ; original routi
                 bsr.b   do_channel_command_loop                 ; L00004360
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
                 or.w    d7,L00004020
+
+                ; ------ channel 3 ----------
 .L00004334                                                      ; original address .L00004334                
                 lea.l   channel_3_status,a4                     ; L000040d0,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7
@@ -651,6 +654,7 @@ do_play_song                                                    ; original routi
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
                 or.w    d7,L00004020
 
+                ; ------ channel 4 ---------
 .L00004344                                                      ; original address .L00004344
                 lea.l   channel_4_status,a4                     ;L00004126,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7
@@ -697,28 +701,28 @@ play_song_command_loop                                  ; original address L0000
                 adda.w  d0,a0                           ; a0 = address of jump table command offset entry
                 move.w  (a0),d0                         ; d0 = offset to music command routine.
                 beq.b   play_song_command_loop          ; if d0 == 0 then ignore command, jmp $00004378
-                jmp     $00(a0,d0)                      ; execute music command
+                jmp     $00(a0,d0.w)                    ; execute music command
 
 
                 ;---------------- music command jump table (max 32 commands) ------------------
-jump_table                                              ; original address $0000439e
-                dc.w music_command_01-jump_table        ; offset - $0040 ; 439E + 40 = 43DE
-                dc.w music_command_02-jump_table+2      ; offset - $00ba ; 43A0 + BA = 445A 
-                dc.w music_command_03-jump_table+4      ; offset - $00c0 ; 43A2 + C0 = 4462      
-                dc.w music_command_04-jump_table+6      ; offset - $00c2 ; 43A4 + C2 = 4466
-                dc.w music_command_05-jump_table+8      ; offset - $00c4 ; 43A6 + C4 = 446A     
-                dc.w music_command_06-jump_table+10     ; offset - $00ce ; 43a8 + CE = 4476       
-                dc.w music_command_07-jump_table+12     ; offset - $00d4 ; 43aa + D4 = 447E
-                dc.w music_command_08-jump_table+14     ; offset - $00dc ; 43ac + DC = 4488        
-                dc.w music_command_09-jump_table+16     ; offset - $00ea ; 43ae + ea = 4498
-                dc.w music_command_10-jump_table+18     ; offset - $00f8 ; 43b0 + f8 = 44A8
-                dc.w music_command_11-jump_table+20     ; offset - $010a ; 43b2 + 10a = 44BC
-                dc.w music_command_12-jump_table+22     ; offset - $0140 ; 43b4 + 140 = 44F4
-                dc.w music_command_13-jump_table+24     ; offset - $0156 ; 43b6 + 156 = 450C
-                dc.w music_command_14-jump_table+26     ; offset - $010c ; 43b8 + 10c = 44C4
-                dc.w music_command_15-jump_table+28     ; offset - $0132 ; 43ba + 132 = 44EC
-                dc.w music_command_16-jump_table+30     ; offset - $0158 ; 43bc + 158 = 4514
-                dc.w music_command_17-jump_table+32     ; offset - $016e ; 43be + 16e = 452c
+jump_table                                             ; original address $0000439e
+                dc.w music_command_01-(jump_table+0)        ; offset - $0040 ; 439E + 40 = 43DE
+                dc.w music_command_02-(jump_table+2)      ; offset - $00ba ; 43A0 + BA = 445A 
+                dc.w music_command_03-(jump_table+4)      ; offset - $00c0 ; 43A2 + C0 = 4462      
+                dc.w music_command_04-(jump_table+6)      ; offset - $00c2 ; 43A4 + C2 = 4466
+                dc.w music_command_05-(jump_table+8)      ; offset - $00c4 ; 43A6 + C4 = 446A     
+                dc.w music_command_06-(jump_table+10)     ; offset - $00ce ; 43a8 + CE = 4476       
+                dc.w music_command_07-(jump_table+12)     ; offset - $00d4 ; 43aa + D4 = 447E
+                dc.w music_command_08-(jump_table+14)     ; offset - $00dc ; 43ac + DC = 4488        
+                dc.w music_command_09-(jump_table+16)     ; offset - $00ea ; 43ae + ea = 4498
+                dc.w music_command_10-(jump_table+18)     ; offset - $00f8 ; 43b0 + f8 = 44A8
+                dc.w music_command_11-(jump_table+20)     ; offset - $010a ; 43b2 + 10a = 44BC
+                dc.w music_command_12-(jump_table+22)     ; offset - $0140 ; 43b4 + 140 = 44F4
+                dc.w music_command_13-(jump_table+24)     ; offset - $0156 ; 43b6 + 156 = 450C
+                dc.w music_command_14-(jump_table+26)     ; offset - $010c ; 43b8 + 10c = 44C4
+                dc.w music_command_15-(jump_table+28)     ; offset - $0132 ; 43ba + 132 = 44EC
+                dc.w music_command_16-(jump_table+30)     ; offset - $0158 ; 43bc + 158 = 4514
+                dc.w music_command_17-(jump_table+32)     ; offset - $016e ; 43be + 16e = 452c
                 dc.w $0000
                 dc.w $0000
                 dc.w $0000
@@ -860,8 +864,8 @@ music_command_15                                        ; original address $0000
                 bclr.l  #$0001,d7
                 bra.w   play_song_command_loop          ; $00004378
 
-music_command_12
-                and.w   #$fff8,d7
+music_command_12                                        ; addr $000044f4
+                and.w   #$fff8,d7       
                 bset.l  #$0002,d7
                 move.b  (a3)+,$0036(a4)
                 move.b  (a3)+,$0034(a4)
@@ -869,13 +873,13 @@ music_command_12
                 bra.w   play_song_command_loop          ; $00004378
 
 
-music_command_13
+music_command_13                                        ; addr $0000450c
                 bclr.l  #$0002,d7
                 bra.w   play_song_command_loop          ; $00004378
 
 
-music_command_16
-                lea.l   $0001b98c,a0
+music_command_16                                        ; addr $00004514
+                lea.l   L0001B98C,a0
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 add.w   d0,d0
@@ -885,8 +889,8 @@ music_command_16
                 bra.w   play_song_command_loop          ; $00004378
 
 
-music_command_17
-                lea.l   $00004bea,a0
+music_command_17                                        ; addr $0000452c
+                lea.l   L00004BEA,a0
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 asl.w   #$04,d0
@@ -919,7 +923,7 @@ do_command_processing                                   ; original routine addre
 
 
                 ;------- CMD 10 --------
-.chk_cmd_10
+.chk_cmd_10                                             ; addr $0000456e
                 btst.l  #$0000,d7                       ; chk CMD 10
                 beq.b   .not_cmd_10
 .is_cmd_10
@@ -1336,7 +1340,7 @@ set_channel_dma                                                 ; original asddr
                 move.w  VHPOSR(a6),d3                           ; $0006(a6),d3
                 and.w   #$ff00,d3                               ; mask horizontal position
 .loop                                                           ; original address L000048b4
-                move.w  VHPOSR(a4),d4                           ; $0006(a6),d4
+                move.w  VHPOSR(a6),d4                           ; $0006(a6),d4
                 and.w   #$ff00,d4                               ; mask horizontal position
                 cmp.w   d4,d3
                 beq.b   .loop                                   ; wait for next raster line, L000048b4
@@ -1371,13 +1375,13 @@ do_channel_1
                 beq.b   .set_sample_2                           ; L000048fe
                 ; set sample start/repeat
 .set_sample_1                                                   ; original address L000048f0
-                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD0LEN(a6)    ; set DMA Sample Audio Length $00a4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD0LC(a6)     ; set DMA Sample Data Ptr $00a0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD0LEN(a6)    ; set DMA Sample Audio Length $00a4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD0LC(a6)     ; set DMA Sample Data Ptr $00a0(a6)
                 bra.b   do_channel_2                            ; jmp $0000490a
                 ; set sample start/repeat
 .set_sample_2                                                   ; original address L000048fe
-                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD0LEN(a6)    ; $00a4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD0LC(a6)     ; $00a0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD0LEN(a6)    ; $00a4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD0LC(a6)     ; $00a0(a6)
 
 
 
@@ -1401,12 +1405,12 @@ do_channel_2                                                    ; original addre
                 btst.l  #$0001,d0
                 beq.b   .set_sample_2                           ; L0000493a
 .set_sample_1                                                   ; original address L0000492c
-                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD1LEN(a6)    ; $00b4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD1LC(a6)     ; $00b0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD1LEN(a6)    ; $00b4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD1LC(a6)     ; $00b0(a6)
                 bra.b   do_channel_3                            ; L00004946
 .set_sample_2                                                   ; original address L0000493a
-                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD1LEN(a6)    ; $00b4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD1LC(a6)     ; $00b0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD1LEN(a6)    ; $00b4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD1LC(a6)     ; $00b0(a6)
 
 
 
@@ -1430,12 +1434,12 @@ do_channel_3                                                    ; original addre
                 btst.l  #$0002,d0
                 beq.b   .set_sample_2                           ; L00004976
 .set_sample_1                                                   ; original address  L00004968
-                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD2LEN(a6)    ; $00c4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD2LC(a6)    ; $00c0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD2LEN(a6)    ; $00c4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD2LC(a6)    ; $00c0(a6)
                 bra.b   do_channel_4                            ; jmp L00004982
 .set_sample_2                                                   ; original address  L00004976
-                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD2LEN(a6)    ; $00c4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD2LC(a6)     ; $00c0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD2LEN(a6)    ; $00c4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD2LC(a6)     ; $00c0(a6)
 
 
 
@@ -1459,12 +1463,12 @@ do_channel_4
                 btst.l  #$0003,d0
                 beq.b   .set_sample_2                           ; L000049b2
 .set_sample_1 
-                move.w  CHANNEL_SAMPLE_LEN_1(a0),AUD3LEN(a6)    ; $00d4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_1(a0),AUD3LC(a6)     ; $00d0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD3LEN(a6)    ; $00d4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD3LC(a6)     ; $00d0(a6)
                 bra.b   do_enable_dma                           ; L000049be
 .set_sample_2 
-                move.w  CHANNEL_SAMPLE_LEN_2(a0),AUD3LEN(a6)    ; $00d4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_2(a0),AUD3LC(a6)     ; $00d0(a6)
+                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD3LEN(a6)    ; $00d4(a6)
+                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD3LC(a6)     ; $00d0(a6)
 
 
                 ; Enable channel DMA
@@ -2066,7 +2070,8 @@ default_sample_data                                                             
                 even
                 ; ----------------------- unknown data -------------------------------
 L0001B986 dc.w $0002, $0202                                                     ;................
-L0001B98A dc.w $000C, $0014, $0018, $001C, $001E, $0020, $0025, $002B           ;........... .%.+
+L0001B98A dc.w $000C
+L0001B98C dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B           ;........... .%.+
 L0001B99A dc.w $0031, $0037, $0039, $013C, $1EFE, $0000, $0119, $08FD           ;.1.7.9.<........
 L0001B9AA dc.w $0000, $011E, $0000, $013E, $0000, $020F, $07FF, $000A           ;.......>........
 L0001B9BA dc.w $FF01, $1902, $F605, $FF00, $0001, $190B, $FE01, $FE00           ;................
