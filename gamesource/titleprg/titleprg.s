@@ -1934,20 +1934,32 @@ L00004D4A       dc.w  $DC82, $BB45, $7E24, $A08C
                 ; Table of address offsets below, not sure what the additional two 16 bit 
                 ; parameters that follow the offset represent yet. maybe volume and something else.
                 ;
-                                                                                ; Offset Calc   | Start       | Name           | End
-default_sample_data                                                             ;---------------+-------------+----------------+----------
-.data_01        dc.w  $0000, $0064, $0018, $0000                                ; $4D52 + $0064 = $00004DB6   - WHATRU         - $000086D6
-.data_02        dc.w  $0000, $397C, $0018, $0000                                ; $4D5A + $3972 = $000086D6   - IMBATMAN       - $0000B544 
-.data_03        dc.w  $0000, $67E2, $000C, $FFFF                                ; $4D62 + $67E2 = $0000B544   - HITBASS-C1     - $0000C9B0
-.data_04        dc.w  $0000, $7C46, $0018, $FFFF                                ; $4D6A + $7C46 = $0000C9B0   - HITSNARE-C2    - $0000DE68 
-.data_05        dc.w  $0000, $90F6, $0030, $FFFF                                ; $4D72 + $90F6 = $0000DE68   - KIT-HIHAT-C4   - $0000E126
-.data_06        dc.w  $0000, $93AC, $0032, $FFFF                                ; $4D7A + $93AC = $0000E126   - KIT-OPENHAT-D4 - $0000ED2C
-.data_07        dc.w  $0000, $9FAA, $0011, $0000                                ; $4D82 + $9FAA = $0000ED2C   - BASS2-F        - $0000FB04
-.data_08        dc.w  $0000, $AD7A, $0038, $0000                                ; $4D8A + $AD7A = $0000FB04   - TIMELESS-GS    - $00010838
-.data_09        dc.w  $0000, $BAA6, $0014, $0000                                ; $4D92 + $BAA6 = $00010838   - TIMEBASS-GS    - $00011462
-.data_10        dc.w  $0000, $C6C8, $003E, $0000                                ; $4D9A + $C6C8 = $00011462   - CRUNCHGUITAR-C4- $00013876
-.data_11        dc.w  $0000, $EAD4, $0018, $0000                                ; $4DA2 + $EAD4 = $00013876   - LAUGH          - $00017F52
-.data_12        dc.w  $0001, $31A8, $0018, $0000                              ; $4DAA + $131A8 = $00017F52  - IWANNA         - $0001B986
+                ; addr $00004D52                                  ; Offset Calc   | Start       | Name           | End
+default_sample_data                                               ;---------------+-------------+----------------+----------
+.data_01        dc.l  sample_01-default_sample_data
+                dc.w  $0018, $0000                                ; $4D52 + $0064 = $00004DB6   - WHATRU         - $000086D6
+.data_02        dc.l  sample_02-(default_sample_data+8)
+                dc.w  $0018, $0000                                ; $4D5A + $3972 = $000086D6   - IMBATMAN       - $0000B544 
+.data_03        dc.l  sample_03-(default_sample_data+16)
+                dc.w  $000C, $FFFF                                ; $4D62 + $67E2 = $0000B544   - HITBASS-C1     - $0000C9B0
+.data_04        dc.l  sample_04-(default_sample_data+24)
+                dc.w  $0018, $FFFF                                ; $4D6A + $7C46 = $0000C9B0   - HITSNARE-C2    - $0000DE68 
+.data_05        dc.l  sample_05-(default_sample_data+32)
+                dc.w  $0030, $FFFF                                ; $4D72 + $90F6 = $0000DE68   - KIT-HIHAT-C4   - $0000E126
+.data_06        dc.l  sample_06-(default_sample_data+40)
+                dc.w  $0032, $FFFF                                ; $4D7A + $93AC = $0000E126   - KIT-OPENHAT-D4 - $0000ED2C
+.data_07        dc.l  sample_07-(default_sample_data+48)
+                dc.w  $0011, $0000                                ; $4D82 + $9FAA = $0000ED2C   - BASS2-F        - $0000FB04
+.data_08        dc.l  sample_08-(default_sample_data+56)
+                dc.w  $0038, $0000                                ; $4D8A + $AD7A = $0000FB04   - TIMELESS-GS    - $00010838
+.data_09        dc.l  sample_09-(default_sample_data+64)
+                dc.w  $0014, $0000                                ; $4D92 + $BAA6 = $00010838   - TIMEBASS-GS    - $00011462
+.data_10        dc.l  sample_10-(default_sample_data+72)
+                dc.w  $003E, $0000                                ; $4D9A + $C6C8 = $00011462   - CRUNCHGUITAR-C4- $00013876
+.data_11        dc.l  sample_11-(default_sample_data+80)
+                dc.w  $0018, $0000                                ; $4DA2 + $EAD4 = $00013876   - LAUGH          - $00017F52
+.data_12        dc.l  sample_12-(default_sample_data+88)
+                dc.w  $0018, $0000                                ; $4DAA + $131A8 = $00017F52  - IWANNA         - $0001B986
 .data_end       dc.w  $0000, $0000                                              ; 0 marks the end of sample table data
 
 
@@ -1957,7 +1969,6 @@ default_sample_data                                                             
                 ; End Address:   $000086D5
                 ; Name:          WHATRU 
                 ; sample_01:     original address $00004DB6
-                even
                 include "./music/sample_01.s"
 
 
@@ -1966,7 +1977,6 @@ default_sample_data                                                             
                 ; End Address:   $0000B543
                 ; Name:          IMBATMAN 
                 ; sample_02:     ; original address $000086D6
-                even
                 include "./music/sample_02.s"
 
 
@@ -1975,7 +1985,6 @@ default_sample_data                                                             
                 ; End Address:   $0000C9AF
                 ; Name:          HITBASS-C1
                 ; sample_03      ; original address $0000B544
-                even
                 include "./music/sample_03.s"
 
 
@@ -1984,7 +1993,6 @@ default_sample_data                                                             
                 ; End Address:   $0000DE67
                 ; Name:          HITSNARE-C2
                 ; sample_04     ; original address $0000C9B0
-                even
                 include "./music/sample_04.s"
 
 
@@ -1993,7 +2001,6 @@ default_sample_data                                                             
                 ; End Address:   $0000E125
                 ; Name:          KIT-HIHAT-C4 
                 ; sample_05      ; original address $0000DE68
-                even
                 include "./music/sample_05.s"
                 
                 
@@ -2002,17 +2009,14 @@ default_sample_data                                                             
                 ; End Address:   $0000ED2B
                 ; Name:          KIT-OPENHAT-D4
                 ; sample_06      ; original address $0000E126
-                even
                 include "./music/sample_06.s"
 
                 
-
                 ; --------------------- Sound Sample 7 -------------------
                 ; Start Address: $0000ED2C
                 ; End Address:   $0000FB04
                 ; Name:          BASS2-F
                 ; sample_07      ; original address $0000ED2C
-                even
                 include "./music/sample_07.s"
 
                 
@@ -2021,7 +2025,6 @@ default_sample_data                                                             
                 ; End Address:   $00010837
                 ; Name:          TIMELESS-GS
                 ; sample_08      ; original address $0000FB04
-                even
                 include "./music/sample_08.s"
 
 
@@ -2030,7 +2033,6 @@ default_sample_data                                                             
                 ; End Address:   $00011461
                 ; Name:          TIMEBASS-GS
                 ; sample_09      ; original address $00010838
-                even
                 include "./music/sample_09.s"
                 
                 
@@ -2039,7 +2041,6 @@ default_sample_data                                                             
                 ; End Address:   $00013875
                 ; Name:          CRUNCHGUITAR-C4
                 ; sample_10      ; original address $00011462
-                even
                 include "./music/sample_10.s"
 
 
@@ -2048,7 +2049,6 @@ default_sample_data                                                             
                 ; End Address:   $00017F51
                 ; Name:          LAUGH
                 ; sample_11      ; original address $00013876
-                even
                 include "./music/sample_11.s"
 
 
@@ -2057,17 +2057,12 @@ default_sample_data                                                             
                 ; End Address:   $0001B985
                 ; Name:          IWANNA
                 ; sample_12      ; original address $00017F52
-                even
                 include "./music/sample_12.s"
 
                 ; ------------- end of sample data ---------------
 
 
 
-
-
-
-                even
                 ; ----------------------- unknown data -------------------------------
 L0001B986 dc.w $0002, $0202                                                     ;................
 L0001B98A dc.w $000C
@@ -2084,9 +2079,6 @@ L0001B9DA dc.w $0000
 
 
 
-
-
-                even
                 ; ---------------------- song table ----------------------
                 ; 4 values per song entry (channel settings)
                 ; each 2byte value is an offset to the channel data for the song
@@ -2169,7 +2161,7 @@ L0001B9FF       dc.b $90,$0C,$8F,$03,$18,$96,$80        ; Pattern/Command Data?
 
 
 
-                even
+
                 ;------------ songs channel data base address -------------
                 ; base address in init_song 
 song_channel_data_base                  ; original address $0001BA06
@@ -2224,7 +2216,7 @@ L0001BA33       dc.b $81                                ; store ptr in channel d
 
                 ;------------- data shared by both channel 0 (arpeggios) & channel 3 (voice/guitar)  -------------------
 song_00_channel_0_3_data                                   ; original address $0001BA3E - song_data_base + (#$0000)
-                dc.b $85,$87,$60, $8F,$01,$90,$08,$8E,$8C,$84,$06
+                dc.b $85,$87,$60,$80,$8F,$01,$90,$08,$8E,$8C,$84,$06
 L0001BA4A       dc.b $38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38
 L0001BA5A       dc.b $3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A
 L0001BA6A       dc.b $3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F
@@ -2234,20 +2226,20 @@ L0001BA8A       dc.b $80
 
                 ;------------- data used by channel 1 (Drums) --------------------
 song_00_channel_1_data                                     ; original address $0001BA8B - song_data_base + (#$0004) 
-L0001BA8B       dc.b $8F,$02,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90 
-L0001BA9A       dc.b $05,$40,$06,$90,$04,$18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90
-L0001BAAA       dc.b $05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90
-L0001BABA       dc.b $06,$41,$06,$90,$05,$40,$06,$90,$03,$0C,$06,$90,$05,$40,$06,$90
-L0001BACA       dc.b $06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06,$41,$0C,$90
-L0001BADA       dc.b $03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90
-L0001BAEA       dc.b $04,$18,$0C,$90,$06,$41,$06,$90,$04,$18,$06,$90,$03,$0C,$06,$90
-L0001BAFA       dc.b $05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90
-L0001BB0A       dc.b $06,$41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90
-L0001BB1A       dc.b $05,$40,$06,$90,$04,$18,$0C,$90,$06,$41,$06,$90,$05,$40,$06,$90
-L0001BB2A       dc.b $03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90
-L0001BB3A       dc.b $04,$18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90
-L0001BB4A       dc.b $06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$06,$90,$04,$18,$06,$90
-L0001BB5A       dc.b $04,$18,$06,$90,$04,$18,$06,$80
+L0001BA8B       dc.b $8F,$02,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05 
+L0001BA9B       dc.b $40,$06,$90,$04,$18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90,$05
+L0001BAAB       dc.b $40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06
+L0001BABB       dc.b $41,$06,$90,$05,$40,$06,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06
+L0001BACB       dc.b $41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06,$41,$0C,$90,$03
+L0001BADB       dc.b $0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04
+L0001BAEB       dc.b $18,$0C,$90,$06,$41,$06,$90,$04,$18,$06,$90,$03,$0C,$06,$90,$05
+L0001BAFB       dc.b $40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06
+L0001BB0B       dc.b $41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05
+L0001BB1B       dc.b $40,$06,$90,$04,$18,$0C,$90,$06,$41,$06,$90,$05,$40,$06,$90,$03
+L0001BB2B       dc.b $0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04
+L0001BB3B       dc.b $18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06
+L0001BB4B       dc.b $41,$06,$90,$05,$40,$06,$90,$04,$18,$06,$90,$04,$18,$06,$90,$04
+L0001BB5B       dc.b $18,$06,$90,$04,$18,$06,$80
 
                 ;-------------- data used by channel 2 (bass) -----------------------
 song_00_channel_2_data                                  ; original address $0001BB62 - song_data_base + (#0006)
