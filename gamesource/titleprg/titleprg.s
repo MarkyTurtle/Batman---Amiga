@@ -2103,10 +2103,14 @@ song_table                                              ; original address $0001
                 ;--------------------- Song 00 - Title Screen - Music --------------
                 ; offsets to channel initialisation data
 song_00                                                 ; original address $0001b9dc
-.channel_init_data_offset_00 dc.w $003E                 ; original address $0001b9dc + $3e = $1ba1a
-.channel_init_data_offset_01 dc.w $0048                 ; original address $0001b9de + $48 = $1ba26
-.channel_init_data_offset_02 dc.w $0049                 ; original address $0001b9e0 + $49 = $1ba29
-.channel_init_data_offset_03 dc.w $0051                 ; original address $0001b9e2 + $51 = $1ba33
+.channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_table                 ; original address $0001b9dc + $3e = $1ba1a
+.channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_table+2)             ; original address $0001b9de + $48 = $1ba26
+.channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_table+4)             ; original address $0001b9e0 + $49 = $1ba29
+.channel_init_data_offset_03 dc.w song_00_channel_03_init_data-(song_table+6)             ; original address $0001b9e2 + $51 = $1ba33
+;.channel_init_data_offset_00 dc.w $003E                 ; original address $0001b9dc + $3e = $1ba1a
+;.channel_init_data_offset_01 dc.w $0048                 ; original address $0001b9de + $48 = $1ba26
+;.channel_init_data_offset_02 dc.w $0049                 ; original address $0001b9e0 + $49 = $1ba29
+;.channel_init_data_offset_03 dc.w $0051                 ; original address $0001b9e2 + $51 = $1ba33
 
 
 
