@@ -4237,7 +4237,15 @@ title_screen_colors                                                     ; origin
 
 
                 even
+
+
+        IFD TEST_TITLEPRG
 test_bitplanes  dcb.w   40068,$ff00
 
 
-test_display    dcb.w   40000,$f0f0
+test_display    
+                INCDIR './gfx/'
+                INCBIN 'titlepic.iff'
+                ;dcb.w   40000,$f0f0
+        ENDC
+

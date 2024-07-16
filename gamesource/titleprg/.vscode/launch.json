@@ -29,5 +29,6 @@
             ],
             "preLaunchTask": "amigaassembly: build"
         }
+        
     ]
 }
