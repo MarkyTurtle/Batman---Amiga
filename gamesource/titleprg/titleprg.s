@@ -54,7 +54,7 @@ kill_system
 
 .start_title_screen
                 jmp     title_screen_start                      ; Entry point $0001c000
-
+                ;jmp     end_game_start
 
 
                 ;------------------ init system -------------------------
@@ -4251,3 +4251,4 @@ test_display
                 dcb.w   40000,$f0f0
         ENDC
 
+; 0003f1ea - text font
