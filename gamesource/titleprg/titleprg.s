@@ -2183,16 +2183,26 @@ L0001B9FF       dc.b $90,$0C,$8F,$03,$18,$96,$80        ; Pattern/Command Data?
                 ;------------ songs channel data base address -------------
                 ; base address in init_song 
 song_channel_data_base                  ; original address $0001BA06
-L0001BA06       dc.w $0038              ; offset value - #$1ba3e = song 00 channel 0 & 3 data
-                dc.w $003A              ; unknown offset
-L0001BA0A       dc.w $0081              ; offset value - #$1ba8b = song 00 channel 1 data
-L0001BA0C       dc.w $0156              ; offset value - #$1bb62 = song 00 channel 2 data
-L0001BA0E       dc.w $01A3              ; offset value - #$1bbb1 = song 00 channel 3 data
-L0001BA10       dc.w $01BC              ; unknown offset
-                dc.w $01CF              ; unknown offset
-L0001BA14       dc.w $FFE4              ; offset value -#$1c (-28) = song 01 channel 3 data
-L0001BA16       dc.w $FFE9              ; offset value -#$17 (-23) = song 02 channel 3 data
-                dc.w $0222
+L0001BA06       dc.w (song_00_channel_0_3_data-L0001BA06)       ; offset value - #$1ba3e = song 00 channel 0 & 3 data
+L0001BA08       dc.w (L0001BA42-L0001BA08)                      ; $1ba42
+L0001BA0A       dc.w (song_00_channel_1_data-L0001BA0A)         ; offset value - #$1ba8b = song 00 channel 1 data
+L0001BA0C       dc.w (song_00_channel_2_data-L0001BA0C)         ; offset value - #$1bb62 = song 00 channel 2 data
+L0001BA0E       dc.w (song_00_channel_3_data-L0001BA0E)         ; offset value - #$1bbb1 = song 00 channel 3 data
+L0001BA10       dc.w (L0001BBCC-L0001BA10)                      ; $1bbcc
+L0001BA12       dc.w (L0001BBE1-L0001BA12)                      ; $1bbe1
+L0001BA14       dc.w (song_01_channel_3_data-L0001BA14)         ; offset value -#$1c (-28) = song 01 channel 3 data
+L0001BA16       dc.w (song_02_channel_3_data-L0001BA16)         ; offset value -#$17 (-23) = song 02 channel 3 data
+L0001BA18       dc.w (L0001BC3A-L0001BA18)                      ; $1bc3a
+;L0001BA06       dc.w $0038              ; offset value - #$1ba3e = song 00 channel 0 & 3 data
+;L0001BA08       dc.w $003A              ; unknown offset
+;L0001BA0A       dc.w $0081              ; offset value - #$1ba8b = song 00 channel 1 data
+;L0001BA0C       dc.w $0156              ; offset value - #$1bb62 = song 00 channel 2 data
+;L0001BA0E       dc.w $01A3              ; offset value - #$1bbb1 = song 00 channel 3 data
+;L0001BA10       dc.w $01BC              ; unknown offset
+;L0001BA12       dc.w $01CF              ; unknown offset
+;L0001BA14       dc.w $FFE4              ; offset value -#$1c (-28) = song 01 channel 3 data
+;L0001BA16       dc.w $FFE9              ; offset value -#$17 (-23) = song 02 channel 3 data
+;L0001BA18       dc.w $0222
 
 
 
@@ -2234,7 +2244,9 @@ L0001BA33       dc.b $81                                ; store ptr in channel d
 
                 ;------------- data shared by both channel 0 (arpeggios) & channel 3 (voice/guitar)  -------------------
 song_00_channel_0_3_data                                   ; original address $0001BA3E - song_data_base + (#$0000)
-                dc.b $85,$87,$60,$80,$8F,$01,$90,$08,$8E,$8C,$84,$06
+L0001BA3E       dc.b $85,$87,$60,$80
+
+L0001BA42       dc.b $8F,$01,$90,$08,$8E,$8C,$84,$06
 L0001BA4A       dc.b $38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38
 L0001BA5A       dc.b $3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A
 L0001BA6A       dc.b $3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F
@@ -2273,14 +2285,15 @@ L0001BBAA       dc.b $19,$0C,$1E,$0C,$20,$0C,$80
 
 
                 ;----------------------- unused music data? -------------------------
+song_00_channel_3_data
 L0001BBB1       dc.b $8F,$03,$90,$01,$87,$54,$23,$90,$90
 L0001BBBA       dc.b $02,$23,$06,$23,$96,$90,$01,$87,$54,$23,$06,$23,$8A,$90,$02,$23
 L0001BBCA       dc.b $9C,$80
 
-                dc.b $90,$0A,$8F,$04,$8B,$14,$01,$03,$3D,$48,$3F,$18,$3A,$60
+L0001BBCC       dc.b $90,$0A,$8F,$04,$8B,$14,$01,$03,$3D,$48,$3F,$18,$3A,$60
 L0001BBDA       dc.b $3A,$48,$3D,$18,$38,$60,$80
 
-                dc.b $90,$09,$8F,$02,$14,$0C,$20,$0C,$20
+L0001BBE1       dc.b $90,$09,$8F,$02,$14,$0C,$20,$0C,$20
 L0001BBEA       dc.b $0C,$14,$06,$1E,$0C,$14,$06,$20,$0C,$1E,$0C,$20,$0C,$14,$0C,$20
 L0001BBFA       dc.b $0C,$20,$0C,$14,$06,$1E,$0C,$14,$06,$20,$06,$14,$06,$1E,$06,$14
 L0001BC0A       dc.b $06,$20,$06,$14,$06,$0F,$0C,$1B,$0C,$1B,$0C,$0F,$06,$19,$0C,$0F
