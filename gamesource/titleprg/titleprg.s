@@ -3515,7 +3515,7 @@ copy_title_screen_bitplanes
         IFND     TEST_TITLEPRG
                 lea.l   $00040000,a0
         ELSE
-                lea.l   test_bitplanes,a0
+                lea.l   test_bitplanes+10,a0
         ENDC
                 bra.w   copy_bitplanes_to_display                 ; calls $0001d3da
                 ; uses routine rts to return to caller
@@ -3863,7 +3863,8 @@ reset_title_screen_display                                              ; origin
                 move.b  #$f4,$00dff08e                                  ; DIWSTRT - reset window to closed
                 moveq   #$01,d0
                 bsr.w   raster_wait_161                                 ; wait for 2 frames ; calls $0001c2f8
-                move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
+                move.w  #$1000,$00dff100                                ; BPLCON0 - 5 bitplane screen
+                ;move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
                 move.w  #$0040,$00dff104                                ; BPLCON2 - Playfield 2 - priority (dual playfield?)
                 move.w  #$0000,$00dff102                                ; BPLCON1 - Clear scroll delay
                 move.l  #DISPLAY_BITPLANE_ADDRESS,L0001CA42             ; #$00063190,$0001ca42 [00000000]
