@@ -23,16 +23,19 @@
                 INCDIR  "include"
                 INCLUDE "hw.i"
 
-TEST_TITLEPRG SET 1    
+TEST_TITLEPRG SET 1             ; run a test build with imported GFX
+TEST_JOKER    SET 1            ; start with joker screen, comment out to start with batman screen
 
         IFND TEST_TITLEPRG
 DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
 ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
 JOKER_GFX                       EQU     $49C40
+BATMAN_GFX                      EQU     $56460
         ELSE
 DISPLAY_BITPLANE_ADDRESS        EQU     test_display
 ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c                 ; address of charset in memory
 JOKER_GFX                       EQU     test_bitplanes+$AA06
+BATMAN_GFX                      EQU     test_bitplanes+$1722A
         ENDC
 
                                          ; Comment this to remove 'test'
@@ -49,10 +52,10 @@ kill_system
                 bsr     init_system
 
 .mouse_loop
-                subq    #1,d0
-                move.w  d0,$dff180
-                btst    #$6,$bfe001
-                bne.s   .mouse_loop
+                ;subq    #1,d0
+                ;move.w  d0,$dff180
+                ;btst    #$6,$bfe001
+                ;bne.s   .mouse_loop
 
 .start_title_screen
                 ;jmp     title_screen_start                      ; Entry point $0001c000
@@ -4032,7 +4035,9 @@ do_return_to_title_screen                                                       
                 ; or whether it's a game over.
 do_gameover_completion                                                          ; original routine address $0001d46e
                 btst.b  #PANEL_STATUS_2_GAME_COMPLETED,PANEL_STATUS_2           ; #$0006,$0007c875 
+                IFD TEST_JOKER
                 beq.w   display_endgame_joker                                   ; jmp $0001d4ec
+                ENDC
 
 
 
@@ -4045,7 +4050,8 @@ display_completion_screen                                                       
                 move.w  #$4000,$00dff100                                        ; set 4 bitplane screen
                 lea.l   palette_16_colours,a0                                   ; L0001d4cc ; 16 colour palette address
                 bsr.w   copper_copy                                             ; calls $0001d3a0
-                lea.l   $00056460,a0                                            ; a0 = source gfx
+                lea.l   BATMAN_GFX,a0                                            ; a0 = source gfx
+                ;lea.l   $00056460,a0                                            ; a0 = source gfx
                 bsr.w   copy_bitplanes_to_display                               ; calls $0001d3da
                 move.b  #$2c,copper_diwstrt                                     ; $0001d6e8 - set window open
                 move.b  #$f4,copper_diwstop                                     ; $0001d6ec 
