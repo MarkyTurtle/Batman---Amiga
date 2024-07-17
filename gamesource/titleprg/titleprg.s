@@ -3515,7 +3515,7 @@ copy_title_screen_bitplanes
         IFND     TEST_TITLEPRG
                 lea.l   $00040000,a0
         ELSE
-                lea.l   test_bitplanes+10,a0
+                lea.l   test_bitplanes+(40*88)+10,a0
         ENDC
                 bra.w   copy_bitplanes_to_display                 ; calls $0001d3da
                 ; uses routine rts to return to caller
