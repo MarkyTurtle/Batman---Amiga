@@ -25,14 +25,14 @@
 
 TEST_TITLEPRG SET 1    
 
-
-
         IFND TEST_TITLEPRG
 DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
 ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
+JOKER_GFX                       EQU     $49C40
         ELSE
 DISPLAY_BITPLANE_ADDRESS        EQU     test_display
 ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c                 ; address of charset in memory
+JOKER_GFX                       EQU     test_bitplanes+$AA06
         ENDC
 
                                          ; Comment this to remove 'test'
@@ -55,8 +55,8 @@ kill_system
                 bne.s   .mouse_loop
 
 .start_title_screen
-                jmp     title_screen_start                      ; Entry point $0001c000
-                ;jmp     end_game_start
+                ;jmp     title_screen_start                      ; Entry point $0001c000
+                jmp     end_game_start
 
 
                 ;------------------ init system -------------------------
@@ -3865,8 +3865,8 @@ reset_title_screen_display                                              ; origin
                 move.b  #$f4,$00dff08e                                  ; DIWSTRT - reset window to closed
                 moveq   #$01,d0
                 bsr.w   raster_wait_161                                 ; wait for 2 frames ; calls $0001c2f8
-                move.w  #$1000,$00dff100                                ; BPLCON0 - 5 bitplane screen
-                ;move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
+                ;move.w  #$1000,$00dff100                                ; BPLCON0 - 5 bitplane screen
+                move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
                 move.w  #$0040,$00dff104                                ; BPLCON2 - Playfield 2 - priority (dual playfield?)
                 move.w  #$0000,$00dff102                                ; BPLCON1 - Clear scroll delay
                 move.l  #DISPLAY_BITPLANE_ADDRESS,L0001CA42             ; #$00063190,$0001ca42 [00000000]
@@ -4075,9 +4075,11 @@ palette_16_colours                                                              
 display_endgame_joker                                                   ; original address $0001d4f0
                 move.l  #$2800,d0                                       ; d0,d4 = bitplane size (bytes)
                 bsr.w   reset_title_screen_display                      ; calls $0001d2de
-                lea.l   $00049c40,a0                                    ; a0 = display palette colour table
+                lea.l   test_bitplanes,a0                                    ; a0 = display palette colour table
+                lea.l   JOKER_GFX+4,a0                                    ; a0 = display palette colour table
                 bsr.w   copper_copy                                     ; calls $0001d3a0
-                lea.l   $00049c80,a0                                    ; a0 = display screen gfx
+                lea.l   JOKER_GFX+$44,a0                                    ; a0 = display palette colour table
+                ;lea.l   $00049c80,a0                                    ; a0 = display screen gfx
                 bsr.w   copy_gfx_to_display                             ; calls $0001d41c
                 move.b  #$2c,copper_diwstrt                             ; $0001d6e8
                 move.b  #$2b,copper_diwstop                             ; $0001d6ec
