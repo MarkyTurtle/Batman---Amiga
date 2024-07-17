@@ -25,12 +25,14 @@
 
 TEST_TITLEPRG SET 1    
 
-ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
+
 
         IFND TEST_TITLEPRG
 DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
+ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
         ELSE
 DISPLAY_BITPLANE_ADDRESS        EQU     test_display
+ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c                 ; address of charset in memory
         ENDC
 
                                          ; Comment this to remove 'test'
