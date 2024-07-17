@@ -1573,7 +1573,7 @@ process_inner_chunk
                 subq.l  #$04,d0                 ; d0 = remaining bytes
                 bsr.w   process_sample_chunk    ; calls L00004a50 ; process iff chunks
                 bra.b   process_inner_chunk     ; jmp L00004a3c ; loop while data remaining
-.exit
+.exit                                           ; original address $00004a4a
                 movem.l (a7)+,d0/a0
                 rts
 
@@ -1612,9 +1612,9 @@ process_cat_chunk                               ; original routine address L0000
                 move.l  d0,d1                   ; d1 = chunk length
                 btst.l  #$0000,d1               ; test odd/even length
                 beq.b   .no_pad_byte            ; is even, no pad byte
-.add_pad_byte
+.add_pad_byte                                   ; addr $4a7c
                 addq.l  #$01,d1                 ; is odd, add pad byte
-.no_pad_byte
+.no_pad_byte                                    ; addr $4a7e
                 addq.l  #$04,d1                 ; add length field to chunk len
                 add.l   d1,$0004(a7)            ; update address ptr on stack (end of chunk)
                 sub.l   d1,(a7)                 ; subtract chunk length from remaining bytes on stack
@@ -1632,15 +1632,15 @@ process_cat_chunk                               ; original routine address L0000
                 ; IN: D0 = length of remaining data.
                 ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
                 ;
-process_list_chunk
+process_list_chunk                              ; original addr $00004a8c
                 movem.l d0/a0,-(a7)
                 move.l  (a0)+,d0
                 move.l  d0,d1
                 btst.l  #$0000,d1
                 beq.b   .no_pad_byte
-.add_pad_byte
+.add_pad_byte                                   ; addr $4a9a
                 addq.l  #$01,d1
-.no_pad_byte
+.no_pad_byte                                    ; addr $4a9c
                 addq.l  #$04,d1
                 add.l   d1,$0004(a7)
                 sub.l   d1,(a7)
@@ -1666,9 +1666,9 @@ process_form_chunk                           ; original routine address L00004aa
                 move.l  d0,d1                   ; d1 = length of FORM data
                 btst.l  #$0000,d1               ; check of length is odd
                 beq.b   .no_pad_byte            ; even length (no pad byte required)
-.add_pad_byte
+.add_pad_byte                                   ; addr $4aba
                 addq.l  #$01,d1                 ; odd length (add pad byte)
-.no_pad_byte
+.no_pad_byte                                    ; addr $4abc
                 addq.l  #$04,d1                 ; add length field to chunk len
                 add.l   d1,$0004(a7)            ; update address ptr on stack (end of chunk)
                 sub.l   d1,(a7)                 ; subtract chunk length from remaining bytes on stack
@@ -1692,14 +1692,14 @@ process_form_chunk                           ; original routine address L00004aa
                 ; IN: D0 = length of remaining data.
                 ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
                 ;
-process_8svx_chunk
+process_8svx_chunk                                      ; original address $00004ade
                 tst.l   d0                              ; test end of sample data
                 beq.b   .exit                           ; if so, then exit
                 move.l  (a0)+,d1                        ; d1 = inner chunk identifier
                 subq.l  #$04,d0                         ; d0 = updated remaining bytes
                 bsr.w   process_inner_8svx_chunk        ; calls $00004af2
                 bra.b   process_8svx_chunk              ; jmp L00004ade ; loop until no bytes remaining.
-.exit
+.exit                                                   ; addr $4aec
                 movem.l (a7)+,d0/a0                     ; exit
                 rts
 
@@ -1726,15 +1726,15 @@ process_inner_8svx_chunk                                ; original routine addre
                 beq.w   process_vhdl_chunk              ; jmp L00004b42
                 cmp.l   #'BODY',d1                       ;#$424f4459,d1
                 beq.w   process_body_chunk              ; L00004b68
-.skip_unused_chunks
+.skip_unused_chunks                                     ; addr $4b20
                 movem.l d0/a0,-(a7)
                 move.l  (a0)+,d0
                 move.l  d0,d1
                 btst.l  #$0000,d1
                 beq.b   .no_pad_byte
-.add_pad_byte
+.add_pad_byte                                           ; addr $4b2e
                 addq.l  #$01,d1
-.no_pad_byte
+.no_pad_byte                                            ; addr $4b30
                 addq.l  #$04,d1
                 add.l   d1,$0004(a7)
                 sub.l   d1,(a7)
@@ -1760,9 +1760,9 @@ process_vhdl_chunk                              ; original address L00004b42
                 move.l  d0,d1                   ; d1 = length of chunk
                 btst.l  #$0000,d1               ; is pad byte required (odd length)
                 beq.b   .no_pad_byte            ; no pad byte (length is even)
-.add_pad_byte
+.add_pad_byte                                   ; addr $4b50
                 addq.l  #$01,d1                 ; add pad byte (make length even)
-.no_pad_byte
+.no_pad_byte                                    ; addr $4b52
                 addq.l  #$04,d1                 ; update chunk length (include length field)
                 add.l   d1,$0004(a7)            ; update A0 data ptr on stack (end of chunk)
                 sub.l   d1,(a7)                 ; update d0 remaining data on stack
@@ -1789,9 +1789,9 @@ process_body_chunk                              ; original routine address L0004
                 move.l  d0,d1                   ; d1 = body length
                 btst.l  #$0000,d1               ; check for odd length
                 beq.b   .no_pad_byte            ; even length (no pad byte)
-.add_pad_byte
+.add_pad_byte                                   ; addr $4b76
                 addq.l  #$01,d1
-.no_pad_byte
+.no_pad_byte                                    ; addr $4b78
                 addq.l  #$04,d1                 ; update chunk length (include length field)
                 add.l   d1,$0004(a7)            ; update A0 data ptr on stack (end of chunk)
                 sub.l   d1,(a7)                 ; update d0 remaining data on stack
@@ -2108,10 +2108,10 @@ song_table                                              ; original address $0001
                 ;--------------------- Song 00 - Title Screen - Music --------------
                 ; offsets to channel initialisation data
 song_00                                                 ; original address $0001b9dc
-.channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_table                 ; original address $0001b9dc + $3e = $1ba1a
-.channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_table+2)             ; original address $0001b9de + $48 = $1ba26
-.channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_table+4)             ; original address $0001b9e0 + $49 = $1ba29
-.channel_init_data_offset_03 dc.w song_00_channel_03_init_data-(song_table+6)             ; original address $0001b9e2 + $51 = $1ba33
+.channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_00                 ; original address $0001b9dc + $3e = $1ba1a
+.channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_00+2)             ; original address $0001b9de + $48 = $1ba26
+.channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_00+4)             ; original address $0001b9e0 + $49 = $1ba29
+.channel_init_data_offset_03 dc.w song_00_channel_03_init_data-(song_00+6)             ; original address $0001b9e2 + $51 = $1ba33
 ;.channel_init_data_offset_00 dc.w $003E                 ; original address $0001b9dc + $3e = $1ba1a
 ;.channel_init_data_offset_01 dc.w $0048                 ; original address $0001b9de + $48 = $1ba26
 ;.channel_init_data_offset_02 dc.w $0049                 ; original address $0001b9e0 + $49 = $1ba29
@@ -2123,10 +2123,15 @@ song_00                                                 ; original address $0001
                 ;-------------------- Song 01 - Game Over - Joker Laugh ----------------------
                 ; offsets to channel initialisation data
 song_01                                                 ; original address $0001b9e4
-.channel_init_data_offset_00 dc.w $0000                 ; original address $0001b9e4 - n/a - channel not used
-.channel_init_data_offset_01 dc.w $0000                 ; original address $0001b9e6 - n/a - channel not used
-.channel_init_data_offset_02 dc.w $0000                 ; original address $0001b9e8 - n/a - channel not used
-.channel_init_data_offset_03 dc.w $000A                 ; original address $0001b9ea + $0A = $1b9f4 - song_01_channel_03_init_data
+.channel_init_data_offset_00 dc.w $0000                                                 ; original address $0001b9e4 - n/a - channel not used
+.channel_init_data_offset_01 dc.w $0000                                                 ; original address $0001b9e6 - n/a - channel not used
+.channel_init_data_offset_02 dc.w $0000                                                 ; original address $0001b9e8 - n/a - channel not used
+.channel_init_data_offset_03 dc.w song_01_channel_03_init_data-(song_01+6)              ; original address $0001b9ea + $0A = $1b9f4 - song_01_channel_03_init_data
+;.channel_init_data_offset_00 dc.w $0000                 ; original address $0001b9e4 - n/a - channel not used
+;.channel_init_data_offset_01 dc.w $0000                 ; original address $0001b9e6 - n/a - channel not used
+;.channel_init_data_offset_02 dc.w $0000                 ; original address $0001b9e8 - n/a - channel not used
+;.channel_init_data_offset_03 dc.w $000A                 ; original address $0001b9ea + $0A = $1b9f4 - song_01_channel_03_init_data
+
 
 
 
@@ -2134,10 +2139,14 @@ song_01                                                 ; original address $0001
                 ;-------------------- Song 02 - Game Complete - Batman IWanna ----------------------
                 ; offsets to channel initialisation data
 song_02                                                 ; original address $0001b9ec
-.channel_init_data_offset_00 dc.w $0000                 ; original address $0001b9ec - n/a - channel not used            
-.channel_init_data_offset_01 dc.W $0000                 ; original address $0001b9ee - n/a - channel not used 
-.channel_init_data_offset_02 dc.w $0000                 ; original address $0001b9f0 - n/a - channel not used 
-.channel_init_data_offset_03 dc.w $0004                 ; original address $0001b9f2 + $04 = $0001B9F6 -song_01_channel_03_init_data
+.channel_init_data_offset_00 dc.w $0000                                                 ; original address $0001b9ec - n/a - channel not used            
+.channel_init_data_offset_01 dc.W $0000                                                 ; original address $0001b9ee - n/a - channel not used 
+.channel_init_data_offset_02 dc.w $0000                                                 ; original address $0001b9f0 - n/a - channel not used 
+.channel_init_data_offset_03 dc.w song_02_channel_03_init_data-(song_02+6)              ; original address $0001b9f2 + $04 = $0001B9F6 - song_02_channel_03_init_data
+;.channel_init_data_offset_00 dc.w $0000                 ; original address $0001b9ec - n/a - channel not used            
+;.channel_init_data_offset_01 dc.W $0000                 ; original address $0001b9ee - n/a - channel not used 
+;.channel_init_data_offset_02 dc.w $0000                 ; original address $0001b9f0 - n/a - channel not used 
+;.channel_init_data_offset_03 dc.w $0004                 ; original address $0001b9f2 + $04 = $0001B9F6 - song_01_channel_03_init_data
 
 
 
