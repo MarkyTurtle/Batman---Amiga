@@ -2108,10 +2108,10 @@ song_table                                              ; original address $0001
                 ;--------------------- Song 00 - Title Screen - Music --------------
                 ; offsets to channel initialisation data
 song_00                                                 ; original address $0001b9dc
-.channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_00                 ; original address $0001b9dc + $3e = $1ba1a
-.channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_00+2)             ; original address $0001b9de + $48 = $1ba26
-.channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_00+4)             ; original address $0001b9e0 + $49 = $1ba29
-.channel_init_data_offset_03 dc.w song_00_channel_03_init_data-(song_00+6)             ; original address $0001b9e2 + $51 = $1ba33
+.channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_00     ; arpeggios             ; original address $0001b9dc + $3e = $1ba1a
+.channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_00+2) ; drums            ; original address $0001b9de + $48 = $1ba26
+.channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_00+4) ; bass           ; original address $0001b9e0 + $49 = $1ba29
+.channel_init_data_offset_03 dc.w $0000         ; song_00_channel_03_init_data-(song_00+6)             ; original address $0001b9e2 + $51 = $1ba33
 ;.channel_init_data_offset_00 dc.w $003E                 ; original address $0001b9dc + $3e = $1ba1a
 ;.channel_init_data_offset_01 dc.w $0048                 ; original address $0001b9de + $48 = $1ba26
 ;.channel_init_data_offset_02 dc.w $0049                 ; original address $0001b9e0 + $49 = $1ba29
@@ -2183,7 +2183,7 @@ L0001B9FF       dc.b $90,$0C,$8F,$03,$18,$96,$80        ; Pattern/Command Data?
                 ;------------ songs channel data base address -------------
                 ; base address in init_song 
 song_channel_data_base                  ; original address $0001BA06
-L0001BA06       dc.w (song_00_channel_0_3_data-L0001BA06)       ; offset value - #$1ba3e = song 00 channel 0 & 3 data
+L0001BA06       dc.w (song_00_channel_0_data-L0001BA06)         ; offset value - #$1ba3e = song 00 channel 0 & 3 data
 L0001BA08       dc.w (L0001BA42-L0001BA08)                      ; $1ba42
 L0001BA0A       dc.w (song_00_channel_1_data-L0001BA0A)         ; offset value - #$1ba8b = song 00 channel 1 data
 L0001BA0C       dc.w (song_00_channel_2_data-L0001BA0C)         ; offset value - #$1bb62 = song 00 channel 2 data
@@ -2218,7 +2218,7 @@ L0001BA1A       dc.b $81                                ; store ptr in channel d
 
                 ;-------- Song 00 Channel 1 Init Data - Title Music -------
 song_00_channel_01_init_data                            ; original address $0001ba26 (offset song_table + #$02 + #$0048)
-                dc.b $81                                ; store ptr in channel data #$0002
+L0001BA26       dc.b $81                                ; store ptr in channel data #$0002
                 dc.b $02                                ; offset 4 - music data - song_00_channel_1_data
                 dc.b $80                                ; Pattern/Command Data? 
 
@@ -2242,10 +2242,12 @@ L0001BA33       dc.b $81                                ; store ptr in channel d
 
 
 
-                ;------------- data shared by both channel 0 (arpeggios) & channel 3 (voice/guitar)  -------------------
-song_00_channel_0_3_data                                   ; original address $0001BA3E - song_data_base + (#$0000)
+                ;------------- data used by channel 0 (arpeggios) -------------------
+song_00_channel_0_data                                  ; original address $0001BA3E - song_data_base + (#$0000)
 L0001BA3E       dc.b $85,$87,$60,$80
 
+
+                ;------------- unknown channel data  -------------------
 L0001BA42       dc.b $8F,$01,$90,$08,$8E,$8C,$84,$06
 L0001BA4A       dc.b $38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38
 L0001BA5A       dc.b $3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A
@@ -2284,7 +2286,7 @@ L0001BBAA       dc.b $19,$0C,$1E,$0C,$20,$0C,$80
 
 
 
-                ;----------------------- unused music data? -------------------------
+                ;-----------------------Channel  3 ( Voice & Guitar ) -------------------------
 song_00_channel_3_data
 L0001BBB1       dc.b $8F,$03,$90,$01,$87,$54,$23,$90,$90
 L0001BBBA       dc.b $02,$23,$06,$23,$96,$90,$01,$87,$54,$23,$06,$23,$8A,$90,$02,$23
@@ -2307,6 +2309,7 @@ L0001BC3A       dc.b $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
 
                 ; ----------------------- unused memory -----------------------------
+                even
 L0001BC4A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
 L0001BC5A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
 L0001BC6A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
