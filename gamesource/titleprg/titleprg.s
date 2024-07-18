@@ -2111,7 +2111,7 @@ song_00                                                 ; original address $0001
 .channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_00     ; arpeggios             ; original address $0001b9dc + $3e = $1ba1a
 .channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_00+2) ; drums            ; original address $0001b9de + $48 = $1ba26
 .channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_00+4) ; bass           ; original address $0001b9e0 + $49 = $1ba29
-.channel_init_data_offset_03 dc.w $0000         ; song_00_channel_03_init_data-(song_00+6)             ; original address $0001b9e2 + $51 = $1ba33
+.channel_init_data_offset_03 dc.w song_00_channel_03_init_data-(song_00+6) ; voice and guitar          ; original address $0001b9e2 + $51 = $1ba33
 ;.channel_init_data_offset_00 dc.w $003E                 ; original address $0001b9dc + $3e = $1ba1a
 ;.channel_init_data_offset_01 dc.w $0048                 ; original address $0001b9de + $48 = $1ba26
 ;.channel_init_data_offset_02 dc.w $0049                 ; original address $0001b9e0 + $49 = $1ba29
