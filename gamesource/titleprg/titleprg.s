@@ -500,8 +500,8 @@ do_init_current_song
                 cmp.w   #$0003,d0                               ; check song number in range 1-3
                 bcs.b   .init_song
 
-.stop_playing
-                bsr.w   do_silence_all_audio                       ; calls $00004194
+.stop_playing                                                   ; addr $4258
+                bsr.w   do_silence_all_audio                    ; calls $00004194
                 bra.w   .exit
 
 .init_song                                                      ; original address $00004260
@@ -1088,7 +1088,7 @@ skip_cmds_09_to_17                                        ; original address $00
                 add.w   d0,$0052(a4)                    ; store d0 in #$52 (82)
                 move.l  a3,$000e(a4)                    ; store ptr to current CMD
 
-check_command_08
+check_command_08                                        ; $46b2
 .chk_cmd_08                                             ; original address $000046b2
                 btst.l  #$0007,d7
                 bne.w   exit_command_processing         ; jmp $00004850
@@ -2275,7 +2275,7 @@ L0001BB5B       dc.b $18,$06,$90,$04,$18,$06,$80
 
                 ;-------------- data used by channel 2 (bass) -----------------------
 song_00_channel_2_data                                  ; original address $0001BB62 - song_data_base + (#0006)
-                dc.b $90,$07,$8F,$02,$8E,$8C,$14,$0C
+L0001BB62       dc.b $90,$07,$8F,$02,$8E,$8C,$14,$0C
 L0001BB6A       dc.b $20,$0C,$20,$0C,$14,$06,$1E,$0C,$14,$06,$20,$0C,$1E,$0C,$20,$0C
 L0001BB7A       dc.b $0F,$0C,$1B,$0C,$1B,$0C,$0F,$06,$19,$0C,$0F,$06,$1B,$0C,$19,$0C
 L0001BB8A       dc.b $1B,$0C,$12,$0C,$1E,$0C,$1E,$0C,$12,$06,$1E,$0C,$12,$06,$1E,$0C
