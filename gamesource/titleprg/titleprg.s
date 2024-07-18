@@ -294,56 +294,106 @@ CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in b
 
                 even
 channel_1_status                                        ; original address L00004024
-                dc.w    $8080, $0001, $ba1b, $0001
-                dc.w    $ba1e, $0000, $0000, $0001
-                dc.w    $ba41, $0500, $0001, $b9a6
-                dc.w    $0001, $b9aa, $0101, $0004
-                dc.w    $fd00, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0038, $0000
-                dc.w    $fb6c, $0666, $0000, $4d3a
-                dc.w    $0001, $018f, $0000, $003a
-                dc.w    $3a06, $0018, $0001 
+                dc.w    $8080, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0018, $0 
+;channel_1_status                                        ; original address L00004024
+;                dc.w    $8080, $0001, $ba1b, $0001
+;                dc.w    $ba1e, $0000, $0000, $0001
+;                dc.w    $ba41, $0500, $0001, $b9a6
+;                dc.w    $0001, $b9aa, $0101, $0004
+;                dc.w    $fd00, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0038, $0000
+;                dc.w    $fb6c, $0666, $0000, $4d3a
+;                dc.w    $0001, $018f, $0000, $003a
+;                dc.w    $3a06, $0018, $0001 
 
 channel_2_status                                        ; original address L0000407a
-                dc.w    $8050, $0001, $ba27, $0001
-                dc.w    $ba28, $0000, $0000, $0001
-                dc.w    $bb55, $0100, $0001, $b9ac
-                dc.w    $0001, $b9ae, $0101, $0001
-                dc.w    $1e00, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0018, $0000
-                dc.w    $ca18, $0a28, $0000, $4d3a
-                dc.w    $0001, $01bf, $001e, $0018
-                dc.w    $1800, $0006, $0002
+                dc.w    $8050, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0006, $0 
+;channel_2_status                                        ; original address L0000407a
+;                dc.w    $8050, $0001, $ba27, $0001
+;                dc.w    $ba28, $0000, $0000, $0001
+;                dc.w    $bb55, $0100, $0001, $b9ac
+;                dc.w    $0001, $b9ae, $0101, $0001
+;                dc.w    $1e00, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0018, $0000
+;                dc.w    $ca18, $0a28, $0000, $4d3a
+;                dc.w    $0001, $01bf, $001e, $0018
+;                dc.w    $1800, $0006, $0002
 
-channel_3_status                                        ; original address L000040d0
-                dc.w    $8010, $0001, $ba2a, $0001
-                dc.w    $ba2b, $0000, $0000, $0001
-                dc.w    $bbae, $0100, $0001, $b9ac
-                dc.w    $0001, $b9ae, $0101, $0001
-                dc.W    $1e00, $0000, $0000, $0000
-                dc.W    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0011, $0000
-                dc.w    $ed94, $06b8, $0000, $4d3a
-                dc.w    $0001, $00d3, $001e, $001e
-                dc.w    $1e00, $000c, $0004
 
-channel_4_status                                        ; original address L00004126
-                dc.w    $8084, $0001, $ba34, $0001
-                dc.w    $ba37, $0000, $0000, $0001
-                dc.w    $ba41, $0500, $0001, $b9b4
-                dc.w    $0001, $b9bb, $0101, $0001
-                dc.w    $ff00, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0000, $0000
-                dc.w    $0000, $0000, $0103, $1400
-                dc.w    $0605, $0006, $003e, $0001
-                dc.w    $14ca, $11d6, $0001, $2de0
-                dc.w    $054b, $0279, $0000, $0038
-                dc.w    $3800, $0018, $0008
+channel_3_status                                         ; original address L000040d0
+                dc.w    $8010, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $000c, $0 
+;channel_3_status                                        ; original address L000040d0
+;                dc.w    $8010, $0001, $ba2a, $0001
+;                dc.w    $ba2b, $0000, $0000, $0001
+;                dc.w    $bbae, $0100, $0001, $b9ac
+;                dc.w    $0001, $b9ae, $0101, $0001
+;                dc.W    $1e00, $0000, $0000, $0000
+;                dc.W    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0011, $0000
+;                dc.w    $ed94, $06b8, $0000, $4d3a
+;                dc.w    $0001, $00d3, $001e, $001e
+;                dc.w    $1e00, $000c, $0004
+
+channel_4_status                                         ; original address L00004126
+                dc.w    $8084, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0, $0, $0
+                dc.w    $0, $0018, $0 
+
+;channel_4_status                                        ; original address L00004126
+;                dc.w    $8084, $0001, $ba34, $0001
+;                dc.w    $ba37, $0000, $0000, $0001
+;                dc.w    $ba41, $0500, $0001, $b9b4
+;                dc.w    $0001, $b9bb, $0101, $0001
+;                dc.w    $ff00, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0000, $0000
+;                dc.w    $0000, $0000, $0103, $1400
+;                dc.w    $0605, $0006, $003e, $0001
+;                dc.w    $14ca, $11d6, $0001, $2de0
+;                dc.w    $054b, $0279, $0000, $0038
+;                dc.w    $3800, $0018, $0008
 
 .other_data
 audio_dma                                               ; original address $0000417c
@@ -900,11 +950,11 @@ music_command_17                                        ; addr $0000452c
                 move.b  (a3)+,d0
                 asl.w   #$04,d0
                 adda.w  d0,a0
-                move.w  (a0)+,$003c(a4) 
-                move.l  (a0)+,$003e(a4) 
-                move.w  (a0)+,$0042(a4) 
-                move.l  (a0)+,$0044(a4) 
-                move.w  (a0)+,$0048(a4) 
+                move.w  (a0)+,$003c(a4)                 ; volume 
+                move.l  (a0)+,$003e(a4)                 ; sample start address
+                move.w  (a0)+,$0042(a4)                 ; sample length
+                move.l  (a0)+,$0044(a4)                 ; sample repeat address
+                move.w  (a0)+,$0048(a4)                 ; sample repeat length   
                 bclr.l  #$0006,d7
                 tst.w   (a0)
                 beq.w   play_song_command_loop          ; $00004378
@@ -988,7 +1038,7 @@ continue_command_processing_01                          ; original address $0000
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .continue_cmd12                                         ; original address $45ea
-                move.w  $00(a5,d0.W),d0                 ; d0 = note period value from $00004bba
+                move.w  $00(a5,d0.w),d0                 ; d0 = note period value from $00004bba
                 sub.w   $004a(a4),d0                    ; subtract previous lookup value $4bba
                 asr.w   #$01,d0                         ; d0 = d0/2
                 ext.l   d0
@@ -1033,7 +1083,7 @@ continue_command_processing_02                          ; original address $0000
 
 
 .continue_cmd_09                                        ; original address $0000464a
-                move.w  $00(a5,d0.W),d0                 ; d0 = note period value from $00004bba
+                move.w  $00(a5,d0.w),d0                 ; d0 = note period value from $00004bba
 
                 sub.w   $004a(a4),d0                    ; d0 = d0 - current note period value $00004bba
                 ext.l   d0
@@ -1147,7 +1197,7 @@ chk_cmd_10                                              ; original address$00004
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .continue_cmd_10                                        ; original address $0000471a           
-                move.w  $00(a5,d0.W),d0
+                move.w  $00(a5,d0.w),d0
                 bra.w   store_sample_period             ; L000047a8
 
 
@@ -1191,7 +1241,7 @@ continue_command_processing_05                          ; original address L0000
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .end_cmd_14                                             ; original address L0000477c
-                move.w  $00(a5,d0.W),d0
+                move.w  $00(a5,d0.w),d0
                 bra.w   store_sample_period             ; L000047a8
 
 
@@ -1857,8 +1907,12 @@ L00004BBA       dc.w    $01BF           ; B     (447)           ; note_period_ta
                 dc.w    $0077           ; A#    (119)
 
 
-                ; unknown data
-L00004BEA       dc.w $0021, $0000, $4D3C, $000B, $0000, $4D3C, $000B, $0000
+                ; music command 17 data
+L00004BEA       dc.w $0021
+                dc.l L00004D3C  ; $0000, $4D3C
+                dc.w $000b
+                dc.l L00004D3C  ; $0000, $4D3C
+                dc.w $000B, $0000
 
 
 
@@ -1900,27 +1954,170 @@ INSTR_SAMPLE_REPEAT_PTR EQU     $8
 INSTR_SAMPLE_REPEAT_LEN EQU     $C
 INSTR_SAMPLE_UNKNOWN    EQU     $E
 
-instrument_data                                                                 ; original address L00004BFA
-.instrument_01  dc.w  $0018, $0000, $4E1E, $1C5C, $0000, $4D3A, $0001, $0000    ; original address L00004BFA
-.instrument_02  dc.w  $0018, $0000, $873E, $1703, $0000, $4D3A, $0001, $0000    ; original address L00004C0A
-.instrument_03  dc.w  $000C, $0000, $B5AC, $0A02, $0000, $4D3A, $0001, $FFFF    ; original address L00004C1A
-.instrument_04  dc.w  $0018, $0000, $CA18, $0A28, $0000, $4D3A, $0001, $FFFF    ; original address L00004C2A
-.instrument_05  dc.w  $0030, $0000, $DED0, $012B, $0000, $4D3A, $0001, $FFFF    ; original address L00004C3A
-.instrument_06  dc.w  $0032, $0000, $E18E, $05CF, $0000, $4D3A, $0001, $FFFF  ; original address L00004C4A
-.instrument_07  dc.w  $0011, $0000, $ED94, $06B8, $0000, $4D3A, $0001, $0000    ; original address L00004C5A
-.instrument_08  dc.w  $0038, $0000, $FB6C, $0666, $0000, $4D3A, $0001, $0000    ; original address L00004C6A
-.instrument_09  dc.w  $0014, $0001, $08A0, $05E1, $0000, $4D3A, $0001, $0000    ; original address L00004C7A
-.instrument_10  dc.w  $003E, $0001, $14CA, $11D6, $0001, $2DE0, $054B, $0000    ; original address L00004C8A
-.instrument_11  dc.w  $0018, $0001, $38DE, $233A, $0000, $4D3A, $0001, $0000    ; original address L00004C9A
-.instrument_12  dc.w  $0018, $0001, $7FBA, $1CE6, $0000, $4D3A, $0001, $0000    ; original address L00004CAA
-.instrument_13  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CBA
-.instrument_14  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CCA
-.instrument_15  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CDA
-.instrument_16  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CEA
-.instrument_17  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CFA
-.instrument_18  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D0A
-.instrument_19  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D1A
-.instrument_20  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D2A
+instrument_data                         ; original address L00004BFA
+instrument_01                           ; original address L00004BFA
+.volume         dc.w  $0018
+.samplestart    dc.l  $00004E1E
+.samplelen      dc.w  $1C5C
+.repeatstart    dc.l  silient_repeat
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_02                           ; original address L00004C0A
+.volume         dc.w  $0018
+.samplestart    dc.l  $0000873E
+.samplelen      dc.w  $1703
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_03                           ; original address L00004C1A
+.volume         dc.w  $000C
+.samplestart    dc.l  $0000B5AC
+.samplelen      dc.w  $0A02
+.repeatstart    dc.l  silient_repeat    ; $00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $FFFF    
+instrument_04                           ; original address L00004C2A
+.volume         dc.w  $0018
+.samplestart    dc.l  $0000CA18
+.samplelen      dc.w  $0A28
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $FFFF    
+instrument_05                           ; original address L00004C3A
+.volume         dc.w  $0030
+.samplestart    dc.l  $0000DED0
+.samplelen      dc.w  $012B
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $FFFF    
+instrument_06                           ; original address L00004C4A
+.volume         dc.w  $0032
+.samplestart    dc.l  $0000E18E
+.samplelen      dc.w  $05CF
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $FFFF  
+instrument_07                           ; original address L00004C5A
+.volume         dc.w  $0011
+.samplestart    dc.l  $0000ED94
+.samplelen      dc.w  $06B8
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_08                           ; original address L00004C6A
+.volume         dc.w  $0038
+.samplestart    dc.l  $0000FB6C
+.samplelen      dc.w  $0666
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_09                           ; original address L00004C7A
+.volume         dc.w  $0014
+.samplestart    dc.l  $000108A0
+.samplelen      dc.w  $05E1
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_10                           ; original address L00004C8A
+.volume         dc.w  $003E
+.samplestart    dc.l  $000114CA
+.samplelen      dc.w  $11D6
+.repeatstart    dc.l  $00012DE0
+.repeatlen      dc.w  $054B
+.unknown        dc.w  $0000    
+instrument_11                           ; original address L00004C9A
+.volume         dc.w  $0018
+.samplestart    dc.l  $000138DE
+.samplelen      dc.w  $233A
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_12                           ; original address L00004CAA
+.volume         dc.w  $0018
+.samplestart    dc.l  $00017FBA
+.samplelen      dc.w  $1CE6
+.repeatstart    dc.l  silient_repeat    ;$00004D3A
+.repeatlen      dc.w  $0001
+.unknown        dc.w  $0000    
+instrument_13                           ; original address L00004CBA
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_14                           ; original address L00004CCA
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_15                           ; original address L00004CDA
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_16                           ; original address L00004CEA
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_17                           ; original address L00004CFA
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_18                           ; original address L00004D0A
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_19                           ; original address L00004D1A
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+instrument_20                           ; original address L00004D2A
+.volume         dc.w  $0000
+.samplestart    dc.l  $00000000
+.samplelen      dc.w  $0000
+.repeatstart    dc.l  $00000000
+.repeatlen      dc.w  $0000
+.unknown        dc.w  $0000    
+
+;instrument_data                                                                 ; original address L00004BFA
+;.instrument_01  dc.w  $0018, $0000, $4E1E, $1C5C, $0000, $4D3A, $0001, $0000    ; original address L00004BFA
+;.instrument_02  dc.w  $0018, $0000, $873E, $1703, $0000, $4D3A, $0001, $0000    ; original address L00004C0A
+;.instrument_03  dc.w  $000C, $0000, $B5AC, $0A02, $0000, $4D3A, $0001, $FFFF    ; original address L00004C1A
+;.instrument_04  dc.w  $0018, $0000, $CA18, $0A28, $0000, $4D3A, $0001, $FFFF    ; original address L00004C2A
+;.instrument_05  dc.w  $0030, $0000, $DED0, $012B, $0000, $4D3A, $0001, $FFFF    ; original address L00004C3A
+;.instrument_06  dc.w  $0032, $0000, $E18E, $05CF, $0000, $4D3A, $0001, $FFFF  ; original address L00004C4A
+;.instrument_07  dc.w  $0011, $0000, $ED94, $06B8, $0000, $4D3A, $0001, $0000    ; original address L00004C5A
+;.instrument_08  dc.w  $0038, $0000, $FB6C, $0666, $0000, $4D3A, $0001, $0000    ; original address L00004C6A
+;.instrument_09  dc.w  $0014, $0001, $08A0, $05E1, $0000, $4D3A, $0001, $0000    ; original address L00004C7A
+;.instrument_10  dc.w  $003E, $0001, $14CA, $11D6, $0001, $2DE0, $054B, $0000    ; original address L00004C8A
+;.instrument_11  dc.w  $0018, $0001, $38DE, $233A, $0000, $4D3A, $0001, $0000    ; original address L00004C9A
+;.instrument_12  dc.w  $0018, $0001, $7FBA, $1CE6, $0000, $4D3A, $0001, $0000    ; original address L00004CAA
+;.instrument_13  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CBA
+;.instrument_14  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CCA
+;.instrument_15  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CDA
+;.instrument_16  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CEA
+;.instrument_17  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CFA
+;.instrument_18  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D0A
+;.instrument_19  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D1A
+;.instrument_20  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D2A
+
 
 silient_repeat                                                                  ; original address L00004D3A
                 dc.w  $0000                                                     ; repeat data for end of non-repeating samples (2 bytes)
@@ -1941,29 +2138,29 @@ L00004D4A       dc.w  $DC82, $BB45, $7E24, $A08C
                 ;
                 ; addr $00004D52                                  ; Offset Calc   | Start       | Name           | End
 default_sample_data                                               ;---------------+-------------+----------------+----------
-.data_01        dc.l  sample_01-default_sample_data
+.data_01        dc.l  sample_01-.data_01 
                 dc.w  $0018, $0000                                ; $4D52 + $0064 = $00004DB6   - WHATRU         - $000086D6
-.data_02        dc.l  sample_02-(default_sample_data+8)
+.data_02        dc.l  sample_02-.data_02
                 dc.w  $0018, $0000                                ; $4D5A + $3972 = $000086D6   - IMBATMAN       - $0000B544 
-.data_03        dc.l  sample_03-(default_sample_data+16)
+.data_03        dc.l  sample_03-.data_03
                 dc.w  $000C, $FFFF                                ; $4D62 + $67E2 = $0000B544   - HITBASS-C1     - $0000C9B0
-.data_04        dc.l  sample_04-(default_sample_data+24)
+.data_04        dc.l  sample_04-.data_04 
                 dc.w  $0018, $FFFF                                ; $4D6A + $7C46 = $0000C9B0   - HITSNARE-C2    - $0000DE68 
-.data_05        dc.l  sample_05-(default_sample_data+32)
+.data_05        dc.l  sample_05-.data_05
                 dc.w  $0030, $FFFF                                ; $4D72 + $90F6 = $0000DE68   - KIT-HIHAT-C4   - $0000E126
-.data_06        dc.l  sample_06-(default_sample_data+40)
+.data_06        dc.l  sample_06-.data_06
                 dc.w  $0032, $FFFF                                ; $4D7A + $93AC = $0000E126   - KIT-OPENHAT-D4 - $0000ED2C
-.data_07        dc.l  sample_07-(default_sample_data+48)
+.data_07        dc.l  sample_07-.data_07
                 dc.w  $0011, $0000                                ; $4D82 + $9FAA = $0000ED2C   - BASS2-F        - $0000FB04
-.data_08        dc.l  sample_08-(default_sample_data+56)
+.data_08        dc.l  sample_08-.data_08 
                 dc.w  $0038, $0000                                ; $4D8A + $AD7A = $0000FB04   - TIMELESS-GS    - $00010838
-.data_09        dc.l  sample_09-(default_sample_data+64)
+.data_09        dc.l  sample_09-.data_09
                 dc.w  $0014, $0000                                ; $4D92 + $BAA6 = $00010838   - TIMEBASS-GS    - $00011462
-.data_10        dc.l  sample_10-(default_sample_data+72)
+.data_10        dc.l  sample_10-.data_10 
                 dc.w  $003E, $0000                                ; $4D9A + $C6C8 = $00011462   - CRUNCHGUITAR-C4- $00013876
-.data_11        dc.l  sample_11-(default_sample_data+80)
+.data_11        dc.l  sample_11-.data_11
                 dc.w  $0018, $0000                                ; $4DA2 + $EAD4 = $00013876   - LAUGH          - $00017F52
-.data_12        dc.l  sample_12-(default_sample_data+88)
+.data_12        dc.l  sample_12-.data_12
                 dc.w  $0018, $0000                                ; $4DAA + $131A8 = $00017F52  - IWANNA         - $0001B986
 .data_end       dc.w  $0000, $0000                                              ; 0 marks the end of sample table data
 
@@ -2069,8 +2266,11 @@ default_sample_data                                               ;-------------
 
 
                 ; ----------------------- unknown data -------------------------------
+                ; music command 14 data
 L0001B986 dc.w $0002, $0202                                                     ;................
 L0001B98A dc.w $000C
+
+                ; music command 16 data
 L0001B98C dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B           ;........... .%.+
 L0001B99A dc.w $0031, $0037, $0039, $013C, $1EFE, $0000, $0119, $08FD           ;.1.7.9.<........
 L0001B9AA dc.w $0000, $011E, $0000, $013E, $0000, $020F, $07FF, $000A           ;.......>........
