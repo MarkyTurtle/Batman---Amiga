@@ -315,7 +315,7 @@ channel_1_status                        ; original address L00004024
                 dc.b    $00                             ; 38 - $26 - CMD 09 - Copy Param8 - $25
                 dc.b    $00                             ; 39 - $27 - 
                 dc.l    $00000000                       ; 40 - $28 - CMD 14 - PTR32
-                dc.l    $00000000                       ; 44 - $2c - CMD 14 - Copy PTR32
+                dc.l    $00000000                       ; 44 - $2c - CMD 14 - Copy PTR32 
                 dc.b    $00                             ; 48 - $30 - CMD 14 - Param8
                 dc.b    $00                             ; 49 - $31 - CMD 14 - Copy Param8 $30
                 dc.b    $00                             ; 50 - $32 - CMD 14 - Param8
@@ -891,7 +891,7 @@ jump_table                                             ; original address $00004
 
 music_command_01                                        ; original addrss L000043de
                 movea.l $000a(a4),a3
-                cmpa.w  #$0000,a3
+                cmpa.w  #$0000,a3                       ; if a3 != 0 then next command
                 bne.b   play_song_command_loop          ; $00004378
                 movea.l $0006(a4),a3
                 move.b  -$0001(a3),d0
@@ -1865,7 +1865,7 @@ process_inner_8svx_chunk                                ; original routine addre
                 beq.b   process_list_chunk              ; jmp L00004a8c
                 cmp.l   #'CAT ',d1                       ;#$43415420,d1
                 beq.w   process_cat_chunk               ; jmp L00004a6e
-                cmp.l   #'VHDL',d1                       ;#$56484452,d1
+                cmp.l   #'VHDR',d1                       ;#$56484452,d1
                 beq.w   process_vhdl_chunk              ; jmp L00004b42
                 cmp.l   #'BODY',d1                       ;#$424f4459,d1
                 beq.w   process_body_chunk              ; L00004b68
