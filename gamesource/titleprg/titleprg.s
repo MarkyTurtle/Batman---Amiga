@@ -293,30 +293,48 @@ CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialise
 CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in bytes
 
                 even
+
 channel_1_status                                        ; original address L00004024
-                dc.w    $8080, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0018, $0 
-;channel_1_status                                        ; original address L00004024
-;                dc.w    $8080, $0001, $ba1b, $0001
-;                dc.w    $ba1e, $0000, $0000, $0001
-;                dc.w    $ba41, $0500, $0001, $b9a6
-;                dc.w    $0001, $b9aa, $0101, $0004
-;                dc.w    $fd00, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0038, $0000
-;                dc.w    $fb6c, $0666, $0000, $4d3a
-;                dc.w    $0001, $018f, $0000, $003a
-;                dc.w    $3a06, $0018, $0001 
+                dc.w    $8080                           ; 00
+                dc.l    $0001ba1b                       ; 02
+                dc.l    $0001ba1e                       ; 06
+                dc.l    $00000000                       ; 10 - $0a
+                dc.l    $0001ba41                       ; 14 - $0e
+                dc.b    $05                             ; 18 - $12
+                dc.b    $00                             ; 19 - $13
+                dc.l    $0001b9a6                       ; 20 - $14
+                dc.l    $0001b9aa                       ; 24 - $18
+                dc.w    $0101                           ; 28 - $1c
+                dc.w    $0004                           ; 30 - $1e
+                dc.b    $fd                             ; 32 - $20
+                dc.b    $00                             ; 33 - $21 - CMD 10 - Param (byte)
+                dc.b    $00                             ; 34 - $22 - CMD 10 - Param (byte)
+                dc.b    $00                             ; 35 - $23 - CMD 10 - Param (byte)
+                dc.b    $00                             ; 36 - $24 - CMD 09 - Param (byte)
+                dc.b    $00                             ; 37 - $25 - CMD 09 - Param (byte)
+                dc.b    $00                             ; 38 - $26 - CMD 09 - Working Copy CMD 09
+                dc.b    $00                             ; 39 - $27 - 
+                dc.l    $00000000                       ; 40 - $28 - CMD 14 - PTR (32 bits)
+                dc.l    $00000000                       ; 44 - $2c - CMD 14 - Working Copy PTR CMD 14
+                dc.b    $00                             ; 48 - $30 - CMD 14 - Param (byte)
+                dc.b    $00                             ; 49 - $31 - CMD 14 - Working Copy 48 - $30
+                dc.b    $00                             ; 50 - $32 - CMD 14 - Param (byte)
+                dc.b    $00                             ; 51 - $33 - CMD 14 - Working Copy 51 - $32
+                dc.b    $00                             ; 52 - $34 - CMD 12 - Param  (byte)
+                dc.b    $00                             ; 53 - $35 - CMD 12 - Param  (byte)
+                dc.b    $00                             ; 54 - $36 - CMD 12 - Param  (byte)
+                dc.b    $00                             ; 55 - $37 - CMD 12 - Working Copy $36
+                dc.b    $00                             ; 56 - $38 - CMD 12 - Working Copy $35
+                dc.b    $00                             ; 57 - $39 - CMD 12 - Working Copy $35
+                dc.w    $0000                           ; 58 - $3a - CMD 12 - Division Result (16 bits)
+                dc.w    $0038                           ; 60 - $3c - CMD 17 - Param (16 bits)
+                dc.l    $0000fb6c                       ; 62 - $3e - CMD 17 - PTR (32 bits) 
+                dc.w    $0666                           ; 66 - $42 - CMD 17 - Param (16 bits)
+                dc.w    $00004d3a                       ; 68 - $44 - CMD 17 - PTR (32 bits)
+                dc.w    $0001                           ; 72 - $48 - CMD 16 - Param
+                dc.w    $018f                           ; 74 - $4a -
+                dc.w    $0000, $003a
+                dc.w    $3a06, $0018, $0001 
 
 channel_2_status                                        ; original address L0000407a
                 dc.w    $8050, $0, $0, $0
