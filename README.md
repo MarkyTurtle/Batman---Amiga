@@ -49,6 +49,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
     - [Test .adf disk image](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
  - Disassemble the Title Screen.
     - [Code Project](./gamesource/titleprg)
+    - The Title Screen code can be rebuilt from source and executed in VSCode
  - Disassemble the Platform Levels.
  - Disassemble the Batmobile/Batwing Levels.
  - Disassemble the BatCave Level.
@@ -56,6 +57,21 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+2024-07-19 - Progress to Date
+  - Disassembled Game Source
+      - Panel (Energy Panel, Lives, Scores etc) - Disassembled - [VSCode Project Link](./gamesource/panel/)
+      - Title Screen - Disassembled - [VSCode Project Link](./gamesource/titleprg/)
+      - Game Loader - Disassembled - [VSCode Project Link](./loader/gameloader/modified/) (tvd patched & decoded)
+      - Boot Loader - Disassembled - [VSCode Project Link](./loader/bootblock/)
+
+  - New Source
+      - Custom Loader - MFM DOS Loader for ripped files - [VSCode Project Link](./crack/newloader/src)
+
+  - ADF Test Disks
+      - Single Disk Version (Shrinkler) - [Single Disk ADF](./crack/packedcrack/DosCrackShrinkler.adf)
+      - Single Disk Version (Shrinkler) - Parts Rebuild from Source [Single Disk ADF](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
+
+2024-07-19 - The title screen in now disassembled and can be reassembled and executed in vscode from the project code [titleprg](./gamesource/titleprg/)
 
 2024-07-14 - Can reassemble and run the title screen in test, without gfx loaded. Music player has a fault. The title music drum track is not right, also vocals not playing correctly. It runs without crashing.
 
