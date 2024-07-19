@@ -293,125 +293,200 @@ CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialise
 CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in bytes
 
                 even
-
-channel_1_status                                        ; original address L00004024
-                dc.w    $8080                           ; 00
-                dc.l    $0001ba1b                       ; 02
-                dc.l    $0001ba1e                       ; 06
-                dc.l    $00000000                       ; 10 - $0a
-                dc.l    $0001ba41                       ; 14 - $0e
+ 
+channel_1_status                        ; original address L00004024
+                dc.w    $8080                           ; 00 - $00 - Control Bits (executing CMD bits etc)
+                dc.l    song_00_channel_00_init_data+1  ; 02 - $02 - PTR - Channel Initialisation/CTRL Data ($0001ba1b)
+                dc.l    L0001BA1E                       ; 06 - $06 - Current Data PTR32 - Pattern Data - ($0001ba1e)
+                dc.l    $00000000                       ; 10 - $0a - 
+                dc.l    L0001BA41                       ; 14 - $0e - End of Channel 0 Data - ($0001ba41)
                 dc.b    $05                             ; 18 - $12
                 dc.b    $00                             ; 19 - $13
-                dc.l    $0001b9a6                       ; 20 - $14
-                dc.l    $0001b9aa                       ; 24 - $18
+                dc.l    L0001B9A6                       ; 20 - $14
+                dc.l    L0001B9AA                       ; 24 - $18
                 dc.w    $0101                           ; 28 - $1c
                 dc.w    $0004                           ; 30 - $1e
                 dc.b    $fd                             ; 32 - $20
-                dc.b    $00                             ; 33 - $21 - CMD 10 - Param (byte)
-                dc.b    $00                             ; 34 - $22 - CMD 10 - Param (byte)
-                dc.b    $00                             ; 35 - $23 - CMD 10 - Param (byte)
-                dc.b    $00                             ; 36 - $24 - CMD 09 - Param (byte)
-                dc.b    $00                             ; 37 - $25 - CMD 09 - Param (byte)
-                dc.b    $00                             ; 38 - $26 - CMD 09 - Working Copy CMD 09
+                dc.b    $00                             ; 33 - $21 - CMD 10 - Param8
+                dc.b    $00                             ; 34 - $22 - CMD 10 - Param8
+                dc.b    $00                             ; 35 - $23 - CMD 10 - Param8
+                dc.b    $00                             ; 36 - $24 - CMD 09 - Param8
+                dc.b    $00                             ; 37 - $25 - CMD 09 - Param8
+                dc.b    $00                             ; 38 - $26 - CMD 09 - Copy Param8 - $25
                 dc.b    $00                             ; 39 - $27 - 
-                dc.l    $00000000                       ; 40 - $28 - CMD 14 - PTR (32 bits)
-                dc.l    $00000000                       ; 44 - $2c - CMD 14 - Working Copy PTR CMD 14
-                dc.b    $00                             ; 48 - $30 - CMD 14 - Param (byte)
-                dc.b    $00                             ; 49 - $31 - CMD 14 - Working Copy 48 - $30
-                dc.b    $00                             ; 50 - $32 - CMD 14 - Param (byte)
-                dc.b    $00                             ; 51 - $33 - CMD 14 - Working Copy 51 - $32
-                dc.b    $00                             ; 52 - $34 - CMD 12 - Param  (byte)
-                dc.b    $00                             ; 53 - $35 - CMD 12 - Param  (byte)
-                dc.b    $00                             ; 54 - $36 - CMD 12 - Param  (byte)
-                dc.b    $00                             ; 55 - $37 - CMD 12 - Working Copy $36
-                dc.b    $00                             ; 56 - $38 - CMD 12 - Working Copy $35
-                dc.b    $00                             ; 57 - $39 - CMD 12 - Working Copy $35
+                dc.l    $00000000                       ; 40 - $28 - CMD 14 - PTR32
+                dc.l    $00000000                       ; 44 - $2c - CMD 14 - Copy PTR32
+                dc.b    $00                             ; 48 - $30 - CMD 14 - Param8
+                dc.b    $00                             ; 49 - $31 - CMD 14 - Copy Param8 $30
+                dc.b    $00                             ; 50 - $32 - CMD 14 - Param8
+                dc.b    $00                             ; 51 - $33 - CMD 14 - Copy Param8 $32
+                dc.b    $00                             ; 52 - $34 - CMD 12 - Param8
+                dc.b    $00                             ; 53 - $35 - CMD 12 - Param8
+                dc.b    $00                             ; 54 - $36 - CMD 12 - Param8
+                dc.b    $00                             ; 55 - $37 - CMD 12 - Copy Param8 $36
+                dc.b    $00                             ; 56 - $38 - CMD 12 - Copy Param8 $35
+                dc.b    $00                             ; 57 - $39 - CMD 12 - Copy Param8 $35
                 dc.w    $0000                           ; 58 - $3a - CMD 12 - Division Result (16 bits)
-                dc.w    $0038                           ; 60 - $3c - CMD 17 - Param (16 bits)
-                dc.l    $0000fb6c                       ; 62 - $3e - CMD 17 - PTR (32 bits) 
-                dc.w    $0666                           ; 66 - $42 - CMD 17 - Param (16 bits)
-                dc.w    $00004d3a                       ; 68 - $44 - CMD 17 - PTR (32 bits)
-                dc.w    $0001                           ; 72 - $48 - CMD 16 - Param
+                dc.w    $0038                           ; 60 - $3c - CMD 17 - Param16   (Volume?)
+                dc.l    sample_08+104                   ; 62 - $3e - CMD 17 - PTR32     (sample start - $0000fb6c)
+                dc.w    $0666                           ; 66 - $42 - CMD 17 - Param16   (sample len)
+                dc.l    silient_repeat                  ; 68 - $44 - CMD 17 - PTR32     (repeat data - $00004d3a)
+                dc.w    $0001                           ; 72 - $48 - CMD 17 - Param     (repeat len)
                 dc.w    $018f                           ; 74 - $4a -
-                dc.w    $0000, $003a
-                dc.w    $3a06, $0018, $0001 
+                dc.w    $0000                           ; 76 - $4c - 
+                dc.b    $00                             ; 78 - $4e -
+                dc.b    $3a                             ; 79 - $4f - CMD 17 - Working Copy
+                dc.b    $3a                             ; 80 - $50 - CMD 10/17 - Working Copy
+                dc.b    $06                             ; 81 - $51 - CMD 05 - Param
+                dc.w    $0018                           ; 82 - $52 - 16 bits tempo?
+                dc.w    $0001                           ; 84 - $54 - Audio DMA?
+
 
 channel_2_status                                        ; original address L0000407a
-                dc.w    $8050, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0006, $0 
-;channel_2_status                                        ; original address L0000407a
-;                dc.w    $8050, $0001, $ba27, $0001
-;                dc.w    $ba28, $0000, $0000, $0001
-;                dc.w    $bb55, $0100, $0001, $b9ac
-;                dc.w    $0001, $b9ae, $0101, $0001
-;                dc.w    $1e00, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0018, $0000
-;                dc.w    $ca18, $0a28, $0000, $4d3a
-;                dc.w    $0001, $01bf, $001e, $0018
-;                dc.w    $1800, $0006, $0002
+                dc.w    $8050
+                dc.l    L0001BA27
+                dc.l    L0001BA28
+                dc.l    $00000000
+                dc.l    L0001BB55
+                dc.b    $01
+                dc.b    $00
+                dc.l    L0001B9AC
+                dc.l    L0001B9AE
+                dc.w    $0101
+                dc.w    $0001
+                dc.b    $1e
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.w    $0000
+                dc.w    $0018
+                dc.l    sample_04+104                   ; ($0000ca18)
+                dc.w    $0a28
+                dc.l    silient_repeat                  ; ($00004d3a)
+                dc.w    $0001
+                dc.w    $01bf
+                dc.w    $001e
+                dc.b    $00
+                dc.b    $18
+                dc.b    $18
+                dc.b    $00
+                dc.w    $0006
+                dc.w    $0002
 
 
-channel_3_status                                         ; original address L000040d0
-                dc.w    $8010, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $000c, $0 
-;channel_3_status                                        ; original address L000040d0
-;                dc.w    $8010, $0001, $ba2a, $0001
-;                dc.w    $ba2b, $0000, $0000, $0001
-;                dc.w    $bbae, $0100, $0001, $b9ac
-;                dc.w    $0001, $b9ae, $0101, $0001
-;                dc.W    $1e00, $0000, $0000, $0000
-;                dc.W    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0011, $0000
-;                dc.w    $ed94, $06b8, $0000, $4d3a
-;                dc.w    $0001, $00d3, $001e, $001e
-;                dc.w    $1e00, $000c, $0004
 
-channel_4_status                                         ; original address L00004126
-                dc.w    $8084, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0, $0, $0
-                dc.w    $0, $0018, $0 
+channel_3_status                                        ; original address L000040d0
+                dc.w    $8010
+                dc.l    L0001BA2A                       ; ($0001ba2a)
+                dc.l    L0001BA2B                       ; ($0001ba2b)
+                dc.l    $00000000
+                dc.l    L0001BBAE                       ; ($0001bbae)
+                dc.b    $01
+                dc.b    $00
+                dc.l    L0001B9AC                       ; ($0001B9AC)
+                dc.l    L0001B9AE                       ; ($0001B9AE)
+                dc.w    $0101
+                dc.w    $0001
+                dc.b    $1e
+                dc.b    $00
+                dc.b    $00
+                dc.B    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.w    $0000
+                dc.w    $0011
+                dc.l    sample_07+104                   ; ($0000ed94)
+                dc.w    $06b8
+                dc.l    silient_repeat                  ; ($00004d3a)
+                dc.w    $0001
+                dc.w    $00d3
+                dc.w    $001e
+                dc.b    $00
+                dc.b    $1e
+                dc.b    $1e
+                dc.b    $00
+                dc.w    $000c
+                dc.w    $0004
 
-;channel_4_status                                        ; original address L00004126
-;                dc.w    $8084, $0001, $ba34, $0001
-;                dc.w    $ba37, $0000, $0000, $0001
-;                dc.w    $ba41, $0500, $0001, $b9b4
-;                dc.w    $0001, $b9bb, $0101, $0001
-;                dc.w    $ff00, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0000, $0000
-;                dc.w    $0000, $0000, $0103, $1400
-;                dc.w    $0605, $0006, $003e, $0001
-;                dc.w    $14ca, $11d6, $0001, $2de0
-;                dc.w    $054b, $0279, $0000, $0038
-;                dc.w    $3800, $0018, $0008
+
+
+channel_4_status                                        ; original address L00004126
+                dc.w    $8084
+                dc.l    L0001BA34                       ; ($0001ba34)
+                dc.l    L0001BA37                       ; ($0001ba37)
+                dc.l    $00000000
+                dc.l    L0001BA41                       ; ($0001ba41)
+                dc.b    $05
+                dc.b    $00
+                dc.l    L0001B9B4                       ; ($0001b9b4)
+                dc.l    L0001B9BA+1                     ; ($0001b9bb)
+                dc.w    $0101
+                dc.w    $0001
+                dc.b    $ff
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $00
+                dc.b    $01
+                dc.b    $03
+                dc.b    $14
+                dc.b    $00
+                dc.b    $06
+                dc.b    $05
+                dc.w    $0006
+                dc.w    $003e
+                dc.l    sample_10+104                   ; ($000114ca)
+                dc.w    $11d6
+                dc.l    sample_10+6422                  ; ($00012de0)
+                dc.w    $054b
+                dc.w    $0279
+                dc.w    $0000
+                dc.b    $00
+                dc.b    $38
+                dc.b    $38
+                dc.b    $00
+                dc.w    $0018
+                dc.w    $0008
+
 
 .other_data
 audio_dma                                               ; original address $0000417c
@@ -2285,15 +2360,19 @@ default_sample_data                                               ;-------------
 
                 ; ----------------------- unknown data -------------------------------
                 ; music command 14 data
-L0001B986 dc.w $0002, $0202                                                     ;................
+L0001B986 dc.w $0002, $0202                                                     
 L0001B98A dc.w $000C
 
                 ; music command 16 data
-L0001B98C dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B           ;........... .%.+
-L0001B99A dc.w $0031, $0037, $0039, $013C, $1EFE, $0000, $0119, $08FD           ;.1.7.9.<........
-L0001B9AA dc.w $0000, $011E, $0000, $013E, $0000, $020F, $07FF, $000A           ;.......>........
-L0001B9BA dc.w $FF01, $1902, $F605, $FF00, $0001, $190B, $FE01, $FE00           ;................
-L0001B9CA dc.w $0001, $2A14, $FE01, $FE00, $0001, $3E00, $0001, $3200           ;..*.......>...2.
+L0001B98C       dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B       
+L0001B99A       dc.w $0031, $0037, $0039, $013C, $1EFE, $0000 
+L0001B9A6       dc.w $0119, $08FD
+L0001B9AA       dc.w $0000
+L0001B9AC       dc.w $011E
+L0001B9AE       dc.w $0000, $013E, $0000
+L0001B9B4       dc.w $020F, $07FF, $000A
+L0001B9BA       dc.w $FF01, $1902, $F605, $FF00, $0001, $190B, $FE01, $FE00
+L0001B9CA       dc.w $0001, $2A14, $FE01, $FE00, $0001, $3E00, $0001, $3200
 
 L0001B9DA dc.w $0000 
                 ; ----------------------- unknown data -------------------------------
@@ -2428,41 +2507,42 @@ L0001BA18       dc.w (L0001BC3A-L0001BA18)                      ; $1bc3a
                 ;-------- Song 00 Channel 0 Init Data - Title Music -------
 song_00_channel_00_init_data                            ; original address $0001BA1A (offset song_table + #$00 + #$0000)
 L0001BA1A       dc.b $81                                ; store ptr in channel data #$0002
-                dc.b $83, $08                           ; store next byte in channel data #$0012
+L0001BA1B       dc.b $83, $08                           ; store next byte in channel data #$0012
                 dc.b $00                                ; offset 0 - music data song_00_channel_0_data
-                dc.b $01,$01,$01,$01,$83,$08,$00,$80    ; Pattern/Command Data? 
+L0001BA1E       dc.b $01,$01,$01,$01,$83,$08,$00,$80    ; Pattern/Command Data? 
 
 
 
                 ;-------- Song 00 Channel 1 Init Data - Title Music -------
 song_00_channel_01_init_data                            ; original address $0001ba26 (offset song_table + #$02 + #$0048)
 L0001BA26       dc.b $81                                ; store ptr in channel data #$0002
-                dc.b $02                                ; offset 4 - music data - song_00_channel_1_data
-                dc.b $80                                ; Pattern/Command Data? 
+L0001BA27       dc.b $02                                ; offset 4 - music data - song_00_channel_1_data
+L0001BA28       dc.b $80                                ; Pattern/Command Data? 
 
 
 
                 ;-------- Song 00 Channel 2 Init Data - Title Music -------
 song_00_channel_02_init_data                            ; original address $0001BA29 (offset song_table + #$04 + #$0049)
 L0001BA29       dc.b $81                                ; store ptr in channel data #$0002
-                dc.b $03                                ; offset 6 - music data - song_00_channel_2_data
-                dc.b $03,$03,$03,$03,$03,$06,$06,$80    ; Pattern/Command Data? 
+L0001BA2A       dc.b $03                                ; offset 6 - music data - song_00_channel_2_data
+L0001BA2B       dc.b $03,$03,$03,$03,$03,$06,$06,$80    ; Pattern/Command Data? 
 
 
 
                 ;-------- Song 00 Channel 3 Init Data - Title Music -------
 song_00_channel_03_init_data
 L0001BA33       dc.b $81                                ; store ptr in channel data #$0002
-                dc.b $83, $08                           ; store next byte in channel data #$0012
+L0001BA34       dc.b $83, $08                           ; store next byte in channel data #$0012
                 dc.b $00                                ; offset 8 - music data - song_00_channel_3_data
-                dc.b $04,$05,$05,$83,$08,$00,$80        ; Pattern/Command Data? 
+L0001BA37       dc.b $04,$05,$05,$83,$08,$00,$80        ; Pattern/Command Data? 
 
 
 
 
                 ;------------- data used by channel 0 (arpeggios) -------------------
 song_00_channel_0_data                                  ; original address $0001BA3E - song_data_base + (#$0000)
-L0001BA3E       dc.b $85,$87,$60,$80
+L0001BA3E       dc.b $85,$87,$60
+L0001BA41       dc.b $80
 
 
                 ;------------- unknown channel data  -------------------
@@ -2488,7 +2568,9 @@ L0001BB0B       dc.b $41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90
 L0001BB1B       dc.b $40,$06,$90,$04,$18,$0C,$90,$06,$41,$06,$90,$05,$40,$06,$90,$03
 L0001BB2B       dc.b $0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04
 L0001BB3B       dc.b $18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06
-L0001BB4B       dc.b $41,$06,$90,$05,$40,$06,$90,$04,$18,$06,$90,$04,$18,$06,$90,$04
+L0001BB4B       dc.b $41,$06,$90,$05,$40
+L0001BB50       dc.b $06,$90,$04,$18,$06
+L0001BB55       dc.b $90,$04,$18,$06,$90,$04
 L0001BB5B       dc.b $18,$06,$90,$04,$18,$06,$80
 
                 ;-------------- data used by channel 2 (bass) -----------------------
@@ -2498,7 +2580,8 @@ L0001BB6A       dc.b $20,$0C,$20,$0C,$14,$06,$1E,$0C,$14,$06,$20,$0C,$1E,$0C,$20
 L0001BB7A       dc.b $0F,$0C,$1B,$0C,$1B,$0C,$0F,$06,$19,$0C,$0F,$06,$1B,$0C,$19,$0C
 L0001BB8A       dc.b $1B,$0C,$12,$0C,$1E,$0C,$1E,$0C,$12,$06,$1E,$0C,$12,$06,$1E,$0C
 L0001BB9A       dc.b $20,$0C,$22,$0C,$0D,$0C,$19,$0C,$19,$0C,$0D,$06,$19,$0C,$0D,$06
-L0001BBAA       dc.b $19,$0C,$1E,$0C,$20,$0C,$80
+L0001BBAA       dc.b $19,$0C,$1E,$0C
+L0001BBAE       dc.b $20,$0C,$80
 
 
 
