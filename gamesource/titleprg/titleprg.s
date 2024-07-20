@@ -58,7 +58,7 @@ kill_system
                 ;bne.s   .mouse_loop
 
 .start_title_screen
-                ;jmp     title_screen_start                      ; Entry point $0001c000
+                jmp     title_screen_start                      ; Entry point $0001c000
                 jmp     end_game_start
 
 
