@@ -57,6 +57,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+2024-07-20 - Started disassembling 'code1', the code for level 1 (Axis Chemicals). Began formatting the code, first steps to try to get the code to assemble without errors. Made a start but still much to do.
+
 2024-07-19 - Progress to Date
   - Disassembled Game Source
       - Panel (Energy Panel, Lives, Scores etc) - Disassembled - [VSCode Project Link](./gamesource/panel/)
