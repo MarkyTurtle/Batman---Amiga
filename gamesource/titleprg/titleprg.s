@@ -45,6 +45,8 @@
                 INCLUDE "hw.i"
 
 TEST_TITLEPRG SET 1             ; run a test build with imported GFX
+DEBUG_TYPER   SET 1             ; when set - updated text type on the title screen.
+VBLANK_FIX    SET 1             ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
 TEST_JOKER    SET 1             ; start with joker screen, comment out to start with batman screen
 
 
@@ -3270,13 +3272,27 @@ menu_keypress_flag                                                      ; origin
                 ; IN: D0.l = number of frames to wait + 1
                 ;
 raster_wait_161                                                 ; original routine address $0001c2f8
+
+        IFND VBLANK_FIX
+.vwait 
                 cmp.b   #$a1,$00dff006                          ; compare VHPOSR with #$a1 (161)
-                bne.b   raster_wait_161
+                bne.b   .vwait
                 move.w  #$001e,d1
 .processor_wait
                 dbf.w  d1,.processor_wait
                 dbf.w  d0,raster_wait_161
+        ELSE
+.vwait1 
+                cmp.b   #$a1,$00dff006                          ; compare VHPOSR with #$a1 (161)
+                bne.b   .vwait1
+.vwait2 
+                cmp.b   #$a2,$00dff006                          ; compare VHPOSR with #$a2 (162)
+                bne.b   .vwait2
+                dbf.w  d0,.vwait1
+        ENDC
+
 return_rts      rts
+
 
 
 
@@ -3770,13 +3786,27 @@ typer_extended_command_2                                        ; original addre
                 dc.b $00 
 
 
-title_screen_text                                               ; original address $0001c784
-                dc.b $01,$01                                    ; display co-ords (x,y)
-                dc.b $01                                        ; clear screen command
-                dc.b $0D,$0D,$0D,$0D,$0D,$0D                    ; #$0D = carriage return
-                dc.b '      OCEAN SOFTWARE',$0D,$0D                   
-                dc.b '         PRESENTS   ',$0D                       
-                dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
+title_screen_text       
+
+                IFND DEBUG_TYPER
+                                                                ; original address $0001c784
+                        dc.b $01,$01                                    ; display co-ords (x,y)
+                        dc.b $01                                        ; clear screen command
+                        dc.b $0D,$0D,$0D,$0D,$0D,$0D                    ; #$0D = carriage return
+                        dc.b '      OCEAN SOFTWARE',$0D,$0D                   
+                        dc.b '         PRESENTS   ',$0D                       
+                        dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
+
+                ELSE
+
+                        dc.b $01,$01                                    ; display co-ords (x,y)
+                        dc.b $01                                        ; clear screen command
+                        dc.b $0D,$0D,$0D,$0D,$0D,$0D                    ; #$0D = carriage return
+                        dc.b '      OCEAN SOFTWARE',$0D,$0D                   
+                        dc.b '    REBUILT FROM SOURCE   ',$0D                       
+                        dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
+
+                ENDC
 
                 dc.b $01                                        ; #$01 = clear the screen
                 dc.b $06                                        ; #$06 = No Operation (nop)
