@@ -1,5 +1,8 @@
 
 
+INFINITE_ENERGY_CHEAT   SET 1                           ; if defined then the 'JAMMMM' cheat also gives infinite energy.
+
+
                 section panel,code_c
                 org     $7C7FC                                      ; original load address
 
@@ -7,8 +10,7 @@
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
-                
-           
+
            
                 ; original load address $7C7FC-$80000
                 ; The original program has a longword with the main enrty point
@@ -374,6 +376,14 @@ Exit
                 ;   Add_Hit_Damage  - main api
                 ;
 do_add_hit_damage                                                   ; original routine address $0007fa66
+
+            IFD INFINITE_ENERGY_CHEAT
+                btst    #6,$bfe001
+                beq.s   .do_hit_damage
+                btst.b  #INFINITE_LIVES,panel_status_2              ; test bit 7 of status byte 2,                                  - 0007fb16
+                bne.s   .exit
+            ENDC
+.do_hit_damage
                 tst.w   player_remaining_energy                     ; test player remaining energy with 0, as address $0007c88e    - 0007fa66
                 bne.b   .increase_hit_damage                        ; if player has remaining energy, jmp $0007fa76                - 0007fa6c
                 clr.w   player_hit_damage                           ; clear 16b its as address $0007C890                           - 0007fa6e
@@ -381,7 +391,7 @@ do_add_hit_damage                                                   ; original r
 
 .increase_hit_damage
                 add.w   d0,player_hit_damage                        ; add to player hit/damage as address $0007C890                - 0007fa76
-                rts                                                 ; return                                                       - 0007fa7c
+.exit           rts                                                 ; return                                                       - 0007fa7c
 
 
 
