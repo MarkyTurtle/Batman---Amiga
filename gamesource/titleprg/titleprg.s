@@ -1,6 +1,4 @@
-
-                
-                ;
+             
                 ; Title Screen
                 ; ------------
                 ; Title_Screen_Start            - $0001c000   - First Game Title Screen Start
@@ -14,17 +12,46 @@
                 ; Init_Song                     - $00004010 - D0.l = Song Number to play (0-3, 0 = stop playing)
                 ; Play_Song                     - $00004018 - Call every frame/cycle to play song
                 ;
+                ;
+                ; VSCode Plugins
+                ;----------------
+                ; Requires the 'amiga assembly' plugin in order to build and run.
+                ;
+                ;
+                ; VSCode Test Build
+                ;-------------------
+                ; - 1) Ensure that the 'TEST_TITLEPRG' defintion below is defined.
+                ;
+                ; - 2) Select the 'Run/Start Debugging' or 'Run/Start without debugging' option from the menu.
+                ;
+                ;
+                ; Absolute Build
+                ;----------------
+                ; - 1) Comment out the 'TEST_TITLEPRG' definition below.
+                ;
+                ; - 2) Run the Task 'amigaassembly: build-absolute'
+                ;       - This will create an absolte file org $3FFC called 'titleprg.o' in the /build folder
+                ;
+                ; - 3) This binary file can then be crunched with shrinkler or zxo and copied to the rellevent .adf fr testing.
+                ; 
+
 
                 section panel,code_c
-                ;org     $3ffc                                   ; original load address
                 ;opt     o-
+
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR  "include"
                 INCLUDE "hw.i"
 
 TEST_TITLEPRG SET 1             ; run a test build with imported GFX
-TEST_JOKER    SET 1            ; start with joker screen, comment out to start with batman screen
+TEST_JOKER    SET 1             ; start with joker screen, comment out to start with batman screen
+
+
+        IFND TEST_TITLEPRG
+                org     $3ffc                                           ; original load address $3FFC
+        ENDC
+
 
         IFND TEST_TITLEPRG
 DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
@@ -58,7 +85,7 @@ kill_system
                 ;bne.s   .mouse_loop
 
 .start_title_screen
-                jmp     title_screen_start                      ; Entry point $0001c000
+                ;jmp     title_screen_start                      ; Entry point $0001c000
                 jmp     end_game_start
 
 
@@ -206,9 +233,28 @@ interrupt_handler
                 ; The original binaries of the game start with a long word that provide
                 ; the load/address of the file.
 titleprg_start
-        dc.l    $00004000                                       ; original start address $00004000
+        dc.l    $00004000                                       ; original start address $00003FFC
 
 
+
+
+
+                ;****************************************************************************************************************
+                ;****************************************************************************************************************
+                ;****************************************************************************************************************
+                ;
+                ;
+                ;               NEW ENTRY POINT TO TITLE SCREEN 
+                ;               Added to have known entry points into the title screen (updated new loader to compensate)
+                ;
+                ;
+                ;****************************************************************************************************************
+                ;****************************************************************************************************************
+                ;****************************************************************************************************************
+                ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
+                ;jmp   title_screen_start                        ; original address jmp $0001c000
+                ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
+                ;jmp   end_game_start                            ; original address jmp $0001c006
 
 
 
@@ -2680,20 +2726,22 @@ L0001BFFA dc.w $0000, $0000, $0000
 
 
 
+                ;----------------------------------------------------------------------------------------------------------------
+                ; Pad bytes force the 'title_screen_start' to the address $1c000 or offset $18004 in the absolute assembled file
+                ;--------------------------- Pad Bytes --------------------------------------------------------------------------
+                dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000                        ; pad bytes to make code start @ $1c000
+                ;--------------------------- Pad Bytes ----------------------------------
+;
 
-
-
-
-
-
-
-
-
-                ;org     $1c000
-
-
-                even
                 ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
+                ; original address hardcoded to $1c000, 
+                ; I may change this so that the jump table is placed at $4000-$0c
+                ; to create a jump table that starts at $3FF4 but this will require an update
+                ; to the new game loader to change the start jmp addresses of the title screen
+                ; and return to title screen loader methods.
+                ; I want to keep this file as 'original' as possible and anyy changes wil be
+                ; made in separate project.
+                ;
 title_screen_start                                              ; original routine address $0001c000
                 bra.w   do_title_screen_start                   ; jmp $0001c008 
 
@@ -4406,11 +4454,17 @@ palette_16_colours                                                              
 display_endgame_joker                                                   ; original address $0001d4f0
                 move.l  #$2800,d0                                       ; d0,d4 = bitplane size (bytes)
                 bsr.w   reset_title_screen_display                      ; calls $0001d2de
-                lea.l   test_bitplanes,a0                                    ; a0 = display palette colour table
-                lea.l   JOKER_GFX+4,a0                                    ; a0 = display palette colour table
+        IFND     TEST_TITLEPRG
+                lea.l   $00040000,a0
+                lea.l   JOKER_GFX,a0                                    ; a0 = display palette colour table
                 bsr.w   copper_copy                                     ; calls $0001d3a0
-                lea.l   JOKER_GFX+$44,a0                                    ; a0 = display palette colour table
-                ;lea.l   $00049c80,a0                                    ; a0 = display screen gfx
+                lea.l   JOKER_GFX+$40,a0                                ; a0 = display palette colour table
+        ELSE
+                lea.l   test_bitplanes,a0                               ; a0 = display palette colour table
+                lea.l   JOKER_GFX+4,a0                                  ; a0 = display palette colour table
+                bsr.w   copper_copy                                     ; calls $0001d3a0
+                lea.l   JOKER_GFX+$44,a0                                ; a0 = display palette colour table
+        ENDC
                 bsr.w   copy_gfx_to_display                             ; calls $0001d41c
                 move.b  #$2c,copper_diwstrt                             ; $0001d6e8
                 move.b  #$2b,copper_diwstop                             ; $0001d6ec
