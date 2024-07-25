@@ -1,15 +1,14 @@
-# Batman
+# Batman The Movie - Amiga A500
 [Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
-
+- Check out the latest updated Test ADF containing the **Title Screen** rebuilt from Source Code - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
+  
 The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
 
  - [Youtube](https://www.youtube.com/@HoffmanYouTube)
  - [Twitch](https://www.twitch.tv/djh0ffman)
  - [GitHub](https://github.com/djh0ffman)
-
-I've been looking for an excuse to do something on the Amiga for ages and this seemed like a nice little hobby exercise to dip in and out of, a reason to re-learn 68000 and a chance to learn something about game programming in the process.
 
 Resources and code used in this project is listed below. If there's anything used which hasn't been credited, please let me know. Also thanks to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in the h0ffman twitch stream: Episode #16 Lemmings.
 
