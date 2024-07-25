@@ -9,8 +9,6 @@ The inspiration for this exercise was discovering the following cracking series 
  - [Twitch](https://www.twitch.tv/djh0ffman)
  - [GitHub](https://github.com/djh0ffman)
 
-I've been looking for an excuse to do something on the Amiga for ages and this seemed like a nice little hobby exercise to dip in and out of, a reason to re-learn 68000 and a chance to learn something about game programming in the process.
-
 Resources and code used in this project is listed below. If there's anything used which hasn't been credited, please let me know. Also thanks to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in the h0ffman twitch stream: Episode #16 Lemmings.
 
 - [Batman 2 Disk Europe](https://www.lemonamiga.com/games/details.php?id=131) 
