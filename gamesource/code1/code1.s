@@ -471,12 +471,15 @@ L00003644           dc.w $0000, $0000               ; or.b #$00,d0
 L00003648           dc.w $0000, $0000               ; or.b #$00,d0
 L0000364c           dc.w $0000, $0000               ; or.b #$00,d0
 
+
+
                                                         ; Address L00003650 not called directly from this code.
 L00003650           move.l  d0,-(a7)
 L00003652           bsr.b   L0000365a
 L00003654           bne.b   L00003652
 L00003656           move.l  (a7)+,d0
 L00003658           rts
+
 
 
 L0000365a           movem.l d1-d2/a0,-(a7)
@@ -492,6 +495,7 @@ L0000367c           move.w  d2,L000034f2
 L00003682           tst.b   d0
 L00003684           movem.l (a7)+,d1-d2/a0
 L00003688           rts 
+
 
 
 L0000368a           move.w  #$0080,$00dff096
@@ -605,284 +609,284 @@ L000037ee           rts
 
 
 
-L000037f0 0000 0000                or.b #$00,d0
-L000037f4 0000 0000                or.b #$00,d0
-L000037f8 3030 3030                move.w (a0,d3.W,$30) == $00000d43 [001b],d0
-L000037fc 0030 3000 3624           or.b #$00,(a0,d3.W[*8],$24) == $00000d37 (68020+) [7c]
-L00003802 0000 0000                or.b #$00,d0
-L00003806 0000 6c9a                or.b #$9a,d0
-L0000380a bcfa 7428                cmpa.w (pc,$7428) == $0000ac34 [2000],a6
-L0000380e 1000                     move.b d0,d0
-L00003810 7ed6                     moveq #$d6,d7
-L00003812 d07c 16d6                add.w #$16d6,d0
-L00003816 fc00                     illegal
-L00003818 82c6                     divu.w d6,d1
-L0000381a fe54                     illegal
-L0000381c 7c38                     moveq #$38,d6
-L0000381e 1000                     move.b d0,d0
-L00003820 2874 7474                movea.l (a4,d7.W[*4],$74) == $00bfe174 (68020+),a4
-L00003824 7420                     moveq #$20,d2
-L00003826 7400                     moveq #$00,d2
-L00003828 1810                     move.b (a0) [00],d4
-L0000382a 0000 0000                or.b #$00,d0
-L0000382e 0000 3870                or.b #$70,d0
-L00003832 7070                     moveq #$70,d0
-L00003834 7070                     moveq #$70,d0
-L00003836 3800                     move.w d0,d4
-L00003838 381c                     move.w (a4)+,d4
-L0000383a 1c1c                     move.b (a4)+,d6
-L0000383c 1c1c                     move.b (a4)+,d6
-L0000383e 3800                     move.w d0,d4
-L00003840 1054                     illegal
-L00003842 28d6                     move.l (a6),(a4)+
-L00003844 2854                     movea.l (a4),a4
-L00003846 1000                     move.b d0,d0
-L00003848 0000 0808                or.b #$08,d0
-L0000384c 3e08                     move.w a0,d7
-L0000384e 0800 0000                btst.l #$0000,d0
-L00003852 0000 0008                or.b #$08,d0
-L00003856 0810 0000                btst.b #$0000,(a0) [00]
-L0000385a 0000 3e00                or.b #$00,d0
-L0000385e 0000 0000                or.b #$00,d0
-L00003862 0000 0018                or.b #$18,d0
-L00003866 1800                     move.b d0,d4
-L00003868 3078 b078                movea.w $b078 [42b0],a0
-L0000386c 3478 3000                movea.w $3000 [7000],a2
-L00003870 7ce6                     moveq #$e6,d6
-L00003872 e6e6                     ror.w -(a6)
-L00003874 e6e6                     ror.w -(a6)
-L00003876 7c00                     moveq #$00,d6
-L00003878 7838                     moveq #$38,d4
-L0000387a 3838 3838                move.w $3838 [381c],d4
-L0000387e 3800                     move.w d0,d4
-L00003880 7cce                     moveq #$ce,d6
-L00003882 0e7c                     illegal
-L00003884 c0ce                     illegal
-L00003886 fe00                     illegal
-L00003888 7cce                     moveq #$ce,d6
-L0000388a 0e3c                     illegal
-L0000388c 0ece                     illegal
-L0000388e 7c00                     moveq #$00,d6
-L00003890 7cdc                     moveq #$dc,d6
-L00003892 dcdc                     adda.w (a4)+,a6
-L00003894 fe1c                     illegal
-L00003896 1c00                     move.b d0,d6
-L00003898 fee6                     illegal
-L0000389a e0fc                     illegal
-L0000389c 06e6                     illegal
-L0000389e 7c00                     moveq #$00,d6
-L000038a0 7ce6                     moveq #$e6,d6
-L000038a2 e0fc                     illegal
-L000038a4 e6e6                     ror.w -(a6)
-L000038a6 7c00                     moveq #$00,d6
-L000038a8 fece                     illegal
-L000038aa 0e1c 1c38                [ moves.b d1,(a4)+ ]
-L000038ac 1c38 3800                move.b $3800 [36],d6
-L000038b0 7ce6                     moveq #$e6,d6
-L000038b2 e67c                     ror.w d3,d4
-L000038b4 e6e6                     ror.w -(a6)
-L000038b6 7c00                     moveq #$00,d6
-L000038b8 7ce6                     moveq #$e6,d6
-L000038ba e67e                     ror.w d3,d6
-L000038bc 06e6                     illegal
-L000038be 7c00                     moveq #$00,d6
-L000038c0 0030 3000 0030           or.b #$00,(a0,d0.W,$30) == $ffffe9c0 [49]
-L000038c6 3000                     move.w d0,d0
-L000038c8 0030 3000 3030           or.b #$00,(a0,d3.W,$30) == $00000d43 [00]
-L000038ce 6000 1c38                bra.w #$1c38 == $00005508 (T)
-L000038d2 70e0                     moveq #$e0,d0
-L000038d4 7038                     moveq #$38,d0
-L000038d6 1c00                     move.b d0,d6
-L000038d8 007c 7c00                or.w #$7c00,sr
-L000038dc 7c7c                     moveq #$7c,d6
-L000038de 0000 e070                or.b #$70,d0
-L000038e2 381c                     move.w (a4)+,d4
-L000038e4 3870 e000                movea.w (a0,a6.W,$00) == $fffffa00 [0048],a4
-L000038e8 7cee                     moveq #$ee,d6
-L000038ea ce3c 3000                and.b #$00,d7
-L000038ee 3000                     move.w d0,d0
-L000038f0 003c 4a56                or.b #$4a56,ccr
-L000038f4 5e40                     addq.w #$07,d0
-L000038f6 3c00                     move.w d0,d6
-L000038f8 7ce6                     moveq #$e6,d6
-L000038fa e6fe                     illegal
-L000038fc e6e6                     ror.w -(a6)
-L000038fe e600                     asr.b #$03,d0
-L00003900 fce6                     illegal
-L00003902 e6fc                     illegal
-L00003904 e6e6                     ror.w -(a6)
-L00003906 fc00                     illegal
-L00003908 7ce6                     moveq #$e6,d6
-L0000390a e6e0                     ror.w -(a0) [3000]
-L0000390c e6e6                     ror.w -(a6)
-L0000390e 7c00                     moveq #$00,d6
-L00003910 fce6                     illegal
-L00003912 e6e6                     ror.w -(a6)
-L00003914 e6e6                     ror.w -(a6)
-L00003916 fc00                     illegal
-L00003918 fee0                     illegal
-L0000391a e0fe                     illegal
-L0000391c e0e0                     asr.w -(a0) [3000]
-L0000391e fe00                     illegal
-L00003920 fee0                     illegal
-L00003922 e0fe                     illegal
-L00003924 e0e0                     asr.w -(a0) [3000]
-L00003926 e000                     asr.b #$08,d0
-L00003928 7ce6                     moveq #$e6,d6
-L0000392a e6e0                     ror.w -(a0) [3000]
-L0000392c eee6                     illegal
-L0000392e 7e00                     moveq #$00,d7
-L00003930 e6e6                     ror.w -(a6)
-L00003932 e6fe                     illegal
-L00003934 e6e6                     ror.w -(a6)
-L00003936 e600                     asr.b #$03,d0
-L00003938 3838 3838                move.w $3838 [381c],d4
-L0000393c 3838 3800                move.w $3800 [3624],d4
-L00003940 0e0e                     illegal
-L00003942 0e0e                     illegal
-L00003944 0e0e                     illegal
-L00003946 fc00                     illegal
-L00003948 e6e6                     ror.w -(a6)
-L0000394a e4f8 e4e6                roxr.w $e4e6 [2229]
-L0000394e e600                     asr.b #$03,d0
-L00003950 e0e0                     asr.w -(a0) [3000]
-L00003952 e0e0                     asr.w -(a0) [3000]
-L00003954 e0e0                     asr.w -(a0) [3000]
-L00003956 fe00                     illegal
-L00003958 fcda                     illegal
-L0000395a dada                     adda.w (a2)+ [1241],a5
-L0000395c dada                     adda.w (a2)+ [1241],a5
-L0000395e da00                     add.b d0,d5
-L00003960 fce6                     illegal
-L00003962 e6e6                     ror.w -(a6)
-L00003964 e6e6                     ror.w -(a6)
-L00003966 e600                     asr.b #$03,d0
-L00003968 7ce6                     moveq #$e6,d6
-L0000396a e6e6                     ror.w -(a6)
-L0000396c e6e6                     ror.w -(a6)
-L0000396e 7c00                     moveq #$00,d6
-L00003970 fce6                     illegal
-L00003972 e6e6                     ror.w -(a6)
-L00003974 fce0                     illegal
-L00003976 e000                     asr.b #$08,d0
-L00003978 7ce6                     moveq #$e6,d6
-L0000397a e6e2                     ror.w -(a2) [93f1]
-L0000397c ecee 7600 fce6           [ bfclr (a6,-$031a) == $00dfece6 {24:0} ]
-L0000397e 7600                     moveq #$00,d3
-L00003980 fce6                     illegal
-L00003982 e6fc                     illegal
-L00003984 e6e6                     ror.w -(a6)
-L00003986 e600                     asr.b #$03,d0
-L00003988 7ce6                     moveq #$e6,d6
-L0000398a f87c                     illegal
-L0000398c 1ee6                     move.b -(a6),(a7)+ [60]
-L0000398e 7c00                     moveq #$00,d6
-L00003990 fe38                     illegal
-L00003992 3838 3838                move.w $3838 [381c],d4
-L00003996 3800                     move.w d0,d4
-L00003998 e6e6                     ror.w -(a6)
-L0000399a e6e6                     ror.w -(a6)
-L0000399c e6e6                     ror.w -(a6)
-L0000399e 7c00                     moveq #$00,d6
-L000039a0 e6e6                     ror.w -(a6)
-L000039a2 e6e6                     ror.w -(a6)
-L000039a4 e664                     asr.w d3,d4
-L000039a6 3800                     move.w d0,d4
-L000039a8 dada                     adda.w (a2)+ [1241],a5
-L000039aa dada                     adda.w (a2)+ [1241],a5
-L000039ac dada                     adda.w (a2)+ [1241],a5
-L000039ae 7c00                     moveq #$00,d6
-L000039b0 e6e6                     ror.w -(a6)
-L000039b2 e638                     ror.b d3,d0
-L000039b4 cece                     illegal
-L000039b6 ce00                     and.b d0,d7
-L000039b8 e6e6                     ror.w -(a6)
-L000039ba e67c                     ror.w d3,d4
-L000039bc 3838 3800                move.w $3800 [3624],d4
-L000039c0 feee                     illegal
-L000039c2 dc38 76e6                add.b $76e6 [0e],d6
-L000039c6 fe00                     illegal
-L000039c8 0000 0119                or.b #$19,d0
-L000039cc 003a                     illegal
-L000039ce 0097 0000 0000           or.l #$00000000,(a7) [6000001a]
-L000039d4 0000 0000                or.b #$00,d0
-L000039d8 0000 0000                or.b #$00,d0
-L000039dc 0000 0000                or.b #$00,d0
-L000039e0 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L000039e6 0000 0000                or.b #$00,d0
-L000039ea 0000 0000                or.b #$00,d0
-L000039ee 0000 0000                or.b #$00,d0
-L000039f2 0000 0000                or.b #$00,d0
-L000039f6 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L000039fc 0000 0000                or.b #$00,d0
-L00003a00 0000 0000                or.b #$00,d0
-L00003a04 0000 0000                or.b #$00,d0
-L00003a08 0000 0000                or.b #$00,d0
-L00003a0c 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a12 0000 0000                or.b #$00,d0
-L00003a16 0000 0000                or.b #$00,d0
-L00003a1a 0000 0000                or.b #$00,d0
-L00003a1e 0000 0000                or.b #$00,d0
-L00003a22 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a28 0000 0000                or.b #$00,d0
-L00003a2c 0000 0000                or.b #$00,d0
-L00003a30 0000 0000                or.b #$00,d0
-L00003a34 0000 0000                or.b #$00,d0
-L00003a38 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a3e 0000 0000                or.b #$00,d0
-L00003a42 0000 0000                or.b #$00,d0
-L00003a46 0000 0000                or.b #$00,d0
-L00003a4a 0000 0000                or.b #$00,d0
-L00003a4e 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a54 0000 0000                or.b #$00,d0
-L00003a58 0000 0000                or.b #$00,d0
-L00003a5c 0000 0000                or.b #$00,d0
-L00003a60 0000 0000                or.b #$00,d0
-L00003a64 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a6a 0000 0000                or.b #$00,d0
-L00003a6e 0000 0000                or.b #$00,d0
-L00003a72 0000 0000                or.b #$00,d0
-L00003a76 0000 0000                or.b #$00,d0
-L00003a7a 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a80 0000 0000                or.b #$00,d0
-L00003a84 0000 0000                or.b #$00,d0
-L00003a88 0000 0000                or.b #$00,d0
-L00003a8c 0000 0000                or.b #$00,d0
-L00003a90 00a0 0038 0046           or.l #$00380046,-(a0) [4ef83000]
-L00003a96 0000 0000                or.b #$00,d0
-L00003a9a 0000 0000                or.b #$00,d0
-L00003a9e 0000 0000                or.b #$00,d0
-L00003aa2 0000 5009                or.b #$09,d0
-L00003aa6 4158                     illegal
-L00003aa8 4953                     illegal
-L00003aaa 2043                     movea.l d3,a0
-L00003aac 4845                     swap.w d5
-L00003aae 4d49                     illegal
-L00003ab0 4341                     illegal
-L00003ab2 4c20 4641                [ mulu.l -(a0),d1:d4 ]
-L00003ab4 4641                     not.w d1
-L00003ab6 4354                     illegal
-L00003ab8 4f52                     illegal
-L00003aba 5900                     subq.b #$04,d0
-L00003abc ff40                     illegal
-L00003abe 0e4a                     illegal
-L00003ac0 4143                     illegal
-L00003ac2 4b20                     [ chk.l -(a0),d5 ]
-L00003ac4 4953                     illegal
-L00003ac6 2044                     movea.l d4,a0
-L00003ac8 4541                     illegal
-L00003aca 4400                     neg.b d0
-L00003acc ff60                     illegal
-L00003ace 0b54                     bchg.b d5,(a4)
-L00003ad0 4845                     swap.w d5
-L00003ad2 204a                     movea.l a2,a0
-L00003ad4 4f4b                     illegal
-L00003ad6 4552                     illegal
-L00003ad8 204c                     movea.l a4,a0
-L00003ada 4956                     illegal
-L00003adc 4553                     illegal
-L00003ade 2e2e 2e00                move.l (a6,$2e00) == $00e01e00 [f09a4e75],d7
-L00003ae2 ffb9                     illegal
+L000037f0           dc.w    $0000, $0000                ; or.b #$00,d0
+L000037f4           dc.w    $0000, $0000                ; or.b #$00,d0
+L000037f8           dc.w    $3030, $3030                ; move.w (a0,d3.W,$30) == $00000d43 [001b],d0
+L000037fc           dc.w    $0030, $3000, $3624         ; or.b #$00,(a0,d3.W[*8],$24) == $00000d37 (68020+) [7c]
+L00003802           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003806           dc.w    $0000, $6c9a                ; or.b #$9a,d0
+L0000380a           dc.w    $bcfa, $7428                ; cmpa.w (pc,$7428) == $0000ac34 [2000],a6
+L0000380e           dc.w    $1000                       ; move.b d0,d0
+L00003810           dc.w    $7ed6                       ; moveq #$d6,d7
+L00003812           dc.w    $d07c, $16d6                ; add.w #$16d6,d0
+L00003816           dc.w    $fc00                       ; illegal
+L00003818           dc.w    $82c6                       ; divu.w d6,d1
+L0000381a           dc.w    $fe54                       ; illegal
+L0000381c           dc.w    $7c38                       ; moveq #$38,d6
+L0000381e           dc.w    $1000                       ; move.b d0,d0
+L00003820           dc.w    $2874, $7474                ; movea.l (a4,d7.W[*4],$74) == $00bfe174 (68020+),a4
+L00003824           dc.w    $7420                       ; moveq #$20,d2
+L00003826           dc.w    $7400                       ; moveq #$00,d2
+L00003828           dc.w    $1810                       ; move.b (a0) [00],d4
+L0000382a           dc.w    $0000, $0000                ; or.b #$00,d0
+L0000382e           dc.w    $0000, $3870                ; or.b #$70,d0
+L00003832           dc.w    $7070                       ; moveq #$70,d0
+L00003834           dc.w    $7070                       ; moveq #$70,d0
+L00003836           dc.w    $3800                       ; move.w d0,d4
+L00003838           dc.w    $381c                       ; move.w (a4)+,d4
+L0000383a           dc.w    $1c1c                       ; move.b (a4)+,d6
+L0000383c           dc.w    $1c1c                       ; move.b (a4)+,d6
+L0000383e           dc.w    $3800                       ; move.w d0,d4
+L00003840           dc.w    $1054                       ; illegal
+L00003842           dc.w    $28d6                       ; move.l (a6),(a4)+
+L00003844           dc.w    $2854                       ; movea.l (a4),a4
+L00003846           dc.w    $1000                       ; move.b d0,d0
+L00003848           dc.w    $0000, $0808                ; or.b #$08,d0
+L0000384c           dc.w    $3e08                       ; move.w a0,d7
+L0000384e           dc.w    $0800, $0000                ; btst.l #$0000,d0
+L00003852           dc.w    $0000, $0008                ; or.b #$08,d0
+L00003856           dc.w    $0810, $0000                ; btst.b #$0000,(a0) [00]
+L0000385a           dc.w    $0000, $3e00                ; or.b #$00,d0
+L0000385e           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003862           dc.w    $0000, $0018                ; or.b #$18,d0
+L00003866           dc.w    $1800                       ; move.b d0,d4
+L00003868           dc.w    $3078, $b078                ; movea.w $b078 [42b0],a0
+L0000386c           dc.w    $3478, $3000                ; movea.w $3000 [7000],a2
+L00003870           dc.w    $7ce6                       ; moveq #$e6,d6
+L00003872           dc.w    $e6e6                       ; ror.w -(a6)
+L00003874           dc.w    $e6e6                       ; ror.w -(a6)
+L00003876           dc.w    $7c00                       ; moveq #$00,d6
+L00003878           dc.w    $7838                       ; moveq #$38,d4
+L0000387a           dc.w    $3838, $3838                ; move.w $3838 [381c],d4
+L0000387e           dc.w    $3800                       ; move.w d0,d4
+L00003880           dc.w    $7cce                       ; moveq #$ce,d6
+L00003882           dc.w    $0e7c                       ; illegal
+L00003884           dc.w    $c0ce                       ; illegal
+L00003886           dc.w    $fe00                       ; illegal
+L00003888           dc.w    $7cce                       ; moveq #$ce,d6
+L0000388a           dc.w    $0e3c                       ; illegal
+L0000388c           dc.w    $0ece                       ; illegal
+L0000388e           dc.w    $7c00                       ; moveq #$00,d6
+L00003890           dc.w    $7cdc                       ; moveq #$dc,d6
+L00003892           dc.w    $dcdc                       ; adda.w (a4)+,a6
+L00003894           dc.w    $fe1c                       ; illegal
+L00003896           dc.w    $1c00                       ; move.b d0,d6
+L00003898           dc.w    $fee6                       ; illegal
+L0000389a           dc.w    $e0fc                       ; illegal
+L0000389c           dc.w    $06e6                       ; illegal
+L0000389e           dc.w    $7c00                       ; moveq #$00,d6
+L000038a0           dc.w    $7ce6                       ; moveq #$e6,d6
+L000038a2           dc.w    $e0fc                       ; illegal
+L000038a4           dc.w    $e6e6                       ; ror.w -(a6)
+L000038a6           dc.w    $7c00                       ; moveq #$00,d6
+L000038a8           dc.w    $fece                       ; illegal
+L000038aa           dc.w    $0e1c                       ;  ; 1c38 [ moves.b d1,(a4)+ ]
+L000038ac           dc.w    $1c38, $3800                ; move.b $3800 [36],d6
+L000038b0           dc.w    $7ce6                       ; moveq #$e6,d6
+L000038b2           dc.w    $e67c                       ; ror.w d3,d4
+L000038b4           dc.w    $e6e6                       ; ror.w -(a6)
+L000038b6           dc.w    $7c00                       ; moveq #$00,d6
+L000038b8           dc.w    $7ce6                       ; moveq #$e6,d6
+L000038ba           dc.W    $e67e                       ; ror.w d3,d6
+L000038bc           dc.W    $06e6                       ; illegal
+L000038be           dc.W    $7c00                       ; moveq #$00,d6
+L000038c0           dc.W    $0030, $3000, $0030         ; or.b #$00,(a0,d0.W,$30) == $ffffe9c0 [49]
+L000038c6           dc.W    $3000                       ; move.w d0,d0
+L000038c8           dc.W    $0030, $3000, $3030         ; or.b #$00,(a0,d3.W,$30) == $00000d43 [00]
+L000038ce           dc.W    $6000, $1c38                ; bra.w #$1c38 == $00005508 (T)
+L000038d2           dc.W    $70e0                       ; moveq #$e0,d0
+L000038d4           dc.W    $7038                       ; moveq #$38,d0
+L000038d6           dc.W    $1c00                       ; move.b d0,d6
+L000038d8           dc.W    $007c, $7c00                ; or.w #$7c00,sr
+L000038dc           dc.W    $7c7c                       ; moveq #$7c,d6
+L000038de           dc.W    $0000, $e070                ; or.b #$70,d0
+L000038e2           dc.W    $381c                       ; move.w (a4)+,d4
+L000038e4           dc.W    $3870, $e000                ; movea.w (a0,a6.W,$00) == $fffffa00 [0048],a4
+L000038e8           dc.W    $7cee                       ; moveq #$ee,d6
+L000038ea           dc.W    $ce3c, $3000                ; and.b #$00,d7
+L000038ee           dc.W    $3000                       ; move.w d0,d0
+L000038f0           dc.W    $003c, $4a56                ; or.b #$4a56,ccr
+L000038f4           dc.W    $5e40                       ; addq.w #$07,d0
+L000038f6           dc.W    $3c00                       ; move.w d0,d6
+L000038f8           dc.W    $7ce6                       ; moveq #$e6,d6
+L000038fa           dc.W    $e6fe                       ; illegal
+L000038fc           dc.W    $e6e6                       ; ror.w -(a6)
+L000038fe           dc.W    $e600                       ; asr.b #$03,d0
+L00003900           dc.W    $fce6                       ; illegal
+L00003902           dc.W    $e6fc                       ; illegal
+L00003904           dc.W    $e6e6                       ; ror.w -(a6)
+L00003906           dc.W    $fc00                       ; illegal
+L00003908           dc.W    $7ce6                       ; moveq #$e6,d6
+L0000390a           dc.W    $e6e0                       ; ror.w -(a0) [3000]
+L0000390c           dc.W    $e6e6                       ; ror.w -(a6)
+L0000390e           dc.W    $7c00                       ; moveq #$00,d6
+L00003910           dc.W    $fce6                       ; illegal
+L00003912           dc.W    $e6e6                       ; ror.w -(a6)
+L00003914           dc.W    $e6e6                       ; ror.w -(a6)
+L00003916           dc.W    $fc00                       ; illegal
+L00003918           dc.W    $fee0                       ; illegal
+L0000391a           dc.W    $e0fe                       ; illegal
+L0000391c           dc.W    $e0e0                       ; asr.w -(a0) [3000]
+L0000391e           dc.W    $fe00                       ; illegal
+L00003920           dc.W    $fee0                       ; illegal
+L00003922           dc.w    $e0fe                       ; illegal
+L00003924           dc.w    $e0e0                       ; asr.w -(a0) [3000]
+L00003926           dc.w    $e000                       ; asr.b #$08,d0
+L00003928           dc.w    $7ce6                       ; moveq #$e6,d6
+L0000392a           dc.w    $e6e0                       ; ror.w -(a0) [3000]
+L0000392c           dc.w    $eee6                       ; illegal
+L0000392e           dc.w    $7e00                       ; moveq #$00,d7
+L00003930           dc.w    $e6e6                       ; ror.w -(a6)
+L00003932           dc.w    $e6fe                       ; illegal
+L00003934           dc.w    $e6e6                       ; ror.w -(a6)
+L00003936           dc.w    $e600                       ; asr.b #$03,d0
+L00003938           dc.w    $3838, $3838                ; move.w $3838 [381c],d4
+L0000393c           dc.w    $3838, $3800                ; move.w $3800 [3624],d4
+L00003940           dc.w    $0e0e                       ; illegal
+L00003942           dc.w    $0e0e                       ; illegal
+L00003944           dc.w    $0e0e                       ; illegal
+L00003946           dc.w    $fc00                       ; illegal
+L00003948           dc.w    $e6e6                       ; ror.w -(a6)
+L0000394a           dc.w    $e4f8, $e4e6                ; roxr.w $e4e6 [2229]
+L0000394e           dc.w    $e600                       ; asr.b #$03,d0
+L00003950           dc.w    $e0e0                       ; asr.w -(a0) [3000]
+L00003952           dc.w    $e0e0                       ; asr.w -(a0) [3000]
+L00003954           dc.w    $e0e0                       ; asr.w -(a0) [3000]
+L00003956           dc.w    $fe00                       ; illegal
+L00003958           dc.w    $fcda                       ; illegal
+L0000395a           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
+L0000395c           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
+L0000395e           dc.w    $da00                       ; add.b d0,d5
+L00003960           dc.w    $fce6                       ; illegal
+L00003962           dc.w    $e6e6                       ; ror.w -(a6)
+L00003964           dc.w    $e6e6                       ; ror.w -(a6)
+L00003966           dc.w    $e600                       ; asr.b #$03,d0
+L00003968           dc.w    $7ce6                       ; moveq #$e6,d6
+L0000396a           dc.w    $e6e6                       ; ror.w -(a6)
+L0000396c           dc.w    $e6e6                       ; ror.w -(a6)
+L0000396e           dc.w    $7c00                       ; moveq #$00,d6
+L00003970           dc.w    $fce6                       ; illegal
+L00003972           dc.w    $e6e6                       ; ror.w -(a6)
+L00003974           dc.w    $fce0                       ; illegal
+L00003976           dc.w    $e000                       ; asr.b #$08,d0
+L00003978           dc.w    $7ce6                       ; moveq #$e6,d6
+L0000397a           dc.w    $e6e2                       ; ror.w -(a2) [93f1]
+L0000397c           dc.w    $ecee                       ; 7600 fce6 [ bfclr (a6,-$031a) == $00dfece6 {24:0} ]
+L0000397e           dc.w    $7600                       ; moveq #$00,d3
+L00003980           dc.w    $fce6                       ; illegal
+L00003982           dc.w    $e6fc                       ; illegal
+L00003984           dc.w    $e6e6                       ; ror.w -(a6)
+L00003986           dc.w    $e600                       ; asr.b #$03,d0
+L00003988           dc.w    $7ce6                       ; moveq #$e6,d6
+L0000398a           dc.w    $f87c                       ; illegal
+L0000398c           dc.w    $1ee6                       ; move.b -(a6),(a7)+ [60]
+L0000398e           dc.w    $7c00                       ; moveq #$00,d6
+L00003990           dc.w    $fe38                       ; illegal
+L00003992           dc.w    $3838, $3838                ; move.w $3838 [381c],d4
+L00003996           dc.w    $3800                       ; move.w d0,d4
+L00003998           dc.w    $e6e6                       ; ror.w -(a6)
+L0000399a           dc.w    $e6e6                       ; ror.w -(a6)
+L0000399c           dc.w    $e6e6                       ; ror.w -(a6)
+L0000399e           dc.w    $7c00                       ; moveq #$00,d6
+L000039a0           dc.w    $e6e6                       ; ror.w -(a6)
+L000039a2           dc.w    $e6e6                       ; ror.w -(a6)
+L000039a4           dc.w    $e664                       ; asr.w d3,d4
+L000039a6           dc.w    $3800                       ; move.w d0,d4
+L000039a8           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
+L000039aa           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
+L000039ac           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
+L000039ae           dc.w    $7c00                       ; moveq #$00,d6
+L000039b0           dc.w    $e6e6                       ; ror.w -(a6)
+L000039b2           dc.w    $e638                       ; ror.b d3,d0
+L000039b4           dc.w    $cece                       ; illegal
+L000039b6           dc.w    $ce00                       ; and.b d0,d7
+L000039b8           dc.w    $e6e6                       ; ror.w -(a6)
+L000039ba           dc.w    $e67c                       ; ror.w d3,d4
+L000039bc           dc.w    $3838, $3800                ; move.w $3800 [3624],d4
+L000039c0           dc.w    $feee                       ; illegal
+L000039c2           dc.w    $dc38, $76e6                ; add.b $76e6 [0e],d6
+L000039c6           dc.w    $fe00                       ; illegal
+L000039c8           dc.w    $0000, $0119                ; or.b #$19,d0
+L000039cc           dc.w    $003a                       ; illegal
+L000039ce           dc.w    $0097, $0000, $0000         ; or.l #$00000000,(a7) [6000001a]
+L000039d4           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039d8           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039dc           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039e0           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L000039e6           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039ea           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039ee           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039f2           dc.w    $0000, $0000                ; or.b #$00,d0
+L000039f6           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L000039fc           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a00           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a04           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a08           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a0c           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a12           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a16           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a1a           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a1e           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a22           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a28           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a2c           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a30           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a34           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a38           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a3e           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a42           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a46           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a4a           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a4e           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a54           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a58           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a5c           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a60           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a64           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a6a           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a6e           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a72           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a76           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a7a           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a80           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a84           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a88           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a8c           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a90           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
+L00003a96           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a9a           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a9e           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003aa2           dc.w    $0000, $5009                ; or.b #$09,d0
+L00003aa6           dc.w    $4158                       ; illegal
+L00003aa8           dc.w    $4953                       ; illegal
+L00003aaa           dc.w    $2043                       ; movea.l d3,a0
+L00003aac           dc.w    $4845                       ; swap.w d5
+L00003aae           dc.w    $4d49                       ; illegal
+L00003ab0           dc.w    $4341                       ; illegal
+L00003ab2           dc.w    $4c20                       ; 4641 [ mulu.l -(a0),d1:d4 ]
+L00003ab4           dc.w    $4641                       ; not.w d1
+L00003ab6           dc.w    $4354                       ; illegal
+L00003ab8           dc.w    $4f52                       ; illegal
+L00003aba           dc.w    $5900                       ; subq.b #$04,d0
+L00003abc           dc.w    $ff40                       ; illegal
+L00003abe           dc.w    $0e4a                       ; illegal
+L00003ac0           dc.w    $4143                       ; illegal
+L00003ac2           dc.w    $4b20                       ; [ chk.l -(a0),d5 ]
+L00003ac4           dc.w    $4953                       ; illegal
+L00003ac6           dc.w    $2044                       ; movea.l d4,a0
+L00003ac8           dc.w    $4541                       ; illegal
+L00003aca           dc.w    $4400                       ; neg.b d0
+L00003acc           dc.w    $ff60                       ; illegal
+L00003ace           dc.w    $0b54                       ; bchg.b d5,(a4)
+L00003ad0           dc.w    $4845                       ; swap.w d5
+L00003ad2           dc.w    $204a                       ; movea.l a2,a0
+L00003ad4           dc.w    $4f4b                       ; illegal
+L00003ad6           dc.w    $4552                       ; illegal
+L00003ad8           dc.w    $204c                       ; movea.l a4,a0
+L00003ada           dc.w    $4956                       ; illegal
+L00003adc           dc.w    $4553                       ; illegal
+L00003ade           dc.w    $2e2e, $2e00                ; move.l (a6,$2e00) == $00e01e00 [f09a4e75],d7
+L00003ae2           dc.w    $ffb9                       ; illegal
 
 
 
@@ -898,7 +902,7 @@ L00003b0c           bsr.w   L00003746
 L00003b10           move.w  #$0800,d0
 L00003b14           jsr     $0007c80e               ; Panel - Function
 L00003b1a           jsr     $0007c854               ; Panel - Function
-L00003b20           bsr.w   #$021e == $00003d40
+L00003b20           bsr.w   L00003d40
 L00003b24           lea.l   $0000807c,a0            ; External Address $807c
 L00003b2a           movea.l L00005f64,a5
 L00003b30           movem.w (a5)+,d2-d4
@@ -926,7 +930,7 @@ L00003b74           lea.l   $06(a0,d0.W),a0
 L00003b78           cmpa.w  #$6722,a0
 L00003b7c           bcs.b   L00003b68
 L00003b7e           bclr.b  #$0007,$0004(a0)
-L00003b84           addaq.w #$06,a0
+L00003b84           addq.w #$06,a0                  ; addaq.w
 L00003b86           cmpa.w  #$67a0,a0
 L00003b8a           bcs.b   L00003b7e
 L00003b8c           lea.l   L000039c8,a0
@@ -995,8 +999,8 @@ L00003c7c           bsr.w   L00004ce4
 L00003c80           clr.l   d0
 L00003c82           clr.l   d1
 L00003c84           bsr.w   L00005854
-L00003c88           movem.w $67c2,d0-d1
-L00003c8e           jsr     L00004c3e
+L00003c88           movem.w L000067c2,d0-d1
+L00003c8e           jsr     L00004c3e                   ; 4eb9 0000 4c3e (self modifying code $3c92)
 L00003c94           bsr.w   L00004936
 L00003c98           bsr.w   L00003dd4
 L00003c9c           bsr.w   L00003dfe
@@ -1079,7 +1083,7 @@ L00003d64           and.w   #$0f00,d1
 L00003d68           beq.b   L00003d6e
 L00003d6a           add.w   #$0100,d0
 L00003d6e           move.w  d0,(a0)
-L00003d70           addaq.w #$04,a0
+L00003d70           addq.w  #$04,a0              ; addaq.w
 L00003d72           dbf.w   d6,L00003d4c
 
 L00003d76           move.w  L000036ee,d0
@@ -1106,7 +1110,7 @@ L00003dae           and.w   d0,d1
 L00003db0           beq.b   L00003db6
 L00003db2           sub.w   #$0100,d0
 L00003db6           move.w  d0,(a0)
-L00003db8           addaq.w #$04,a0
+L00003db8           addq.w  #$04,a0              ; addaq.w
 L00003dba           dbf.w   d6,L00003d94
 
 L00003dbe           move.w  L000036ee,d0
@@ -1165,7 +1169,7 @@ L00003e5c           bcc.b   L00003e6a
 L00003e5e           bsr.w   L00003e74
 L00003e62           bset.b  #$0007,-$0002(a0)
 L00003e68           bra.b   L00003e6c
-L00003e6a           addaq.w #$06,a0
+L00003e6a           addq.w  #$06,a0                 ; addaq.w
 L00003e6c           cmpa.w  #$67a0,a0
 L00003e70           bcs.b   L00003e48
 L00003e72           rts
@@ -1191,7 +1195,7 @@ L00003eaa           clr.l   $0010(a6)
 L00003eae           lea.l   L00005a7a,a5
 L00003eb2           cmp.w   (a5)+,d2
 L00003eb4           bcs.b   L00003eba
-L00003eb6           addaq.w #$02,a5
+L00003eb6           addq.w  #$02,a5             ; addaq.w
 L00003eb8           bra.b   L00003eb2
 L00003eba           move.w  (a5),d3
 L00003ebc           cmp.w   #$0046,d3
@@ -1330,7 +1334,7 @@ L00004048           bsr.w   L0000457c
 L0000404c           subq.w  #$01,$0008(a6)
 L00004050           bne.b   L0000405c
 L00004052           move.w  #$0020,$0008(a6)
-L00004058           move.   w #$0002,(a6)
+L00004058           move.w  #$0002,(a6)
 L0000405c           rts
 
 L0000405e           cmp.w   #$ffc0,d0
@@ -1699,310 +1703,343 @@ L000044c8           jsr     $00048014           ; External Address
 L000044ce           movem.w (a7)+,d0-d1
 L000044d2           rts
 
-L000044d4 e004                     asr.b #$08,d4
-L000044d6 e005                     asr.b #$08,d5
-L000044d8 e008                     lsr.b #$08,d0
-L000044da e010                     roxr.b #$08,d0
-L000044dc e011                     roxr.b #$08,d1
-L000044de 0000 e012                or.b #$12,d0
-L000044e2 e011                     roxr.b #$08,d1
-L000044e4 0000 e013                or.b #$13,d0
-L000044e8 e014                     roxr.b #$08,d4
-L000044ea e011                     roxr.b #$08,d1
-L000044ec e015                     roxr.b #$08,d5
-L000044ee e016                     roxr.b #$08,d6
-L000044f0 e011                     roxr.b #$08,d1
-L000044f2 0004 0005                or.b #$05,d4
-L000044f6 0008                     illegal
-L000044f8 0010 0011                or.b #$11,(a0) [00]
-L000044fc 0000 0012                or.b #$12,d0
-L00004500 0011 0000                or.b #$00,(a1) [04]
-L00004504 0013 0014                or.b #$14,(a3) [71]
-L00004508 0011 0015                or.b #$15,(a1) [04]
-L0000450c 0016 0011                or.b #$11,(a6)
-L00004510 0010 0011                or.b #$11,(a0) [00]
-L00004514 0012 0012                or.b #$12,(a2) [12]
-L00004518 0008                     illegal
-L0000451a 8006                     or.b d6,d0
-L0000451c e010                     roxr.b #$08,d0
-L0000451e e011                     roxr.b #$08,d1
-L00004520 e012                     roxr.b #$08,d2
-L00004522 0012 fff8                or.b #$f8,(a2) [12]
-L00004526 8007                     or.b d7,d0
-L00004528 0017 0018                or.b #$18,(a7) [60]
-L0000452c 0019 000e                or.b #$0e,(a1)+ [04]
-L00004530 0008                     illegal
-L00004532 8006                     or.b d6,d0
-L00004534 e017                     roxr.b #$08,d7
-L00004536 e018                     ror.b #$08,d0
-L00004538 e019                     ror.b #$08,d1
-L0000453a 000e                     illegal
-L0000453c fff8                     illegal
-L0000453e 8007                     or.b d7,d0
-L00004540 e013                     roxr.b #$08,d3
-L00004542 e014                     roxr.b #$08,d4
-L00004544 e012                     roxr.b #$08,d2
-L00004546 0012 fffd                or.b #$fd,(a2) [12]
-L0000454a 800b                     illegal
-L0000454c 0013 0014                or.b #$14,(a3) [71]
-L00004550 0012 0012                or.b #$12,(a2) [12]
-L00004554 0003 800a                or.b #$0a,d3
-L00004558 e015                     roxr.b #$08,d5
-L0000455a e016                     roxr.b #$08,d6
-L0000455c e012                     roxr.b #$08,d2
-L0000455e 000c                     illegal
-L00004560 fffb                     illegal
-L00004562 8009                     illegal
-L00004564 0015 0016                or.b #$16,(a5)
-L00004568 0012 000c                or.b #$0c,(a2) [12]
-L0000456c 0005 8008                or.b #$08,d5
-L00004570 342e 000a                move.w (a6,$000a) == $00dff00a,d2
-L00004574 c4fc 000c                mulu.w #$000c,d2
-L00004578 4bfb 2096                lea.l (pc,d2.W,$96=$00004510) == $00004f17,a5
-L0000457c 341d                     move.w (a5)+,d2
-L0000457e 610a                     bsr.b #$0a == $0000458a
-L00004580 341d                     move.w (a5)+,d2
-L00004582 6138                     bsr.b #$38 == $000045bc
-L00004584 341d                     move.w (a5)+,d2
-L00004586 6634                     bne.b #$34 == $000045bc (T)
-L00004588 4e75                     rts  == $6000001a
-L0000458a d46e 0006                add.w (a6,$0006) == $00dff006,d2
-L0000458e 3602                     move.w d2,d3
-L00004590 0243 1fff                and.w #$1fff,d3
-L00004594 e34b                     lsl.w #$01,d3
-L00004596 41f8 607c                lea.l $607c,a0
-L0000459a 3801                     move.w d1,d4
-L0000459c d844                     add.w d4,d4
-L0000459e 1a30 30fe                move.b (a0,d3.W,$fe) == $00000d11 [00],d5
-L000045a2 4885                     ext.w d5
-L000045a4 9845                     sub.w d5,d4
-L000045a6 e244                     asr.w #$01,d4
-L000045a8 48ae 0013 000e           movem.w d0-d1/d4,(a6,$000e) == $00dff00e
-L000045ae 48a7 c006                movem.w d0-d1/a5-a6,-(a7)
-L000045b2 6100 1140                bsr.w #$1140 == $000056f4
-L000045b6 4c9f 6003                movem.w (a7)+,d0-d1/a5-a6
-L000045ba 4e75                     rts  == $6000001a
-L000045bc d46e 0006                add.w (a6,$0006) == $00dff006,d2
-L000045c0 48a7 c006                movem.w d0-d1/a5-a6,-(a7)
-L000045c4 6100 112e                bsr.w #$112e == $000056f4
-L000045c8 4c9f 6003                movem.w (a7)+,d0-d1/a5-a6
-L000045cc 4e75                     rts  == $6000001a
-L000045ce 342e 000a                move.w (a6,$000a) == $00dff00a,d2
-L000045d2 5242                     addq.w #$01,d2
-L000045d4 0c42 000e                cmp.w #$000e,d2
-L000045d8 6a04                     bpl.b #$04 == $000045de (T)
-L000045da 3d42 000a                move.w d2,(a6,$000a) == $00dff00a
-L000045de e242                     asr.w #$01,d2
-L000045e0 d56e 0004                add.w d2,(a6,$0004) == $00dff004
-L000045e4 4bf8 62de                lea.l $62de,a5
-L000045e8 0c41 0064                cmp.w #$0064,d1
-L000045ec 6b00 ff8e                bmi.w #$ff8e == $0000457c (F)
-L000045f0 4256                     clr.w (a6)
-L000045f2 203c 0000 0350           move.l #$00000350,d0
-L000045f8 4ef9 0007 c82a           jmp $0007c82a
-L000045fe 4bf8 4866                lea.l $4866,a5
-L00004602 4df8 4894                lea.l $4894,a6
-L00004606 7e13                     moveq #$13,d7
-L00004608 341e                     move.w (a6)+,d2
-L0000460a 672a                     beq.b #$2a == $00004636 (F)
-L0000460c 4c96 0003                movem.w (a6),d0-d1
-L00004610 2f0e                     move.l a6,-(a7) [000009ec]
-L00004612 3f07                     move.w d7,-(a7) [09ec]
-L00004614 0802 000f                btst.l #$000f,d2
-L00004618 6708                     beq.b #$08 == $00004622 (F)
-L0000461a 4882                     ext.w d2
-L0000461c 3d42 fffe                move.w d2,(a6,-$0002) == $00dfeffe
-L00004620 7404                     moveq #$04,d2
-L00004622 e25a                     ror.w #$01,d2
-L00004624 6a04                     bpl.b #$04 == $0000462a (T)
-L00004626 0042 e000                or.w #$e000,d2
-L0000462a 0642 003b                add.w #$003b,d2
-L0000462e 6100 10c4                bsr.w #$10c4 == $000056f4
-L00004632 3e1f                     move.w (a7)+ [6000],d7
-L00004634 2c5f                     movea.l (a7)+ [6000001a],a6
-L00004636 5c4e                     addaq.w #$06,a6
-L00004638 51cf ffce                dbf .w d7,#$ffce == $00004608 (F)
-L0000463c 4e75                     rts  == $6000001a
-L0000463e 41f8 4894                lea.l $4894,a0
-L00004642 7e13                     moveq #$13,d7
-L00004644 4a50                     tst.w (a0) [003c]
-L00004646 670e                     beq.b #$0e == $00004656 (F)
-L00004648 41e8 0008                lea.l (a0,$0008) == $00000a08,a0
-L0000464c 51cf fff6                dbf .w d7,#$fff6 == $00004644 (F)
-L00004650 207c ffff fff8           movea.l #$fffffff8,a0
-L00004656 4e75                     rts  == $6000001a
-L00004658 4bf8 4866                lea.l $4866,a5
-L0000465c 4df8 4894                lea.l $4894,a6
-L00004660 7e13                     moveq #$13,d7
-L00004662 3c1e                     move.w (a6)+,d6
-L00004664 6718                     beq.b #$18 == $0000467e (F)
-L00004666 4c96 0003                movem.w (a6),d0-d1
-L0000466a 9078 630e                sub.w $630e [0000],d0
-L0000466e 9278 6310                sub.w $6310 [0000],d1
-L00004672 e346                     asl.w #$01,d6
-L00004674 4282                     clr.l d2
-L00004676 2042                     movea.l d2,a0
-L00004678 3075 60fe                movea.w (a5,d6.W,$fe) == $00bfdd53,a0
-L0000467c 4e90                     jsr (a0)
-L0000467e 5c4e                     addaq.w #$06,a6
-L00004680 51cf ffe0                dbf .w d7,#$ffe0 == $00004662 (F)
-L00004684 4e75                     rts  == $6000001a
-L00004686 4896 0003                movem.w d0-d1,(a6)
-L0000468a 6100 0f14                bsr.w #$0f14 == $000055a0
-L0000468e 0c02 0017                cmp.b #$17,d2
-L00004692 6526                     bcs.b #$26 == $000046ba (F)
-L00004694 9078 67c2                sub.w $67c2 [0050],d0
-L00004698 5840                     addq.w #$04,d0
-L0000469a 0c40 0009                cmp.w #$0009,d0
-L0000469e 6420                     bcc.b #$20 == $000046c0 (T)
-L000046a0 b278 67c4                cmp.w $67c4 [0048],d1
-L000046a4 6a1a                     bpl.b #$1a == $000046c0 (T)
-L000046a6 b278 62f0                cmp.w $62f0 [0000],d1
-L000046aa 6b14                     bmi.b #$14 == $000046c0 (F)
-L000046ac 7c01                     moveq #$01,d6
-L000046ae 6100 061c                bsr.w #$061c == $00004ccc
-L000046b2 700a                     moveq #$0a,d0
-L000046b4 4eb9 0004 8014           jsr $00048014
-L000046ba 3d7c 0004 fffe           move.w #$0004,(a6,-$0002) == $00dfeffe
-L000046c0 4e75                     rts  == $6000001a
-L000046c2 5740                     subq.w #$03,d0
-L000046c4 0c40 fff6                cmp.w #$fff6,d0
-L000046c8 6b58                     bmi.b #$58 == $00004722 (F)
-L000046ca 5741                     subq.w #$03,d1
-L000046cc 0c41 0058                cmp.w #$0058,d1
-L000046d0 65b4                     bcs.b #$b4 == $00004686 (F)
-L000046d2 604e                     bra.b #$4e == $00004722 (T)
-L000046d4 5640                     addq.w #$03,d0
-L000046d6 0c40 00a8                cmp.w #$00a8,d0
-L000046da 6a46                     bpl.b #$46 == $00004722 (T)
-L000046dc 5741                     subq.w #$03,d1
-L000046de 0c41 0058                cmp.w #$0058,d1
-L000046e2 65a2                     bcs.b #$a2 == $00004686 (F)
-L000046e4 603c                     bra.b #$3c == $00004722 (T)
-L000046e6 5740                     subq.w #$03,d0
-L000046e8 0c40 fff6                cmp.w #$fff6,d0
-L000046ec 6b34                     bmi.b #$34 == $00004722 (F)
-L000046ee 5641                     addq.w #$03,d1
-L000046f0 0c41 0058                cmp.w #$0058,d1
-L000046f4 6590                     bcs.b #$90 == $00004686 (F)
-L000046f6 602a                     bra.b #$2a == $00004722 (T)
-L000046f8 5640                     addq.w #$03,d0
-L000046fa 0c40 00a8                cmp.w #$00a8,d0
-L000046fe 6a22                     bpl.b #$22 == $00004722 (T)
-L00004700 5641                     addq.w #$03,d1
-L00004702 0c41 0058                cmp.w #$0058,d1
-L00004706 6500 ff7e                bcs.w #$ff7e == $00004686 (F)
-L0000470a 6016                     bra.b #$16 == $00004722 (T)
-L0000470c 5b40                     subq.w #$05,d0
-L0000470e 0c40 fff6                cmp.w #$fff6,d0
-L00004712 6a00 ff72                bpl.w #$ff72 == $00004686 (T)
-L00004716 600a                     bra.b #$0a == $00004722 (T)
-L00004718 5a40                     addq.w #$05,d0
-L0000471a 0c40 00a8                cmp.w #$00a8,d0
-L0000471e 6b00 ff66                bmi.w #$ff66 == $00004686 (F)
-L00004722 426e fffe                clr.w (a6,-$0002) == $00dfeffe
-L00004726 4e75                     rts  == $6000001a
-L00004728 5840                     addq.w #$04,d0
-L0000472a 0c40 00a8                cmp.w #$00a8,d0
-L0000472e 6af2                     bpl.b #$f2 == $00004722 (T)
-L00004730 6100 0e6e                bsr.w #$0e6e == $000055a0
-L00004734 0c02 0017                cmp.b #$17,d2
-L00004738 4896 0003                movem.w d0-d1,(a6)
-L0000473c 6440                     bcc.b #$40 == $0000477e (T)
-L0000473e 65e2                     bcs.b #$e2 == $00004722 (F)
-L00004740 5940                     subq.w #$04,d0
-L00004742 0c40 fff6                cmp.w #$fff6,d0
-L00004746 6bda                     bmi.b #$da == $00004722 (F)
-L00004748 6100 0e56                bsr.w #$0e56 == $000055a0
-L0000474c 0c02 0017                cmp.b #$17,d2
-L00004750 4896 0003                movem.w d0-d1,(a6)
-L00004754 6428                     bcc.b #$28 == $0000477e (T)
-L00004756 60ca                     bra.b #$ca == $00004722 (T)
-L00004758 3038 6318                move.w $6318 [0000],d0
-L0000475c 67c4                     beq.b #$c4 == $00004722 (F)
-L0000475e 4cb8 0003 67c2           movem.w $67c2,d0-d1
-L00004764 d078 631a                add.w $631a [0000],d0
-L00004768 9278 631c                sub.w $631c [0034],d1
-L0000476c 0441 000c                sub.w #$000c,d1
-L00004770 5a40                     addq.w #$05,d0
-L00004772 4a78 62ee                tst.w $62ee [0001]
-L00004776 6a02                     bpl.b #$02 == $0000477a (T)
-L00004778 5f40                     subq.w #$07,d0
-L0000477a 4896 0003                movem.w d0-d1,(a6)
-L0000477e 49f8 3a8e                lea.l $3a8e,a4
-L00004782 7c09                     moveq #$09,d6
-L00004784 3414                     move.w (a4),d2
-L00004786 5542                     subq.w #$02,d2
-L00004788 6b1a                     bmi.b #$1a == $000047a4 (F)
-L0000478a 342c 000e                move.w (a4,$000e) == $00bfe10f,d2
-L0000478e 9440                     sub.w d0,d2
-L00004790 5842                     addq.w #$04,d2
-L00004792 0c42 0008                cmp.w #$0008,d2
-L00004796 640c                     bcc.b #$0c == $000047a4 (T)
-L00004798 b26c 0010                cmp.w (a4,$0010) == $00bfe111,d1
-L0000479c 6a06                     bpl.b #$06 == $000047a4 (T)
-L0000479e b26c 0012                cmp.w (a4,$0012) == $00bfe113,d1
-L000047a2 6a0a                     bpl.b #$0a == $000047ae (T)
-L000047a4 49ec ffea                lea.l (a4,-$0016) == $00bfe0eb,a4
-L000047a8 51ce ffda                dbf .w d6,#$ffda == $00004784 (F)
-L000047ac 4e75                     rts  == $6000001a
-L000047ae 38bc 0001                move.w #$0001,(a4)
-L000047b2 397c fffc 000a           move.w #$fffc,(a4,$000a) == $00bfe10b
-L000047b8 6100 ff68                bsr.w #$ff68 == $00004722
-L000047bc 700a                     moveq #$0a,d0
-L000047be 4ef9 0004 8014           jmp $00048014
-L000047c4 5440                     addq.w #$02,d0
-L000047c6 342e 0004                move.w (a6,$0004) == $00dff004,d2
-L000047ca 0c42 0028                cmp.w #$0028,d2
-L000047ce 6a04                     bpl.b #$04 == $000047d4 (T)
-L000047d0 526e 0004                addq.w #$01,(a6,$0004) == $00dff004
-L000047d4 e442                     asr.w #$02,d2
-L000047d6 6a02                     bpl.b #$02 == $000047da (T)
-L000047d8 5242                     addq.w #$01,d2
-L000047da d242                     add.w d2,d1
-L000047dc 0c41 0060                cmp.w #$0060,d1
-L000047e0 6a00 ff40                bpl.w #$ff40 == $00004722 (T)
-L000047e4 4896 0003                movem.w d0-d1,(a6)
-L000047e8 6100 0db6                bsr.w #$0db6 == $000055a0
-L000047ec 0c02 0017                cmp.b #$17,d2
-L000047f0 6522                     bcs.b #$22 == $00004814 (F)
-L000047f2 9078 67c2                sub.w $67c2 [0050],d0
-L000047f6 5640                     addq.w #$03,d0
-L000047f8 0c40 0007                cmp.w #$0007,d0
-L000047fc 6422                     bcc.b #$22 == $00004820 (T)
-L000047fe b278 67c4                cmp.w $67c4 [0048],d1
-L00004802 6a1c                     bpl.b #$1c == $00004820 (T)
-L00004804 b278 62f0                cmp.w $62f0 [0000],d1
-L00004808 6b16                     bmi.b #$16 == $00004820 (F)
-L0000480a 7c06                     moveq #$06,d6
-L0000480c 6100 04be                bsr.w #$04be == $00004ccc
-L00004810 4c96 0003                movem.w (a6),d0-d1
-L00004814 3d7c 000e fffe           move.w #$000e,(a6,-$0002) == $00dfeffe
-L0000481a 740d                     moveq #$0d,d2
-L0000481c 6000 fc98                bra.w #$fc98 == $000044b6 (T)
-L00004820 4e75                     rts  == $6000001a
-L00004822 5540                     subq.w #$02,d0
-L00004824 342e 0004                move.w (a6,$0004) == $00dff004,d2
-L00004828 0c42 0028                cmp.w #$0028,d2
-L0000482c 6a04                     bpl.b #$04 == $00004832 (T)
-L0000482e 526e 0004                addq.w #$01,(a6,$0004) == $00dff004
-L00004832 e442                     asr.w #$02,d2
-L00004834 6a02                     bpl.b #$02 == $00004838 (T)
-L00004836 5242                     addq.w #$01,d2
-L00004838 d242                     add.w d2,d1
-L0000483a 0c41 0060                cmp.w #$0060,d1
-L0000483e 6a00 fee2                bpl.w #$fee2 == $00004722 (T)
-L00004842 60a0                     bra.b #$a0 == $000047e4 (T)
-L00004844 4896 0003                movem.w d0-d1,(a6)
-L00004848 0838 0000 632d           btst.b #$0000,$632d [00]
-L0000484e 6614                     bne.b #$14 == $00004864 (T)
-L00004850 342e fffe                move.w (a6,-$0002) == $00dfeffe,d2
-L00004854 5242                     addq.w #$01,d2
-L00004856 0c42 0018                cmp.w #$0018,d2
-L0000485a 6600 0004                bne.w #$0004 == $00004860 (T)
-L0000485e 4242                     clr.w d2
-L00004860 3d42 fffe                move.w d2,(a6,-$0002) == $00dfeffe
-L00004864 4e75                     rts  == $6000001a
+
+L000044d4           dc.w    $e004                       ; asr.b #$08,d4
+L000044d6           dc.w    $e005                       ; asr.b #$08,d5
+L000044d8           dc.w    $e008                       ; lsr.b #$08,d0
+L000044da           dc.w    $e010                       ; roxr.b #$08,d0
+L000044dc           dc.w    $e011                       ; roxr.b #$08,d1
+L000044de           dc.w    $0000, $e012                ; or.b #$12,d0
+L000044e2           dc.w    $e011                       ; roxr.b #$08,d1
+L000044e4           dc.w    $0000, $e013                ; or.b #$13,d0
+L000044e8           dc.w    $e014                       ; roxr.b #$08,d4
+L000044ea           dc.w    $e011                       ; roxr.b #$08,d1
+L000044ec           dc.w    $e015                       ; roxr.b #$08,d5
+L000044ee           dc.w    $e016                       ; roxr.b #$08,d6
+L000044f0           dc.w    $e011                       ; roxr.b #$08,d1
+L000044f2           dc.w    $0004, $0005                ; or.b #$05,d4
+L000044f6           dc.w    $0008                       ; illegal
+L000044f8           dc.w    $0010, $0011                ; or.b #$11,(a0) [00]
+L000044fc           dc.w    $0000, $0012                ; or.b #$12,d0
+L00004500           dc.w    $0011, $0000                ; or.b #$00,(a1) [04]
+L00004504           dc.w    $0013, $0014                ; or.b #$14,(a3) [71]
+L00004508           dc.w    $0011, $0015                ; or.b #$15,(a1) [04]
+L0000450c           dc.w    $0016, $0011                ; or.b #$11,(a6)
+
+L00004510           dc.w    $0010, $0011                ; or.b #$11,(a0) [00]
+L00004514           dc.w    $0012, $0012                ; or.b #$12,(a2) [12]
+L00004518           dc.w    $0008                       ; illegal
+L0000451a           dc.w    $8006                       ; or.b d6,d0
+L0000451c           dc.w    $e010                       ; roxr.b #$08,d0
+L0000451e           dc.w    $e011                       ; roxr.b #$08,d1
+L00004520           dc.w    $e012                       ; roxr.b #$08,d2
+L00004522           dc.w    $0012, $fff8                ; or.b #$f8,(a2) [12]
+L00004526           dc.w    $8007                       ; or.b d7,d0
+L00004528           dc.w    $0017, $0018                ; or.b #$18,(a7) [60]
+L0000452c           dc.w    $0019, $000e                ; or.b #$0e,(a1)+ [04]
+L00004530           dc.w    $0008                       ; illegal
+L00004532           dc.w    $8006                       ; or.b d6,d0
+L00004534           dc.w    $e017                       ; roxr.b #$08,d7
+L00004536           dc.w    $e018                       ; ror.b #$08,d0
+L00004538           dc.w    $e019                       ; ror.b #$08,d1
+L0000453a           dc.w    $000e                       ; illegal
+L0000453c           dc.w    $fff8                       ; illegal
+L0000453e           dc.w    $8007                       ; or.b d7,d0
+L00004540           dc.w    $e013                       ; roxr.b #$08,d3
+L00004542           dc.w    $e014                       ; roxr.b #$08,d4
+L00004544           dc.w    $e012                       ; roxr.b #$08,d2
+L00004546           dc.w    $0012, $fffd                ; or.b #$fd,(a2) [12]
+L0000454a           dc.w    $800b                       ; illegal
+L0000454c           dc.w    $0013, $0014                ; or.b #$14,(a3) [71]
+L00004550           dc.w    $0012, $0012                ; or.b #$12,(a2) [12]
+L00004554           dc.w    $0003, $800a                ; or.b #$0a,d3
+L00004558           dc.w    $e015                       ; roxr.b #$08,d5
+L0000455a           dc.w    $e016                       ; roxr.b #$08,d6
+L0000455c           dc.w    $e012                       ; roxr.b #$08,d2
+L0000455e           dc.w    $000c                       ; illegal
+L00004560           dc.w    $fffb                       ; illegal
+L00004562           dc.w    $8009                       ; illegal
+L00004564           dc.w    $0015, $0016                ; or.b #$16,(a5)
+L00004568           dc.w    $0012, $000c                ; or.b #$0c,(a2) [12]
+L0000456c           dc.w    $0005, $8008                ; or.b #$08,d5
+
+
+
+L00004570           move.w  $000a(a6),d2        ; $00dff00a
+L00004574           mulu.w  #$000c,d2
+L00004578           lea.l   (pc,d2.W),a5        ; $00004510
+L0000457c           move.w  (a5)+,d2
+L0000457e           bsr.b   L0000458a
+L00004580           move.w  (a5)+,d2
+L00004582           bsr.b   L000045bc
+L00004584           move.w  (a5)+,d2
+L00004586           bne.b   L000045bc
+L00004588           rts 
+
+
+
+L0000458a           add.w   $0006(a6),d2        ; $00dff006
+L0000458e           move.w  d2,d3
+L00004590           and.w   #$1fff,d3
+L00004594           lsl.w   #$01,d3
+L00004596           lea.l   L0000607c,a0
+L0000459a           move.w  d1,d4
+L0000459c           add.w   d4,d4
+L0000459e           move.b  $fe(a0,d3.W),d5     ; $00000d11
+L000045a2           ext.w   d5
+L000045a4           sub.w   d5,d4
+L000045a6           asr.w   #$01,d4
+L000045a8           movem.w d0-d1/d4,$000e(a6)  ; $00dff00e
+L000045ae           movem.w d0-d1/a5-a6,-(a7)
+L000045b2           bsr.w   L000056f4
+L000045b6           movem.w (a7)+,d0-d1/a5-a6
+L000045ba           rts 
+
+
+L000045bc           add.w   $0006(a6),d2        ; $00dff006
+L000045c0           movem.w d0-d1/a5-a6,-(a7)
+L000045c4           bsr.w   L000056f4
+L000045c8           movem.w (a7)+,d0-d1/a5-a6
+L000045cc           rts 
+
+
+L000045ce           move.w  $000a(a6),d2            ; $00dff00a
+L000045d2           addq.w  #$01,d2
+L000045d4           cmp.w   #$000e,d2
+L000045d8           bpl.b   L000045de
+L000045da           move.w  d2,(a6,$000a) == $00dff00a
+L000045de           asr.w   #$01,d2
+L000045e0           add.w   d2,(a6,$0004) == $00dff004
+L000045e4           lea.l   L000062de,a5
+L000045e8           cmp.w   #$0064,d1
+L000045ec           bmi.w   L0000457c
+L000045f0           clr.w   (a6)
+L000045f2           move.l  #$00000350,d0
+L000045f8           jmp     $0007c82a               ; External Address - Panel
+
+
+L000045fe           lea.l   L00004866,a5
+L00004602           lea.l   L00004894,a6
+L00004606           moveq   #$13,d7
+L00004608           move.w  (a6)+,d2
+L0000460a           beq.b   L00004636
+L0000460c           movem.w (a6),d0-d1
+L00004610           move.l  a6,-(a7)
+L00004612           move.w  d7,-(a7)
+L00004614           btst.l  #$000f,d2
+L00004618           beq.b   L00004622
+L0000461a           ext.w   d2
+L0000461c           move.w  d2,-$0002(a6)
+L00004620           moveq   #$04,d2
+L00004622           ror.w   #$01,d2
+L00004624           bpl.b   L0000462a
+L00004626           or.w    #$e000,d2
+L0000462a           add.w   #$003b,d2
+L0000462e           bsr.w   L000056f4
+L00004632           move.w  (a7)+,d7
+L00004634           movea.l (a7)+,a6
+L00004636           addq.w  #$06,a6             ; addaq.w
+L00004638           dbf.w   d7,L00004608
+L0000463c           rts
+
+
+L0000463e           lea.l   L00004894,a0
+L00004642           moveq   #$13,d7
+L00004644           tst.w   (a0)
+L00004646           beq.b   L00004656
+L00004648           lea.l   $0008(a0),a0        ; $00000a08
+L0000464c           dbf.w   d7,L00004644
+L00004650           movea.l #$fffffff8,a0
+L00004656           rts
+
+
+L00004658           lea.l   L00004866,a5
+L0000465c           lea.l   L00004894,a6
+L00004660           moveq   #$13,d7
+L00004662           move.w  (a6)+,d6
+L00004664           beq.b   L0000467e
+L00004666           movem.w (a6),d0-d1
+L0000466a           sub.w   L0000630e,d0
+L0000466e           sub.w   L00006310,d1
+L00004672           asl.w   #$01,d6
+L00004674           clr.l   d2
+L00004676           movea.l d2,a0
+L00004678           movea.w $fe(a5,d6.W),a0
+L0000467c           jsr     (a0)
+L0000467e           addq.w  #$06,a6                 ; addaq.w
+L00004680           dbf.w d7,L00004662
+L00004684           rts
+
+
+L00004686           movem.w d0-d1,(a6)
+L0000468a           bsr.w   L000055a0
+L0000468e           cmp.b   #$17,d2
+L00004692           bcs.b   L000046ba
+L00004694           sub.w   L000067c2,d0
+L00004698           addq.w  #$04,d0
+L0000469a           cmp.w   #$0009,d0
+L0000469e           bcc.b   L000046c0
+L000046a0           cmp.w   L000067c4,d1
+L000046a4           bpl.b   L000046c0
+L000046a6           cmp.w   L000062f0,d1
+L000046aa           bmi.b   L000046c0
+L000046ac           moveq   #$01,d6
+L000046ae           bsr.w   L00004ccc
+L000046b2           moveq   #$0a,d0
+L000046b4           jsr     $00048014           ; External Address
+L000046ba           move.w  #$0004,-$0002(a6)   
+L000046c0           rts
+
+
+L000046c2           subq.w  #$03,d0
+L000046c4           cmp.w   #$fff6,d0
+L000046c8           bmi.b   L00004722
+L000046ca           subq.w  #$03,d1
+L000046cc           cmp.w   #$0058,d1
+L000046d0           bcs.b   L00004686
+L000046d2           bra.b   L00004722
+L000046d4           addq.w  #$03,d0
+L000046d6           cmp.w   #$00a8,d0
+L000046da           bpl.b   L00004722
+L000046dc           subq.w  #$03,d1
+L000046de           cmp.w   #$0058,d1
+L000046e2           bcs.b   L00004686
+L000046e4           bra.b   L00004722
+L000046e6           subq.w  #$03,d0
+L000046e8           cmp.w   #$fff6,d0
+L000046ec           bmi.b   L00004722
+L000046ee           addq.w  #$03,d1
+L000046f0           cmp.w   #$0058,d1
+L000046f4           bcs.b   L00004686
+L000046f6           bra.b   L00004722
+L000046f8           addq.w  #$03,d0
+L000046fa           cmp.w   #$00a8,d0
+L000046fe           bpl.b   L00004722
+L00004700           addq.w  #$03,d1
+L00004702           cmp.w   #$0058,d1
+L00004706           bcs.w   L00004686
+L0000470a           bra.b   L00004722
+L0000470c           subq.w  #$05,d0
+L0000470e           cmp.w   #$fff6,d0
+L00004712           bpl.w   L00004686
+L00004716           bra.b   L00004722
+L00004718           addq.w  #$05,d0
+L0000471a           cmp.w   #$00a8,d0
+L0000471e           bmi.w   L00004686
+L00004722           clr.w   -$0002(a6)
+L00004726           rts
+
+
+L00004728           addq.w  #$04,d0
+L0000472a           cmp.w   #$00a8,d0
+L0000472e           bpl.b   L00004722
+L00004730           bsr.w   L000055a0
+L00004734           cmp.b   #$17,d2
+L00004738           movem.w d0-d1,(a6)
+L0000473c           bcc.b   L0000477e
+L0000473e           bcs.b   L00004722
+L00004740           subq.w  #$04,d0
+L00004742           cmp.w   #$fff6,d0
+L00004746           bmi.b   L00004722
+L00004748           bsr.w   L000055a0
+L0000474c           cmp.b   #$17,d2
+L00004750           movem.w d0-d1,(a6)
+L00004754           bcc.b   L0000477e
+L00004756           bra.b   L00004722
+L00004758           move.w  L00006318,d0
+L0000475c           beq.b   L00004722
+L0000475e           movem.w L000067c2,d0-d1
+L00004764           add.w   L0000631a,d0
+L00004768           sub.w   L0000631c,d1
+L0000476c           sub.w   #$000c,d1
+L00004770           addq.w  #$05,d0
+L00004772           tst.w   L000062ee
+L00004776           bpl.b   L0000477a
+L00004778           subq.w  #$07,d0
+L0000477a           movem.w d0-d1,(a6)
+L0000477e           lea.l   L00003a8e,a4
+L00004782           moveq   #$09,d6
+L00004784           move.w  (a4),d2
+L00004786           subq.w  #$02,d2
+L00004788           bmi.b   L000047a4
+L0000478a           move.w  $000e(a4),d2
+L0000478e           sub.w   d0,d2
+L00004790           addq.w  #$04,d2
+L00004792           cmp.w   #$0008,d2
+L00004796           bcc.b   L000047a4
+L00004798           cmp.w   $0010(a4),d1
+L0000479c           bpl.b   L000047a4
+L0000479e           cmp.w   $0012(a4),d1
+L000047a2           bpl.b   L000047ae
+L000047a4           lea.l   -$0016(a4),a4
+L000047a8           dbf.w   d6,L00004784
+L000047ac           rts
+
+
+
+L000047ae           move.w  #$0001,(a4)
+L000047b2           move.w  #$fffc,$000a(a4)
+L000047b8           bsr.w   L00004722
+L000047bc           moveq   #$0a,d0
+L000047be           jmp     $00048014           ; External Address
+L000047c4           addq.w  #$02,d0
+L000047c6           move.w  $0004(a6),d2
+L000047ca           cmp.w   #$0028,d2
+L000047ce           bpl.b   L000047d4
+L000047d0           addq.w  #$01,$0004(a6)
+L000047d4           asr.w   #$02,d2
+L000047d6           bpl.b   L000047da
+L000047d8           addq.w  #$01,d2
+L000047da           add.w   d2,d1
+L000047dc           cmp.w   #$0060,d1
+L000047e0           bpl.w   L00004722
+L000047e4           movem.w d0-d1,(a6)
+L000047e8           bsr.w   L000055a0
+L000047ec           cmp.b   #$17,d2
+L000047f0           bcs.b   L00004814
+L000047f2           sub.w   L000067c2,d0
+L000047f6           addq.w  #$03,d0
+L000047f8           cmp.w   #$0007,d0
+L000047fc           bcc.b   L00004820
+L000047fe           cmp.w   L000067c4,d1
+L00004802           bpl.b   L00004820
+L00004804           cmp.w   L000062f0,d1
+L00004808           bmi.b   L00004820
+L0000480a           moveq   #$06,d6
+L0000480c           bsr.w   L00004ccc
+L00004810           movem.w (a6),d0-d1
+L00004814           move.w  #$000e,-$0002(a6)
+L0000481a           moveq   #$0d,d2
+L0000481c           bra.w   L000044b6
+L00004820           rts
+
+
+
+L00004822           subq.w  #$02,d0
+L00004824           move.w  $0004(a6),d2
+L00004828           cmp.w   #$0028,d2
+L0000482c           bpl.b   L00004832
+L0000482e           addq.w  #$01,$0004(a6)
+L00004832           asr.w   #$02,d2
+L00004834           bpl.b   L00004838
+L00004836           addq.w  #$01,d2
+L00004838           add.w   d2,d1
+L0000483a           cmp.w   #$0060,d1
+L0000483e           bpl.w   L00004722
+L00004842           bra.b   L000047e4
+L00004844           movem.w d0-d1,(a6)
+L00004848           btst.b  #$0000,L0000632d
+L0000484e           bne.b   L00004864
+L00004850           move.w  -$0002(a6),d2
+L00004854           addq.w  #$01,d2
+L00004856           cmp.w   #$0018,d2
+L0000485a           bne.w   L00004860
+L0000485e           clr.w   d2
+L00004860           move.w  d2,-$0002(a6)
+L00004864           rts
+
+
+
 L00004866 4758                     illegal
 L00004868 4728 4740                [ chk.l (a0,$4740) == $00005140,d3 ]
 L0000486a 4740                     illegal
@@ -2065,8 +2102,11 @@ L00004924 0000 0000                or.b #$00,d0
 L00004928 0000 0000                or.b #$00,d0
 L0000492c 0000 0000                or.b #$00,d0
 L00004930 0000 0000                or.b #$00,d0
-L00004934 0000 4cb8                or.b #$b8,d0
-L00004938 0006 67c4                or.b #$c4,d6
+L00004934 0000                          ; 4cb8 or.b #$b8,d0
+
+
+
+L00004936 4cb8 0006 67c4           movem.w $000067c4,D1-D2
 L0000493c 3001                     move.w d1,d0
 L0000493e 9042                     sub.w d2,d0
 L00004940 31f8 6310 4934           move.w $6310 [0000],$4934 [0000]
@@ -2168,6 +2208,8 @@ L00004a52 554c                     subaq.w #$02,a4
 L00004a54 21cc 631e                move.l a4,$631e [0005a36c]
 L00004a58 6100 007c                bsr.w #$007c == $00004ad6
 L00004a5c 4e75                     rts  == $6000001a
+
+
 L00004a5e 5341                     subq.w #$01,d1
 L00004a60 3803                     move.w d3,d4
 L00004a62 0244 0007                and.w #$0007,d4
@@ -2207,6 +2249,8 @@ L00004acc 6502                     bcs.b #$02 == $00004ad0 (F)
 L00004ace 4242                     clr.w d2
 L00004ad0 51c9 ff8e                dbf .w d1,#$ff8e == $00004a60 (F)
 L00004ad4 4e75                     rts  == $6000001a
+
+
 L00004ad6 2478 630a                movea.l $630a [0000a07c],a2
 L00004ada 3401                     move.w d1,d2
 L00004adc e64a                     lsr.w #$03,d2
@@ -2254,6 +2298,9 @@ L00004b54 51ce 0006                dbf .w d6,#$0006 == $00004b5c (F)
 L00004b58 43e9 e374                lea.l (a1,-$1c8c) == $0003e2ce,a1
 L00004b5c 51cf ffc2                dbf .w d7,#$ffc2 == $00004b20 (F)
 L00004b60 4e75                     rts  == $6000001a
+
+
+
 L00004b62 33fc 8400 00df f096      move.w #$8400,$00dff096
 L00004b6a 2c78 36f6                movea.l $36f6 [00061b9c],a6
 L00004b6e 554e                     subaq.w #$02,a6
@@ -2295,6 +2342,9 @@ L00004bce 43d5                     lea.l (a5),a1
 L00004bd0 6100 000c                bsr.w #$000c == $00004bde
 L00004bd4 33fc 0400 00df f096      move.w #$0400,$00dff096
 L00004bdc 4e75                     rts  == $6000001a
+
+
+
 L00004bde 2a02                     move.l d2,d5
 L00004be0 4845                     swap.w d5
 L00004be2 0245 e000                and.w #$e000,d5
@@ -2323,11 +2373,17 @@ L00004c34 d3c5                     adda.l d5,a1
 L00004c36 d1c5                     adda.l d5,a0
 L00004c38 51cf ffe4                dbf .w d7,#$ffe4 == $00004c1e (F)
 L00004c3c 4e75                     rts  == $6000001a
+
+
+
 L00004c3e 4242                     clr.w d2
 L00004c40 1438 6308                move.b $6308 [00],d2
 L00004c44 e542                     asl.w #$02,d2
 L00004c46 207b 2004                movea.l (pc,d2.W,$04=$00004c4c) == $00005653 [623b4600],a0
 L00004c4a 4ed0                     jmp (a0)
+
+
+
 L00004c4c 0000 5290                or.b #$90,d0
 L00004c50 0000 5246                or.b #$46,d0
 L00004c54 0000 529c                or.b #$9c,d0
@@ -2360,6 +2416,9 @@ L00004cbc 0000 5290                or.b #$90,d0
 L00004cc0 0000 5290                or.b #$90,d0
 L00004cc4 0000 5290                or.b #$90,d0
 L00004cc8 0000 5290                or.b #$90,d0
+
+
+
 L00004ccc 4a39 0007 c874           tst.b $0007c874 [00]
 L00004cd2 6662                     bne.b #$62 == $00004d36 (T)
 L00004cd4 48e7 ff06                movem.l d0-d7/a5-a6,-(a7)
@@ -2394,12 +2453,16 @@ L00004d2e 6502                     bcs.b #$02 == $00004d32 (F)
 L00004d30 740c                     moveq #$0c,d2
 L00004d32 31c2 6306                move.w d2,$6306 [0000]
 L00004d36 4e75                     rts  == $6000001a
+
+
 L00004d38 3438 62f2                move.w $62f2 [0000],d2
 L00004d3c d446                     add.w d6,d2
 L00004d3e d446                     add.w d6,d2
 L00004d40 d446                     add.w d6,d2
 L00004d42 31c2 62f2                move.w d2,$62f2 [0000]
 L00004d46 4e75                     rts  == $6000001a
+
+
 L00004d48 5378 6306                subq.w #$01,$6306 [0000]
 L00004d4c 66e8                     bne.b #$e8 == $00004d36 (T)
 L00004d4e 31fc 5308 3c92           move.w #$5308,$3c92 [4c3e]
@@ -2410,19 +2473,21 @@ L00004d5c 6100 0452                bsr.w #$0452 == $000051b0
 L00004d60 5378 6306                subq.w #$01,$6306 [0000]
 L00004d64 66d0                     bne.b #$d0 == $00004d36 (T)
 L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
-00004d6c 4a78 6318                tst.w $6318 [0000]
-00004d70 6704                     beq.b #$04 == $00004d76 (F)
-00004d72 6100 0434                bsr.w #$0434 == $000051a8
-00004d76 6100 06b8                bsr.w #$06b8 == $00005430
-00004d7a 4a39 0007 c874           tst.b $0007c874 [00]
-00004d80 67b4                     beq.b #$b4 == $00004d36 (F)
-00004d82 4eb9 0004 8004           jsr $00048004
-00004d88 4278 6318                clr.w $6318 [0000]
-00004d8c 7003                     moveq #$03,d0
-00004d8e 4eb9 0004 8010           jsr $00048010
-00004d94 31fc 4da2 3c92           move.w #$4da2,$3c92 [4c3e]
-00004d9a 31fc 63dc 6326           move.w #$63dc,$6326 [0000]
-00004da0 4e75                     rts  == $6000001a
+L00004d6c 4a78 6318                tst.w $6318 [0000]
+L00004d70 6704                     beq.b #$04 == $00004d76 (F)
+L00004d72 6100 0434                bsr.w #$0434 == $000051a8
+L00004d76 6100 06b8                bsr.w #$06b8 == $00005430
+L00004d7a 4a39 0007 c874           tst.b $0007c874 [00]
+L00004d80 67b4                     beq.b #$b4 == $00004d36 (F)
+L00004d82 4eb9 0004 8004           jsr $00048004
+L00004d88 4278 6318                clr.w $6318 [0000]
+L00004d8c 7003                     moveq #$03,d0
+L00004d8e 4eb9 0004 8010           jsr $00048010
+L00004d94 31fc 4da2 3c92           move.w #$4da2,$3c92 [4c3e]
+L00004d9a 31fc 63dc 6326           move.w #$63dc,$6326 [0000]
+L00004da0 4e75                     rts  == $6000001a
+
+
 00004da2 3078 6326                movea.w $6326 [0000],a0
 00004da6 6100 0690                bsr.w #$0690 == $00005438
 00004daa 31c8 6326                move.w a0,$6326 [0000]
@@ -2448,6 +2513,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 00004e00 4eb9 0004 8004           jsr $00048004
 00004e06 6100 ef84                bsr.w #$ef84 == $00003d8c
 00004e0a 6000 ba14                bra.w #$ba14 == $00000820 (T)
+
+
 00004e0e 5f0f                     illegal
 00004e10 4741                     illegal
 00004e12 4d45                     illegal
@@ -2461,11 +2528,15 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 00004e22 2020                     move.l -(a0) [4ef83000],d0
 00004e24 5550                     subq.w #$02,(a0) [003c]
 00004e26 00ff                     illegal
+
+
 00004e28 2079 0000 36f6           movea.l $000036f6 [00061b9c],a0
 00004e2e 3e3c 1c8b                move.w #$1c8b,d7
 00004e32 4298                     clr.l (a0)+ [003c004a]
 00004e34 51cf fffc                dbf .w d7,#$fffc == $00004e32 (F)
 00004e38 4e75                     rts  == $6000001a
+
+
 00004e3a 7610                     moveq #$10,d3
 00004e3c 4a39 0007 c874           tst.b $0007c874 [00]
 00004e42 661c                     bne.b #$1c == $00004e60 (T)
@@ -2498,6 +2569,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 00004e9e 9242                     sub.w d2,d1
 00004ea0 31c1 67c4                move.w d1,$67c4 [0048]
 00004ea4 4e75                     rts  == $6000001a
+
+
 00004ea6 3085                     move.w d5,(a0) [003c]
 00004ea8 0804 0002                btst.l #$0002,d4
 00004eac 6700 0012                beq.w #$0012 == $00004ec0 (F)
@@ -2572,6 +2645,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 00004f84 0838 0004 6308           btst.b #$0004,$6308 [00]
 00004f8a 6622                     bne.b #$22 == $00004fae (T)
 00004f8c 4e75                     rts  == $6000001a
+
+
 00004f8e 4a44                     tst.w d4
 00004f90 6b08                     bmi.b #$08 == $00004f9a (F)
 00004f92 5578 6318                subq.w #$02,$6318 [0000]
@@ -2621,6 +2696,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 0000502c 0441 0010                sub.w #$0010,d1
 00005030 4890 0003                movem.w d0-d1,(a0)
 00005034 4e75                     rts  == $6000001a
+
+
 00005036 1839 0000 6308           move.b $00006308 [00],d4
 0000503c 6600 0010                bne.w #$0010 == $0000504e (T)
 00005040 5378 62f2                subq.w #$01,$62f2 [0000]
@@ -2654,6 +2731,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000050a0 6606                     bne.b #$06 == $000050a8 (T)
 000050a2 31fc 5414 3c92           move.w #$5414,$3c92 [4c3e]
 000050a8 4e75                     rts  == $6000001a
+
+
 000050aa 43e8 007c                lea.l (a0,$007c) == $00000a7c,a1
 000050ae 3410                     move.w (a0) [003c],d2
 000050b0 e242                     asr.w #$01,d2
@@ -2676,6 +2755,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000050de e04c                     lsr.w #$08,d4
 000050e0 3144 0008                move.w d4,(a0,$0008) == $00000a08 [0000]
 000050e4 4e75                     rts  == $6000001a
+
+
 000050e6 4278 62ee                clr.w $62ee [0001]
 000050ea 707f                     moveq #$7f,d0
 000050ec 600c                     bra.b #$0c == $000050fa (T)
@@ -2734,6 +2815,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000051a4 6000 0292                bra.w #$0292 == $00005438 (T)
 000051a8 31fc 51b0 3c92           move.w #$51b0,$3c92 [4c3e]
 000051ae 4e75                     rts  == $6000001a
+
+
 000051b0 41f8 6314                lea.l $6314,a0
 000051b4 0839 0004 0000 6308      btst.b #$0004,$00006308 [00]
 000051bc 6706                     beq.b #$06 == $000051c4 (F)
@@ -2746,6 +2829,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000051d8 41f8 63d3                lea.l $63d3,a0
 000051dc 6000 025a                bra.w #$025a == $00005438 (T)
 000051e0 4e75                     rts  == $6000001a
+
+
 000051e2 31fc 0028 67c6           move.w #$0028,$67c6 [0048]
 000051e8 3438 67bc                move.w $67bc [0000],d2
 000051ec d440                     add.w d0,d2
@@ -2802,6 +2887,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 0000528a 30c0                     move.w d0,(a0)+ [003c]
 0000528c 30bc 0001                move.w #$0001,(a0) [003c]
 00005290 4e75                     rts  == $6000001a
+
+
 00005292 6100 ff4e                bsr.w #$ff4e == $000051e2
 00005296 6004                     bra.b #$04 == $0000529c (T)
 00005298 6100 ff6e                bsr.w #$ff6e == $00005208
@@ -2832,6 +2919,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000052e6 30c0                     move.w d0,(a0)+ [003c]
 000052e8 30bc e001                move.w #$e001,(a0) [003c]
 000052ec 4e75                     rts  == $6000001a
+
+
 000052ee d645                     add.w d5,d3
 000052f0 1430 3000                move.b (a0,d3.W,$00) == $00000d13 [d6],d2
 000052f4 0402 0079                sub.b #$79,d2
@@ -2901,8 +2990,12 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000053c8 4298                     clr.l (a0)+ [003c004a]
 000053ca 3082                     move.w d2,(a0) [003c]
 000053cc 4e75                     rts  == $6000001a
+
+
 000053ce 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000053d4 4e75                     rts  == $6000001a
+
+
 000053d6 0641 0008                add.w #$0008,d1
 000053da 6100 01c4                bsr.w #$01c4 == $000055a0
 000053de 4cb8 0003 67c2           movem.w $67c2,d0-d1
@@ -2915,6 +3008,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 000053fc 613a                     bsr.b #$3a == $00005438
 000053fe 31fc 5406 3c92           move.w #$5406,$3c92 [4c3e]
 00005404 4e75                     rts  == $6000001a
+
+
 00005406 41f8 63d9                lea.l $63d9,a0
 0000540a 612c                     bsr.b #$2c == $00005438
 0000540c 0838 0002 6308           btst.b #$0002,$6308 [00]
@@ -2925,6 +3020,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 00005420 0838 0004 6308           btst.b #$0004,$6308 [00]
 00005426 66ae                     bne.b #$ae == $000053d6 (T)
 00005428 4e75                     rts  == $6000001a
+
+
 0000542a 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 00005430 41f8 63d3                lea.l $63d3,a0
 00005434 6000 0002                bra.w #$0002 == $00005438 (T)
@@ -2940,6 +3037,8 @@ L00004d66 31fc 4c3e 3c92           move.w #$4c3e,$3c92 [4c3e]
 0000544e 3307                     move.w d7,-(a1) [0000]
 00005450 3e1f                     move.w (a7)+ [6000],d7
 00005452 4e75                     rts  == $6000001a
+
+
 00005454 0d01                     btst.l d6,d1
 00005456 0111                     btst.b d0,(a1) [04]
 00005458 ff02                     illegal
@@ -2950,7 +3049,7 @@ L00005460           clr.l   L000062f4
 L00005464           move.w  L000067c4,L000067c6
 L0000546a           lea.l   $ffe8(pc),a0            ; $00005454
 L0000546e           bsr.w   L00005438
-L00005472           move.w  #$5482,L00003c92
+L00005472           move.w  #$5482,L00003c92        ; Self Modifying Code? 
 L00005478           move.w  #$ffff,L000062fa
 L0000547e           clr.w   L000062f8
 L00005482           movem.w L000062f4,d4-d5
@@ -2965,7 +3064,7 @@ L000054a0           moveq   #$01,d7
 L000054a2           cmp.b   #$17,d2
 L000054a6           bcs.b   L000054c8
 L000054a8           move.b  $01(a0,d3.W),d2
-L000054ac           cmp.b #$17,d2
+L000054ac           cmp.b   #$17,d2
 L000054b0           bcs.b #$16 == $000054c8 (F)
 L000054b2           add.w $00008002 [00c0],d3
 L000054b8           move.b (a0,d3.W,$00) == $00000d13 [d6],d2
@@ -3582,6 +3681,7 @@ L00005a78           rts
 00005b52 0001 0001                or.b #$01,d1
 00005b56 0001 0001                or.b #$01,d1
 00005b5a ffff                     illegal
+
 00005b5c 3d7c 0098 0004           move.w #$0098,(a6,$0004) == $00dff004
 00005b62 4bf8 39c8                lea.l $39c8,a5
 00005b66 343c 0085                move.w #$0085,d2
@@ -3596,6 +3696,8 @@ L00005a78           rts
 00005b80 08b9 0007 0000 670a      bclr.b #$0007,$0000670a [05]
 00005b88 4256                     clr.w (a6)
 00005b8a 4e75                     rts  == $6000001a
+
+
 00005b8c 5342                     subq.w #$01,d2
 00005b8e 66fa                     bne.b #$fa == $00005b8a (T)
 00005b90 4eb9 0004 8008           jsr $00048008
@@ -3612,6 +3714,7 @@ L00005a78           rts
 00005bc8 4256                     clr.w (a6)
 00005bca 700b                     moveq #$0b,d0
 00005bcc 4ef9 0004 8014           jmp $00048014
+
 00005bd2 5378 67c8                subq.w #$01,$67c8 [0050]
 00005bd6 0440 0018                sub.w #$0018,d0
 00005bda 9078 67be                sub.w $67be [00f0],d0
@@ -3649,6 +3752,8 @@ L00005a78           rts
 00005c3c e64a                     lsr.w #$03,d2
 00005c3e 5242                     addq.w #$01,d2
 00005c40 4e75                     rts  == $6000001a
+
+
 00005c42 4cb8 0018 67c2           movem.w $67c2,d3-d4
 00005c48 0643 0010                add.w #$0010,d3
 00005c4c 6008                     bra.b #$08 == $00005c56 (T)
@@ -3710,6 +3815,8 @@ L00005a78           rts
 00005cfc 6100 efce                bsr.w #$efce == $00004ccc
 00005d00 60bc                     bra.b #$bc == $00005cbe (T)
 00005d02 4e75                     rts  == $6000001a
+
+
 00005d04 342e 0004                move.w (a6,$0004) == $00dff004,d2
 00005d08 4642                     not.w d2
 00005d0a 0242 0007                and.w #$0007,d2
@@ -3760,6 +3867,8 @@ L00005a78           rts
 00005da0 31fc ffff 62fa           move.w #$ffff,$62fa [0001]
 00005da6 13fc 0001 0007 c874      move.b #$01,$0007c874 [00]
 00005dae 4e75                     rts  == $6000001a
+
+
 00005db0 3438 67bc                move.w $67bc [0000],d2
 00005db4 0c42 0540                cmp.w #$0540,d2
 00005db8 6714                     beq.b #$14 == $00005dce (F)
@@ -3829,6 +3938,8 @@ L00005a78           rts
 00005e90 b078 36ee                cmp.w $36ee [0000],d0
 00005e94 6afa                     bpl.b #$fa == $00005e90 (T)
 00005e96 4e75                     rts  == $6000001a
+
+
 00005e98 4cb8 000c 67c2           movem.w $67c2,d2-d3
 00005e9e 9641                     sub.w d1,d3
 00005ea0 0c43 0001                cmp.w #$0001,d3
@@ -3839,12 +3950,16 @@ L00005a78           rts
 00005eae 1438 62ef                move.b $62ef [01],d2
 00005eb2 0c02 0024                cmp.b #$24,d2
 00005eb6 4e75                     rts  == $6000001a
+
+
 00005eb8 61de                     bsr.b #$de == $00005e98
 00005eba 640e                     bcc.b #$0e == $00005eca (T)
 00005ebc 31fc 0018 67c6           move.w #$0018,$67c6 [0048]
 00005ec2 5256                     addq.w #$01,(a6)
 00005ec4 3d7c 0020 0008           move.w #$0020,(a6,$0008) == $00dff008
 00005eca 4e75                     rts  == $6000001a
+
+
 00005ecc 536e 0008                subq.w #$01,(a6,$0008) == $00dff008
 00005ed0 6726                     beq.b #$26 == $00005ef8 (F)
 00005ed2 7427                     moveq #$27,d2
@@ -3861,6 +3976,8 @@ L00005a78           rts
 00005ef0 5040                     addq.w #$08,d0
 00005ef2 341f                     move.w (a7)+ [6000],d2
 00005ef4 6000 e6c6                bra.w #$e6c6 == $000045bc (T)
+
+
 00005ef8 4256                     clr.w (a6)
 00005efa 6100 f6a4                bsr.w #$f6a4 == $000055a0
 00005efe e14a                     lsl.w #$08,d2
@@ -3892,6 +4009,7 @@ L00005a78           rts
 00005f5c 6100 e65e                bsr.w #$e65e == $000045bc
 00005f60 6000 f948                bra.w #$f948 == $000058aa (T)
 
+
 00005f64 0000 5fc4                or.b #$c4,d0
 00005f68 0000 0000                or.b #$00,d0
 00005f6c 0000 0000                or.b #$00,d0
@@ -3918,6 +4036,7 @@ L00005a78           rts
 00005fc0 0000 0000                or.b #$00,d0
 00005fc4 0000 0000                or.b #$00,d0
 00005fc8 0000 0000                or.b #$00,d0
+
 00005fcc 0c40 00c0                cmp.w #$00c0,d0
 00005fd0 6a40                     bpl.b #$40 == $00006012 (T)
 00005fd2 0244 0007                and.w #$0007,d4
@@ -3973,6 +4092,8 @@ L00005a78           rts
 00006074 b942                     eor.w d4,d2
 00006076 5242                     addq.w #$01,d2
 00006078 6000 e542                bra.w #$e542 == $000045bc (T)
+
+
 0000607c 2a02                     move.l d2,d5
 0000607e 2005                     move.l d5,d0
 00006080 2005                     move.l d5,d0
@@ -4651,6 +4772,9 @@ L00005a78           rts
 000067dc d041                     add.w d1,d0
 000067de 2279 0000 36f6           movea.l $000036f6 [00061b9c],a1
 000067e4 43f1 0000                lea.l (a1,d0.W,$00) == $0003deea,a1
+
+
+
 000067e8 7000                     moveq #$00,d0
 000067ea 1018                     move.b (a0)+ [00],d0
 000067ec 67dc                     beq.b #$dc == $000067ca (F)
@@ -4713,6 +4837,8 @@ L00005a78           rts
 00006896 43e9 0001                lea.l (a1,$0001) == $0003ff5b,a1
 0000689a 6000 ff4c                bra.w #$ff4c == $000067e8 (T)
 0000689e 4e75                     rts  == $6000001a
+
+
 000068a0 cf30 3000                and.b d7,(a0,d3.W,$00) == $00000d13 [d6]
 000068a4 00c7                     illegal
 000068a6 3038 0800                move.w $0800 [0003],d0
