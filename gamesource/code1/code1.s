@@ -11,7 +11,7 @@
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
-
+                opt         o-
 start
                 jmp game_start     
            
@@ -292,14 +292,14 @@ L000033ec           lsr.b   #$01,d1
 L000033ee           bcc.b   L00003406
 L000033f0           lea.l   L000034f4,a0
 L000033f6           ext.w   d1
-L000033f8           move.b  (pc,d1.W),d1            ; $00003450
+L000033f8           move.b  L000033f8(pc,d1.w),d1            ; $00003450 (warning 2069: encoding absolute displacement directly)
 L000033fc           move.w  d1,d2
 L000033fe           lsr.w   #$03,d2
 L00003400           bclr.b  d1,$00(a0,d2.W)         ; $00001407
 L00003404           bra.b   L00003442
 L00003406           lea.l   L000034f4,a0
 L0000340c           ext.w   d1
-L0000340e           move.b  (pc,d1.W),d1            ; $00003450
+L0000340e           move.b  L0000340e(pc,d1.w),d1            ; $00003450 (warning 2069: encoding absolute displacement directly)
 L00003412           move.w  d1,d2
 L00003414           lsr.w   #$03,d2
 L00003416           bset.b  d1,$00(a0,d2.W)         ; $00001407 [28]
@@ -358,7 +358,8 @@ L000034be           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034c2           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034c6           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034ca           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034ce           dc.w    $0000, $0000                ; or.b #$00,d0
+L000034ce           dc.w    $0000
+L000034d0           dc.w    $0000                ; or.b #$00,d0
 L000034d2           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034d6           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034da           dc.w    $0000, $0000                ; or.b #$00,d0
@@ -366,8 +367,10 @@ L000034de           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034e2           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034e6           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034ea           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034ee           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034f2           dc.w    $0000, $0000                ; or.b #$00,d0
+L000034ee           dc.w    $0000
+L000034f0           dc.w    $0000                ; or.b #$00,d0
+L000034f2           dc.w    $0000
+L000034f4           dc.w    $0000                ; or.b #$00,d0
 L000034f6           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034fa           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034fe           dc.w    $0000, $0000                ; or.b #$00,d0
@@ -375,7 +378,8 @@ L00003502           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003506           dc.w    $0000, $0000                ; or.b #$00,d0
 L0000350a           dc.w    $0000, $0000                ; or.b #$00,d0
 L0000350e           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003512           dc.w    $0000, $e408                ; or.b #$08,d0
+L00003512           dc.w    $0000
+L00003514           dc.w    $e408                ; or.b #$08,d0
     
 
 
@@ -405,7 +409,8 @@ L0000355e           rts
 
 
 L00003560           dc.w $0000, $3542               ; or.b #$42,d0
-L00003564           dc.w $0000, $3039               ; or.b #$39,d0
+L00003564           dc.w $0000
+L00003566           dc.w $3039               ; or.b #$39,d0
 L00003568           dc.w $00df                      ; illegal
 L0000356a           dc.w $f00a                      ; $3239 [ F-LINE (MMU 68030) ]
 
@@ -452,7 +457,7 @@ L00003610           and.w   d0,d3
 L00003612           lsr.w   #$06,d0
 L00003614           and.w   #$000c,d0
 L00003618           or.w    d3,d0
-L0000361a           move.b  $04(pc,d0.W),d0         ; $00003620? table?
+L0000361a           move.b  L00003620(pc,d0.W),d0 ; $04(pc,d0.W),d0         ; $00003620? table? (warning 2069: encoding absolute displacement directly)
 L0000361e           rts 
 
 
@@ -462,14 +467,24 @@ L00003624           dc.w $080c                      ; illegal
 L00003626           dc.w $0d09, $0a0e               ; movep.w (a1,$0a0e) == $00040968,d6
 L0000362a           dc.w $0f0b, $0206               ; movep.w (a3,$0206) == $00063daf,d7
 L0000362e           dc.w $0703                      ; btst.l d3,d3
-L00003630           dc.w $0000, $0000               ; or.b #$00,d0
-L00003634           dc.w $0000, $0000               ; or.b #$00,d0
-L00003638           dc.w $0000, $0000               ; or.b #$00,d0
+L00003630           dc.w $0000
+L00003632           dc.w $0000               ; or.b #$00,d0
+L00003634           dc.w $0000
+L00003636           dc.b $00
+L00003637           dc.b $00               ; or.b #$00,d0
+L00003638           dc.w $0000
+L0000363a           dc.b $00
+L0000363b           dc.b $00               ; or.b #$00,d0
 L0000363c           dc.w $0000, $0000               ; or.b #$00,d0
 L00003640           dc.w $0000, $0000               ; or.b #$00,d0
-L00003644           dc.w $0000, $0000               ; or.b #$00,d0
-L00003648           dc.w $0000, $0000               ; or.b #$00,d0
-L0000364c           dc.w $0000, $0000               ; or.b #$00,d0
+L00003644           dc.b $00
+L00003645           dc.b $00
+L00003646           dc.w $0000               ; or.b #$00,d0
+L00003648           dc.w $0000
+L0000364a           dc.b $00
+L0000364b           dc.b $00               ; or.b #$00,d0
+L0000364c           dc.w $0000
+L0000364e           dc.w $0000               ; or.b #$00,d0
 
 
 
@@ -516,7 +531,8 @@ L000036ec           rts
 
 
 
-L000036ee           dc.w    $0000, $0000            ; or.b #$00,d0
+L000036ee           dc.w    $0000
+L000036f0           dc.w    $0000            ; or.b #$00,d0
 L000036f2           dc.w    $0006, $8dce            ; or.b #$ce,d6
 L000036f6           dc.w    $0006, $1b9c            ; or.b #$9c,d6
 
@@ -549,11 +565,11 @@ L00003744           rts
 
 
 
-L00003746           lea.l   L00061b9c,a0                ; External Address
+L00003746           lea.l   $00061b9c,a0                ; External Address
 L0000374c           move.w   #$3917,d7
 L00003750           clr.l   (a0)+
 L00003752           dbf.w   d7,L00003750
-L00003756           lea.l   L0005a36c,a0                ; External Address
+L00003756           lea.l   $0005a36c,a0                ; External Address
 L0000375c           move.w  #$1c8b,d7
 L00003760           clr.l   (a0)+
 L00003762           dbf.w   d7,L00003760
@@ -894,8 +910,8 @@ L00003ae4           clr.l   L000036ee
 L00003aea           bsr.w   L000036fa
 L00003aee           bsr.w   L000058e2
 L00003af2           jsr     $00048000               ; External Address $48000
-L00003af8           clr.w   L62fc
-L00003afc           jsr     L0007c838
+L00003af8           clr.w   L000062fc
+L00003afc           jsr     $0007c838               ; External Address - Panel
 L00003b02           clr.w   L00006318
 L00003b06           clr.l   L000036ee
 L00003b0c           bsr.w   L00003746
@@ -1022,7 +1038,7 @@ L00003cd2           and.w   d2,d3
 L00003cd4           moveq   #$0f,d5
 L00003cd6           lsr.w   #$01,d3
 L00003cd8           bcc.b   L00003cdc
-L00003cda           moveq   #$f0,d5
+L00003cda           moveq   #$f0,d5                     ; (warning 2028: using signed operand as unsigned: 240 (valid: -128..127), -16 to fix)
 L00003cdc           cmp.w   d0,d3
 L00003cde           bcc.b   L00003d32
 L00003ce0           move.w  d2,d4
@@ -1075,7 +1091,7 @@ L00003d52           moveq   #$0f,d2
 L00003d54           and.w   d1,d2
 L00003d56           beq.b   L00003d5a
 L00003d58           addq.w  #$01,d0
-L00003d5a           moveq   #$f0,d2
+L00003d5a           moveq   #$f0,d2                     ; (warning 2028: using signed operand as unsigned: 240 (valid: -128..127), -16 to fix)
 L00003d5c           and.b   d1,d2
 L00003d5e           beq.b   L00003d64
 L00003d60           add.w   #$0010,d0
@@ -1301,7 +1317,7 @@ L00003fe4           moveq   #$08,d3
 L00003fe6           bra.b   L00003ff0
 L00003fe8           cmp.w   #$ffe8,d3
 L00003fec           bcc.b   L00003ff0
-L00003fee           moveq   #$e8,d3
+L00003fee           moveq   #$e8,d3                 ; (warning 2028: using signed operand as unsigned: 232 (valid: -128..127), -24 to fix)
 L00003ff0           move.w  d3,$0006(a0)
 L00003ff4           cmp.w   #$0073,d1
 L00003ff8           bpl.b   L0000400a
@@ -1767,7 +1783,7 @@ L0000456c           dc.w    $0005, $8008                ; or.b #$08,d5
 
 L00004570           move.w  $000a(a6),d2        ; $00dff00a
 L00004574           mulu.w  #$000c,d2
-L00004578           lea.l   (pc,d2.W),a5        ; $00004510
+L00004578           lea.l   L00004578(pc,d2.W),a5        ; $00004510     (warning 2069: encoding absolute displacement directly)
 L0000457c           move.w  (a5)+,d2
 L0000457e           bsr.b   L0000458a
 L00004580           move.w  (a5)+,d2
@@ -1785,7 +1801,7 @@ L00004594           lsl.w   #$01,d3
 L00004596           lea.l   L0000607c,a0
 L0000459a           move.w  d1,d4
 L0000459c           add.w   d4,d4
-L0000459e           move.b  $fe(a0,d3.W),d5     ; $00000d11
+L0000459e           move.b  -$2(a0,d3.W),d5     ; $00000d11
 L000045a2           ext.w   d5
 L000045a4           sub.w   d5,d4
 L000045a6           asr.w   #$01,d4
@@ -1864,7 +1880,7 @@ L0000466e           sub.w   L00006310,d1
 L00004672           asl.w   #$01,d6
 L00004674           clr.l   d2
 L00004676           movea.l d2,a0
-L00004678           movea.w $fe(a5,d6.W),a0
+L00004678           movea.w -$2(a5,d6.W),a0         ; $fe(a5,d6.W),a0
 L0000467c           jsr     (a0)
 L0000467e           addq.w  #$06,a6                 ; addaq.w
 L00004680           dbf.w d7,L00004662
@@ -2380,7 +2396,7 @@ L00004c3c           rts
 L00004c3e           clr.w   d2
 L00004c40           move.b  L00006308,d2
 L00004c44           asl.w   #$02,d2
-L00004c46           movea.l (pc,d2.W),a0        ; $04=$00004c4c
+L00004c46           movea.l L00004c4c(pc,d2.W),a0        ; $04=$00004c4c
 L00004c4a           jmp (a0)
 
 
@@ -2493,7 +2509,7 @@ L00004da2            movea.w L00006326,a0
 L00004da6            bsr.w   L00005438
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
-L00004db0            bne.b   L00004d36
+L00004db0            bne     L00004d36           ; bne.b
 L00004db2            jsr     $0004800c           ; External Address
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   L00005e8c
@@ -2746,7 +2762,7 @@ L000050b2           move.w  d2,d4
 L000050b4           bpl.b   L000050b8
 L000050b6           neg.w   d4
 L000050b8           clr.w   d3
-L000050ba           move.b  $c0(a1,d4.W),d3
+L000050ba           move.b  -64(a1,d4.W),d3         ; $c0(a1,d4.W),d3
 L000050be           mulu.w  $0004(a0),d3
 L000050c2           btst.l  #$000f,d2
 L000050c6           beq.b   L000050ca
@@ -2788,7 +2804,7 @@ L00005126           movem.w L000067c2,d0-d1
 L0000512c           bclr.b  #$0004,L00006308
 L00005132           lea.l   L00006314,a0
 L00005136           btst.b  #$0004,L00006308
-L0000513e           bne.b   L000051be 
+L0000513e           bne     L000051be               ; bne.b 
 L00005140           move.w  $0004(a0),d2
 L00005144           addq.w  #$02,d2
 L00005146           cmp.w   #$0028,d2
@@ -2906,7 +2922,7 @@ L00005290           rts
 
 
 L00005292           bsr.w   L000051e2     ; Jump Table CMD5
-L00005296           bra.b   L0000592c
+L00005296           bra.w   L0000592c     ; bra.b 
 
 
 L00005298           bsr.w   L00005208     ; Jump Table CMD8
@@ -2945,7 +2961,7 @@ L000052ee           add.w   d5,d3
 L000052f0           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
 L000052f4           sub.b   #$79,d2
 L000052f8           cmp.b   #$0d,d2
-L000052fc           bcc.b   L00005368
+L000052fc           bcc.w   L00005368                   ; bcc.b
 L000052fe           move.w  #$4c3e,L00003c92
 L00005304           bra.w   L00004c3e
 L00005308           btst.b  #$0004,L00006308
@@ -2974,10 +2990,10 @@ L00005354           and.b   #$03,d5
 L00005358           move.b  d5,L00006308
 L0000535c           moveq   #$01,d5
 L0000535e           asr.w   #$01,d4
-L00005360           bcs.b   L000052ee
+L00005360           bcs.w   L000052ee               ; bcs.b 
 L00005362           moveq   #$ff,d5
 L00005364           asr.w   #$01,d4
-L00005366           bcs.b   L000052ee
+L00005366           bcs.w   L000052ee               ; bcs.b
 L00005368           asr.w   #$01,d4
 L0000536a           bcc.b   L00005380
 L0000536c           move.w  #$0028,L000067c6
@@ -3069,9 +3085,9 @@ L00005458           dc.w    $ff02                       ; illegal
 L0000545a           movem.w L000067c2,d0-d1
 L00005460           clr.l   L000062f4
 L00005464           move.w  L000067c4,L000067c6
-L0000546a           lea.l   $ffe8(pc),a0            ; $00005454
+L0000546a           lea.l   L00005454(pc),a0             ; $00005454 -$ffe8(pc),a0 
 L0000546e           bsr.w   L00005438
-L00005472           move.w  #$5482,L00003c92        ; Self Modifying Code? 
+L00005472           move.w  #$5482,L00003c92            ; Self Modifying Code? 
 L00005478           move.w  #$ffff,L000062fa
 L0000547e           clr.w   L000062f8
 L00005482           movem.w L000062f4,d4-d5
@@ -3115,7 +3131,7 @@ L000054ec           cmp.b   #$17,d2
 L000054f0           bcc.b   L000054fe
 L000054f2           subq.w  #$07,L000067c4
 L000054f6           movem.w L000067c2,d0-d1
-L000054fc           bra.b   L00005482
+L000054fc           bra.w   L00005482           ; bra.b
 L000054fe           sub.b   #$79,d2
 L00005502           cmp.b   #$0d,d2
 L00005506           nop
@@ -3256,7 +3272,7 @@ L000056b8           move.w  d1,d3
 L000056ba           lea.l   L0000607c,a0
 L000056be           add.w   d4,d4
 L000056c0           add.w   d3,d3
-L000056c2           sub.b   $fe(a0,d4.W),d3
+L000056c2           sub.b   -2(a0,d4.W),d3         ; $fe(a0,d4.W),d3
 L000056c6           asr.w   #$01,d3
 L000056c8           move.w  d3,L000062f0
 L000056cc           bsr.b   L000056f4
@@ -3279,7 +3295,7 @@ L000056f2           rts
 L000056f4           movea.l L000062fe,a1
 L000056f8           add.w   d1,d1
 L000056fa           asl.w   #$03,d2
-L000056fc           lea.l   $f8(a1,d2.W),a1
+L000056fc           lea.l   -8(a1,d2.W),a1     ; $f8(a1,d2.W),a1
 L00005700           bcc.b   L00005724
 L00005702           move.b  (a1)+,d4
 L00005704           ext.w   d4
@@ -4168,11 +4184,14 @@ L000062AC           dc.w $1404, $1404, $1405, $1406, $1402, $2903, $25FD, $1306 
 L000062BC           dc.w $2B04, $2FFD, $2903, $18FC, $2202, $1EFC, $1005, $2805         ;+./.)...".....(.
 L000062CC           dc.w $1504, $1504, $1504, $1504, $2906, $1503, $1503, $1503         ;........).......
 L000062DC           dc.w $1503, $0001, $0002, $0003, $0004, $0005, $0007, $0005         ;................
-L000062EC           dc.w $0002, $0001, $0000, $0000, $0000, $0000, $0000, $0001         ;................
-L000062FC           dc.w $0000, $0001, $0000, $0000, $0000, $0000, $0000, $0000         ;................
+L000062EC           dc.w $0002
+L000062ee           dc.w $0001
+L000062f0           dc.w $0000, $0000, $0000, $0000
+L000062f8           dc.w $0000, $0001         
+L000062fc           dc.w $0000, $0001, $0000, $0000, $0000, $0000, $0000, $0000         ;................
 L0000630C           dc.w $A07C, $0000, $0000, $0000, $0000, $0000, $0000, $0000         ;.|..............
 L0000631C           dc.w $0034, $0005, $A36C, $0000, $3DFE, $0000, $0000, $0000         ;.4...l..=.......
-L0000632C           dc.w $0000, $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615         ;.."! ...........
+L0000632c           dc.w $0000, $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615         ;.."! ...........
 L0000633C           dc.w $1413, $1211, $100F, $0E0D, $0C0B, $0A09, $0807, $0605         ;................
 L0000634C           dc.w $0403, $0201, $0003, $0609, $0D10, $1316, $191C, $1F22         ;..............."
 L0000635C           dc.w $2529, $2C2F, $3235, $383B, $3E41, $4447, $4A4D, $5053         ;%),/258;>ADGJMPS

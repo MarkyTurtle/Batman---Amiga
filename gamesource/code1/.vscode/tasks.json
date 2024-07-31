@@ -9,7 +9,9 @@
 				"args": [
 					"-m68000",
 					"-Fhunk",
-					"-linedebug"
+					"-linedebug",
+					"-devpac",
+					"-no-opt"
 				]
 			},
 			"vlink": {
@@ -38,7 +40,9 @@
 				"command": "${config:amiga-assembly.binDir}/vasmm68k_mot",
 				"args": [
 					"-m68000",
-					"-Fbin"
+					"-Fbin",
+					"-devpac",
+					"-no-opt"
 				]
 			},
 			"vlink": {
