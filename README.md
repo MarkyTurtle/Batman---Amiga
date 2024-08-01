@@ -60,6 +60,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+2024-08-01 - Have been disassmbling the 'code1' program for the level 1 of the game, have formatted the code enough to enable the code to assemble without error. There are a couple of code warnings remaining, I've also noticed some self modifying code contained with the program :-( [VSCode Project Link](./gamesource/code1/)
+
 2024-07-25 - Successfully rebuilt the TitleScreen program from source code and added to test .adf disk image [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) - give it a go ( works on my machine **:)** )
 
 2024-07-20 - Started disassembling 'code1', the code for level 1 (Axis Chemicals). Began formatting the code, first steps to try to get the code to assemble without errors. Made a start but still much to do.
