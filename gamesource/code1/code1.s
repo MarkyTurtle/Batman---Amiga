@@ -1,7 +1,70 @@
 
 
+                ;
+                ; Level 1 - Memory Map
+                ; ------------------------------
+                ; The following files are loaded and decrunched into the following locations
+                ; by the game loader
+                ;
+                ;
+                ; Filename  Start   End         Additional Info
+                ;---------------------------------------------------------------------------------------------
+                ; BATMAN    $800                - Game Loader (always resident across loads)
+                ; CODE1     $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
+                ; MAPGR     $7FFC
+                ; BATSPR1   $10FFC
+                ; CHEM      $47FE4
+                ; PANEL     $7C7FC  $80000     - Game State/Lives manager (always resident across loads)
+                ;
+                ;
+                ;
 
-; Code1 - $2FFC - $6FFE (16K of code and music)
+
+
+; Loader Constants
+;------------------
+LOADER_TITLE_SCREEN     EQU $00000820               ; Load Title Screen 
+LOADER_LEVEL_1          EQU $00000824               ; Load Level 1
+LOADER_LEVEL_2          EQU $00000828               ; Load Level 2
+LOADER_LEVEL_3          EQU $0000082c               ; Load Level 3
+LOADER_LEVEL_4          EQU $00000830               ; Load Level 4
+LOADER_LEVEL_5          EQU $00000834               ; Load Level 5
+
+
+
+; Panel Constants - functions
+PANEL_UPDATE            EQU $0007c800               ; called on VBL to update panel display
+PANEL_INIT_TIMER        EQU $0007c80e               ; initialise level timer (D0.w = BCD encoded MIN:SEC)
+PANEL_INIT_SCORE        EQU $0007c81c               ; initialise player score
+PANEL_ADD_SCORE         EQU $0007c82a               ; add value to player score (D0.l = BCD encoded value)
+PANEL_INIT_LIVES        EQU $0007c838               ; initialise player lives
+PANEL_ADD_LIFE          EQU $0007c846               ; add 1 to player lives
+PANEL_INIT_ENERGY       EQU $0007c854               ; initialise player energy to full value
+PANEL_LOSE_LIFE         EQU $0007c862               ; sub 1 from player lives, check end game, set status bytes
+PANEL_LOSE_ENERGY       EQU $0007c870               ; reduce player energy (increase hit damage) D0.w = amount to lose
+; Panel Constants - data values
+PANEL_STATUS_1          EQU $0007c874
+PANEL_STATUS_2          EQU $0007c875
+PANEL_LIVES_COUNT       EQU $0007c876
+PANEL_HISCORE           EQU $0007c878
+PANEL_SCORE             EQU $0007c87c
+PANEL_FRAMETICK         EQU $0007c880
+PANEL_TIMER_UPDATE_VALUE    EQU $0007c882 
+PANEL_TIMER_VALUE       EQU $0007c884
+PANEL_TIMER_SECONDS     EQU $0007c885
+PANEL_SCORE_UPDATE_VALUE    EQU $0007c886
+PANEL_SCORE_DISPLAY_VALUE   EQU $0007c88a
+PANEL_ENERGY_VALUE      EQU $0007c88e
+PANEL_HIT_DAMAGE        EQU $0007c890
+; Panel Constants - resources
+PANEL_GFX               EQU $0007c89a               ; main bottom display panel gfx
+PANEL_BATMAN_GFX        EQU $0007e69a               ; batman energy image
+PANEL_JOKER_GFX         EQU $0007ebba               ; joker energy image
+PANEL_SCORE_GFX         EQU $0007f30a               ; score digits gfx
+PANEL_LIVES_ON_GFX      EQU $0007f374               ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX     EQU $0007f838               ; batman symbol - lives icon 'off'
+
+
 
 
                 section code1,code_c
@@ -90,11 +153,11 @@ L0000315c           move.b  #$8a,$00bfed01
 L00003164           tst.b   $00bfdd00
 L0000316a           move.b  #$93,$00bfdd00
 L00003172           move.w  #$e078,$00dff09a
-L0000317a           jsr     $0007c838                    ; Panel - Function
-L00003180           jsr     $0007c81c                    ; Panel - Function
-L00003186           jsr     $0007c854                    ; Panel - Function
-L0000318c           move.w  #$0800,d0
-L00003190           jsr     $0007c80e                    ; Panel - Function
+L0000317a           jsr     PANEL_INIT_LIVES            ; Panel - Initialise Player Lives - $0007c838
+L00003180           jsr     PANEL_INIT_SCORE            ; Panel - Initialise Player Score to 0 - $0007c81c
+L00003186           jsr     PANEL_INIT_ENERGY           ; Panel - Initialise Player Energy - $0007c854
+L0000318c           move.w  #$0800,d0                   ; BCD Encoding of Level Timer MM:SS
+L00003190           jsr     PANEL_INIT_TIMER            ; Panel - Initalise the Level Timer - $0007c80e 
 L00003196           bsr.w   L00003746
 L0000319a           lea.l   L000031c8,a0
 L000031a0           bsr.w   L0000368a
@@ -602,7 +665,7 @@ L000037a4           mulu.w  #$0028,d0
 L000037a8           moveq   #$00,d1
 L000037aa           move.b  (a0)+,d1
 L000037ac           add.w   d1,d0
-L000037ae           movea.l #$0007c89a,a1           ; External Address - Panel
+L000037ae           movea.l #PANEL_GFX,a1               ; Panel GFX Address - $0007c89a
 L000037b4           lea.l   $02(a1,d0.W),a1
 L000037b8           moveq   #$00,d0
 L000037ba           move.b  (a0)+,d0
@@ -915,13 +978,13 @@ L00003aea           bsr.w   L000036fa
 L00003aee           bsr.w   L000058e2
 L00003af2           jsr     $00048000               ; External Address $48000
 L00003af8           clr.w   L000062fc
-L00003afc           jsr     $0007c838               ; External Address - Panel
+L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
 L00003b02           clr.w   L00006318
 L00003b06           clr.l   L000036ee
 L00003b0c           bsr.w   L00003746
-L00003b10           move.w  #$0800,d0
-L00003b14           jsr     $0007c80e               ; Panel - Function
-L00003b1a           jsr     $0007c854               ; Panel - Function
+L00003b10           move.w  #$0800,d0               ; Level Time as BCD mm:ss
+L00003b14           jsr     PANEL_INIT_TIMER        ; Panel - Initialise Level Timer - $0007c80e
+L00003b1a           jsr     PANEL_INIT_ENERGY       ; Panel - Initialise Player Energy - $0007c854
 L00003b20           bsr.w   L00003d40
 L00003b24           lea.l   $0000807c,a0            ; External Address $807c
 L00003b2a           movea.l L00005f64,a5
@@ -977,7 +1040,7 @@ L00003bd2           bsr.w   L00004b62
 L00003bd6           bsr.w   L000055c4
 L00003bda           moveq   #$32,d0
 L00003bdc           bsr.w   L00005e8c
-L00003be0           btst.b  #$0000,$0007c875            ; Panel - 
+L00003be0           btst.b  #$0000,PANEL_STATUS_2       ; Panel - Status 2 Bytes - $0007c875 
 L00003be8           bne.b   L00003bf2
 L00003bea           moveq   #$01,d0
 L00003bec           jsr     $00048010                   ; External Address $48010
@@ -992,11 +1055,11 @@ L00003c0a           beq.b   L00003c06
 L00003c0c           cmp.w   #$001b,d0
 L00003c10           bne.b   L00003c22
 L00003c12           bsr.w   L00003cbc
-L00003c16           bset.b  #$0005,$0007c875            ; Panel - 
+L00003c16           bset.b  #$0005,PANEL_STATUS_2       ; Panel - Status 2 Bytes - $0007c875 
 L00003c1e           bra.w   L00004e00
 L00003c22           cmp.w   #$0082,d0
 L00003c26           bne.b   L00003c48
-L00003c28           bchg.b  #$0000,$0007c875            ; Panel - 
+L00003c28           bchg.b  #$0000,PANEL_STATUS_2       ; Panel - Status 2 Bytes - $0007c875 
 L00003c30           bne.b   L00003c3c
 L00003c32           jsr     $00048008                   ; External Address $48008
 L00003c38           bra.w   L00003c5a
@@ -1006,13 +1069,13 @@ L00003c44           bra.w   L00003c5a
 
 L00003c48           cmp.w   #$008a,d0
 L00003c4c           bne.b   L00003c5a
-L00003c4e           btst.b  #$0007,$0007c875            ; Panel - 
+L00003c4e           btst.b  #$0007,PANEL_STATUS_2       ; Panel - Status 2 Bytes - $0007c875 
 L00003c56           bne.w   L00005e3a
-L00003c5a           btst.b  #$0000,$0007c874            ; Panel - 
+L00003c5a           btst.b  #$0000,PANEL_STATUS_1       ; Panel - Status Byte 1 
 L00003c62           bne.b   L00003c80
-L00003c64           jsr     $0007c800                   ; Panel - 
-L00003c6a           jsr     $0007c800                   ; Panel - 
-L00003c70           btst.b  #$0000,$0007c874            ; Panel - 
+L00003c64           jsr     PANEL_UPDATE                ; Panel Update - $0007c800
+L00003c6a           jsr     PANEL_UPDATE                ; Panel Update - $0007c800
+L00003c70           btst.b  #$0000,PANEL_STATUS_1       ; Panel - Status Byte 1
 L00003c78           beq.b   L00003c80
 L00003c7a           moveq   #$01,d6
 L00003c7c           bsr.w   L00004ce4
@@ -1156,7 +1219,7 @@ L00003dea           bra.b   L00003df0
 L00003dec           add.w   #$0100,d0
 L00003df0           sub.w   #$0064,d1
 L00003df4           bcc.b   L00003dec
-L00003df6           jmp     $0007c82a               ; Panel - 
+L00003df6           jmp     PANEL_ADD_SCORE         ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 L00003dfc           rts     
 
 L00003dfe           movem.w L000067bc,d0-d1
@@ -1841,7 +1904,7 @@ L000045e8           cmp.w   #$0064,d1
 L000045ec           bmi.w   L0000457c
 L000045f0           clr.w   (a6)
 L000045f2           move.l  #$00000350,d0
-L000045f8           jmp     $0007c82a               ; External Address - Panel
+L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
 
 L000045fe           lea.l   L00004866,a5
@@ -2451,11 +2514,11 @@ L00004cc8           dc.l    $00005290                   ; rts
 
 
 
-L00004ccc           tst.b   $0007c874                   ; External Address - Panel
+L00004ccc           tst.b   PANEL_STATUS_1              ; Panel - Status Byte 1 - $0007c874
 L00004cd2           bne.b   L00004d36
 L00004cd4           movem.l d0-d7/a5-a6,-(a7)
 L00004cd8           move.w  d6,d0
-L00004cda           jsr     $0007c870                   ; External Address - Panel
+L00004cda           jsr     PANEL_LOSE_ENERGY           ; Panel - Lose Energy (D0.w) - $0007c870
 L00004ce0           movem.l (a7)+,d0-d7/a5-a6
 L00004ce4           move.w  L00003c92,d2
 L00004ce8           cmp.w   #$5482,d2
@@ -2509,7 +2572,7 @@ L00004d6c           tst.w   L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
-L00004d7a           tst.b   $0007c874           ; External Address - Panel
+L00004d7a           tst.b   PANEL_STATUS_1      ; Panel - Status Byte 1 - $0007c874
 L00004d80           beq.b   L00004d36
 L00004d82           jsr     $00048004
 L00004d88           clr.w   L00006318
@@ -2529,22 +2592,22 @@ L00004db2            jsr     $0004800c           ; External Address
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   L00005e8c
 L00004dc0            bsr.w   L00004e28
-L00004dc4            btst.b  #$0000,$0007c874    ; External Address - Panel
+L00004dc4            btst.b  #$0000,PANEL_STATUS_1      ; Panel - Status Byte 1 - $0007c874
 L00004dcc            beq.b   L00004dd6
 L00004dce            lea.l   L00004e1c,a0
 L00004dd2            bsr.w   L000067ca
-L00004dd6            btst.b  #$0001,$0007c874    ; External Address - Panel
+L00004dd6            btst.b  #$0001,PANEL_STATUS_1      ; Panel - Status Byte 1 - $0007c874
 L00004dde            beq.b   L00004de8
 L00004de0            lea.l   L00004e0e,a0
 L00004de4            bsr.w   L000067ca
 L00004de8            bsr.w   L00003cc0
 L00004dec            move.w  #$001e,d0
 L00004df0            bsr.w   L00005e8c
-L00004df4            btst.b  #$0001,$0007c874    ; External Address - Panel
+L00004df4            btst.b  #$0001,PANEL_STATUS_1      ; Panel - Status Byte 1 - $0007c874
 L00004dfc            beq.w   L00003b02
 L00004e00            jsr     $00048004           ; External Address
 L00004e06            bsr.w   L00003d8c
-L00004e0a            bra.w   $00000820           ; **** LOADER ****
+L00004e0a            bra.w   LOADER_TITLE_SCREEN    ; $00000820 ; **** LOADER ****
 
 
 L00004e0e            dc.w    $5f0f                       ; illegal
@@ -2570,7 +2633,7 @@ L00004e38            rts
 
 
 L00004e3a            moveq   #$10,d3
-L00004e3c            tst.b   $0007c874                   ; External Address - Panel
+L00004e3c            tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - $0007c874
 L00004e42            bne.b   L00004e60
 L00004e44            lea.l   L00006318,a0
 L00004e48            move.w  (a0),d2
@@ -3179,7 +3242,7 @@ L00005558           rts
 
 L0000555a           subq.w  #$01,L000062f2
 L0000555e           bne.b   L00005558
-L00005560           tst.b   $0007c874               ; External Address - Panel
+L00005560           tst.b   PANEL_STATUS_1          ; Panel - Status Byte 1 - $0007c874
 L00005566           bne.w   L00004d82
 L0000556a           move.l  #$00004c3e,L00003c90
 L00005572           lea.l   L000063d3,a0
@@ -3187,10 +3250,10 @@ L00005576           cmp.w   #$0050,L000062f8
 L0000557c           bmi.w   L00005438
 L00005580           moveq   #$5a,d6
 L00005582           bsr.w   L00004ccc
-L00005586           move.b  #$04,$0007c874          ; External Address - Panel
-L0000558e           btst.b  #$0007,$0007c875        ; External Address - Panel
+L00005586           move.b  #$04,PANEL_STATUS_1     ; Panel - Status Byte 1 - $0007c874
+L0000558e           btst.b  #$0007,PANEL_STATUS_2   ; Panel - Status 2 Bytes - $0007c875
 L00005596           bne.b   L0000559e
-L00005598           jmp     $0007c862               ; External Address - Panel (rts in panel will return to caller)
+L00005598           jmp     PANEL_LOSE_LIFE         ; Panel - Lose a Life - $0007c862
 L0000559e           rts
 
 
@@ -3760,7 +3823,7 @@ L00005b8a           rts
 L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a
 L00005b90           jsr     $00048008                       ; External Address
-L00005b96           bset.b  #$0000,$0007c874                ; External Address
+L00005b96           bset.b  #$0000,PANEL_STATUS_1           ; Panel - Status Byte 1 - $0007c874
 L00005b9e           move.w  #$5290,L00003c92
 L00005ba4           clr.w   L000062fa
 L00005ba8           clr.w   L00006318
@@ -3929,7 +3992,7 @@ L00005d92           move.w  #$5290,L00003c92
 L00005d98           move.w  #$0021,(a5)
 L00005d9c           clr.w   L00006318
 L00005da0           move.w  #$ffff,L000062fa
-L00005da6           move.b  #$01,$0007c874          ; External Address - Panel
+L00005da6           move.b  #$01,PANEL_STATUS_1         ; Panel - Status Byte 1 - $0007c874
 L00005dae           rts
 
 
@@ -3970,14 +4033,14 @@ L00005e0e           addq.w  #$07,d2
 L00005e10           bsr.w   L000045bc
 L00005e14           jsr     $00048004                   ; External Address
 L00005e1a           move.l  #$00000210,d0
-L00005e20           jmp     $0007c82a                   ; External Address - Panel
+L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
 
 L00005e26           moveq   #$50,d1
 L00005e28           moveq   #$0b,d2
 L00005e2a           bsr.w   L000045bc
 L00005e2e           bsr.w   L000036fa
-L00005e32           bset.b  #$0006,$0007c875            ; External Address - Panel
+L00005e32           bset.b  #$0006,PANEL_STATUS_2       ; Panel - Status 2 Bytes - $0007c875
 L00005e3a           jsr     $00048004
 L00005e40           moveq   #$02,d0
 L00005e42           jsr     $00048010                   ; External Address
@@ -3999,7 +4062,7 @@ L00005e7a           moveq   #$64,d0
 L00005e7c           bsr.w   L00005e8c
 L00005e80           bsr.w   L00003cbc
 L00005e84           bsr.w   L00003d8c
-L00005e88           bra.w   $00000828                   ; External Address - Loader
+L00005e88           bra.w   LOADER_LEVEL_2              ; External Address - Loader $00000828 
 
 
 L00005e8c           add.w   L000036ee,d0

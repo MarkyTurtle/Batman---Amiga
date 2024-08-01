@@ -256,15 +256,15 @@ lp_level_1                                                          ; level 1 lo
 .file1_reloc_addr   dc.l    $00002FFC                               ; CODE1   IFF - relocation address, original value = $00002FFC ($00003000)
 .file1_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file1_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
-.file2_name_offset  dc.w    .filename2-.file1_name_offset           ; byte offset to filename string, original value = $0047
+.file2_name_offset  dc.w    .filename2-.file2_name_offset           ; byte offset to filename string, original value = $0047
 .file2_reloc_addr   dc.l    $00007FFC                               ; MAPGR   IFF - relocation address, original value = $00007FFC, ($00008000)
 .file2_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file2_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
-.file3_name_offset  dc.w    .filename3-.file1_name_offset           ; byte offset to filename string, original value = $0044 
+.file3_name_offset  dc.w    .filename3-.file3_name_offset           ; byte offset to filename string, original value = $0044 
 .file3_reloc_addr   dc.l    $00010FFC                               ; BATSPR1 IFF - relocation address, original value = $00010FFC, ($00011000)
 .file3_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file3_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)
-.file4_name_offset  dc.w    .filename4-.file1_name_offset           ; byte offset to filename string, original value = $0041 
+.file4_name_offset  dc.w    .filename4-.file4_name_offset           ; byte offset to filename string, original value = $0041 
 .file4_reloc_addr   dc.l    $00047FE4                               ; CHEM    IFF - relocation address, original value = $00047FE4, ($00047FE8)
 .file4_byte_length  dc.l    $00000000                               ; file length in bytes, populated by the loader
 .file4_loadbuf_addr dc.l    $00000000                               ; file load buffer start address, populated by the loader (before file depack/relocation)     
