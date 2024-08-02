@@ -7,14 +7,16 @@
                 ; by the game loader
                 ;
                 ;
-                ; Filename  Start   End         Additional Info
+                ; Filename/Area Start   End         Additional Info
                 ;---------------------------------------------------------------------------------------------
-                ; BATMAN    $800                - Game Loader (always resident across loads)
-                ; CODE1     $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
-                ; MAPGR     $7FFC
-                ; BATSPR1   $10FFC
-                ; CHEM      $47FE4
-                ; PANEL     $7C7FC  $80000     - Game State/Lives manager (always resident across loads)
+                ; BATMAN        $800                - Game Loader (always resident across loads)
+                ; CODE1         $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
+                ; MAPGR         $7FFC
+                ; BATSPR1       $10FFC
+                ; CHEM          $47FE4
+                ; STACK         $5a36c              - Address of program stack - not a file load.
+                ; LOADBUFFER    $5a36C  $7C7FC      - File Load Area (files loaded here before depacked/relocated)
+                ; PANEL         $7C7FC  $80000      - Game State/Lives manager (always resident across loads)
                 ;
                 ;
                 ;
@@ -79,6 +81,12 @@ PANELST2_GAME_COMPLETE     EQU $6
 PANELST2_CHEAT_ACTIVE      EQU $7
 
 
+
+; Code1 - Constants
+;-------------------
+STACK_ADDRESS               EQU $0005a36c
+
+
                 section code1,code_c
                 ;org     $0                                          ; original load address
 
@@ -98,48 +106,57 @@ original_start:                                     ; original address $2FFC
 
 game_start:
 L00003000           moveq   #$00,d0
-L00003002           move.w  #$1fff,$00dff09a
-L0000300a           move.w  #$1fff,$00dff096
-L00003012           move.w  #$0200,$00dff100
-L0000301a           move.l  d0,$00dff102
-L00003020           move.w  #$4000,$00dff024
-L00003028           move.l  d0,$00dff040
-L0000302e           move.w  #$0041,$00dff058
-L00003036           move.w  #$8340,$00dff096
-L0000303e           move.w  #$7fff,$00dff09e
+L00003002           move.w  #$1fff,$00dff09a        ; DMACON - Disable DMA (All DMA Channels)
+L0000300a           move.w  #$1fff,$00dff096        ; INTENA - Disable Interrupts (apart from EXTER, INTEN) level 6 still active
+L00003012           move.w  #$0200,$00dff100        ; BPLCON0 - 0 bitplane display
+L0000301a           move.l  d0,$00dff102            ; BPLCON1 - Bitplane Scroll
+L00003020           move.w  #$4000,$00dff024        ; DSKLEN - Disable Disk DMA (as per h/w ref)
+L00003028           move.l  d0,$00dff040            ; BLTCON0 - Clear minterms an DMA channels
+L0000302e           move.w  #$0041,$00dff058        ; BLTSIZE - 1 word blit 
 
-L00003046           moveq   #$07,d7
-L00003048           lea.l   $00dff140,a0
-L0000304e           move.w  d0,(a0)
-L00003050           addq.w #$08,a0                      ; adda.w
-L00003052           dbf.w   d7,L0000304e
+L00003036           move.w  #$8340,$00dff096        ; DMACON - Enable Bitplane, Blitter, Master
+L0000303e           move.w  #$7fff,$00dff09e        ; ADKCON - Clear Disk & Audio modulaton bits
 
-L00003056           moveq   #$03,d7
-L00003058           lea.l   $00dff0a8,a0
-L0000305e           move.w  d0,(a0)
-L00003060           lea.l   $0010(a0),a0
-L00003064           dbf.w   d7,L0000305e
+                    ; clear all sprite postions
+L00003046           moveq   #$07,d7                 ; counter = 7 + 1
+L00003048           lea.l   $00dff140,a0            ; SPR0POS - first sprite position
+L0000304e           move.w  d0,(a0)                 ; clear sprite pos
+L00003050           addq.w #$08,a0                  ; next sprite pos address
+L00003052           dbf.w   d7,L0000304e            ; loop for 8 sprites.
 
-L00003068           lea.l   $00dff180,a0
-L0000306e           moveq   #$1f,d7
-L00003070           move.w  d0,(a0)+
-L00003072           dbf.w   d7,L00003070
+                    ; clear all audio volume
+L00003056           moveq   #$03,d7                 ; counter = 3 + 1
+L00003058           lea.l   $00dff0a8,a0            ; AUD0VOL
+L0000305e           move.w  d0,(a0)                 ; clear volume level
+L00003060           lea.l   $0010(a0),a0            ; next channel audio volume
+L00003064           dbf.w   d7,L0000305e            ; loop for 4 channels
 
-L00003076           move.b  #$7f,$00bfed01
-L0000307e           move.b  d0,$00bfee01
-L00003084           move.b  d0,$00bfef01
-L0000308a           move.b  d0,$00bfe001
-L00003090           move.b  #$03,$00bfe201
-L00003098           move.b  d0,$00bfe101
-L0000309e           move.b  #$ff,$00bfe301
-L000030a6           move.b  #$7f,$00bfdd00
-L000030ae           move.b  d0,$00bfde00
-L000030b4           move.b  d0,$00bfdf00
-L000030ba           move.b  #$c0,$00bfd000
-L000030c2           move.b  #$c0,$00bfd200
-L000030ca           move.b  #$ff,$00bfd100
-L000030d2           move.b  #$ff,$00bfd300
-L000030da           lea.l   $0005a36c,a7                       ; External Address - Stack
+                    ; all colour regs to black
+L00003068           lea.l   $00dff180,a0            ; COLOR00
+L0000306e           moveq   #$1f,d7                 ; counter 31 + 1
+L00003070           move.w  d0,(a0)+                ; clear colour and move to next
+L00003072           dbf.w   d7,L00003070            ; loop for 32 colour registers
+
+                    ; reset CIAA
+L00003076           move.b  #$7f,$00bfed01          ; CIAA-ICR - clear interrupt enable bits
+L0000307e           move.b  d0,$00bfee01            ; CIAA-CRA - timer a control
+L00003084           move.b  d0,$00bfef01            ; CIAA-CRB - timer b control
+L0000308a           move.b  d0,$00bfe001            ; CIAA-PRA - LED, OVL
+L00003090           move.b  #$03,$00bfe201          ; CIAA-DDRA - LED, OVL output, remaining as inputs (disk/joybuttons)
+L00003098           move.b  d0,$00bfe101            ; CIAA-PRB - Parallel port data
+L0000309e           move.b  #$ff,$00bfe301          ; CIAA-DDRB - Parallel port dir = output all bits
+
+                    ; reset CIAB
+L000030a6           move.b  #$7f,$00bfdd00          ; CIAB-ICR - clear interrupt enable bits 
+L000030ae           move.b  d0,$00bfde00            ; CIAB-CRA - timer a control
+L000030b4           move.b  d0,$00bfdf00            ; CIAB-CRB - timer b control
+L000030ba           move.b  #$c0,$00bfd000          ; CIAB-PRA - PORT A (Keybboard serial data) (deselect DTR,RTS)
+L000030c2           move.b  #$c0,$00bfd200          ; CIAB-DDRA - PORT A dir = DTR,RTS pins/lines = output
+L000030ca           move.b  #$ff,$00bfd100          ; CIAB-PRB - PORT B (Disk ctrl) deselect all (active low)
+L000030d2           move.b  #$ff,$00bfd300          ; CIAB-DDRB - PORT B dir = all pins/lines = output
+
+                    ; set stack address
+L000030da           lea.l   STACK_ADDRESS,a7        ; External Address - Stack = $0005a36c
 
 L000030e0           moveq   #$02,d7
 L000030e2           lea.l   L000031b0,a0
@@ -175,6 +192,7 @@ L0000319a           lea.l   L000031c8,a0
 L000031a0           bsr.w   L0000368a
 L000031a4           bsr.w   L000036fa
 L000031a8           bra.w   L00003ae4
+
 
 L000031ac           dc.w $ffff                      ; illegal
 L000031ae           dc.w $fffe                      ; illegal
