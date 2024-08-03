@@ -6,7 +6,7 @@
                 INCLUDE     "hw.i"
 
 
-                section panel,code_c
+                section mapgr,code_c
 
 
 TEST_TITLEPRG SET 1             ; run a test build with imported GFX

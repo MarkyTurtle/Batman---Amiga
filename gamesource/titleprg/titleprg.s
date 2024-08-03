@@ -36,7 +36,7 @@
                 ; 
 
 
-                section panel,code_c
+                section titleprg,code_c
                 ;opt     o-
 
 
