@@ -23,6 +23,7 @@ Resources and code used in this project is listed below. If there's anything use
 - RNC DosIO - Low level disk code
 - [Shrinkler](https://github.com/askeksa/Shrinkler) - file cruncher/decruncher
 - [Salvador](https://github.com/emmanuel-marty/salvador) - zxo file cruncher/decruncher
+- [XFDMaster](http://aminet.net/package/util/pack/xfdmaster) - utilities for depacking almost any packed file format.
 
 ## Overview
 This exercise is not one of speed, but of learning. It looks like this game could be cracked just by patching out the serial number check around $139C in the loader code. The intention is to spend more time disassembling parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
@@ -34,6 +35,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
  - Unpack the ripped files. [Files Folder](./rawrippedfiles/)
    - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
+   - [File Memory Map](./FileRelocation.md) - File Relocation/Load Table
  - Re-pack the files for reuse. [Files Folder](./crack/packedcrack/)
    - [Shrinkler Disk 1](./crack/packedcrack/shrinkfiles/disk1/)
    - [Shrinkler Disk 2](./crack/packedcrack/shrinkfiles/disk2/)

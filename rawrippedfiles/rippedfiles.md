@@ -23,7 +23,8 @@ The following folders contain the unpacked raw files ripped from disks 1 & 2 (un
 
 
 ### Notes:
-\* The Loading.iff file is the only genuine ILBM IFF file, the loader processes these files and depacks to the allocated bitplane memory starting at $00007700 (10K per bitplane, 5 planes)
+\* The Loading.iff file is the only ILBM IFF file, the loader processes these files and depacks to the allocated bitplane memory starting at $00007700 (10K per bitplane, 5 planes)
+\* The other files are packed iff files
 ## Disk 1 - Files
 <table>
 <tr>
