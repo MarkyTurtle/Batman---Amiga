@@ -486,7 +486,7 @@ L00003522           dc.w    $0000, $3542                ; or.b #$42,d0
 
 L00003526           movem.l d1-d7/a0-a6,-(a7)
 L0000352a           addq.w  #$01,L000036ee
-L00003530           jsr     $00048018               ; External Address
+L00003530           jsr     $00048018               ; External Address - CHEM.IFF
 L00003536           move.b  #$00,$00bfee01
 L0000353e           movem.l (a7)+,d1-d7/a0-a6
 L00003542           rts
@@ -657,12 +657,14 @@ L00003740           addq.w  #$01,L0000632c
 L00003744           rts
 
 
-
-L00003746           lea.l   $00061b9c,a0                ; External Address
+                    ;-------------------------------------
+                    ; Clear Memory
+                    ;-------------------------------------
+L00003746           lea.l   $00061b9c,a0                ; External Address (screen ram?)
 L0000374c           move.w   #$3917,d7
 L00003750           clr.l   (a0)+
 L00003752           dbf.w   d7,L00003750
-L00003756           lea.l   $0005a36c,a0                ; External Address
+L00003756           lea.l   $0005a36c,a0                ; External Address (screen ram?)
 L0000375c           move.w  #$1c8b,d7
 L00003760           clr.l   (a0)+
 L00003762           dbf.w   d7,L00003760
@@ -1006,7 +1008,7 @@ L00003ae2           dc.w    $ffb9                       ; illegal
 L00003ae4           clr.l   L000036ee
 L00003aea           bsr.w   L000036fa
 L00003aee           bsr.w   L000058e2
-L00003af2           jsr     $00048000               ; External Address $48000
+L00003af2           jsr     $00048000               ; External Address $48000- CHEM.IFF
 L00003af8           clr.w   L000062fc
 L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
 L00003b02           clr.w   L00006318
@@ -1016,7 +1018,7 @@ L00003b10           move.w  #$0800,d0               ; Level Time as BCD mm:ss
 L00003b14           jsr     PANEL_INIT_TIMER        ; Panel - Initialise Level Timer - $0007c80e
 L00003b1a           jsr     PANEL_INIT_ENERGY       ; Panel - Initialise Player Energy - $0007c854
 L00003b20           bsr.w   L00003d40
-L00003b24           lea.l   $0000807c,a0            ; External Address $807c
+L00003b24           lea.l   $0000807c,a0            ; External Address $807c - MAPGR.IFF
 L00003b2a           movea.l L00005f64,a5
 L00003b30           movem.w (a5)+,d2-d4
 L00003b34           tst.w   d3
@@ -1073,7 +1075,7 @@ L00003bdc           bsr.w   L00005e8c
 L00003be0           btst.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2       ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003be8           bne.b   L00003bf2
 L00003bea           moveq   #$01,d0
-L00003bec           jsr     $00048010                   ; External Address $48010
+L00003bec           jsr     $00048010                   ; External Address $48010 - CHEM.IFF
 L00003bf2           bsr.w   L00003cc0
 L00003bf6           clr.l   L000036ee
 L00003bfa           bsr.w   L0000365a
@@ -1091,10 +1093,10 @@ L00003c22           cmp.w   #$0082,d0
 L00003c26           bne.b   L00003c48
 L00003c28           bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2       ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003c30           bne.b   L00003c3c
-L00003c32           jsr     $00048008                   ; External Address $48008
+L00003c32           jsr     $00048008                   ; External Address $48008 - CHEM.IFF
 L00003c38           bra.w   L00003c5a
 L00003c3c           moveq   #$01,d0
-L00003c3e           jsr     $00048010                   ; External Address $48010
+L00003c3e           jsr     $00048010                   ; External Address $48010- CHEM.IFF
 L00003c44           bra.w   L00003c5a
 
 L00003c48           cmp.w   #$008a,d0
@@ -1382,7 +1384,7 @@ L00003f78           subq.w  #$02,d0
 L00003f7a           bmi.b   L00003fa6
 L00003f7c           move.w  #$0001,(a6)
 L00003f80           moveq   #$0a,d0
-L00003f82           jsr     $00048014               ; External Address $48014
+L00003f82           jsr     $00048014               ; External Address $48014 - CHEM.IFF
 L00003f88           move.w  #$fffe,$000a(a6)
 L00003f8e           tst.w   L000062fa
 L00003f92           bmi.b   L00003fa6
@@ -1425,7 +1427,7 @@ L00003ff4           cmp.w   #$0073,d1
 L00003ff8           bpl.b   L0000400a
 L00003ffa           movem.w d0-d1,-(a7)
 L00003ffe           moveq   #$09,d0
-L00004000           jsr     $00048014               ; External Address $48014
+L00004000           jsr     $00048014               ; External Address $48014 - CHEM.IFF
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
 
@@ -1541,7 +1543,7 @@ L00004166           add.w   #$0010,d5
 L0000416a           cmp.w   #$0020,d5
 L0000416e           bcs.b   L000041a0
 L00004170           bpl.b   L00004184
-L00004172           move.w  $00008002,d2        ; External Address
+L00004172           move.w  $00008002,d2        ; External Address - MAPGR.IFF
 L00004178           add.w   d2,d2
 L0000417a           add.w   d2,d2
 L0000417c           sub.w   d2,d3
@@ -1594,7 +1596,7 @@ L0000420e           addq.w  #$01,d2
 L00004210           cmp.w   #$0008,d2
 L00004214           bcc.b   L00004242
 L00004216           move.w  d2,$0008(a6)
-L0000421a           move.l  #$00050010,$000a(a6)        ; External Address?
+L0000421a           move.l  #$00050010,$000a(a6)        ; External Address? - CHEM.IFF
 L00004222           bra.b   L00004242
 L00004224           subq.w  #$08,d5
 L00004226           sub.w   d5,d2
@@ -1817,7 +1819,7 @@ L000044bc           cmp.w   #$0059,d1
 L000044c0           bcc.b   L000044b4
 L000044c2           movem.w d0-d1,-(a7)
 L000044c6           move.w  d2,d0
-L000044c8           jsr     $00048014           ; External Address
+L000044c8           jsr     $00048014           ; External Address - CHEM.IFF
 L000044ce           movem.w (a7)+,d0-d1
 L000044d2           rts
 
@@ -2005,7 +2007,7 @@ L000046aa           bmi.b   L000046c0
 L000046ac           moveq   #$01,d6
 L000046ae           bsr.w   L00004ccc
 L000046b2           moveq   #$0a,d0
-L000046b4           jsr     $00048014           ; External Address
+L000046b4           jsr     $00048014           ; External Address - CHEM.IFF
 L000046ba           move.w  #$0004,-$0002(a6)   
 L000046c0           rts
 
@@ -2100,7 +2102,7 @@ L000047ae           move.w  #$0001,(a4)
 L000047b2           move.w  #$fffc,$000a(a4)
 L000047b8           bsr.w   L00004722
 L000047bc           moveq   #$0a,d0
-L000047be           jmp     $00048014           ; External Address
+L000047be           jmp     $00048014           ; External Address -CHEM.IFF
 L000047c4           addq.w  #$02,d0
 L000047c6           move.w  $0004(a6),d2
 L000047ca           cmp.w   #$0028,d2
@@ -2337,7 +2339,7 @@ L00004a66           asl.w   #$04,d4
 L00004a68           move.b  d4,L00004aa1
 L00004a6e           move.w  d3,d4
 L00004a70           lsr.w   #$03,d4
-L00004a72           lea.l   $00008002,a0            ; External Address
+L00004a72           lea.l   $00008002,a0            ; External Address - MAPGR.IFF
 L00004a78           mulu.w  (a0),d4
 L00004a7a           move.w  L000067bc,d0
 L00004a7e           lsr.w   #$03,d0
@@ -2387,7 +2389,7 @@ L00004aea           not.w   d5
 L00004aec           and.w   #$0007,d5
 L00004af0           lsl.w   #$04,d0
 L00004af2           lsr.w   #$03,d1
-L00004af4           lea.l   $00008002,a0        ; External Address
+L00004af4           lea.l   $00008002,a0        ; External Address - MAPGR.IFF
 L00004afa           move.w  (a0),d4
 L00004afc           mulu.w  d4,d1
 L00004afe           add.w   d2,d1
@@ -2608,7 +2610,7 @@ L00004d80           beq.b   L00004d36
 L00004d82           jsr     $00048004
 L00004d88           clr.w   L00006318
 L00004d8c           moveq   #$03,d0
-L00004d8e           jsr     $00048010           ; External Address
+L00004d8e           jsr     $00048010           ; External Address - CHEM.IFF
 L00004d94           move.w  #$4da2,L00003c92
 L00004d9a           move.w  #$63dc,L00006326
 L00004da0           rts 
@@ -2619,7 +2621,7 @@ L00004da6            bsr.w   L00005438
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
 L00004db0            bne     L00004d36                                  ; bne.b
-L00004db2            jsr     $0004800c                                  ; External Address
+L00004db2            jsr     $0004800c                                  ; External Address - CHEM.IFF
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   L00005e8c
 L00004dc0            bsr.w   L00004e28
@@ -2636,7 +2638,7 @@ L00004dec            move.w  #$001e,d0
 L00004df0            bsr.w   L00005e8c
 L00004df4            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1      ; Panel - Status Byte 1 - bit #$0001 of $0007c874
 L00004dfc            beq.w   L00003b02
-L00004e00            jsr     $00048004           ; External Address
+L00004e00            jsr     $00048004           ; External Address - CHEM.IFF
 L00004e06            bsr.w   L00003d8c
 L00004e0a            bra.w   LOADER_TITLE_SCREEN    ; $00000820 ; **** LOADER ****
 
@@ -2676,7 +2678,7 @@ L00004e54            subq.w  #$01,L00006306
 L00004e58            bne.b   L00004e60
 L00004e5a            move.w  #$4e64,L00003c92
 L00004e60            move.b  d3,L00006308
-L00004e64            lea.l   L00006318,a0                ; External Address
+L00004e64            lea.l   L00006318,a0                
 L00004e68            move.w  (a0),d5
 L00004e6a            move.b  L00006308,d4
 L00004e6e            btst.l  #$0003,d4
@@ -2761,7 +2763,7 @@ L00004f58            bcs.b   L00004f8e
 L00004f5a            move.b  $01(a0,d3.W),d2
 L00004f5e            cmp.b   #$17,d2
 L00004f62            bcs.b   L00004f8e
-L00004f64            sub.w   $00008002,d3            ; External Address
+L00004f64            sub.w   $00008002,d3            ; External Address - MAPGR.IFF
 L00004f6a            dbf.w   d7,L00004f50
 L00004f6e            movem.w L000067c2,d0-d1
 L00004f74            add.w   d4,d1
@@ -2805,7 +2807,7 @@ L00004fdc           bra.w   L00005464
 L00004fe0           move.w  #$6419,L00003626        ; Jump Table CMD9
 L00004fe8           move.w  #$4ff6,L00003c92
 L00004fee           moveq   #$08,d0
-L00004ff0           jsr     $00048014               ; External Address
+L00004ff0           jsr     $00048014               ; External Address - CHEM.IFF
 L00004ff6           movea.w L00006326,a0
 L00004ffa           bsr.w   L00005438
 L00004ffe           move.w  a0,L00006326
@@ -2908,7 +2910,7 @@ L00005110           move.w  #$5132,L00003c92
 L00005116           lea.l   L000063d0,a0
 L0000511a           bsr.w   L00005438
 L0000511e           moveq   #$07,d0
-L00005120           jsr     $00048014               ; External Address
+L00005120           jsr     $00048014               ; External Address - CHEM.IFF
 L00005126           movem.w L000067c2,d0-d1
 L0000512c           bclr.b  #$0004,L00006308
 L00005132           lea.l   L00006314,a0
@@ -3113,7 +3115,7 @@ L0000537e           bra.b   L000053a6
 L00005380           asr.w   #$01,d4
 L00005382           bcc.b   L000053cc
 L00005384           move.w  #$0048,L000067c6
-L0000538a           move.w  $00008002,d5            ; External Address
+L0000538a           move.w  $00008002,d5            ; External Address - MAPGR.IFF
 L00005390           sub.w   d5,d3
 L00005392           sub.w   d5,d3
 L00005394           sub.w   d5,d3
@@ -3214,7 +3216,7 @@ L000054a6           bcs.b   L000054c8
 L000054a8           move.b  $01(a0,d3.W),d2
 L000054ac           cmp.b   #$17,d2
 L000054b0           bcs.b   L000054c8
-L000054b2           add.w   $00008002,d3                ; External Address
+L000054b2           add.w   $00008002,d3                ; External Address - MAPGR.IFF
 L000054b8           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
 L000054bc           dbf.w   d7,L000054a2
 L000054c0           add.w   d0,d4
@@ -3295,9 +3297,9 @@ L000055a6           add.w   d0,d2
 L000055a8           add.w   d1,d3
 L000055aa           lsr.w   #$03,d2
 L000055ac           lsr.w   #$03,d3
-L000055ae           mulu.w  $00008002,d3            ; External Address
+L000055ae           mulu.w  $00008002,d3            ; External Address - MAPGR.IFF
 L000055b4           add.w   d2,d3
-L000055b6           lea.l   $0000807c,a0            ; External Address
+L000055b6           lea.l   $0000807c,a0            ; External Address - MAPGR.IFF
 L000055bc           clr.w   d2
 L000055be           move.b  $00(a0,d3.W),d2
 L000055c2           rts
@@ -3581,7 +3583,7 @@ L000058aa           clr.l   d0
 L000058ac           move.w  L000067bc,d0
 L000058b0           lsr.w   #$03,d0
 L000058b2           add.w   d0,d0
-L000058b4           movea.l #$0005a36c,a4           ; External Address
+L000058b4           movea.l #$0005a36c,a4           ; External Address - (Screem ram?)
 L000058ba           adda.l  d0,a4
 L000058bc           move.l  a4,L0000631e
 L000058c0           clr.w   L00006312
@@ -3610,7 +3612,7 @@ L000058f8           and.b   $0003(a0),d0
 L000058fc           eor.b   d0,$0001(a0)
 L00005900           addq.w  #$05,a0                     ; addaq.w
 L00005902           dbf.w   d7,L000058ea
-L00005906           lea.l   $00008002,a0                ; External Address
+L00005906           lea.l   $00008002,a0                ; External Address - MAPGR.IFF
 L0000590c           move.w  (a0)+,d5
 L0000590e           move.w  (a0)+,d6
 L00005910           lea.l   $0076(a0),a0
@@ -3633,7 +3635,7 @@ L0000593a           suba.w  d5,a1
 L0000593c           suba.w  d5,a1
 L0000593e           dbf.w   d6,L0000592c
 L00005942           movea.l L000062fe,a1
-L00005946           movea.l #$00011002,a0           ; External Address
+L00005946           movea.l #$00011002,a0           ; External Address - BATSPR1.IFF
 L0000594c           lea.l   L0000607c,a2
 L00005952           move.w  (a0)+,d7
 L00005954           clr.l   d0
@@ -3700,7 +3702,7 @@ L000059d8           add.w   d4,d2
 L000059da           move.l  d2,d1
 L000059dc           add.w   d4,d1
 L000059de           subq.w  #$01,d5
-L000059e0           movea.l #$00061b9c,a2               ; External Address
+L000059e0           movea.l #$00061b9c,a2               ; External Address - (Screen Ram?)
 L000059e6           move.w  (a0)+,(a2)
 L000059e8           not.w   (a2)
 L000059ea           move.w  (a0)+,$00(a2,d4.W)
@@ -3853,7 +3855,7 @@ L00005b8a           rts
 
 L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a
-L00005b90           jsr     $00048008                               ; External Address
+L00005b90           jsr     $00048008                               ; External Address - CHEM.IFF
 L00005b96           bset.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874
 L00005b9e           move.w  #$5290,L00003c92
 L00005ba4           clr.w   L000062fa
@@ -3866,7 +3868,7 @@ L00005bbc           move.l  #$00005b28,$0008(a5)                    ; $00bfd108
 L00005bc4           move.w  #$0019,(a5)
 L00005bc8           clr.w   (a6)
 L00005bca           moveq   #$0b,d0
-L00005bcc           jmp     $00048014                               ; External Address
+L00005bcc           jmp     $00048014                               ; External Address - CHEM.IFF
 
 
 L00005bd2           subq.w  #$01,L000067c8
@@ -3997,7 +3999,7 @@ L00005d3c           btst.b  #$0000,L0000632d
 L00005d42           beq.b   L00005d54
 L00005d44           movem.l d0-d1/a6,-(a7)
 L00005d48           moveq   #$0b,d0
-L00005d4a           jsr     $00048014               ; External Address
+L00005d4a           jsr     $00048014               ; External Address - CHEM.IFF
 L00005d50           movem.l (a7)+,d0-d1/a6
 L00005d54           move.w  L0000632c,d2
 L00005d58           lsr.w   #$02,d2
@@ -4062,7 +4064,7 @@ L00005e0a           bne.b   L00005e0e
 L00005e0c           moveq   #$02,d2
 L00005e0e           addq.w  #$07,d2
 L00005e10           bsr.w   L000045bc
-L00005e14           jsr     $00048004                   ; External Address
+L00005e14           jsr     $00048004                   ; External Address - CHEM.IFF
 L00005e1a           move.l  #$00000210,d0
 L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
@@ -4074,7 +4076,7 @@ L00005e2e           bsr.w   L000036fa
 L00005e32           bset.b  #PANELST2_GAME_COMPLETE,PANEL_STATUS_2  ; Panel - Status 2 Bytes - bit #$0006 of $0007c875
 L00005e3a           jsr     $00048004
 L00005e40           moveq   #$02,d0
-L00005e42           jsr     $00048010                               ; External Address
+L00005e42           jsr     $00048010                               ; External Address - CHEM.IFF
 L00005e48           move.w  #$00fa,d0
 L00005e4c           bsr.b   L00005e8c
 L00005e4e           moveq   #$64,d0
