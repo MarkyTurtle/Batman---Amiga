@@ -1,20 +1,30 @@
                 ; This file is all data for the level 1 map graphics
 
 
-
-                section panel,code_c
-                org     $7ffc                                          ; original load address
-
-
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
 
+
+                section panel,code_c
+
+
+TEST_TITLEPRG SET 1             ; run a test build with imported GFX
+
+        IFND TEST_TITLEPRG
+                org     $7ffc                                         ; original load address
+        ELSE
+
+                ;--------------------------------------------------
+                ; TEST PROGRAM
+                ;--------------------------------------------------
 start
+                Add.w   #$1,d0
+                move.w  d0,$dff180
                 jmp start     
+
+        ENDC    
            
-
-
 L00007FFC           dc.w $0000, $8000, $0029, $00C0, $0029, $0000, $0000, $0014             ;.....)...)......
 L0000800C           dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000             ;................
 L0000801C           dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000             ;................
