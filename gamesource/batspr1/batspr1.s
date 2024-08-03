@@ -9,7 +9,7 @@
                 section panel,code_c
 
 
-TEST_TITLEPRG SET 1             ; run a test build with imported GFX
+;TEST_TITLEPRG SET 1             ; run a test build with imported GFX
 
         IFND TEST_TITLEPRG
                 org     $10ffc                                         ; original load address
