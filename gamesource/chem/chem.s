@@ -1,4 +1,4 @@
-                ; This is music (I hope not the same shite format as the title screen)
+                ; This is music and player routine for Level 1 - Axis Chemicals
 
 
                 ;--------------------- includes and constants ---------------------------
@@ -37,144 +37,255 @@ L00047ffa               dc.w  $0000, $0000                      ; or.b #$00,d0
 L00047ffe               dc.w  $0000
 
 
-L00048000               bra.w L00048180
-L00048004               bra.w L00048194
-L00048008               bra.w L000481e8
-L0004800c               bra.w L000481e8
-L00048010               bra.w L0004824e
+L00048000               bra.w do_initialise_music_player        ; jmp $00048180
+L00048004               bra.w do_silence_all_audio              ; jmp $00048194
+L00048008               bra.w do_stop_audio                     ; jmp $000481e8
+L0004800c               bra.w do_stop_audio                     ; jmp $000481e8
+L00048010               bra.w do_init_song                      ; jmp $0004824e
 L00048014               bra.w L0004822c
-L00048018               bra.w L0004830e
+L00048018               bra.w do_play_song                      ; jmp $0004830e
 
 
 L0004801c               dc.w  $ffff                             ; illegal
 L0004801e               dc.w  $ffff                             ; illegal
-L00048020               dc.w  $0000, $0101                      ; or.b #$01,d0
-L00048024               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048028               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004802c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048030               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048034               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048038               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004803c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048040               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048044               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048048               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004804c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048050               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048054               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048058               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004805c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048060               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048064               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048068               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004806c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048070               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048074               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048078               dc.w  $0001, $0000                      ; or.b #$00,d1
-L0004807c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048080               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048084               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048088               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004808c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048090               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048094               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048098               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004809c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480a0               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480a4               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480a8               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480ac               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480b0               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480b4               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480b8               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480bc               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480c0               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480c4               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480c8               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480cc               dc.w  $0000, $0002                      ; or.b #$02,d0
-L000480d0               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480d4               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480d8               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480dc               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480e0               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480e4               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480e8               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480ec               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480f0               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480f4               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480f8               dc.w  $0000, $0000                      ; or.b #$00,d0
-L000480fc               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048100               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048104               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048108               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004810c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048110               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048114               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048118               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004811c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048120               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048124               dc.w  $0004, $0000                      ; or.b #$00,d4
-L00048128               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004812c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048130               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048134               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048138               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004813c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048140               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048144               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048148               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004814c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048150               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048154               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048158               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004815c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048160               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048164               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048168               dc.w  $0000, $0000                      ; or.b #$00,d0
-L0004816c               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048170               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048174               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00048178               dc.w  $0000, $0008                      ; or.b #$08,d0
-L0004817c               dc.w  $0000, $0000                      ; or.b #$00,d0
+
+channel_dma
+L00048020               dc.w  $0000
+
+song_no_1
+L00048022               dc.b  $01
+song_no_2
+L00048023               dc.b  $01   
+
+channel_00_status
+L00048024               dc.w  $0000
+L00048026               dc.w  $0000
+L00048028               dc.w  $0000
+                        dc.w  $0000
+L0004802c               dc.w  $0000
+                        dc.w  $0000
+L00048030               dc.w  $0000
+                        dc.w  $0000
+L00048034               dc.w  $0000
+                        dc.w  $0000
+L00048038               dc.w  $0000
+                        dc.w  $0000
+L0004803c               dc.w  $0000
+                        dc.w  $0000
+L00048040               dc.w  $0000
+                        dc.w  $0000
+L00048044               dc.w  $0000
+                        dc.w  $0000
+L00048048               dc.w  $0000
+                        dc.w  $0000
+L0004804c               dc.w  $0000
+                        dc.w  $0000
+L00048050               dc.w  $0000
+                        dc.w  $0000
+L00048054               dc.w  $0000
+                        dc.w  $0000
+L00048058               dc.w  $0000
+                        dc.w  $0000
+L0004805c               dc.w  $0000
+                        dc.w  $0000
+L00048060               dc.w  $0000
+                        dc.w  $0000
+L00048064               dc.w  $0000
+                        dc.w  $0000
+L00048068               dc.w  $0000
+                        dc.w  $0000
+L0004806c               dc.w  $0000
+                        dc.w  $0000
+L00048070               dc.w  $0000
+                        dc.w  $0000
+L00048074               dc.w  $0000
+                        dc.w  $0000
+L00048078               dc.w  $0001                     ; channel bit? 8 (2^0)  
+
+channel_01_status
+L0004707a               dc.w  $0000                             
+L0004807c               dc.w  $0000
+                        dc.w  $0000                      
+L00048080               dc.w  $0000
+                        dc.w  $0000                      
+L00048084               dc.w  $0000
+                        dc.w  $0000                      
+L00048088               dc.w  $0000
+                        dc.w  $0000                      
+L0004808c               dc.w  $0000
+                        dc.w  $0000                      
+L00048090               dc.w  $0000
+                        dc.w  $0000                      
+L00048094               dc.w  $0000
+                        dc.w  $0000                      
+L00048098               dc.w  $0000
+                        dc.w  $0000                      
+L0004809c               dc.w  $0000
+                        dc.w  $0000                      
+L000480a0               dc.w  $0000
+                        dc.w  $0000                      
+L000480a4               dc.w  $0000
+                        dc.w  $0000                      
+L000480a8               dc.w  $0000
+                        dc.w  $0000                      
+L000480ac               dc.w  $0000
+                        dc.w  $0000                      
+L000480b0               dc.w  $0000
+                        dc.w  $0000                      
+L000480b4               dc.w  $0000
+                        dc.w  $0000                      
+L000480b8               dc.w  $0000
+                        dc.w  $0000                      
+L000480bc               dc.w  $0000
+                        dc.w  $0000                      
+L000480c0               dc.w  $0000
+                        dc.w  $0000                      
+L000480c4               dc.w  $0000
+                        dc.w  $0000                      
+L000480c8               dc.w  $0000
+                        dc.w  $0000                      
+L000480cc               dc.w  $0000
+                        dc.w  $0002                     ; channel bit? 8 (2^1)                        
+
+channel_02_status
+L000480d0               dc.w  $0000
+                        dc.w  $0000                      
+L000480d4               dc.w  $0000
+                        dc.w  $0000                      
+L000480d8               dc.w  $0000
+                        dc.w  $0000                      
+L000480dc               dc.w  $0000
+                        dc.w  $0000                      
+L000480e0               dc.w  $0000
+                        dc.w  $0000                      
+L000480e4               dc.w  $0000
+                        dc.w  $0000                      
+L000480e8               dc.w  $0000
+                        dc.w  $0000                      
+L000480ec               dc.w  $0000
+                        dc.w  $0000                      
+L000480f0               dc.w  $0000
+                        dc.w  $0000                      
+L000480f4               dc.w  $0000
+                        dc.w  $0000                      
+L000480f8               dc.w  $0000
+                        dc.w  $0000                      
+L000480fc               dc.w  $0000
+                        dc.w  $0000                      
+L00048100               dc.w  $0000
+                        dc.w  $0000                      
+L00048104               dc.w  $0000
+                        dc.w  $0000                      
+L00048108               dc.w  $0000
+                        dc.w  $0000                      
+L0004810c               dc.w  $0000
+                        dc.w  $0000                      
+L00048110               dc.w  $0000
+                        dc.w  $0000                      
+L00048114               dc.w  $0000
+                        dc.w  $0000                      
+L00048118               dc.w  $0000
+                        dc.w  $0000                      
+L0004811c               dc.w  $0000
+                        dc.w  $0000                      
+L00048120               dc.w  $0000
+                        dc.w  $0000                      
+L00048124               dc.w  $0004                     ; channel bit? 8 (2^2)  
+
+channel_03_status
+L00048126               dc.w  $0000                             
+L00048128               dc.w  $0000
+                        dc.w  $0000                      
+L0004812c               dc.w  $0000
+                        dc.w  $0000                      
+L00048130               dc.w  $0000
+                        dc.w  $0000                      
+L00048134               dc.w  $0000
+                        dc.w  $0000                      
+L00048138               dc.w  $0000
+                        dc.w  $0000                      
+L0004813c               dc.w  $0000
+                        dc.w  $0000                      
+L00048140               dc.w  $0000
+                        dc.w  $0000                      
+L00048144               dc.w  $0000
+                        dc.w  $0000                      
+L00048148               dc.w  $0000
+                        dc.w  $0000                      
+L0004814c               dc.w  $0000
+                        dc.w  $0000                      
+L00048150               dc.w  $0000
+                        dc.w  $0000                      
+L00048154               dc.w  $0000
+                        dc.w  $0000                      
+L00048158               dc.w  $0000
+                        dc.w  $0000                      
+L0004815c               dc.w  $0000
+                        dc.w  $0000                      
+L00048160               dc.w  $0000
+                        dc.w  $0000                      
+L00048164               dc.w  $0000
+                        dc.w  $0000                      
+L00048168               dc.w  $0000
+                        dc.w  $0000                      
+L0004816c               dc.w  $0000
+                        dc.w  $0000                      
+L00048170               dc.w  $0000
+                        dc.w  $0000                      
+L00048174               dc.w  $0000
+                        dc.w  $0000                      
+L00048178               dc.w  $0000
+                        dc.w  $0008                     ; channel bit? 8 (2^3)                     
 
 
+L0004817c               dc.w  $0000, $0000                      
+
+
+do_initialise_music_player                                      ; original address $00048180
 L00048180               lea.l   L00048d98,a0
 L00048186               lea.l   L00048c40,a1
 L0004818c               bsr.w   L00048a08
-L00048190               bra.w   L00048194 (T)
+L00048190               bra.w   do_silence_all_audio            ; L00048194
+
+do_silence_all_audio                                            ; original address $00048194
 L00048194               movem.l d0/a0-a1,-(a7)
-L00048198               move.b  #$00,L00048022
-L000481a0               move.b  #$00,L00048023
-L000481a8               lea.l   L00048024,a0
-L000481ae               lea.l   $00dff0a8,a1
-L000481b4               bsr.b   L000481ca
-L000481b6               bsr.b   L000481ca
-L000481b8               bsr.b   L000481ca
-L000481ba               bsr.b   L000481ca
-L000481bc               move.w  #$0000,L00048020
+L00048198               move.b  #$00,song_no_1                  ; L00048022
+L000481a0               move.b  #$00,song_no_2                  ; L00048023
+L000481a8               lea.l   channel_00_status,a0            ; L00048024,a0 
+L000481ae               lea.l   $00dff0a8,a1                    ; a1 = AUD0VOL
+L000481b4               bsr.b   init_audio_channel              ; L000481ca
+L000481b6               bsr.b   init_audio_channel              ; L000481ca
+L000481b8               bsr.b   init_audio_channel              ; L000481ca
+L000481ba               bsr.b   init_audio_channel              ; L000481ca
+L000481bc               move.w  #$0000,channel_dma              ; L00048020 ; channel dma enable bits (all channels)
 L000481c4               movem.l (a7)+,d0/a0-a1
 L000481c8               rts
 
+
+                        ; Set Audio Channel Volume to Zero, also init other channel structure values
+init_audio_channel                                              ; original address $000481ca
 L000481ca               move.w  #$0000,(a0)
 L000481ce               move.w  #$0001,$004a(a0)
 L000481d4               move.w  #$0000,$004c(a0)
-L000481da               move.w  #$0000,(a1)
-L000481de               adda.w  #$0056,a0
-L000481e2               adda.w  #$0010,a1
+L000481da               move.w  #$0000,(a1)                     ; AUDxVOL
+L000481de               adda.w  #$0056,a0                       ; a0 = next audio channel structure
+L000481e2               adda.w  #$0010,a1                       ; a1 = next audo channel AUDxVOL h/w/ register
 L000481e6               rts
 
+do_stop_audio                                                   ; original address
 L000481e8               movem.l d0/d7/a0-a2,-(a7)
 L000481ec               subq.w  #$01,d0
-L000481ee               bmi.b   L000481f6
-L000481f0               cmp.w   #$000d,d0
-L000481f4               bcs.b   L000481fa
-L000481f6               bsr.b   L00048194
+L000481ee               bmi.b   L000481f6                       ; d0 <= 0
+L000481f0               cmp.w   #$000d,d0                       ; 13
+L000481f4               bcs.b   L000481fa                       ; d0 < 13
+L000481f6               bsr.b   do_silence_all_audio            ; d0 >= 13 ; jmp $00048194                       
 L000481f8               bra.b   L00048226
+
 L000481fa               lea.l   L0005847e,a2
 L00048200               asl.w   #$03,d0
 L00048202               adda.w  d0,a2
-L00048204               lea.l   L00048024,a0
-L0004820a               lea.l   $00dff0a8,a1
+L00048204               lea.l   channel_00_status,a0            ; L00048024,a0
+L0004820a               lea.l   $00dff0a8,a1                    ; AUD0VOL
 L00048210               moveq   #$03,d7
 L00048212               tst.w   (a2)+
 L00048214               bne.b   L00048220
@@ -188,28 +299,30 @@ L0004822a               rts
 
 L0004822c               tst.w   L00048126
 L00048232               beq.b   L0004823c
-L00048234               cmp.b   L00048023,d0
+L00048234               cmp.b   song_no_2,d0                    ; L00048023,d0
 L0004823a               bcs.b   L0004824c
 L0004823c               movem.l d0/d7/a0-a2,-(a7)
 L00048240               move.w  #$4000,d1
-L00048244               move.b  d0,L00048023
+L00048244               move.b  d0,song_no_2                    ; L00048023
 L0004824a               bra.b   L0004825c
 L0004824c               rts  
 
+
+do_init_song                                                    ; original address $0004824e
 L0004824e               movem.l d0/d7/a0-a2,-(a7)
 L00048252               move.w  #$8000,d1
-L00048256               move.b  d0,L00048022
+L00048256               move.b  d0,song_no_1                    ; L00048022
 L0004825c               clr.w   L0004817e
 L00048262               subq.w  #$01,d0
 L00048264               bmi.b   L0004826c
 L00048266               cmp.w   #$000d,d0
 L0004826a               bcs.b   L00048274
-L0004826c               bsr.w   L00048194
+L0004826c               bsr.w   do_silence_all_audio            ; bsr $00048194
 L00048270               bra.w   L00048308
 L00048274               lea.l   L0005847e,a0
 L0004827a               asl.w   #$03,d0
 L0004827c               adda.w  d0,a0
-L0004827e               lea.l   L00048024,a1
+L0004827e               lea.l   channel_00_status,a1            ;L00048024,a1
 L00048284               moveq   #$03,d7
 L00048286               move.w  (a0)+,d0
 L00048288               beq.b   L000482fa
@@ -251,46 +364,47 @@ L000482ec               adda.w  d0,a2
 L000482ee               adda.w  (a2),a2
 L000482f0               move.l  a2,$000e(a1)
 L000482f4               move.w  #$0001,$0052(a1)
-L000482fa               lea.l   $0056(a1),a1            ; next channel struct (86 bytes)
+L000482fa               lea.l   $0056(a1),a1                    ; next channel struct (86 bytes)
 L000482fe               dbf.w   d7,L00048286
 
-L00048302               or.w    d1,L00048020
+L00048302               or.w    d1,channel_dma                  ; L00048020 ; channel dma enable bits (all channels)
 L00048308               movem.l (a7)+,d0/d7/a0-a2
 L0004830c               rts 
 
 
+do_play_song
 L0004830e               lea.l   $00dff000,a6
 L00048314               lea.l   L00048c00,a5
 L0004831a               clr.w   L0004817c
-L00048320               tst.w   L00048020
+L00048320               tst.w   channel_dma                     ; L00048020 ; channel dma enable bits (all channels)
 L00048326               beq.b   L00048384
 L00048328               addq.w  #$01,L0004817e
-L0004832e               clr.w   L00048020
-L00048334               lea.l   L00048024,a4
+L0004832e               clr.w   channel_dma                     ; L00048020 ; channel dma enable bits (all channels)
+L00048334               lea.l   channel_00_status,a4            ; L00048024,a4
 L0004833a               move.w  (a4),d7
 L0004833c               beq.b   L00048348
 L0004833e               bsr.b   L00048392
 L00048340               move.w  d7,(a4)
-L00048342               or.w    d7,L00048020
+L00048342               or.w    d7,channel_dma                  ; L00048020 ; channel dma enable bits (all channels)
 L00048348               lea.l   L0004807a,a4
 L0004834e               move.w  (a4),d7
 L00048350               beq.b   L$0004835c
 L00048352               bsr.b   L$00048392
 L00048354               move.w  d7,(a4)
-L00048356               or.w    d7,L00048020
+L00048356               or.w    d7,channel_dma                  ; L00048020 ; channel dma enable bits (all channels)
 L0004835c               lea.l   L000480d0,a4
 L00048362               move.w  (a4),d7
 L00048364               beq.b   L00048370
 L00048366               bsr.b   L00048392
 L00048368               move.w  d7,(a4)
-L0004836a               or.w    d7,L00048020
+L0004836a               or.w    d7,channel_dma                  ; L00048020 ; channel dma enable bits (all channels)
 L00048370               lea.l   L00048126,a4
 L00048376               move.w  (a4),d7
 L00048378               beq.b   L00048384
 L0004837a               bsr.b   L00048392
 L0004837c               move.w  d7,(a4)
-L0004837e               or.w    d7,L00048020
-L00048384               and.w   #$c000,L00048020
+L0004837e               or.w    d7,channel_dma                  ; L00048020 ; channel dma enable bits (all channels)
+L00048384               and.w   #$c000,channel_dma              ; L00048020 ; channel dma enable bits (all channels)
 L0004838c               bsr.w   L0004887e
 L00048390               rts 
 
@@ -299,181 +413,218 @@ L00048392               subq.w  #$01,$0052(a4)
 L00048396               bne.w   L000486de
 L0004839a               movea.l $000e(a4),a3
 L0004839e               bclr.l  #$0007,d7
-L000483a2               move.b  (a3)+,d0
+cmd_loop
+L000483a2               move.b  (a3)+,d0                        ; Music Command Loop
 L000483a4               bpl.w   L0004858a
 L000483a8               bclr.l  #$0003,d7
 L000483ac               cmp.b   #$a0,d0
-L000483b0               bcc.b   L000483a2
-L000483b2               lea.l   $0014(pc),a0            ;  == $000483c8,a0
+L000483b0               bcc.b   cmd_loop                        ; do next command - jmp $000483a2
+L000483b2               lea.l   cmd_jump_table(pc),a0          
 L000483b6               sub.b   #$80,d0
 L000483ba               ext.w   d0
 L000483bc               add.w   d0,d0
 L000483be               adda.w  d0,a0
 L000483c0               move.w  (a0),d0
-L000483c2               beq.b   L000483a2
+L000483c2               beq.b   cmd_loop                        ; do next command - jmp $000483a2
 L000483c4               jmp     $00(a0,d0.W)
 
 
-L000483c8               dc.w    $0040 
-L000483ca               dc.W    $00ba              ;   or.w #$00ba,d0
-L000483cc               dc.w    $00c0                   ;   illegal
-L000483ce               dc.w    $00c2                   ;   illegal
-L000483d0               dc.w    $00c4                   ;   illegal
-L000483d2               dc.w    $00ce                   ;   illegal
-L000483d4               dc.w    $00d4                   ; ; 00dc                [ cmp2.b (a4),d0 ]
-L000483d6               dc.w    $00dc                   ;   illegal
-L000483d8               dc.w    $00ea                   ; ; 00f8 010a           [ cmp2.b (a2,$010a) == $00064561,d0 ]
-L000483da               dc.w    $00f8                   ; ; 010a 0140           [ cmp2.b $0140,d0 ]
-L000483dc               dc.w    $010a
-L000483de               dc.w    $0140              ;   movep.w (a2,$0140) == $00064597,d0
-L000483e0               dc.w    $0156                   ;   bchg.b d0,(a6)
-L000483e2               dc.w    $010c
-L000483e4               dc.w    $0132              ;   movep.w (a4,$0132) == $00bfe233,d0
-L000483e6               dc.w    $0158                   ;   bchg.b d0,(a0)+ [00]
-L000483e8               dc.w    $016e
-L000483ea               dc.w    $0000              ;   bchg.b d0,(a6,$0000) == $00dff000
+; jump table offsets from L000483c8 (32 music commands)
+cmd_jump_table                                                          ; original address $000483c8
+L000483c8               dc.w    music_command_01-(cmd_jump_table+0)     ; $000483c8 + $0040 = $00048408 - CMD 01
+L000483ca               dc.w    music_command_02-(cmd_jump_table+2)     ; $000483ca + $00ba = $00048484 - CMD 02      
+L000483cc               dc.w    music_command_03-(cmd_jump_table+4)     ; $000483cc + $00c0 = $0004848c - CMD 03              
+L000483ce               dc.w    music_command_04-(cmd_jump_table+6)     ; $000483ce + $00c2 = $00048490 - CMD 04      
+L000483d0               dc.w    music_command_05-(cmd_jump_table+8)     ; $000483d0 + $00c4 = $00048494 - CMD 05
+L000483d2               dc.w    music_command_06-(cmd_jump_table+10)    ; $000483d2 + $00ce = $000484a0 - CMD 06     
+L000483d4               dc.w    music_command_07-(cmd_jump_table+12)    ; $000483d4 + $00d4 = $000484a8 - CMD 07                      
+L000483d6               dc.w    music_command_08-(cmd_jump_table+14)    ; $000483d6 + $00dc = $000484b2 - CMD 08
+L000483d8               dc.w    music_command_09-(cmd_jump_table+16)    ; $000483d8 + $00ea = $000484c2 - CMD 09            
+L000483da               dc.w    music_command_10-(cmd_jump_table+18)    ; $000483da + $00f8 = $000484d2 - CMD 10
+L000483dc               dc.w    music_command_11-(cmd_jump_table+20)    ; $000483dc + $010a = $000484e6 - CMD 11
+L000483de               dc.w    music_command_12-(cmd_jump_table+22)    ; $000483de + $0140 = $0004851e - CMD 12
+L000483e0               dc.w    music_command_13-(cmd_jump_table+24)    ; $000483e0 + $0156 = $00048536 - CMD 13
+L000483e2               dc.w    music_command_14-(cmd_jump_table+26)    ; $000483e2 + $010c = $000484ee - CMD 14
+L000483e4               dc.w    music_command_15-(cmd_jump_table+28)    ; $000483e4 + $0132 = $00048516 - CMD 15
+L000483e6               dc.w    music_command_16-(cmd_jump_table+30)    ; $000483e6 + $0158 = $0004853e - CMD 16
+L000483e8               dc.w    music_command_17-(cmd_jump_table+32)    ; $000483e8 + $016e = $00048556 - CMD 17
+L000483ea               dc.w    $0000                   
 L000483ec               dc.w    $0000
-L000483ee               dc.w    $0000              ;   or.b #$00,d0
+L000483ee               dc.w    $0000                   
 L000483f0               dc.w    $0000
-L000483f2               dc.w    $0000              ;   or.b #$00,d0
+L000483f2               dc.w    $0000                   
 L000483f4               dc.w    $0000
-L000484f6               dc.w    $0000              ;   or.b #$00,d0
+L000483f6               dc.w    $0000                   
 L000483f8               dc.w    $0000
-L000483fa               dc.w    $0000              ;   or.b #$00,d0
+L000483fa               dc.w    $0000                   
 L000483fc               dc.w    $0000
-L000483fe               dc.w    $0000              ;   or.b #$00,d0
+L000483fe               dc.w    $0000                   
 L00048400               dc.w    $0000
-L00048402               dc.w    $0000              ;   or.b #$00,d0
+L00048402               dc.w    $0000                   
 L00048404               dc.w    $0000
-L00048406               dc.w    $0000              ;   or.b #$00,d0
+L00048406               dc.w    $0000                   
 
-00048408 266c 000a                movea.l (a4,$000a) == $00bfe10b,a3
-0004840c b6fc 0000                cmpa.w #$0000,a3
-00048410 6690                     bne.b #$90 == $000483a2 (T)
-00048412 266c 0006                movea.l (a4,$0006) == $00bfe107,a3
-00048416 102b ffff                move.b (a3,-$0001) == $00064456 [3c],d0
-0004841a 532c 0012                subq.b #$01,(a4,$0012) == $00bfe113
-0004841e 664e                     bne.b #$4e == $0004846e (T)
-00048420 197c 0001 0012           move.b #$01,(a4,$0012) == $00bfe113
-00048426 197c 0000 0013           move.b #$00,(a4,$0013) == $00bfe114
-0004842c 101b                     move.b (a3)+ [57],d0
-0004842e 6a3e                     bpl.b #$3e == $0004846e (T)
-00048430 0400 0080                sub.b #$80,d0
-00048434 661a                     bne.b #$1a == $00048450 (T)
-00048436 266c 0002                movea.l (a4,$0002) == $00bfe103,a3
-0004843a b6fc 0000                cmpa.w #$0000,a3
-0004843e 66ec                     bne.b #$ec == $0004842c (T)
-00048440 397c 0001 004a           move.w #$0001,(a4,$004a) == $00bfe14b
-00048446 397c 0000 004c           move.w #$0000,(a4,$004c) == $00bfe14d
-0004844c 7e00                     moveq #$00,d7
-0004844e 4e75                     rts  == $6000001a
+; L00048408 - CMD 01
+music_command_01                                        ; original address $00048408
+L00048408               movea.l $000a(a4),a3
+L0004840c               cmpa.w  #$0000,a3
+L00048410               bne.b   L00483a2
+L00048412               movea.l $0006(a4),a3
+L00048416               move.b  -$0001(a3),d0
+L0004841a               subq.b  #$01,$0012(a4)
+L0004841e               bne.b   L0004846e
+L00048420               move.b  #$01,$0012(a4)
+L00048426               move.b  #$00,$0013(a4)
+L0004842c               move.b  (a3)+,d0
+L0004842e               bpl.b   L0004846e
+L00048430               sub.b   #$80,d0
+L00048434               bne.b   L00048450
+L00048436               movea.l $0002(a4),a3
+L0004843a               cmpa.w  #$0000,a3
+L0004843e               bne.b   L0004842c
+L00048440               move.w  #$0001,$004a(a4)
+L00048446               move.w  #$0000,$004c(a4)
+L0004844c               moveq   #$00,d7
+L0004844e               rts 
 
-00048450 5300                     subq.b #$01,d0
-00048452 6606                     bne.b #$06 == $0004845a (T)
-00048454 294b 0002                move.l a3,(a4,$0002) == $00bfe103
-00048458 60d2                     bra.b #$d2 == $0004842c (T)
-0004845a 5300                     subq.b #$01,d0
-0004845c 6606                     bne.b #$06 == $00048464 (T)
-0004845e 195b 0013                move.b (a3)+ [57],(a4,$0013) == $00bfe114
-00048462 60c8                     bra.b #$c8 == $0004842c (T)
-00048464 5300                     subq.b #$01,d0
-00048466 66c4                     bne.b #$c4 == $0004842c (T)
-00048468 195b 0012                move.b (a3)+ [57],(a4,$0012) == $00bfe113
-0004846c 60be                     bra.b #$be == $0004842c (T)
-0004846e 294b 0006                move.l a3,(a4,$0006) == $00bfe107
-00048472 47f9 0005 84e6           lea.l $000584e6,a3
-00048478 4880                     ext.w d0
-0004847a d040                     add.w d0,d0
-0004847c d6c0                     adda.w d0,a3
-0004847e d6d3                     adda.w (a3) [5777],a3
-00048480 6000 ff20                bra.w #$ff20 == $000483a2 (T)
+L00048450               subq.b  #$01,d0
+L00048452               bne.b   L0004845a
+L00048454               move.l  a3,($0002a4)
+L00048458               bra.b   L0004842c
+L0004845a               subq.b  #$01,d0
+L0004845c               bne.b   L00048464
+L0004845e               move.b  (a3)+,$0013(a4)
+L00048462               bra.b   L0004842c
+L00048464               subq.b  #$01,d0
+L00048466               bne.b   L0004842c
+L00048468               move.b  (a3)+,$0012(a4)
+L0004846c               bra.b   L0004842c
+L0004846e               move.l  a3,$0006(a4)
+L00048472               lea.l   L000584e6,a3
+L00048478               ext.w   d0
+L0004847a               add.w   d0,d0
+L0004847c               adda.w  d0,a3
+L0004847e               adda.w  (a3),a3
+L00048480               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-00048484 294b 000a                move.l a3,(a4,$000a) == $00bfe10b
-00048488 6000 ff18                bra.w #$ff18 == $000483a2 (T)
+; L00048484 - CMD 02
+music_command_02                                        ; original address $00048484
+L00048484               move.l  a3,$000a(a4)
+L00048488               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-0004848c 6000 ff14                bra.w #$ff14 == $000483a2 (T)
+; L0004848c - CMD 03
+music_command_03                                        ; original address $0004848c
+L0004848c               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-00048490 6000 ff10                bra.w #$ff10 == $000483a2 (T)
+; L00048490 - CMD 04
+music_command_04                                        ; original address $00048490
+L00048490               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-00048494 08c7 0005                bset.l #$0005,d7
-00048498 195b 0051                move.b (a3)+ [57],(a4,$0051) == $00bfe152
-0004849c 6000 ff04                bra.w #$ff04 == $000483a2 (T)
+; L00048494 - CMD 05
+music_command_05                                        ; original address $00048494
+L00048494               bset.l  #$0005,d7
+L00048498               move.b  (a3)+,$0051(a4)
+L0004849c               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-000484a0 0887 0005                bclr.l #$0005,d7
-000484a4 6000 fefc                bra.w #$fefc == $000483a2 (T)
+; L000484a0 - CMD 06
+music_command_06                                        ; original address $000484a0
+L000484a0               bclr.l  #$0005,d7
+L000484a4               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-000484a8 066c 0100 0052           add.w #$0100,(a4,$0052) == $00bfe153
-000484ae 6000 fef2                bra.w #$fef2 == $000483a2 (T)
+; L000484a8 - CMD 07
+music_command_07                                        ; original address $000484a8
+L000484a8               add.w   #$0100,$0052(a4)
+L000484ae               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-000484b2 0887 0004                bclr.l #$0004,d7
-000484b6 08c7 0007                bset.l #$0007,d7
-000484ba 426c 004c                clr.w (a4,$004c) == $00bfe14d
-000484be 6000 0208                bra.w #$0208 == $000486c8 (T)
+; L000484b2 - CMD 08
+music_command_08                                        ; original address $000484b2
+L000484b2               bclr.l  #$0004,d7
+L000484b6               bset.l  #$0007,d7
+L000484ba               clr.w   $004c(a4)
+L000484be               bra.w   L000486c8
 
-000484c2 08c7 0003                bset.l #$0003,d7
-000484c6 195b 0024                move.b (a3)+ [57],(a4,$0024) == $00bfe125
-000484ca 195b 0025                move.b (a3)+ [57],(a4,$0025) == $00bfe126
-000484ce 6000 fed2                bra.w #$fed2 == $000483a2 (T)
+; L000484c2 - CMD 09
+music_command_09                                        ; original address $000484c2
+L000484c2               bset.l  #$0003,d7
+L000484c6               move.b  (a3)+,$0024(a4)
+L000484ca               move.b  (a3)+,$0025(a4)
+L000484ce               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-000484d2 0247 fff8                and.w #$fff8,d7
-000484d6 08c7 0000                bset.l #$0000,d7
-000484da 195b 0021                move.b (a3)+ [57],(a4,$0021) == $00bfe122
-000484de 195b 0022                move.b (a3)+ [57],(a4,$0022) == $00bfe123
-000484e2 6000 febe                bra.w #$febe == $000483a2 (T)
+; L000484d2 - CMD 10
+music_command_10                                        ; original address $000484d2
+L000484d2               and.w   #$fff8,d7
+L000484d6               bset.l  #$0000,d7
+L000484da               move.b  (a3)+,$0021(a4)
+L000484de               move.b  (a3)+,$0022(a4)
+L000484e2               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-000484e6 0887 0000                bclr.l #$0000,d7
-000484ea 6000 feb6                bra.w #$feb6 == $000483a2 (T)
+; L000484e6 - CMD 11
+music_command_11                                        ; original address $000484e6
+L000484e6               bclr.l  #$0000,d7
+L000484ea               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-000484ee 0247 fff8                and.w #$fff8,d7
-000484f2 08c7 0001                bset.l #$0001,d7
-000484f6 41f9 0005 8378           lea.l $00058378,a0
-000484fc 7000                     moveq #$00,d0
-000484fe 101b                     move.b (a3)+ [57],d0
-00048500 d040                     add.w d0,d0
-00048502 d0c0                     adda.w d0,a0
-00048504 d0d0                     adda.w (a0) [003c],a0
-00048506 1958 0032                move.b (a0)+ [00],(a4,$0032) == $00bfe133
-0004850a 1958 0030                move.b (a0)+ [00],(a4,$0030) == $00bfe131
-0004850e 2948 0028                move.l a0,(a4,$0028) == $00bfe129
-00048512 6000 fe8e                bra.w #$fe8e == $000483a2 (T)
+; L000484ee - CMD 14
+music_command_14                                        ; original address $000484ee
+L000484ee               and.w   #$fff8,d7
+L000484f2               bset.l  #$0001,d7
+L000484f6               lea.l   L00058378,a0
+L000484fc               moveq   #$00,d0
+L000484fe               move.b  (a3)+,d0
+L00048500               add.w   d0,d0
+L00048502               adda.w  d0,a0
+L00048504               adda.w  (a0),a0
+L00048506               move.b  (a0)+,$0032(a4)
+L0004850a               move.b  (a0)+,$0030(a4)
+L0004850e               move.l  a0,$0028(a4)
+L00048512               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-00048516 0887 0001                bclr.l #$0001,d7
-0004851a 6000 fe86                bra.w #$fe86 == $000483a2 (T)
+; L00048516 - CMD 15
+music_command_15                                        ; original address $00048516
+L00048516               bclr.l  #$0001,d7
+L0004851a               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-0004851e 0247 fff8                and.w #$fff8,d7
-00048522 08c7 0002                bset.l #$0002,d7
-00048526 195b 0036                move.b (a3)+ [57],(a4,$0036) == $00bfe137
-0004852a 195b 0034                move.b (a3)+ [57],(a4,$0034) == $00bfe135
-0004852e 195b 0035                move.b (a3)+ [57],(a4,$0035) == $00bfe136
-00048532 6000 fe6e                bra.w #$fe6e == $000483a2 (T)
-00048536 0887 0002                bclr.l #$0002,d7
-0004853a 6000 fe66                bra.w #$fe66 == $000483a2 (T)
+; L0004851e - CMD 12
+music_command_12                                        ; original address $0004851e
+L0004851e               and.w   #$fff8,d7
+L00048522               bset.l  #$0002,d7
+L00048526               move.b  (a3)+,$0036(a4)
+L0004852a               move.b  (a3)+,$0034(a4)
+L0004852e               move.b  (a3)+,$0035(a4)
+L00048532               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-0004853e 41f9 0005 842a           lea.l $0005842a,a0
-00048544 7000                     moveq #$00,d0
-00048546 101b                     move.b (a3)+ [57],d0
-00048548 d040                     add.w d0,d0
-0004854a d0c0                     adda.w d0,a0
-0004854c d0d0                     adda.w (a0) [003c],a0
-0004854e 2948 0014                move.l a0,(a4,$0014) == $00bfe115
-00048552 6000 fe4e                bra.w #$fe4e == $000483a2 (T)
+; L00048536 - CMD 13
+music_command_13
+L00048536               bclr.l  #$0002,d7
+L0004853a               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-00048556 41f9 0004 8c30           lea.l $00048c30,a0
-0004855c 7000                     moveq #$00,d0
-0004855e 101b                     move.b (a3)+ [57],d0
-00048560 e940                     asl.w #$04,d0
-00048562 d0c0                     adda.w d0,a0
-00048564 3958 003c                move.w (a0)+ [003c],(a4,$003c) == $00bfe13d
-00048568 2958 003e                move.l (a0)+ [003c004a],(a4,$003e) == $00bfe13f
-0004856c 3958 0042                move.w (a0)+ [003c],(a4,$0042) == $00bfe143
-00048570 2958 0044                move.l (a0)+ [003c004a],(a4,$0044) == $00bfe145
-00048574 3958 0048                move.w (a0)+ [003c],(a4,$0048) == $00bfe149
-00048578 0887 0006                bclr.l #$0006,d7
-0004857c 4a50                     tst.w (a0) [003c]
-0004857e 6700 fe22                beq.w #$fe22 == $000483a2 (F)
+; L0004853e - CMD 16
+music_command_16                                        ; original address $0004853e
+L0004853e               lea.l   L0005842a,a0
+L00048544               moveq   #$00,d0
+L00048546               move.b  (a3)+,d0
+L00048548               add.w   d0,d0
+L0004854a               adda.w  d0,a0
+L0004854c               adda.w  (a0),a0
+L0004854e               move.l  a0,$0014(a4)
+L00048552               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
-00048582 08c7 0006                bset.l #$0006,d7
-00048586 6000 fe1a                bra.w #$fe1a == $000483a2 (T)
+; L00048556 - CMD 17
+music_command_17                                        ; original address $00048556
+L00048556               lea.l   L00048c30,a0
+L0004855c               moveq   #$00,d0
+L0004855e               move.b  (a3)+,d0
+L00048560               asl.w   #$04,d0
+L00048562               adda.w  d0,a0
+L00048564               move.w  (a0)+,$003c(a4)
+L00048568               move.l  (a0)+,$003e(a4)
+L0004856c               move.w  (a0)+,$0042(a4)
+L00048570               move.l  (a0)+,$0044(a4)
+L00048574               move.w  (a0)+,$0048(a4)
+L00048578               bclr.l  #$0006,d7
+L0004857c               tst.w   (a0)
+L0004857e               beq.w   cmd_loop                ; do next command - jmp $000483a2
+L00048582               bset.l  #$0006,d7
+L00048586               bra.w   cmd_loop                ; do next command - jmp $000483a2
 
 
 
