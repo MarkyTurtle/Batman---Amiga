@@ -552,7 +552,7 @@ L0000417e       dc.w    $0d69                           ; referenced as a word
 do_initialise_music_player                                      ; original routine address $00004180                                                        
                 lea.l   default_sample_data,a0                  ; L00004d52,a0
                 lea.l   instrument_data,a1                      ; L00004bfa,a1
-                bsr.w   initialise_music                        ; calls L000049cc
+                bsr.w   init_instruments                        ; calls L000049cc
                 bra.w   do_silence_all_audio                    ; jmp $00004194
 
 
@@ -1685,7 +1685,7 @@ do_enable_dma
                 ; IN: a0    - music sample table address $4D52 - default_sample_data
                 ; IN: a1    - music/song instrument data $4BFA - instrument_data
                 ;
-initialise_music                                        ; original routine address L000049cc
+init_instruments                                        ; original routine address L000049cc
                 move.l  (a0)+,d0                        ; d0 = sound sample byte offset
                 beq.b   .exit                           ; if d0 == 0 then exit
                 move.w  (a0)+,INSTR_VOLUME(a1)          ; copy sample volume
@@ -1697,7 +1697,7 @@ initialise_music                                        ; original routine addre
                 addq.l  #$08,d0                         ; d0 = alter length to include 'FORM' and length header value, d0 = total file len from A0.
                 bsr.w   process_instrument              ; calls L000049ec
                 movea.l (a7)+,a0                        ; a0 = next sample table entry
-                bra.b   initialise_music                ; jmp L000049cc ; loop for next sample data.
+                bra.b   init_instruments                ; jmp L000049cc ; loop for next sample data.
 .exit
                 rts     
 

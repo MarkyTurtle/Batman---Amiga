@@ -988,172 +988,362 @@ L000489fc       move.w  d0,$0096(a6)
 L00048a00       clr.w   audio_dma                               ; L0004817c
 L00048a06       rts
 
+
+                ;------------------- initislise music samples --------------------
+                ; extract sample data ptrs and lengths from the IFF sample
+                ; data.
+                ;
+                ; IN: a0    - music sample table address $4D52 - default_sample_data
+                ; IN: a1    - music/song instrument data $4BFA - instrument_data
+                ;
 init_instruments                                                ; original address $00048a08
-L00048a08       move.l  (a0)+,d0
-L00048a0a       beq.b   L00048a26
-L00048a0c       move.w  (a0)+,(a1)
-L00048a0e       move.w  (a0)+,$000e(a1)
-L00048a12       move.l  a0,-(a7)
-L00048a14       lea.l   -8(a0,d0.L),a0                          ; $f8(a0,d0.L),a0
-L00048a18       move.l  $0004(a0),d0
-L00048a1c       addq.l  #$08,d0
-L00048a1e       bsr.w   L00048a28
-L00048a22       movea.l (a7)+,a0
-L00048a24       bra.b   init_instruments                        ; jmp L00048a08
-L00048a26       rts 
-
-L00048a28       move.l  a1,-(a7)
-L00048a2a       bsr.w   L00048a6c
-L00048a2e       movea.l (a7)+,a1
-L00048a30       addq.l  #$02,a1                 ; addaq
-L00048a32       movea.l L00048b80,a0
-L00048a38       move.l  (a0)+,d0
-L00048a3a       bclr.l  #$0000,d0
-L00048a3e       move.l  (a0)+,d1
-L00048a40       bclr.l  #$0000,d1
-L00048a44       movea.l L00048ba8,a0
-L00048a4a       move.l  a0,(a1)+
-L00048a4c       adda.l  d0,a0
-L00048a4e       add.l   d1,d0
-L00048a50       lsr.l   #$01,d0
-L00048a52       move.w  d0,(a1)+
-L00048a54       tst.l   d1
-L00048a56       bne.b   L00048a60
-L00048a58       lea.l   L00048d80,a0
-L00048a5e       moveq   #$02,d1
-L00048a60       move.l  a0,(a1)+
-L00048a62       lsr.l   #$01,d1
-L00048a64       move.w  d1,(a1)+
-L00048a66       addq.l  #$02,a1                 ; addaq
-L00048a68       rts 
+                move.l  (a0)+,d0
+                beq.b   .exit
+                move.w  (a0)+,(a1)
+                move.w  (a0)+,$000e(a1)
+                move.l  a0,-(a7)
+                lea.l   -8(a0,d0.L),a0                          ; $f8(a0,d0.L),a0
+                move.l  $0004(a0),d0
+                addq.l  #$08,d0
+                bsr.w   process_instrument                      ; L00048a28
+                movea.l (a7)+,a0
+                bra.b   init_instruments                        ; jmp L00048a08
+.exit           rts 
 
 
+                ; ------------------ process instrument  ----------------
+                ; IN: A0 = ptr to start of 'FORM' block of sample data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of sample including headers.
+                ;
+process_instrument
+                move.l  a1,-(a7)
+                bsr.w   process_sample_data     ; L00048a6c
+                movea.l (a7)+,a1
+                addq.l  #$02,a1                 ; addaq
+                movea.l sample_vhdr_ptr,a0      ; L00048b80,a0
+                move.l  (a0)+,d0                ; d0 = sample length length
+                bclr.l  #$0000,d0               ; d0 = make length even
+                move.l  (a0)+,d1                ; d1 = sample repeat length 
+                bclr.l  #$0000,d1               ; d1 = make repeat length even
+                movea.l sample_body_ptr,a0      ; L00048ba8,a0
+                move.l  a0,(a1)+                ; store sample start address in instrument table offset 2-5
+                adda.l  d0,a0                   ; a0 = start of repeat section of sample
+                add.l   d1,d0                   ; d0 = total length of sample + repeat
+                lsr.l   #$01,d0                 ; d0 = count of word length
+                move.w  d0,(a1)+                ; store sample length (words) in table offset 6-7
+                tst.l   d1                      ; test repeat length
+                bne.b   .set_repeat             ; L00048a60
+.no_repeat
+                lea.l   silient_repeat,a0       ; L00048d80,a0 - silent repeat sample data
+                moveq   #$02,d1                 ; set single word length for silent repeat length
+.set_repeat
+                move.l  a0,(a1)+                ; set repeat start address in table offset 8 - 11
+                lsr.l   #$01,d1                 ; d1 = repeat length (words)
+                move.w  d1,(a1)+                ; set repeat length (words) in table offset 12-13
+                addq.l  #$02,a1                 ; update instrument table ptr (skip param 2 - unknown 0 or -1 value) - 14-15 ; addaq
+                rts 
 
-L00048a6a       dc.w    $0000, $4279                ; or.b #$79,d0
-L00048a6e       dc.w    $0004, $8a6a                ; or.b #$6a,d4
 
-L00048a72       movem.l d0/a0,-(a7)
-L00048a76       bra.w   L00048a7a
-L00048a7a       tst.l   d0
-L00048a7c       beq.b   L00048a88
-L00048a7e       move.l  (a0)+,d1
-L00048a80       subq.l  #$04,d0
-L00048a82       bsr.w   L00048a8e
-L00048a86       bra.b   L00048a7a
+
+
+
+
+
+
+
+
+
+
+
+
+
+; ************************************************************************************************************
+; ************************************************************************************************************
+; ************************************************************************************************************
+;       START OF IFF '8SVX' FILE PROCESSING
+; ************************************************************************************************************
+; ************************************************************************************************************
+; ************************************************************************************************************
+
+
+                ;------------------ process sample data --------------------------
+                ; Walks through the IFF 8SVX file format, storing the pointers to
+                ; the BODY and VHDL chunks in the variables.
+                ;
+                ; Also, sets the error/status 'sample_status' - 0 = success
+                ;
+                ; IN: A0 = ptr to start of 'FORM' or 'CAT ' block of sample data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = remaining length of sample file including headers.
+                ;
+sample_status                                   ; original address $00048a6a
+L00048a6a       dc.w    $0000                   ; error/status flag
+                                                ; 1 = missing FORM/CAT chunk
+                                                ; 2 = missing 8SVX chunk
+
+process_sample_data                             ; original address $00048a6c
+L00048a6c       clr.w   sample_status           ; L00048a6a
+                movem.l d0/a0,-(a7)
+                bra.w   process_inner_chunk     ; L00048a7a
+process_inner_chunk
+L00048a7a       tst.l   d0                      ; test remaining sample length     
+                beq.b   .exit                   ; L00048a88
+                move.l  (a0)+,d1                ; d1.l = iff chunk name
+                subq.l  #$04,d0                 ; d0.l = iff remaining chunk length
+                bsr.w   process_sample_chunk    ; L00048a8e
+                bra.b   process_inner_chunk     ;L00048a7a
+.exit
 L00048a88       movem.l (a7)+,d0/a0
-L00048a8c       rts  
+                rts  
 
-L00048a8e       cmp.l   #$464f524d,d1
-L00048a94       beq.w   L00048aec
-L00048a98       cmp.l   #$43415420,d1
-L00048a9e       beq.w   L00048aae
-L00048aa2       move.w  #$0001,L00048a6a
-L00048aaa       clr.l   d0
-L00048aac       rts  
 
+
+                ;------------------ process sample chunk ------------------
+                ; process IFF sample data, top level of file structure.
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data including length data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_sample_chunk                            ; original address $00048a8e
+L00048a8e       cmp.l   #'FORM',d1              ; #$464f524d,d1
+                beq.w   process_form_chunk      ; L00048aec
+                cmp.l   #'CAT',d1               ; #$43415420,d1
+                beq.w   process_cat_chunk       ; L00048aae
+                move.w  #$0001,sample_status    ; missing expected FORM/CAT
+                clr.l   d0
+                rts  
+
+
+
+                ;--------------------- process CAT chunk --------------------------
+                ; skips header and continues processing any further chunks 
+                ; that are nested inside the CAT Chunk, data.
+                ;
+                ; IN: A0 = ptr to length of chunk data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data including length data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_cat_chunk                               ; original address $00048aae
 L00048aae       movem.l d0/a0,-(a7)
-L00048ab2       move.l  (a0)+,d0
-L00048ab4       move.l  d0,d1
-L00048ab6       btst.l  #$0000,d1
-L00048aba       beq.b   L00048abe
-L00048abc       addq.l  #$01,d1
-L00048abe       addq.l  #$04,d1
-L00048ac0       add.l   d1,$0004(a7)
-L00048ac4       sub.l   d1,(a7)
-L00048ac6       addq.l  #$04,(a0)
-L00048ac8       subq.l  #$04,d0
-L00048aca       bra.b   L00048a7a
+                move.l  (a0)+,d0                ; d0 = CAT chunk length, a0 = start of data
+                move.l  d0,d1
+                btst.l  #$0000,d1
+                beq.b   .no_pad_byte            ; L00048abe
+.add_pad_byte
+                addq.l  #$01,d1                 ; add pad byte
+.no_pad_byte
+L00048abe       addq.l  #$04,d1                 ; include 'length' field in data length
+                add.l   d1,$0004(a7)            ; update data ptr on stack to end of CAT chunk
+                sub.l   d1,(a7)                 ; update remaining bytes on stack to end of CAT chunk
+                addq.l  #$04,(a0)               ; *** bug?? updating data in CAT chunk?? **
+                subq.l  #$04,d0                 ; update remaining length - skip processed length longword
+                bra.b   process_inner_chunk     ; process embedded CAT chunks - L00048a7a
 
+
+
+                ;------------------- process LIST chunk -----------------
+                ; skip the list chunk, and continue processing
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_list_chunk                              ; original address $00048acc
 L00048acc       movem.l d0/a0,-(a7)
-L00048ad0       move.l  (a0)+,d0
-L00048ad2       move.l  d0,d1
-L00048ad4       btst.l  #$0000,d1
-L00048ad8       beq.b   L00048adc
-L00048ada       addq.l  #$01,d1
-L00048adc       addq.l  #$04,d1
-L00048ade       add.l   d1,$0004(a7)
-L00048ae2       sub.l   d1,(a7)
-L00048ae4       nop
-L00048ae6       movem.l (a7)+,d0/a0
-L00048aea       rts
+                move.l  (a0)+,d0
+                move.l  d0,d1
+                btst.l  #$0000,d1
+                beq.b   .no_pad_byte            ; L00048adc
+.add_pad_byte
+                addq.l  #$01,d1
+.no_pad_byte
+                addq.l  #$04,d1
+                add.l   d1,$0004(a7)
+                sub.l   d1,(a7)
+                nop
+                movem.l (a7)+,d0/a0
+                rts
 
+
+
+                ;---------------- process FORM chunk ------------------
+                ; Expects to find an '8SVX' inner chunk of data.
+                ; If not, then sets error/status flag = $0002
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data including length field.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_form_chunk                                      ; original address $00048aec
 L00048aec       movem.l d0/a0,-(a7)
-L00048af0       move.l  (a0)+,d0
-L00048af2       move.l  d0,d1
-L00048af4       btst.l  #$0000,d1
-L00048af8       beq.b   L00048afc
-L00048afa       addq.l  #$01,d1
+                move.l  (a0)+,d0
+                move.l  d0,d1
+                btst.l  #$0000,d1
+                beq.b   .no_pad_byte                    ; L00048afc
+.add_pad_byte
+                addq.l  #$01,d1
+.no_pad_byte
 L00048afc       addq.l  #$04,d1
-L00048afe       add.l   d1,$0004(a7)
-L00048b02       sub.l   d1,(a7)
-L00048b04       move.l  (a0)+,d1
-L00048b06       subq.l  #$04,d0
-L00048b08       cmp.l   #$38535658,d1
-L00048b0e       beq.w   L00048b20 (F)
-L00048b12       move.w  #$0002,L00048a6a
-L00048b1a       movem.l (a7)+,d0/a0
-L00048b1e       rts
+                add.l   d1,$0004(a7)
+                sub.l   d1,(a7)
+                move.l  (a0)+,d1
+                subq.l  #$04,d0
+                cmp.l   #'8SVX',d1                      ;  #$38535658,d1
+                beq.w   process_8svx_chunk              ; L00048b20 
+                move.w  #$0002,sample_status            ; L00048a6a ; 2 = missing 8SVX chunk
+                movem.l (a7)+,d0/a0
+                rts
 
+
+
+                ;------------------ process 8SVX chunk ---------------------
+                ; loops through sample data until no bytes remaining.
+                ; processes inner chunks of 8SVX chunk, including:-
+                ;  - VHDL, BODY, NAME, ANNO
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data.
+                ; IN: D1.l = chunk identifier, i.e '8SVX'
+                ;
+process_8svx_chunk                                      ; original address $00048b20
 L00048b20       tst.l   d0
-L00048b22       beq.b   L00048b2e
-L00048b24       move.l  (a0)+,d1
-L00048b26       subq.l  #$04,d0
-L00048b28       bsr.w   L00048b34
-L00048b2c       bra.b   L00048b20
-L00048b2e       movem.l (a7)+,d0/a0
-L00048b32       rts 
+                beq.b   .exit                           ; L00048b2e
+                move.l  (a0)+,d1                        ; d1 = inner chunk name
+                subq.l  #$04,d0                         ; d1 = updated remaining bytes length
+                bsr.w   process_inner_8svx_chunk        ; L00048b34
+                bra.b   process_8svx_chunk              ; loop - L00048b20
+.exit
+                movem.l (a7)+,d0/a0
+                rts 
 
-L00048b34       cmp.l   #$464f524d,d1
-L00048b3a       beq.b   L00048aec
-L00048b3c       cmp.l   #$4c495354,d1
-L00048b42       beq.b   L00048acc
-L00048b44       cmp.l   #$43415420,d1
-L00048b4a       beq.w   L00048aae
-L00048b4e       cmp.l   #$56484452,d1
-L00048b54       beq.w   L00048b84
-L00048b58       cmp.l   #$424f4459,d1
-L00048b5e       beq.w   L00048bac
+
+
+                ;---------------- process inner 8SVX chunk --------------
+                ; process data held inside the 8SVX chunk, this is only
+                ; concerned with the VHDR and BODY chunks. it skips
+                ; other chunks such as the NAME, ANNO meta data chunks.
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_inner_8svx_chunk
+L00048b34       cmp.l   #'FORM',d1              ; #$464f524d,d1
+                beq.b   process_form_chunk      ; L00048aec
+                cmp.l   #'LIST',d1              ; #$4c495354,d1
+                beq.b   process_list_chunk      ; L00048acc
+                cmp.l   #'CAT',d1               ; #$43415420,d1
+                beq.w   process_cat_chunk       ; L00048aae
+                cmp.l   #'VHDR',d1              ; #$56484452,d1
+                beq.w   process_vhdr_chunk      ; L00048b84
+                cmp.l   #'BODY',d1              ; #$424f4459,d1
+                beq.w   process_body_chunk      ; L00048bac
+.skip_unused_chunks
 L00048b62       movem.l d0/a0,-(a7)
-L00048b66       move.l  (a0)+,d0
-L00048b68       move.l  d0,d1
-L00048b6a       btst.l  #$0000,d1
-L00048b6e       beq.b   L00048b72
-L00048b70       addq.l  #$01,d1
-L00048b72       addq.l  #$04,d1
-L00048b74       add.l   d1,$0004(a7)
-L00048b78       sub.l   d1,(a7)
-L00048b7a       movem.l (a7)+,d0/a0
-L00048b7e       rts  
+                move.l  (a0)+,d0
+                move.l  d0,d1
+                btst.l  #$0000,d1
+                beq.b   .no_pad_byte            ;L00048b72
+.add_pad_byte
+                addq.l  #$01,d1
+.no_pad_byte
+                addq.l  #$04,d1
+                add.l   d1,$0004(a7)
+                sub.l   d1,(a7)
+                movem.l (a7)+,d0/a0
+                rts  
 
-L00048b80       dc.w    $0000, $0000                ; or.b #$00,d0
 
+
+                ;-------------------- process VHDR chunk ----------------------
+                ; stores address of VHDR chunk in variable 'sample_vhdr_ptr'
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+sample_vhdr_ptr                                 ; original address $00048b80
+L00048b80       dc.l    $00000000               ; ptr to VHDR data
+
+process_vhdl_chunk
 L00048b84       movem.l d0/a0,-(a7)
-L00048b88       move.l  (a0)+,d0
-L00048b8a       move.l  d0,d1
-L00048b8c       btst.l  #$0000,d1
-L00048b90       beq.b   L00048b94
-L00048b92       addq.l  #$01,d1
-L00048b94       addq.l  #$04,d1
-L00048b96       add.l   d1,$0004(a7)
-L00048b9a       sub.l   d1,(a7) 
-L00048b9c       move.l  a0,L00048b80
-L00048ba2       movem.l (a7)+,d0/a0
-L00048ba6       rts 
+                move.l  (a0)+,d0
+                move.l  d0,d1
+                btst.l  #$0000,d1
+                beq.b   .no_pad_byte            ; L00048b94
+.add_pad_byte
+                addq.l  #$01,d1
+.no_pad_byte
+                addq.l  #$04,d1
+                add.l   d1,$0004(a7)
+                sub.l   d1,(a7) 
+                move.l  a0,sample_vhdr_ptr      ; L00048b80 ; store address of VHDL data for instrument processing
+                movem.l (a7)+,d0/a0
+                rts 
 
-L00048ba8       dc.w    $0000, $0000                ; or.b #$00,d0
 
+
+                ;------------------------- process body chunk ------------------------
+                ; store address of the raw sample data in variable 'sample_body_ptr'
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+sample_body_ptr                                 ; original address $00048ba8
+L00048ba8       dc.l    $00000000               ; ptr to raw sample data
+
+process_body_chunk                              ; original addresss $00048bac
 L00048bac       movem.l d0/a0,-(a7)
-L00048bb0       move.l  (a0)+,d0
-L00048bb2       move.l  d0,d1
-L00048bb4       btst.l  #$0000,d1
-L00048bb8       beq.b   L00048bbc
-L00048bba       addq.l  #$01,d1
-L00048bbc       addq.l  #$04,d1
-L00048bbe       add.l   d1,$0004(a7)
-L00048bc2       sub.l   d1,(a7) 
-L00048bc4       move.l  a0,L00048ba8 
-L00048bca       movem.l (a7)+,d0/a0
-L00048bce       rts 
+                move.l  (a0)+,d0
+                move.l  d0,d1
+                btst.l  #$0000,d1
+                beq.b   .no_pad_byte            ; L00048bbc
+.add_pad_byte 
+                addq.l  #$01,d1
+.no_pad_byte
+                addq.l  #$04,d1
+                add.l   d1,$0004(a7)
+                sub.l   d1,(a7) 
+                move.l  a0,sample_body_ptr      ; L00048ba8 ; store address of raw sample data
+                movem.l (a7)+,d0/a0
+                rts 
+
+
+
+
+
+; ************************************************************************************************************
+; ************************************************************************************************************
+; ************************************************************************************************************
+;       END OF IFF '8SVX' FILE PROCESSING
+; ************************************************************************************************************
+; ************************************************************************************************************
+; ************************************************************************************************************
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 L00048BD0       dc.w    $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB          ;.....;.....=....
 L00048BE0       dc.w    $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1          ;.g.(.......M....
@@ -1183,8 +1373,13 @@ L00048D30       dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000  
 L00048D40       dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
 L00048D50       dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
 L00048D60       dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00048D70       dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000          ;................
-L00048D80       dc.w    $0000, $0074, $60DC, $82BB, $457E, $24A0, $8C00, $7460          ;...t`...E~$...t`
+L00048D70       dc.w    $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000   
+
+silient_repeat                                  ; original address $00048D80
+L00048D80       dc.w    $0000                   ; 2 bytes of silent sample repeat data (for samples that don't have a repeat section)
+
+
+L00048D82       dc.w    $0074, $60DC, $82BB, $457E, $24A0, $8C00, $7460          ;...t`...E~$...t`
 L00048D90       dc.w    $DC82, $BB45, $7E24, $A08C
 
 
@@ -1201,7 +1396,7 @@ L00048DA0       dc.l    $00001CD4
                 dc.w    $0030, $0000
                 dc.l    $00003820
                 dc.w    $001D, $FFFF
-L00048DB0       dc.l    $0000$42E0
+L00048DB0       dc.l    $000042E0
                 dc.w    $0018, $FFFF
                 dc.l    $000056DA
                 dc.w    $0018, $0000
