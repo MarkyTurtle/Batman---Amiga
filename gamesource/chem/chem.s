@@ -4,7 +4,7 @@
                 ; $00048008  Stop Audio 
                 ; $0004800c  Stop Audio
                 ; $00048010  Init Song                  - Initialise Song to Play (D0 = song number)
-                ; $00048014  L0004822c
+                ; $00048014  Play SFX                   - Initialise & PLay SFX on 4th audio channel (if not already playing or is higher priority of one that is playing) - L0004822c
                 ; $00048018  Play Song                  - Called every VBL to play music
 
                 ;--------------------- includes and constants ---------------------------
@@ -32,7 +32,7 @@ start
         ENDC    
    
 
-L00047fe4               bra.b L00048000
+L00047fe4               bra.b L00048000                         ; initialise music player.
 
 L00047fe6               dc.w  $0001, $091a                      ; or.b #$1a,d1
 L00047fea               dc.w  $0000, $0000                      ; or.b #$00,d0
@@ -45,10 +45,10 @@ L00047ffe               dc.w  $0000
 
 L00048000               bra.w do_initialise_music_player        ; jmp $00048180
 L00048004               bra.w do_silence_all_audio              ; jmp $00048194
-L00048008               bra.w do_stop_audio                     ; jmp $000481e8
+L00048008               bra.w do_stop_audio                     ; jmp $000481e8 - could also be reinit_active audio channel
 L0004800c               bra.w do_stop_audio                     ; jmp $000481e8
 L00048010               bra.w do_init_song                      ; jmp $0004824e
-L00048014               bra.w L0004822c
+L00048014               bra.w do_play_sfx                       ; jmp $0004822c
 L00048018               bra.w do_play_song                      ; jmp $0004830e
 
 
@@ -63,6 +63,7 @@ L00048020               dc.w  $0000
 song_no_1                                                       ; original address $00048022
 L00048022               dc.b  $01
 song_no_2                                                       ; original address $00048023
+sfx_no
 L00048023               dc.b  $01   
 
 channel_00_status                                               ; original address $00048024
@@ -112,8 +113,8 @@ L00048024               dc.w  $0000
                         dc.w  $0000
                         dc.w  $0001                     ; channel bit? 8 (2^0)  
 
-channel_01_status                                       ; original address $0004707a
-L0004707a               dc.w  $0000                             
+channel_01_status                                       ; original address $0004807a
+L0004807a               dc.w  $0000                             
                         dc.l  $00000000                      
                         dc.l  $00000000                      
                         dc.l  $00000000                      
@@ -264,89 +265,152 @@ L0004817e               dc.w  $0000                     ; referenced as a word
                 
 
 
+                        ; --------------- Initialise Music Player ----------------
+                        ; No Parameters Required
 do_initialise_music_player                                      ; original address $00048180
 L00048180               lea.l   L00048d98,a0
                         lea.l   instrument_data,a1              ; L00048c40,a1
                         bsr.w   init_instruments                ; L00048a08
                         bra.w   do_silence_all_audio            ; L00048194
 
+
+
+                        ;---------------------------- do silence all audio ----------------------------------
+                        ; initialises all audio channels and sets song/sfx numbers to $00
+                        ;
 do_silence_all_audio                                            ; original address $00048194
 L00048194               movem.l d0/a0-a1,-(a7)
-L00048198               move.b  #$00,song_no_1                  ; L00048022
-L000481a0               move.b  #$00,song_no_2                  ; L00048023
-L000481a8               lea.l   channel_00_status,a0            ; L00048024,a0 
-L000481ae               lea.l   $00dff0a8,a1                    ; a1 = AUD0VOL
-L000481b4               bsr.b   init_audio_channel              ; L000481ca
-L000481b6               bsr.b   init_audio_channel              ; L000481ca
-L000481b8               bsr.b   init_audio_channel              ; L000481ca
-L000481ba               bsr.b   init_audio_channel              ; L000481ca
-L000481bc               move.w  #$0000,channel_enable_bits      ; L00048020 ; channel dma enable bits (all channels)
-L000481c4               movem.l (a7)+,d0/a0-a1
-L000481c8               rts
+                        move.b  #$00,song_no_1                  ; L00048022
+                        move.b  #$00,sfx_no                     ; song_no_2 ; L00048023
+                        lea.l   channel_00_status,a0            ; L00048024,a0 
+                        lea.l   $00dff0a8,a1                    ; a1 = AUD0VOL
+                        bsr.b   init_audio_channel              ; L000481ca
+                        bsr.b   init_audio_channel              ; L000481ca
+                        bsr.b   init_audio_channel              ; L000481ca
+                        bsr.b   init_audio_channel              ; L000481ca
+                        move.w  #$0000,channel_enable_bits      ; L00048020 ; channel dma enable bits (all channels)
+                        movem.l (a7)+,d0/a0-a1
+                        rts
 
 
+
+                        ;------------ silence channel volume -------------
                         ; Set Audio Channel Volume to Zero, also init other channel structure values
+                        ; IN: A0 - channel/voice status data
+                        ; IN: A1 - AUDxVOL custom register
+                        ;
 init_audio_channel                                              ; original address $000481ca
 L000481ca               move.w  #$0000,(a0)
-L000481ce               move.w  #$0001,$004a(a0)
-L000481d4               move.w  #$0000,$004c(a0)
-L000481da               move.w  #$0000,(a1)                     ; AUDxVOL
-L000481de               adda.w  #$0056,a0                       ; a0 = next audio channel structure
-L000481e2               adda.w  #$0010,a1                       ; a1 = next audo channel AUDxVOL h/w/ register
-L000481e6               rts
+                        move.w  #$0001,$004a(a0)
+                        move.w  #$0000,$004c(a0)
+                        move.w  #$0000,(a1)                     ; AUDxVOL
+                        adda.w  #$0056,a0                       ; a0 = next audio channel structure
+                        adda.w  #$0010,a1                       ; a1 = next audo channel AUDxVOL h/w/ register
+                        rts
 
 
-do_stop_audio                                                   ; original address
+
+
+                        ;----------------------------- do stop audio/do_reinit_song -----------------------------
+                        ; Reset active channels for specified sound. 
+                        ; Maybe used to silence channels before playing sfx over existing sound.
+                        ;
+                        ; If song number (d0) is not in range 0-13 then silence audio and exit.
+                        ; If song number (d0) is in range 0-13 then re-initialise the active channels only.
+                        ;
+                        ; IN: D0.w      - Song Number/SFX Number?
+                        ;
+do_reinit_active_channels
+do_reinit_song
+do_stop_audio                                                   ; original address $000481e8
 L000481e8               movem.l d0/d7/a0-a2,-(a7)
-L000481ec               subq.w  #$01,d0
-L000481ee               bmi.b   L000481f6                       ; d0 <= 0
-L000481f0               cmp.w   #$000d,d0                       ; 13
-L000481f4               bcs.b   L000481fa                       ; d0 < 13
-L000481f6               bsr.b   do_silence_all_audio            ; d0 >= 13 ; jmp $00048194                       
-L000481f8               bra.b   L00048226
+                        subq.w  #$01,d0
+                        bmi.b   .unknown_song_number            ; d0 <= 0  ; jmp $000481f6
+                        cmp.w   #$000d,d0                       ; 13
+                        bcs.b   .reset_active_channels          ; d0 < 13  ; jmp $000481fa
+.unknown_song_number
+                        bsr.b   do_silence_all_audio            ; d0 >= 13 ; jmp $00048194                       
+                        bra.b   .exit                           ; L00048226
 
-                        ; reset any active audio channels
+                        ; reset any active audio channels in specified sound
+                        ; maybe used to silence a channel when wanting to play a sfx over current sound.
                         ; d0.w index into table - L0005847e (active song channels?)
 .reset_active_channels
-L000481fa               lea.l   L0005847e,a2
-L00048200               asl.w   #$03,d0                         ; d0 = d0 * 8
-L00048202               adda.w  d0,a2                           ; add offset to a2
-L00048204               lea.l   channel_00_status,a0            ; L00048024,a0
-L0004820a               lea.l   $00dff0a8,a1                    ; AUD0VOL
-L00048210               moveq   #$03,d7
-L00048212               tst.w   (a2)+
-L00048214               bne.b   L00048220
-L00048216               adda.w  #$0056,a0                       ; next audio channel status
-L0004821a               adda.w  #$0010,a1                       ; next audio channel volume register.
-L0004821e               bra.b   L00048222
-L00048220               bsr.b   L000481ca                       ; init_audio_channel
-L00048222               dbf.w   d7,L00048212                    ; loop next channel
-L00048226               movem.l (a7)+,d0/d7/a0-a2
-L0004822a               rts 
+                        lea.l   sounds_table,a2                 ; L0005847e,a2
+                        asl.w   #$03,d0                         ; d0 = d0 * 8
+                        adda.w  d0,a2                           ; add offset to a2
+                        lea.l   channel_00_status,a0            ; L00048024,a0
+                        lea.l   $00dff0a8,a1                    ; AUD0VOL
+                        moveq   #$03,d7
+.audio_channel_loop
+                        tst.w   (a2)+
+                        bne.b   .init_audio_channel             ; if channel active then - re-init active audio channel - L00048220
+                        adda.w  #$0056,a0                       ; else - get next audio channel status
+                        adda.w  #$0010,a1                       ;        get next audio channel volume register.
+                        bra.b   .skip_init_audio_channel        ;        skip init audio channel - L00048222
+.init_audio_channel
+                        bsr.b   init_audio_channel              ; L000481ca ; init_audio_channel
+.skip_init_audio_channel
+                        dbf.w   d7,.audio_channel_loop          ; loop - L00048212 ; loop for next channel
+.exit                                                           ; original address $00048226
+                        movem.l (a7)+,d0/d7/a0-a2
+                        rts 
 
-L0004822c               tst.w   L00048126
-L00048232               beq.b   L0004823c
-L00048234               cmp.b   song_no_2,d0                    ; L00048023,d0
-L0004823a               bcs.b   L0004824c
+
+
+                        ;--------------------------- do play sfx ------------------------
+                        ; I think this is used to play a SFX sound on the 4th channel. 
+                        ; Test is channel is active, 
+                        ; IN:  D0.w - song number?
+                        ;
+do_play_sfx                                                     ; original address $0004822c
+L0004822c               tst.w   channel_03_status               ; 00048126 - is channel 4 in use?
+L00048232               beq.b   init_sfx                        ; 0004823c     - no, then initialise sfx
+L00048234               cmp.b   sfx_no,d0                       ; 00048023 - is requested sfx higher priority or already playing?
+L0004823a               bcs.b   .exit                           ;              - yes, then exit L0004824c
+
+init_sfx                                                        ; original address $0004823c
 L0004823c               movem.l d0/d7/a0-a2,-(a7)
-L00048240               move.w  #$4000,d1
-L00048244               move.b  d0,song_no_2                    ; L00048023
-L0004824a               bra.b   L0004825c
+L00048240               move.w  #$4000,d1                       ; set sfx playing bit.
+L00048244               move.b  d0,sfx_no                       ; song_no_2 ; L00048023
+L0004824a               bra.b   init_sound                      ; jmp $0004825c
 L0004824c               rts  
 
 
+
+
+                        ;----------------------- do init song ------------------------
+                        ; set the current song number, and initialise for playing.
+                        ; if sound number is out of range then stop the audio.
+                        ;
+                        ; initialises each audio channel's data ptrs
+                        ; sets cmd param 82/83
+                        ; sets $00004020 
+                        ;
+                        ; IN: D0.l - sound/song to play?
+                        ;               - 0 = play nothing/stop
+                        ;               - >13 = play nothing/stop
+                        ;
 do_init_song                                                    ; original address $0004824e
 L0004824e               movem.l d0/d7/a0-a2,-(a7)
-L00048252               move.w  #$8000,d1
-L00048256               move.b  d0,song_no_1                    ; L00048022
-L0004825c               clr.w   L0004817e
-L00048262               subq.w  #$01,d0
-L00048264               bmi.b   L0004826c
-L00048266               cmp.w   #$000d,d0
-L0004826a               bcs.b   L00048274
-L0004826c               bsr.w   do_silence_all_audio            ; bsr $00048194
-L00048270               bra.w   L00048308
-L00048274               lea.l   L0005847e,a0
+                        move.w  #$8000,d1                       ; set song playing bit.
+                        move.b  d0,song_no_1                    ; L00048022
+
+
+                        ; if sfx, then enters here (d0 = sound number)
+init_sound                                                      ; original address $0004825c
+                        clr.w   L0004817e                       ; timer/counter
+.validate_sound_no                                              ; original address $00048262
+                        subq.w  #$01,d0                         ; is d0 < 0
+                        bmi.b   .validation_failed              ;       yes - validation failed - L0004826c
+                        cmp.w   #$000d,d0                       ; is d0 > 13
+                        bcs.b   .validation_ok                  ;       no - validation is ok - L00048274
+.validation_failed                                              ; original address $0004826c
+                        bsr.w   do_silence_all_audio            ; bsr $00048194
+                        bra.w   .exit                           ; exit after failure - L00048308
+
+.validation_ok
+L00048274               lea.l   sounds_table,a0                   ; L0005847e,a0
 L0004827a               asl.w   #$03,d0
 L0004827c               adda.w  d0,a0
 L0004827e               lea.l   channel_00_status,a1            ;L00048024,a1
@@ -395,6 +459,7 @@ L000482fa               lea.l   $0056(a1),a1                    ; next channel s
 L000482fe               dbf.w   d7,L00048286
 
 L00048302               or.w    d1,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
+.exit                                                           ; original address $00048308
 L00048308               movem.l (a7)+,d0/d7/a0-a2
 L0004830c               rts 
 
@@ -989,7 +1054,7 @@ L00048a00       clr.w   audio_dma                               ; L0004817c
 L00048a06       rts
 
 
-                ;------------------- initislise music samples --------------------
+                ;------------------- initialise music samples --------------------
                 ; extract sample data ptrs and lengths from the IFF sample
                 ; data.
                 ;
@@ -1018,7 +1083,7 @@ init_instruments                                                ; original addre
                 ;
 process_instrument
                 move.l  a1,-(a7)
-                bsr.w   process_sample_data     ; L00048a6c
+                bsr.w   process_sample_data     ; L00048a6c - External Include 'process_sample_data.s'
                 movea.l (a7)+,a1
                 addq.l  #$02,a1                 ; addaq
                 movea.l sample_vhdr_ptr,a0      ; L00048b80,a0
@@ -1052,293 +1117,20 @@ process_instrument
 
 
 
-
-
-
-
-
-
-; ************************************************************************************************************
-; ************************************************************************************************************
-; ************************************************************************************************************
-;       START OF IFF '8SVX' FILE PROCESSING
-; ************************************************************************************************************
-; ************************************************************************************************************
-; ************************************************************************************************************
-
-
-                ;------------------ process sample data --------------------------
-                ; Walks through the IFF 8SVX file format, storing the pointers to
-                ; the BODY and VHDL chunks in the variables.
-                ;
-                ; Also, sets the error/status 'sample_status' - 0 = success
-                ;
-                ; IN: A0 = ptr to start of 'FORM' or 'CAT ' block of sample data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0 = remaining length of sample file including headers.
-                ;
-sample_status                                   ; original address $00048a6a
-L00048a6a       dc.w    $0000                   ; error/status flag
-                                                ; 1 = missing FORM/CAT chunk
-                                                ; 2 = missing 8SVX chunk
-
-process_sample_data                             ; original address $00048a6c
-L00048a6c       clr.w   sample_status           ; L00048a6a
-                movem.l d0/a0,-(a7)
-                bra.w   process_inner_chunk     ; L00048a7a
-process_inner_chunk
-L00048a7a       tst.l   d0                      ; test remaining sample length     
-                beq.b   .exit                   ; L00048a88
-                move.l  (a0)+,d1                ; d1.l = iff chunk name
-                subq.l  #$04,d0                 ; d0.l = iff remaining chunk length
-                bsr.w   process_sample_chunk    ; L00048a8e
-                bra.b   process_inner_chunk     ;L00048a7a
-.exit
-L00048a88       movem.l (a7)+,d0/a0
-                rts  
-
-
-
-                ;------------------ process sample chunk ------------------
-                ; process IFF sample data, top level of file structure.
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0.l = length of remaining data including length data.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-process_sample_chunk                            ; original address $00048a8e
-L00048a8e       cmp.l   #'FORM',d1              ; #$464f524d,d1
-                beq.w   process_form_chunk      ; L00048aec
-                cmp.l   #'CAT',d1               ; #$43415420,d1
-                beq.w   process_cat_chunk       ; L00048aae
-                move.w  #$0001,sample_status    ; missing expected FORM/CAT
-                clr.l   d0
-                rts  
-
-
-
-                ;--------------------- process CAT chunk --------------------------
-                ; skips header and continues processing any further chunks 
-                ; that are nested inside the CAT Chunk, data.
-                ;
-                ; IN: A0 = ptr to length of chunk data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0.l = length of remaining data including length data.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-process_cat_chunk                               ; original address $00048aae
-L00048aae       movem.l d0/a0,-(a7)
-                move.l  (a0)+,d0                ; d0 = CAT chunk length, a0 = start of data
-                move.l  d0,d1
-                btst.l  #$0000,d1
-                beq.b   .no_pad_byte            ; L00048abe
-.add_pad_byte
-                addq.l  #$01,d1                 ; add pad byte
-.no_pad_byte
-L00048abe       addq.l  #$04,d1                 ; include 'length' field in data length
-                add.l   d1,$0004(a7)            ; update data ptr on stack to end of CAT chunk
-                sub.l   d1,(a7)                 ; update remaining bytes on stack to end of CAT chunk
-                addq.l  #$04,(a0)               ; *** bug?? updating data in CAT chunk?? **
-                subq.l  #$04,d0                 ; update remaining length - skip processed length longword
-                bra.b   process_inner_chunk     ; process embedded CAT chunks - L00048a7a
-
-
-
-                ;------------------- process LIST chunk -----------------
-                ; skip the list chunk, and continue processing
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0.l = length of remaining data.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-process_list_chunk                              ; original address $00048acc
-L00048acc       movem.l d0/a0,-(a7)
-                move.l  (a0)+,d0
-                move.l  d0,d1
-                btst.l  #$0000,d1
-                beq.b   .no_pad_byte            ; L00048adc
-.add_pad_byte
-                addq.l  #$01,d1
-.no_pad_byte
-                addq.l  #$04,d1
-                add.l   d1,$0004(a7)
-                sub.l   d1,(a7)
-                nop
-                movem.l (a7)+,d0/a0
-                rts
-
-
-
-                ;---------------- process FORM chunk ------------------
-                ; Expects to find an '8SVX' inner chunk of data.
-                ; If not, then sets error/status flag = $0002
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0.l = length of remaining data including length field.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-process_form_chunk                                      ; original address $00048aec
-L00048aec       movem.l d0/a0,-(a7)
-                move.l  (a0)+,d0
-                move.l  d0,d1
-                btst.l  #$0000,d1
-                beq.b   .no_pad_byte                    ; L00048afc
-.add_pad_byte
-                addq.l  #$01,d1
-.no_pad_byte
-L00048afc       addq.l  #$04,d1
-                add.l   d1,$0004(a7)
-                sub.l   d1,(a7)
-                move.l  (a0)+,d1
-                subq.l  #$04,d0
-                cmp.l   #'8SVX',d1                      ;  #$38535658,d1
-                beq.w   process_8svx_chunk              ; L00048b20 
-                move.w  #$0002,sample_status            ; L00048a6a ; 2 = missing 8SVX chunk
-                movem.l (a7)+,d0/a0
-                rts
-
-
-
-                ;------------------ process 8SVX chunk ---------------------
-                ; loops through sample data until no bytes remaining.
-                ; processes inner chunks of 8SVX chunk, including:-
-                ;  - VHDL, BODY, NAME, ANNO
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0.l = length of remaining data.
-                ; IN: D1.l = chunk identifier, i.e '8SVX'
-                ;
-process_8svx_chunk                                      ; original address $00048b20
-L00048b20       tst.l   d0
-                beq.b   .exit                           ; L00048b2e
-                move.l  (a0)+,d1                        ; d1 = inner chunk name
-                subq.l  #$04,d0                         ; d1 = updated remaining bytes length
-                bsr.w   process_inner_8svx_chunk        ; L00048b34
-                bra.b   process_8svx_chunk              ; loop - L00048b20
-.exit
-                movem.l (a7)+,d0/a0
-                rts 
-
-
-
-                ;---------------- process inner 8SVX chunk --------------
-                ; process data held inside the 8SVX chunk, this is only
-                ; concerned with the VHDR and BODY chunks. it skips
-                ; other chunks such as the NAME, ANNO meta data chunks.
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0 = length of remaining data.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-process_inner_8svx_chunk
-L00048b34       cmp.l   #'FORM',d1              ; #$464f524d,d1
-                beq.b   process_form_chunk      ; L00048aec
-                cmp.l   #'LIST',d1              ; #$4c495354,d1
-                beq.b   process_list_chunk      ; L00048acc
-                cmp.l   #'CAT',d1               ; #$43415420,d1
-                beq.w   process_cat_chunk       ; L00048aae
-                cmp.l   #'VHDR',d1              ; #$56484452,d1
-                beq.w   process_vhdr_chunk      ; L00048b84
-                cmp.l   #'BODY',d1              ; #$424f4459,d1
-                beq.w   process_body_chunk      ; L00048bac
-.skip_unused_chunks
-L00048b62       movem.l d0/a0,-(a7)
-                move.l  (a0)+,d0
-                move.l  d0,d1
-                btst.l  #$0000,d1
-                beq.b   .no_pad_byte            ;L00048b72
-.add_pad_byte
-                addq.l  #$01,d1
-.no_pad_byte
-                addq.l  #$04,d1
-                add.l   d1,$0004(a7)
-                sub.l   d1,(a7)
-                movem.l (a7)+,d0/a0
-                rts  
-
-
-
-                ;-------------------- process VHDR chunk ----------------------
-                ; stores address of VHDR chunk in variable 'sample_vhdr_ptr'
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0 = length of remaining data.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-sample_vhdr_ptr                                 ; original address $00048b80
-L00048b80       dc.l    $00000000               ; ptr to VHDR data
-
-process_vhdl_chunk
-L00048b84       movem.l d0/a0,-(a7)
-                move.l  (a0)+,d0
-                move.l  d0,d1
-                btst.l  #$0000,d1
-                beq.b   .no_pad_byte            ; L00048b94
-.add_pad_byte
-                addq.l  #$01,d1
-.no_pad_byte
-                addq.l  #$04,d1
-                add.l   d1,$0004(a7)
-                sub.l   d1,(a7) 
-                move.l  a0,sample_vhdr_ptr      ; L00048b80 ; store address of VHDL data for instrument processing
-                movem.l (a7)+,d0/a0
-                rts 
-
-
-
-                ;------------------------- process body chunk ------------------------
-                ; store address of the raw sample data in variable 'sample_body_ptr'
-                ;
-                ; IN: A0 = ptr to length of data.
-                ; IN: A1 = ptr to Instrument Entry in Music Data.
-                ; IN: D0 = length of remaining data.
-                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
-                ;
-sample_body_ptr                                 ; original address $00048ba8
-L00048ba8       dc.l    $00000000               ; ptr to raw sample data
-
-process_body_chunk                              ; original addresss $00048bac
-L00048bac       movem.l d0/a0,-(a7)
-                move.l  (a0)+,d0
-                move.l  d0,d1
-                btst.l  #$0000,d1
-                beq.b   .no_pad_byte            ; L00048bbc
-.add_pad_byte 
-                addq.l  #$01,d1
-.no_pad_byte
-                addq.l  #$04,d1
-                add.l   d1,$0004(a7)
-                sub.l   d1,(a7) 
-                move.l  a0,sample_body_ptr      ; L00048ba8 ; store address of raw sample data
-                movem.l (a7)+,d0/a0
-                rts 
-
-
-
-
-
-; ************************************************************************************************************
-; ************************************************************************************************************
-; ************************************************************************************************************
-;       END OF IFF '8SVX' FILE PROCESSING
-; ************************************************************************************************************
-; ************************************************************************************************************
-; ************************************************************************************************************
-
-
-
-
-
-
-
-
-
+; FUNCTION:
+; process_sample_data
+;
+; IN:
+; A0 = ptr to start of 'FORM' or 'CAT ' block of sample data.
+; A1 = ptr to Instrument Entry in Music Data.
+; D0 = remaining length of sample file including headers.
+;
+; OUT:
+; sample_status         ; 0 = success, 1 = missing FORM/CAT chunk, 2 = missing 8SVX chunk
+; sample_vhdr_ptr       ; address ptr to sample vhdr data
+; sample_body_ptr       ; address ptr to raw sample data
+;
+                include './lib/process_sample_data.s'
 
 
 
@@ -1348,7 +1140,8 @@ L00048bac       movem.l d0/a0,-(a7)
 L00048BD0       dc.w    $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB          ;.....;.....=....
 L00048BE0       dc.w    $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1          ;.g.(.......M....
 L00048BF0       dc.w    $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA          ;.....y.U.4......
-L00048C00       dc.w    $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B          ;.......x.c.O.<.+
+
+L00048c00       dc.w    $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B          ;.......x.c.O.<.+
 L00048C10       dc.w    $011A, $010A, $00FB, $00ED, $00E0, $00D3, $00C7, $00BC          ;................
 L00048C20       dc.w    $00B2, $00A8, $009E, $0095, $008D, $0085, $007E, $0077          ;.............~.w
 L00048C30       dc.w    $0021, $0004, $8D82, $000B, $0004, $8D82, $000B, $0000          ;.!..............
@@ -1392,31 +1185,31 @@ raw_sample_data_table                                   ; original address $0004
 L00048d98       
 .data_01        dc.l    sample_file_01-.data_01         ; $00048E0C - $00048d98 = $00000074
                 dc.w    $0030, $0000                            
-L00048DA0       dc.l    $00001CD4
+.data_02        dc.l    sample_file_02-.data_02         ; $0004AA74 - $00048dA0 = $00001CD4
                 dc.w    $0030, $0000
-                dc.l    $00003820
+.data_03        dc.l    sample_file_03-.data_03         ; $0004c5c8 - $00048dA0 = $00003820
                 dc.w    $001D, $FFFF
-L00048DB0       dc.l    $000042E0
+.data_04        dc.l    sample_file_04-.data_04         ; $0004d090 - $00048DB0 = $000042E0
                 dc.w    $0018, $FFFF
-                dc.l    $000056DA
+.data_05        dc.l    sample_file_05-.data_05         ; $0004e492 - $00048DB8 = $000056DA
                 dc.w    $0018, $0000
-L00048DC0       dc.l    $00006F30
+.data_06        dc.l    sample_file_06-.data_06         ; $0004fcf0 - $00048DC0 = $00006F30
                 dc.w    $0018, $0000
-                dc.l    $00007E88
+.data_07        dc.l    sample_file_07-.data_07         ; $00050c50 - $00048DC8 = $00007E88
                 dc.w    $0018, $0000
-L00048DD0       dc.l    $00008574
+.data_08        dc.l    sample_file_08-.data_08         ; $00051344 - $00048DD0 = $00008574
                 dc.w    $0018, $0000
-                dc.l    $00008C06
+.data_09        dc.l    sample_file_09-.data_09         ; $000519de - $00048DD8 = $00008C06
                 dc.w    $0018, $0000
-L00048DE0       dc.l    $000098B0
+.data_10        dc.l    sample_file_10-.data_10         ; $00052690 - $00048DE0 = $000098B0
                 dc.w    $0018, $0000
-                dc.l    $0000A1B8
+.data_11        dc.l    sample_file_11-.data_11         ; $00052fa0 - $00048DE8 = $0000A1B8
                 dc.w    $0018, $0000         
-L00048DF0       dc.l    $0000A886
+.data_12        dc.l    sample_file_12-.data_12         ; $00053676 - $00048DF0 = $0000A886 
                 dc.w    $0018, $0000
-                dc.l    $0000AF82
+.data_13        dc.l    sample_file_13-.data_13         ; $00053d7a - $00048DF8 = $0000AF82 
                 dc.w    $0018, $0000          
-L00048E00       dc.l    $0000BBCC
+.data_14        dc.l    sample_file_14-.data_14         ; $000549cc - $00048E00 = $0000BBCC 
                 dc.w    $0018, $0000
                 dc.w    $0000, $0000                    ; 0 marks the end of sample table data                    
 
@@ -1566,32 +1359,78 @@ L00058458       dc.w $0A08, $FF00, $0001, $0A00, $0001, $0A0B, $FF01, $FE00     
 L00058468       dc.w $0001, $160A, $FF01, $FE00, $0001, $2014, $FF01, $FE00             ;.......... .....
 L00058478       dc.w $0001, $3E00, $0000
 
-                ; do_stop_audio (D0 index to channel reset data)
-L0005847e       dc.w    $00AA, $00CD, $00DA, $0000
-L00058486       dc.w    $02F2, $02F2, $02F2, $0000
-                dc.w    $037B, $037B, $037B, $0000
+
+
+                ;------------------------ song table ----------------------
+                ; A table of song/sfx entries
+                ;  - 13 entries (4 songs & 9 SFX?)
+                ;  - one 16 bit word per audio channel (4 per table entry)
+                ;       - $0000 = channel unused
+                ;       - Value is an offset to the channel data for the sound
+                ;               - each value is a byte offset from the current word's address in the table.
+                ;
+                ; 3 channel music, 1 channel sfx?
+                ;
+                ; used by:
+                ;       do_stop_audio (D0 index to channel reset data)
+                ;
+sounds_table                                    ; original address $0005847e
+sound_00                                        ; original address $0005847e
+L0005847e       dc.w    $00AA                   ; data addr: $0005847e + $00aa = $00058528
+                dc.w    $00CD                   ; data addr: $00058480 + $00cd = $0005854d - ; *** offset appears to be a byte out, should be $0005854e 
+                dc.w    $00DA                   ; data addr: $00058480 + $00da = $0005855c
+                dc.w    $0000                   ; unused channel 
+
+sound_01                                        ; original address $00058486
+L00058486       dc.w    $02F2                   ; data addr: $00058486 + $02f2 = $00058778
+                dc.w    $02F2                   ; data addr: $00058488 + $02f2 = $0005877a
+                dc.w    $02F2                   ; data addr: $0005848a + $02f2 = $0005877c
+                dc.w    $0000                   ; unused channel
+
+sound_02                                        ; original address $0005848e
+L0005848e       dc.w    $037B, $037B, $037B, $0000
+sound_03                                        ; original address $00058496
 L00058496       dc.w    $03A5, $03A1, $03A3, $0000
-                dc.w    $0000, $0000, $0000, $0426
+sound_04                                        ; original address $0005849e
+L0005849e       dc.w    $0000, $0000, $0000, $0426
+sound_05                                        ; original address $000584A6
 L000584A6       dc.w    $0000, $0000, $0000, $0420
-                dc.w    $0000, $0000, $0000, $041E
+sound_06                                        ; original address $000584Ae
+L000584Ae       dc.w    $0000, $0000, $0000, $041E
+sound_07                                        ; original address $000584B6
 L000584B6       dc.w    $0000, $0000, $0000, $0414
-                dc.w    $0000, $0000, $0000, $040A
+sound_08                                        ; original address $000584Be
+L000584Be       dc.w    $0000, $0000, $0000, $040A
+sound_09                                        ; original address $000584C6
 L000584C6       dc.w    $0000, $0000, $0000, $0408
-                dc.w    $0000, $0000, $0000, $0404
+sound_10                                        ; original address $000584Ce
+L000584Ce       dc.w    $0000, $0000, $0000, $0404
+sound_11                                        ; original address $000584D6
 L000584D6       dc.w    $0000, $0000, $0000, $03EC
-                dc.w    $0000, $0000, $0000, $03F2
+sound_12                                        ; original address $000584De
+L000584De       dc.w    $0000, $0000, $0000, $03F2
                 
 
 
-L000584E6       dc.w    $0087
+
+
+L000584e6       dc.w $0087
 L000584E8       dc.w $0089, $009C, $00C5, $00EA, $0104, $010B, $0138, $016F             ;.............8.o
 L000584F8       dc.w $0188, $01AC, $01C3, $01FC, $0241, $027C, $02A9, $02C6           ;.........A.|....
 L00058508       dc.w $0307, $0315, $0322, $0338, $0367, $0398, $03B1, $03C4             ;.....".8.g......
 L00058518       dc.w $03C9, $03CE, $03D3, $03D8, $03DD, $03E2, $03E7, $03EC             ;................
-L00058528       dc.w $8183, $040A, $0182, $F401, $8200, $0182, $F401, $8200       ;................
-L00058538       dc.w $0182, $F401, $8200, $0182, $F401, $8308, $0507, $0783         ;................
-L00058548       dc.w $020C, $0707, $8081, $8308, $0208, $8304, $0683, $020D             ;................
-L00058558       dc.w $8302, $0680, $8183, $0403, $8308, $0483, $0409, $8302           ;................
+
+sound_00_chan_00
+L00058528       dc.w $8183, $040A, $0182, $F401, $8200, $0182, $F401, $8200
+L00058538       dc.w $0182, $F401, $8200, $0182, $F401, $8308, $0507, $0783
+L00058548       dc.w $020C, $0707
+
+sound_00_chan_01                ; *** appears to be a byte out, should be $0005854e (see sound_table entry)
+L0005854d       dc.w $8081, $8308, $0208, $8304, $0683, $020D
+L00058558       dc.w $8302, $0680
+
+sound_00_chan_02
+L0005855c       dc.w $8183, $0403, $8308, $0483, $0409, $8302
 L00058568       dc.w $0B83, $0409, $8085, $6087, $8090, $018F, $028E, $8406           ;......`.........
 L00058578       dc.w $4645, $4342, $3F3E, $3F42, $4342, $3F3E, $8580, $9002             ;FECB?>?BCB?>....
 L00058588       dc.w $8F01, $8D02, $3718, $9003, $8F02, $8E18, $1890, $028F             ;....7...........
@@ -1625,7 +1464,18 @@ L00058738       dc.w $048E, $8F02, $180C, $180C, $8090, $018E, $8F02, $8406     
 L00058748       dc.w $4343, $4143, $840C, $8732, $3537, $8406, $3E3E, $3C3E             ;CCAC...257..>><>
 L00058758       dc.w $840C, $8739, $3032, $8406, $4545, $4345, $840C, $8734             ;...902..EECE...4
 L00058768       dc.w $3739, $8406, $4040, $3E40, $840C, $873B, $3234, $8580             ;79..@@>@...;24..
-L00058778       dc.w $0F80, $0E80, $1080, $8F02, $9005, $1806, $2406, $1806             ;............$...
+
+
+sound_01_chan_01
+L00058778       dc.w $0F80
+sound_01_chan_02
+L0005877a       dc.w $0E80
+sound_01_chan_03
+L0005877c       dc.w $1080
+
+
+
+L0005877e       dc.w $8F02, $9005, $1806, $2406, $1806
 L00058788       dc.w $180C, $1806, $1606, $1806, $2906, $2906, $1D06, $2912             ;........).)...).
 L00058798       dc.w $1D0C, $1806, $2406, $1806, $1D0C, $1D0C, $1D06, $240C             ;....$.........$.
 L000587A8       dc.w $1F0C, $180C, $808F, $0290, $0187, $0C30, $0C33, $0C37           ;...........0.3.7
