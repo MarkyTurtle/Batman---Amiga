@@ -391,6 +391,16 @@ L0004824c               rts
                         ;               - 0 = play nothing/stop
                         ;               - >13 = play nothing/stop
                         ;
+                        ; Init Commands:
+                        ; $80 - Deactivate Audio Channel if unused (i.e. no data).
+                        ; $81 - Set Channel Data ptr $0002(channelstatus)
+                        ; $82 - Store next byte in $0013(channelstatus)
+                        ; $83 - store next byte in $0012(channelstatus) 
+                        ; $0x - +ve command, init channel data and skip to next channel
+                        ;       - Set Channel Data ptr $0006(channelstatus)
+                        ;       - value is index into song_channel_database
+                        ;       - added to current ptr address as offset to pattern data?
+                        ;       - address stored in $000e(channelstatus)
 do_init_song                                                    ; original address $0004824e
 L0004824e               movem.l d0/d7/a0-a2,-(a7)
                         move.w  #$8000,d1                       ; set song playing bit.
@@ -408,57 +418,67 @@ init_sound                                                      ; original addre
 .validation_failed                                              ; original address $0004826c
                         bsr.w   do_silence_all_audio            ; bsr $00048194
                         bra.w   .exit                           ; exit after failure - L00048308
-.validation_ok                                                  ; original address $00048274
-L00048274               lea.l   sounds_table,a0                 ; L0005847e,a0
-L0004827a               asl.w   #$03,d0
-L0004827c               adda.w  d0,a0                           ; a0 = sounds table entry to initialise
-L0004827e               lea.l   channel_00_status,a1            ; L00048024,a1
-L00048284               moveq   #$03,d7                         ; loop counter 3 + 1 (number of channels to init)
-.init_channel_loop
-L00048286               move.w  (a0)+,d0                        ; get channel init data byte offset
-L00048288               beq.b   .init_next_channel              ; if = $0000 then init next channel - L000482fa
-L0004828a               lea.l   -2(a0,d0.W),a2                  ; a2 = address of channel init data stream - $fe(a0,d0.W),a2
-L0004828e               moveq   #$00,d0
-L00048290               move.w  d0,$004c(a1)
-L00048294               move.l  d0,$0002(a1)
-L00048298               move.l  d0,$000a(a1)
-L0004829c               move.b  d0,$0013(a1)
-L000482a0               move.b  #$01,$0012(a1)
-L000482a6               move.w  d1,(a1)
-.init_command_loop      ; get and process init commands         ; original address $000482a8
-L000482a8               move.b  (a2)+,d0
-L000482aa               bpl.b   .init_channel_data_and_exit     ; L000482de
 
-.chk_cmd_80             ; is it command 80?
-L000482ac               sub.b   #$80,d0
-L000482b0               bne.b   .chk_cmd_81                     ; L000482c0
+.validation_ok          ; init song/sound                       ; original address $00048274
+                        lea.l   sounds_table,a0                 ; L0005847e,a0
+                        asl.w   #$03,d0
+                        adda.w  d0,a0                           ; a0 = sounds table entry to initialise
+                        lea.l   channel_00_status,a1            ; L00048024,a1
+                        moveq   #$03,d7                         ; loop counter 3 + 1 (number of channels to init)
+.audio_channel_loop
+                        move.w  (a0)+,d0                        ; get channel init data byte offset
+                        beq.b   .init_next_channel              ; if = $0000 then init next channel - L000482fa
+                        lea.l   -2(a0,d0.W),a2                  ; a2 = address of channel init data stream - $fe(a0,d0.W),a2
+                        moveq   #$00,d0
+                        move.w  d0,$004c(a1)                    ; Volume?
+                        move.l  d0,$0002(a1)                    ; Music Data/Pattern ptr
+                        move.l  d0,$000a(a1)                    ; Music Data/Pattern ptr
+                        move.b  d0,$0013(a1)                    ; Unknown
+                        move.b  #$01,$0012(a1)                  ; Unknown
+                        move.w  d1,(a1)                         ; Channel ctrl bits
+
+.command_loop           ; get and process init commands         ; original address $000482a8
+                        move.b  (a2)+,d0
+                        bpl.b   .init_channel_data_and_exit     ; L000482de
+
+.chk_cmd_80             ; is it command 80?                     ; original address $000482ac
+                        sub.b   #$80,d0
+                        bne.b   .chk_cmd_81                     ; L000482c0
 
 .do_cmd_80              ; is 80 - disable channel if no channel data    ; original address $000482b2
-L000482b2               movea.l $0002(a1),a2
-L000482b6               cmpa.w  #$0000,a2
-L000482ba               bne.b   .init_command_loop              ; L000482a8 - loop - next command
-L000482bc               clr.w   (a1)                            ; disable channel, clear control bits
-L000482be               bra.b   .init_next_channel              ; L000482fa - do next channel
+                        movea.l $0002(a1),a2
+                        cmpa.w  #$0000,a2
+                        bne.b   .command_loop                   ; L000482a8 - loop - next command
+                        clr.w   (a1)                            ; disable channel, clear control bits
+                        bra.b   .init_next_channel              ; L000482fa - do next channel
 
-.chk_cmd_81             ; is it command 81?
-L000482c0               subq.b  #$01,d0
-L000482c2               bne.b   L000482ca
+.chk_cmd_81             ; is it command 81?                     ; original address $000482c0
+                        subq.b  #$01,d0
+                        bne.b   .chk_cmd_82                     ; L000482ca
 
-.do_cmd_81              ; is 81 - set channel data ptr
-L000482c4               move.l  a2,$0002(a1) 
-L000482c8               bra.b   .init_command_loop              ; L000482a8
+.do_cmd_81              ; is 81 - set channel data ptr          ; original address $000482c4
+                        move.l  a2,$0002(a1) 
+                        bra.b   .command_loop                   ; L000482a8
 
-L000482ca               subq.b  #$01,d0
-L000482cc               bne.b   L000482d4
-L000482ce               move.b  (a2)+,$0013(a1)
-L000482d2               bra.b   .init_command_loop              ; L000482a8
-L000482d4               subq.b  #$01,d0
-L000482d6               bne.b   .init_command_loop              ; L000482a8
-L000482d8               move.b  (a2)+,$0012(a1)
-L000482dc               bra.b   .init_command_loop              ; L000482a8
+.chk_cmd_82             ; is it command 82?                     ; original address $000482ca
+                        subq.b  #$01,d0
+                        bne.b   .chk_cmd_83                     ; L000482d4
+
+.is_cmd_82              ; is 82 - store next byte in $0013(channelstatus)      ; original address $000482ce
+                        move.b  (a2)+,$0013(a1)
+                        bra.b   .command_loop                   ; L000482a8
+
+.chk_cmd_83             ; is it command 83?                     ; original address $000482d4
+                        subq.b  #$01,d0
+                        bne.b   .command_loop                   ; L000482a8
+
+.is_cmd_83              ; is 83 - store next byte in $0012(channelstatus)       ; original address $000482d8
+                        move.b  (a2)+,$0012(a1)
+                        bra.b   .command_loop                   ; L000482a8
+
 .init_channel_data_and_exit
 L000482de               move.l  a2,$0006(a1)
-L000482e2               lea.l   L000584e6,a2
+L000482e2               lea.l   song_channel_data_base,a2       ; L000584e6,a2
 L000482e8               ext.w   d0
 L000482ea               add.w   d0,d0
 L000482ec               adda.w  d0,a2
@@ -467,7 +487,7 @@ L000482f0               move.l  a2,$000e(a1)
 L000482f4               move.w  #$0001,$0052(a1)
 .init_next_channel
 L000482fa               lea.l   $0056(a1),a1                    ; next channel struct (86 bytes)
-L000482fe               dbf.w   d7,.init_channel_loop           ; init next audio channel - L00048286
+L000482fe               dbf.w   d7,.audio_channel_loop          ; init next audio channel - L00048286
 
 L00048302               or.w    d1,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
 .exit                                                           ; original address $00048308
@@ -603,7 +623,7 @@ L00048466               bne.b   L0004842c
 L00048468               move.b  (a3)+,$0012(a4)
 L0004846c               bra.b   L0004842c
 L0004846e               move.l  a3,$0006(a4)
-L00048472               lea.l   L000584e6,a3
+L00048472               lea.l   song_channel_data_base,a3               ; L000584e6,a3
 L00048478               ext.w   d0
 L0004847a               add.w   d0,d0
 L0004847c               adda.w  d0,a3
@@ -1424,12 +1444,13 @@ L000584De       dc.w    $0000, $0000, $0000, $03F2
 
 
 
-
+song_channel_data_base                          ; original address $000584e6
 L000584e6       dc.w $0087
 L000584E8       dc.w $0089, $009C, $00C5, $00EA, $0104, $010B, $0138, $016F             ;.............8.o
 L000584F8       dc.w $0188, $01AC, $01C3, $01FC, $0241, $027C, $02A9, $02C6           ;.........A.|....
 L00058508       dc.w $0307, $0315, $0322, $0338, $0367, $0398, $03B1, $03C4             ;.....".8.g......
 L00058518       dc.w $03C9, $03CE, $03D3, $03D8, $03DD, $03E2, $03E7, $03EC             ;................
+
 
 sound_00_chan_00
 L00058528       dc.w $8183, $040A, $0182, $F401, $8200, $0182, $F401, $8200
