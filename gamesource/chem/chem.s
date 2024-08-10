@@ -57,8 +57,13 @@ L0004801c               dc.w  $ffff
 master_audio_volume_mask_2 
 L0004801e               dc.w  $ffff                             ; original address $0004801e
 
-channel_enable_bits                                             ; original address $00048020
-L00048020               dc.w  $0000
+song_ctrl_bits                                                  ; original address $00048020
+L00048020               dc.w  $0000                             ; bit 15 = playing song,
+                                                                ; bit 14 = playing sfx (4th channel)
+                                                                ; bit 3 = Aud 3 channel enabled
+                                                                ; bit 2 = Aud 2 channel enabled
+                                                                ; bit 1 = Aud 1 channel enabled
+                                                                ; bit 0 = Aud 0 channel enabled
 
 song_no_1                                                       ; original address $00048022
 L00048022               dc.b  $01
@@ -66,52 +71,52 @@ song_no_2                                                       ; original addre
 sfx_no
 L00048023               dc.b  $01   
 
-channel_00_status                                               ; original address $00048024
-L00048024               dc.w  $0000
-                        dc.l  $00000000
-                        dc.l  $00000000
-                        dc.l  $00000000
-                        dc.l  $00000000
-                        dc.b  $00
-                        dc.b  $00
-                        dc.l  $00000000
-                        dc.l  $00000000
-                        dc.w  $0000
-                        dc.w  $0000
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.l  $00000000
-                        dc.l  $00000000
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.w  $0000
-                        dc.w  $0000
-                        dc.l  $00000000
-                        dc.w  $0000
-                        dc.l  $00000000
-                        dc.w  $0000
-                        dc.w  $0000
-                        dc.w  $0000
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00
-                        dc.b  $00            
-                        dc.w  $0000
-                        dc.w  $0001                     ; channel bit? 8 (2^0)  
+channel_00_status                                       ; original address $00048024
+L00048024               dc.w  $0000                     ; $0000 - Channel Control Bits (active command bits)
+                        dc.l  $00000000                 ; $0002 - Loop Back to previous Pattern Ptr
+                        dc.l  $00000000                 ; $0006 - Next Pattern Ptr
+                        dc.l  $00000000                 ; $000a - Loop Back Position Inside Current Pattern
+                        dc.l  $00000000                 ; $000e - Next Pattern Data Ptr
+                        dc.b  $00                       ; $0012 - Pattern Loop Count (1 = play once - default)
+                        dc.b  $00                       ; $0013 - 
+                        dc.l  $00000000                 ; $0014 - 
+                        dc.l  $00000000                 ; $0018 - 
+                        dc.w  $0000                     ; $001c - 
+                        dc.w  $0000                     ; $001e - 
+                        dc.b  $00                       ; $0020 - 
+                        dc.b  $00                       ; $0021 - Pattern Command 10 - Parameter (byte) - ctrl clear bits (0,1,2,4,5,6,7)
+                        dc.b  $00                       ; $0022 - Pattern Command 10 - Parameter (byte) - ctrl clear bits (0,1,2,4,5,6,7)
+                        dc.b  $00                       ; $0023 - 
+                        dc.b  $00                       ; $0024 - Pattern Command 09 - Parameter (byte) - ctrl bit 3
+                        dc.b  $00                       ; $0025 - Pattern Command 09 - Parameter (byte) - ctrl bit 3
+                        dc.b  $00                       ; $0026 -
+                        dc.b  $00                       ; $0027 - 
+                        dc.l  $00000000                 ; $0028 - ptr CMD 14
+                        dc.l  $00000000                 ; $002c - ptr CMD 14 - working copy
+                        dc.b  $00                       ; $0030 - 
+                        dc.b  $00                       ; $0031 - 
+                        dc.b  $00                       ; $0032 -
+                        dc.b  $00                       ; $0033 - 
+                        dc.b  $00                       ; $0034 - 
+                        dc.b  $00                       ; $0035 -
+                        dc.b  $00                       ; $0036 -
+                        dc.b  $00                       ; $0037 -
+                        dc.b  $00                       ; $0038 -
+                        dc.b  $00                       ; $0039 - 
+                        dc.w  $0000                     ; $003a -
+                        dc.w  $0000                     ; $003c -
+                        dc.l  $00000000                 ; $003e -
+                        dc.w  $0000                     ; $0042 -
+                        dc.l  $00000000                 ; $0044 - 
+                        dc.w  $0000                     ; $0048 - 
+                        dc.w  $0000                     ; $004a -
+                        dc.w  $0000                     ; $004c -
+                        dc.b  $00                       ; $004e -
+                        dc.b  $00                       ; $004f -
+                        dc.b  $00                       ; $0050 -
+                        dc.b  $00                       ; $0051 - Pattern Command 05 Parameter - ctrl bit 5
+                        dc.w  $0000                     ; $0052 - Pattern Command 08 Parameter - ctrl bit 7
+                        dc.w  $0001                     ; $0054 - channel dma bit - channel bit? 8 (2^0)  
 
 channel_01_status                                       ; original address $0004807a
 L0004807a               dc.w  $0000                             
@@ -158,7 +163,7 @@ L0004807a               dc.w  $0000
                         dc.b  $00
                         dc.b  $00                      
                         dc.w  $0000
-                        dc.w  $0002                     ; channel bit? 8 (2^1)                        
+                        dc.w  $0002                     ; $54 - channel dma bit - channel bit? 8 (2^1)                        
 
 channel_02_status                                       ; original address $000480d0
 L000480d0               dc.w  $0000
@@ -205,7 +210,7 @@ L000480d0               dc.w  $0000
                         dc.b  $00
                         dc.b  $00
                         dc.w  $0000                      
-                        dc.w  $0004                     ; channel bit? 8 (2^2)  
+                        dc.w  $0004                     ; $54 - channel dma bit - channel bit? 8 (2^2)  
 
 channel_03_status                                       ; original address $00048126
 L00048126               dc.w  $0000                             
@@ -252,14 +257,16 @@ L00048126               dc.w  $0000
                         dc.b  $00
                         dc.b  $00                      
                         dc.w  $0000
-                        dc.w  $0008                     ; channel bit? 8 (2^3)                     
+                        dc.w  $0008                     ; $54 - channel dma bit - channel bit? 8 (2^3)                     
 
-audio_dma                                               ; original address L0004817c
+audio_dma                                               ; original address $0004817c
 L0004817c               dc.w  $0000                     ; Changes to DMACON (Active DMA Channels)
                                                         ; flag cleared on start of frame play routine
                                                         ; also it's or'ed with #$54 of channel status
 
-L0004817e               dc.w  $0000                     ; referenced as a word
+play_counter                                            ; original address $0004817e
+L0004817e               dc.w  $0000                     ; incremented when 'do_play_song' called with active sound
+                                                        ; referenced as a word
                                                         ; cleared when playing new song/sound
                                                         ; incremented duting frame play routine every time 4020 is cleared
                 
@@ -288,7 +295,7 @@ L00048194               movem.l d0/a0-a1,-(a7)
                         bsr.b   init_audio_channel              ; L000481ca
                         bsr.b   init_audio_channel              ; L000481ca
                         bsr.b   init_audio_channel              ; L000481ca
-                        move.w  #$0000,channel_enable_bits      ; L00048020 ; channel dma enable bits (all channels)
+                        move.w  #$0000,song_ctrl_bits           ; L00048020 ; sound type bits & channel dma enable bits (all channels)
                         movem.l (a7)+,d0/a0-a1
                         rts
 
@@ -364,17 +371,18 @@ L000481e8               movem.l d0/d7/a0-a2,-(a7)
                         ; IN:  D0.w - song number?
                         ;
 do_play_sfx                                                     ; original address $0004822c
-L0004822c               tst.w   channel_03_status               ; 00048126 - is channel 4 in use?
-L00048232               beq.b   init_sfx                        ; 0004823c     - no, then initialise sfx
-L00048234               cmp.b   sfx_no,d0                       ; 00048023 - is requested sfx higher priority or already playing?
-L0004823a               bcs.b   .exit                           ;              - yes, then exit L0004824c
+                        tst.w   channel_03_status               ; 00048126 - is channel 4 in use?
+                        beq.b   .init_sfx                        ; 0004823c     - no, then initialise sfx
+                        cmp.b   sfx_no,d0                       ; 00048023 - is requested sfx higher priority or already playing?
+                        bcs.b   .exit                           ;              - yes, then exit L0004824c
 
-init_sfx                                                        ; original address $0004823c
-L0004823c               movem.l d0/d7/a0-a2,-(a7)
-L00048240               move.w  #$4000,d1                       ; set sfx playing bit.
-L00048244               move.b  d0,sfx_no                       ; song_no_2 ; L00048023
-L0004824a               bra.b   init_sound                      ; jmp $0004825c
-L0004824c               rts  
+.init_sfx                                                        ; original address $0004823c
+                        movem.l d0/d7/a0-a2,-(a7)
+                        move.w  #$4000,d1                       ; set sfx playing bit.
+                        move.b  d0,sfx_no                       ; song_no_2 ; L00048023
+                        bra.b   init_sound                      ; jmp $0004825c
+.exit                                                           ; original address $0004824c
+                        rts  
 
 
 
@@ -409,7 +417,7 @@ L0004824e               movem.l d0/d7/a0-a2,-(a7)
 
                         ; if sfx, then enters here (d0 = sound number)
 init_sound                                                      ; original address $0004825c
-                        clr.w   L0004817e                       ; timer/counter
+                        clr.w   play_counter                    ; L0004817e ; timer/counter
 .validate_sound_no                                              ; original address $00048262
                         subq.w  #$01,d0                         ; is d0 < 0
                         bmi.b   .validation_failed              ;       yes - validation failed - L0004826c
@@ -456,7 +464,7 @@ init_sound                                                      ; original addre
                         subq.b  #$01,d0
                         bne.b   .chk_cmd_82                     ; L000482ca
 
-.do_cmd_81              ; is 81 - set channel data ptr          ; original address $000482c4
+.do_cmd_81              ; is 81 - loop sequence pattern address ptr      ; original address $000482c4
                         move.l  a2,$0002(a1) 
                         bra.b   .command_loop                   ; L000482a8
 
@@ -472,84 +480,122 @@ init_sound                                                      ; original addre
                         subq.b  #$01,d0
                         bne.b   .command_loop                   ; L000482a8
 
-.is_cmd_83              ; is 83 - store next byte in $0012(channelstatus)       ; original address $000482d8
+.is_cmd_83              ; is 83 - pattern loop count byte in $0012(channelstatus) ; original address $000482d8
                         move.b  (a2)+,$0012(a1)
                         bra.b   .command_loop                   ; L000482a8
 
-.init_channel_data_and_exit
-L000482de               move.l  a2,$0006(a1)
-L000482e2               lea.l   song_channel_data_base,a2       ; L000584e6,a2
-L000482e8               ext.w   d0
-L000482ea               add.w   d0,d0
-L000482ec               adda.w  d0,a2
-L000482ee               adda.w  (a2),a2
-L000482f0               move.l  a2,$000e(a1)
-L000482f4               move.w  #$0001,$0052(a1)
-.init_next_channel
-L000482fa               lea.l   $0056(a1),a1                    ; next channel struct (86 bytes)
-L000482fe               dbf.w   d7,.audio_channel_loop          ; init next audio channel - L00048286
+                        ; is MSB=0 - store ptr & set pattern data
+.init_channel_data_and_exit                                     ; original address $000482de
+                        move.l  a2,$0006(a1)                    ; next pattern ptr
+                        lea.l   song_channel_data_base,a2       ; L000584e6,a2
+                        ext.w   d0
+                        add.w   d0,d0
+                        adda.w  d0,a2
+                        adda.w  (a2),a2
+                        move.l  a2,$000e(a1)                    ; pattern data ptr
+                        move.w  #$0001,$0052(a1)
 
-L00048302               or.w    d1,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
+.init_next_channel                                              ; original address $000482fa
+                        lea.l   $0056(a1),a1                    ; next channel struct (86 bytes)
+                        dbf.w   d7,.audio_channel_loop          ; init next audio channel - L00048286
+                        or.w    d1,song_ctrl_bits               ; L00048020 ; update sound type bits & channel enable bits (all channels)
+
 .exit                                                           ; original address $00048308
-L00048308               movem.l (a7)+,d0/d7/a0-a2
-L0004830c               rts 
+                        movem.l (a7)+,d0/d7/a0-a2
+                        rts 
 
 
-do_play_song
-L0004830e               lea.l   $00dff000,a6
-L00048314               lea.l   L00048c00,a5
-L0004831a               clr.w   audio_dma                       ; L0004817c
-L00048320               tst.w   channel_enable_bits             ; L00048020 ; channel dma enable bits (all channels)
-L00048326               beq.b   L00048384
-L00048328               addq.w  #$01,L0004817e
-L0004832e               clr.w   channel_enable_bits             ; L00048020 ; channel dma enable bits (all channels)
-L00048334               lea.l   channel_00_status,a4            ; L00048024,a4
-L0004833a               move.w  (a4),d7
-L0004833c               beq.b   L00048348
-L0004833e               bsr.b   L00048392
-L00048340               move.w  d7,(a4)
-L00048342               or.w    d7,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
-L00048348               lea.l   L0004807a,a4
-L0004834e               move.w  (a4),d7
-L00048350               beq.b   L$0004835c
-L00048352               bsr.b   L$00048392
-L00048354               move.w  d7,(a4)
-L00048356               or.w    d7,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
-L0004835c               lea.l   L000480d0,a4
-L00048362               move.w  (a4),d7
-L00048364               beq.b   L00048370
-L00048366               bsr.b   L00048392
-L00048368               move.w  d7,(a4)
-L0004836a               or.w    d7,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
-L00048370               lea.l   L00048126,a4
-L00048376               move.w  (a4),d7
-L00048378               beq.b   L00048384
-L0004837a               bsr.b   L00048392
-L0004837c               move.w  d7,(a4)
-L0004837e               or.w    d7,channel_enable_bits          ; L00048020 ; channel dma enable bits (all channels)
-L00048384               and.w   #$c000,channel_enable_bits      ; L00048020 ; channel dma enable bits (all channels)
-L0004838c               bsr.w   L0004887e
-L00048390               rts 
 
 
+                ;--------------------------- do play song -----------------------
+                ; Call this routine at regular intervals to play the current
+                ; song/sfx combination. (e.g. during vbl)
+                ;
+                ; IN:- no parameters
+                ;
+do_play_song                                                    ; original address $0004830e
+L0004830e               lea.l   $00dff000,a6                    ; customer chip base register.
+                        lea.l   note_period_table+48,a5         ; L00048c00 ; mid point of the note period table
+                        clr.w   audio_dma                       ; L0004817c
+                        tst.w   song_ctrl_bits                  ; L00048020 ; sound type bits & channel enable bits (all channels)
+                        beq.b   .set_hw_registers               ; L00048384 ; no active sound channels then branch
+
+                        addq.w  #$01,play_counter               ; L0004817e ; increment play ticker counter
+                        clr.w   song_ctrl_bits                  ; L00048020 ; sound type bits & channel enable bits (all channels)
+
+.do_channel_0_cmds                                              ; original address $00048334
+                        lea.l   channel_00_status,a4            ; L00048024,a4
+                        move.w  (a4),d7                         ; d7 = channel ctrl bits
+                        beq.b   .do_channel_1_cmds              ; L00048348
+                        bsr.b   channel_command_loop            ; L00048392
+                        move.w  d7,(a4)                         ; update channel ctrl bits
+                        or.w    d7,song_ctrl_bits               ; L00048020 ; update sound type bits & channel enable bits (all channels)
+
+.do_channel_1_cmds                                              ; original address $00048348
+                        lea.l   channel_01_status,a4            ; L0004807a,a4
+                        move.w  (a4),d7                         ; d7 = channel ctrl bits
+                        beq.b   .do_channel_2_cmds              ; L0004835c
+                        bsr.b   channel_command_loop            ; L00048392
+                        move.w  d7,(a4)                         ; update channel ctrl bits
+                        or.w    d7,song_ctrl_bits               ; L00048020 ; update sound type bits & channel enable bits (all channels)
+
+.do_channel_2_cmds                                              ; original address $0004835c
+                        lea.l   channel_02_status,a4            ; L000480d0,a4
+                        move.w  (a4),d7                         ; d7 = channel ctrl bits
+                        beq.b   .do_channel_3_cmds              ; L00048370
+                        bsr.b   channel_command_loop            ; L00048392
+                        move.w  d7,(a4)                         ; update ctrl bits
+                        or.w    d7,song_ctrl_bits               ; L00048020 ; update sound type bits & channel enable bits (all channels)
+
+.do_channel_3_cmds                                              ; original address $00048370
+                        lea.l   channel_03_status,a4            ; L00048126,a4
+                        move.w  (a4),d7                         ; d7 = channel ctrl bits
+                        beq.b   .set_hw_registers               ; L00048384
+                        bsr.b   channel_command_loop            ; L00048392
+                        move.w  d7,(a4)                         ; update ctrl bits
+                        or.w    d7,song_ctrl_bits               ; L00048020 ; update sound type bits & channel enable bits (all channels)
+
+.set_hw_registers                                               ; original address $00048384
+                        and.w   #$c000,song_ctrl_bits           ; L00048020 ; clear chanel enable bits, preserve sound/sfx type
+                        bsr.w   update_audio_custom_registers   ; L0004887e ; set audio h/w registers.
+                        rts 
+
+
+
+
+                ; ------------------ channel command loop --------------------------
+                ; Process channel audio commands for the current channel/sound/sfx
+                ;
+                ; IN:  a4 = channel status base address
+                ; IN:  d7 = channel status CTRL word
+                ; OUT: d7 = channel status CTRL word
+                ;
+channel_command_loop                                            ; original address $00048392
 L00048392               subq.w  #$01,$0052(a4)
-L00048396               bne.w   L000486de
-L0004839a               movea.l $000e(a4),a3
-L0004839e               bclr.l  #$0007,d7
-cmd_loop
-L000483a2               move.b  (a3)+,d0                        ; Music Command Loop
-L000483a4               bpl.w   L0004858a
-L000483a8               bclr.l  #$0003,d7
-L000483ac               cmp.b   #$a0,d0
-L000483b0               bcc.b   cmd_loop                        ; do next command - jmp $000483a2
-L000483b2               lea.l   cmd_jump_table(pc),a0          
-L000483b6               sub.b   #$80,d0
-L000483ba               ext.w   d0
-L000483bc               add.w   d0,d0
-L000483be               adda.w  d0,a0
-L000483c0               move.w  (a0),d0
-L000483c2               beq.b   cmd_loop                        ; do next command - jmp $000483a2
-L000483c4               jmp     $00(a0,d0.W)
+                        bne.w   L000486de
+
+.get_pattern_data
+                        movea.l $000e(a4),a3                    ; a3 = current pattern data ptr
+                        bclr.l  #$0007,d7
+
+channel_cmd_loop        ; Music Command Loop                    ; original address $000483a2
+                        move.b  (a3)+,d0                        ; d0 = next pattern command
+                        bpl.w   process_sound_commands          ; L0004858a - exit & process sound commands
+                        bclr.l  #$0003,d7
+.validate_cmd                                                   ; original address $000483ac
+                        cmp.b   #$a0,d0                         ; max $20 (32) commands
+                        bcc.b   channel_cmd_loop                ; is cmd < $a0 then do next command - jmp $000483a2
+.valitation_ok                                                  ; original address L000483b2
+                        lea.l   cmd_jump_table(pc),a0          
+                        sub.b   #$80,d0                         ; d0 = jmp table index - subtract base value from command value
+                        ext.w   d0                              ; d0 = word index into jump table
+                        add.w   d0,d0                           ; d0 = address offset index into jump table
+                        adda.w  d0,a0                           ; d0 = jump table entry address
+                        move.w  (a0),d0                         ; d0 = offset to start of command routine
+                        beq.b   channel_cmd_loop                ; if d0 = $0000 then NOP, do next command - jmp $000483a2
+                        jmp     $00(a0,d0.W)                    ; jmp to command initialise routine.
+                        ; some commands exit (rts)
+                        ; others, jmp back to 'cmd_loop'
 
 
 ; jump table offsets from L000483c8 (32 music commands)
@@ -587,124 +633,212 @@ L00048402               dc.w    $0000
 L00048404               dc.w    $0000
 L00048406               dc.w    $0000                   
 
-; L00048408 - CMD 01
-music_command_01                                        ; original address $00048408
-L00048408               movea.l $000a(a4),a3
-L0004840c               cmpa.w  #$0000,a3
-L00048410               bne.b   L00483a2
-L00048412               movea.l $0006(a4),a3
-L00048416               move.b  -$0001(a3),d0
-L0004841a               subq.b  #$01,$0012(a4)
-L0004841e               bne.b   L0004846e
-L00048420               move.b  #$01,$0012(a4)
-L00048426               move.b  #$00,$0013(a4)
-L0004842c               move.b  (a3)+,d0
-L0004842e               bpl.b   L0004846e
-L00048430               sub.b   #$80,d0
-L00048434               bne.b   L00048450
-L00048436               movea.l $0002(a4),a3
-L0004843a               cmpa.w  #$0000,a3
-L0004843e               bne.b   L0004842c
-L00048440               move.w  #$0001,$004a(a4)
-L00048446               move.w  #$0000,$004c(a4)
-L0004844c               moveq   #$00,d7
-L0004844e               rts 
 
-L00048450               subq.b  #$01,d0
-L00048452               bne.b   L0004845a
-L00048454               move.l  a3,($0002a4)
-L00048458               bra.b   L0004842c
-L0004845a               subq.b  #$01,d0
-L0004845c               bne.b   L00048464
-L0004845e               move.b  (a3)+,$0013(a4)
-L00048462               bra.b   L0004842c
-L00048464               subq.b  #$01,d0
-L00048466               bne.b   L0004842c
-L00048468               move.b  (a3)+,$0012(a4)
-L0004846c               bra.b   L0004842c
-L0004846e               move.l  a3,$0006(a4)
-L00048472               lea.l   song_channel_data_base,a3               ; L000584e6,a3
-L00048478               ext.w   d0
-L0004847a               add.w   d0,d0
-L0004847c               adda.w  d0,a3
-L0004847e               adda.w  (a3),a3
-L00048480               bra.w   cmd_loop                ; do next command - jmp $000483a2
+;
+; L00048408 - CMD 01 - ($80) 
+;       - Next Pattern/Loop current pattern/Loop back to start pattern or finish playing
+;       - no loop if $0002(a4) not set.
+music_command_01                                                ; original address $00048408
+L00048408               movea.l $000a(a4),a3                    ; a3 = CMD2 saved pattern table ptr
+                        cmpa.w  #$0000,a3                       ; check a3 is set
+                        bne.b   channel_cmd_loop                ; if CMD2 pattern ptr != $0000 then exit, do next command - L00483a2
+.do_cmd_01                                                      ; original address $00048412
+                        movea.l $0006(a4),a3                    ; a3 = next pattern ptr
+                        move.b  -$0001(a3),d0                   ; current pattern offset
 
-; L00048484 - CMD 02
+                        subq.b  #$01,$0012(a4)                  ; decrement pattern loop counter - $0012(a4)
+                        bne.b   .set_next_pattern_ptr           ; reset start of current pattern - $0004846e
+
+                        move.b  #$01,$0012(a4)                  ; reset pattern loop counter (play once = 1) $0012(14) counter
+                        move.b  #$00,$0013(a4)                  ; 
+
+.cmd_loop               ; another command loop                  ; original address $0004842c
+                        move.b  (a3)+,d0                        ; d0 = next pattern command/pattern offset
+                        bpl.b   .set_next_pattern_ptr           ; L0004846e
+.chk_80                                                         ; original address $00048430
+                        sub.b   #$80,d0
+                        bne.b   .chk_81                         ; L00048450
+.is_80                  ; cmd 80                                ; original address $00048436
+                        movea.l $0002(a4),a3                    ; a3 = back to start of pattern data ptr
+                        cmpa.w  #$0000,a3                       ; is loop ptr set?
+                        bne.b   .cmd_loop                       ;       yes, process next command - $0004842c 
+                        ; disable channel & exit
+                        move.w  #$0001,$004a(a4)                ;       no, disable audio channel
+                        move.w  #$0000,$004c(a4)                ; volume = 0
+                        moveq   #$00,d7                         ; channel ctrl bits = disabled
+                        rts 
+.chk_81                                                         ; original address
+                        subq.b  #$01,d0
+                        bne.b   .chk_82                         ; L0004845a
+.is_81                  move.l  a3,$0002(a4)                    ; store pattern loop ptr
+                        bra.b   .cmd_loop                       ; loop, process next command - L0004842c
+.chk_82                                                         ; original address $0004845a
+                        subq.b  #$01,d0
+                        bne.b   .chk_83                         ; L00048464
+.is_83                                                          ; original address $0004845e
+                        move.b  (a3)+,$0013(a4)                 ; set $0013(a4) next pattern byte
+                        bra.b   .cmd_loop                       ; loop, process next command - $0004842c
+.chk_83
+                        subq.b  #$01,d0
+                        bne.b   .cmd_loop                       ; loop, process next command - $0004842c
+                        move.b  (a3)+,$0012(a4)                 ; store pattern loop counter
+                        bra.b   .cmd_loop                       ; loop, process next command - $0004842c
+
+.set_next_pattern_ptr                                           ; original address $0004846e
+                        move.l  a3,$0006(a4)
+                        lea.l   song_channel_data_base,a3       ; pattern indirection table address
+                        ext.w   d0                              ; d0 = byte extended to word  
+                        add.w   d0,d0                           ; d0 = table address index
+                        adda.w  d0,a3                           ; a3 = table entry ptr
+                        adda.w  (a3),a3                         ; a3 = next pattern data address ptr
+                        bra.w   channel_cmd_loop                        ; do next command - jmp $000483a2
+
+
+
+
+
+;
+; L00048484 - CMD 02 - ($81)
+;       - store current pattern position ptr (loop back within current pattern)
 music_command_02                                        ; original address $00048484
 L00048484               move.l  a3,$000a(a4)
-L00048488               bra.w   cmd_loop                ; do next command - jmp $000483a2
+                        bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L0004848c - CMD 03
+
+
+
+
+
+;
+; L0004848c - CMD 03 - ($82)
+;       - no operation
 music_command_03                                        ; original address $0004848c
-L0004848c               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L0004848c               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L00048490 - CMD 04
+
+;
+; L00048490 - CMD 04 - ($83)
+;       - no operation
 music_command_04                                        ; original address $00048490
-L00048490               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L00048490               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L00048494 - CMD 05
+
+
+
+
+
+;
+; L00048494 - CMD 05 - ($84)
+;               - Set CRTL bit 5 
+;               - Set Param byte $0051(s)
 music_command_05                                        ; original address $00048494
 L00048494               bset.l  #$0005,d7
-L00048498               move.b  (a3)+,$0051(a4)
-L0004849c               bra.w   cmd_loop                ; do next command - jmp $000483a2
+                        move.b  (a3)+,$0051(a4)
+                        bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L000484a0 - CMD 06
+
+;
+; L000484a0 - CMD 06 - ($85)
+;               - End/Cancel Command 05
 music_command_06                                        ; original address $000484a0
 L000484a0               bclr.l  #$0005,d7
-L000484a4               bra.w   cmd_loop                ; do next command - jmp $000483a2
+                        bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L000484a8 - CMD 07
+
+
+
+
+;
+; L000484a8 - CMD 07 - ($86)
+;               - increase $0052(s) by $0100 (256)
 music_command_07                                        ; original address $000484a8
 L000484a8               add.w   #$0100,$0052(a4)
-L000484ae               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L000484ae               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L000484b2 - CMD 08
+
+
+
+;
+; L000484b2 - CMD 08 - $(87)
+;               - clear bit 4 - channel ctrl
+;               - set bit 7 - channel ctrl
+;               - clear $004c(s)
+;               - add $0052(s) with CMD 05 value (if active $0051(s)) or add next pattern byte 
+;
 music_command_08                                        ; original address $000484b2
-L000484b2               bclr.l  #$0004,d7
-L000484b6               bset.l  #$0007,d7
-L000484ba               clr.w   $004c(a4)
-L000484be               bra.w   L000486c8
+L000484b2               bclr.l  #$0004,d7               ; clear bit 4 - channel ctrl
+                        bset.l  #$0007,d7               ; set bit 7 - channel ctrl
+                        clr.w   $004c(a4)       
+                        bra.w   L000486c8
 
-; L000484c2 - CMD 09
+
+
+
+;
+; L000484c2 - CMD 09 - ($88)
+;               - set bit 3 - channel ctrl
+;               - set command parameters from pattern data bytes
+;
 music_command_09                                        ; original address $000484c2
-L000484c2               bset.l  #$0003,d7
-L000484c6               move.b  (a3)+,$0024(a4)
-L000484ca               move.b  (a3)+,$0025(a4)
-L000484ce               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L000484c2               bset.l  #$0003,d7               ; set bit 3 - channel ctrl
+                        move.b  (a3)+,$0024(a4)
+                        move.b  (a3)+,$0025(a4)
+                        bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L000484d2 - CMD 10
+
+
+;
+; L000484d2 - CMD 10 - ($89)
+;               - clear bits 0 - 2 (cmd 14)
+;               - clear bits 4 -7 (cmd 5,8)
+;               - preserve other bits (cmd 9)
+;               - set parameter bytes
 music_command_10                                        ; original address $000484d2
 L000484d2               and.w   #$fff8,d7
-L000484d6               bset.l  #$0000,d7
-L000484da               move.b  (a3)+,$0021(a4)
-L000484de               move.b  (a3)+,$0022(a4)
-L000484e2               bra.w   cmd_loop                ; do next command - jmp $000483a2
+                        bset.l  #$0000,d7
+                        move.b  (a3)+,$0021(a4)
+                        move.b  (a3)+,$0022(a4)
+                        bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L000484e6 - CMD 11
+
+
+;
+; L000484e6 - CMD 11 - ($8a)
+;               - clear ctrl bit 0
 music_command_11                                        ; original address $000484e6
 L000484e6               bclr.l  #$0000,d7
-L000484ea               bra.w   cmd_loop                ; do next command - jmp $000483a2
+                        bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
-; L000484ee - CMD 14
+
+
+
+; L000484ee - CMD 14 - ($8d)
+;               - set bit 1
+;               - clear bits 1 - 2
+;               - clear bits 4 - 7
+;               - preserve bit 3 (CMD 9)
 music_command_14                                        ; original address $000484ee
 L000484ee               and.w   #$fff8,d7
 L000484f2               bset.l  #$0001,d7
-L000484f6               lea.l   L00058378,a0
+L000484f6               lea.l   command_14_data,a0      ; $00058378,a0
 L000484fc               moveq   #$00,d0
-L000484fe               move.b  (a3)+,d0
-L00048500               add.w   d0,d0
-L00048502               adda.w  d0,a0
-L00048504               adda.w  (a0),a0
+L000484fe               move.b  (a3)+,d0                ; d0 = next pattern byte
+L00048500               add.w   d0,d0                   ; d0 = index into table
+L00048502               adda.w  d0,a0                   ; a0 = table entry address
+L00048504               adda.w  (a0),a0                 ; a0 = indirection address ptr
 L00048506               move.b  (a0)+,$0032(a4)
 L0004850a               move.b  (a0)+,$0030(a4)
 L0004850e               move.l  a0,$0028(a4)
-L00048512               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L00048512               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
 ; L00048516 - CMD 15
 music_command_15                                        ; original address $00048516
 L00048516               bclr.l  #$0001,d7
-L0004851a               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L0004851a               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
+
+
+
+
 
 ; L0004851e - CMD 12
 music_command_12                                        ; original address $0004851e
@@ -713,27 +847,27 @@ L00048522               bset.l  #$0002,d7
 L00048526               move.b  (a3)+,$0036(a4)
 L0004852a               move.b  (a3)+,$0034(a4)
 L0004852e               move.b  (a3)+,$0035(a4)
-L00048532               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L00048532               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
 ; L00048536 - CMD 13
 music_command_13
 L00048536               bclr.l  #$0002,d7
-L0004853a               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L0004853a               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
 ; L0004853e - CMD 16
 music_command_16                                        ; original address $0004853e
-L0004853e               lea.l   L0005842a,a0
+L0004853e               lea.l   command_16_data,a0      ; L0005842a,a0
 L00048544               moveq   #$00,d0
 L00048546               move.b  (a3)+,d0
 L00048548               add.w   d0,d0
 L0004854a               adda.w  d0,a0
 L0004854c               adda.w  (a0),a0
 L0004854e               move.l  a0,$0014(a4)
-L00048552               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L00048552               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
 ; L00048556 - CMD 17
 music_command_17                                        ; original address $00048556
-L00048556               lea.l   L00048c30,a0
+L00048556               lea.l   command_17_data,a0      ; L00048c30,a0
 L0004855c               moveq   #$00,d0
 L0004855e               move.b  (a3)+,d0
 L00048560               asl.w   #$04,d0
@@ -745,12 +879,17 @@ L00048570               move.l  (a0)+,$0044(a4)
 L00048574               move.w  (a0)+,$0048(a4)
 L00048578               bclr.l  #$0006,d7
 L0004857c               tst.w   (a0)
-L0004857e               beq.w   cmd_loop                ; do next command - jmp $000483a2
+L0004857e               beq.w   channel_cmd_loop                ; do next command - jmp $000483a2
 L00048582               bset.l  #$0006,d7
-L00048586               bra.w   cmd_loop                ; do next command - jmp $000483a2
+L00048586               bra.w   channel_cmd_loop                ; do next command - jmp $000483a2
 
 
-
+                ; +ve pattern command data (end of pattern command loop)
+                ; IN: A4 = Sound Channel Structure
+                ; IN: A3 = Next Pattern Command Ptr
+                ; IN: D0 = command data
+                ; IN: D7 = Channel Ctrl Bits
+process_sound_commands                                  ; original address $0004858a         
 L0004858a       btst.l  #$0006,d7
 L0004858e       bne.b   L00048594
 L00048590       add.b   $0013(a4),d0
@@ -848,15 +987,22 @@ L000486b4       move.w  #$0001,$001e(a4)
 L000486ba       clr.w   $004c(a4)
 L000486be       move.w  $0054(a4),d0
 L000486c2       or.w    d0,audio_dma                    ; L0004817c
+
+; jmp destination from 'pattern command 08 ($87)'
 L000486c8       moveq   #$00,d0
-L000486ca       move.b  $0051(a4),d0
-L000486ce       btst.l  #$0005,d7
-L000486d2       bne.b   L000486d6
-L000486d4       move.b  (a3)+,d0
-L000486d6       add.w   d0,$0052(a4)
-L000486da       move.l  a3,$000e(a4)
-L000486de       btst.l  #$0007,d7
-L000486e2       bne.w   L0004887c
+L000486ca       move.b  $0051(a4),d0                    ; Cmd 05 byte parameter
+L000486ce       btst.l  #$0005,d7                       ; is CMD 05 is active?
+L000486d2       bne.b   L000486d6                       ;       yes, use CMD 05 param value
+L000486d4       move.b  (a3)+,d0                        ;       no, use next pattern param value
+L000486d6       add.w   d0,$0052(a4)                    ; update $0052(s)
+L000486da       move.l  a3,$000e(a4)                    ; store pattern position ptr. 
+
+
+; jmp destination from 'process_command_loop' when $0052(s) is not $0000
+L000486de       btst.l  #$0007,d7                       ; Is Command 8 Active?
+L000486e2       bne.w   exit_process_sound_commands     ; L0004887c - yes, don't do the following and exit
+
+
 L000486e6       move.w  $004a(a4),d0
 L000486ea       btst.l  #$0003,d7
 L000486ee       beq.b   L00048702
@@ -931,7 +1077,7 @@ L000487ca       move.b  $0038(a4),$0039(a4)
 L000487d0       add.w   $003a(a4),d0
 L000487d4       move.w  d0,$004a(a4)
 L000487d8       btst.l  #$0004,d7
-L000487dc       beq.w   L0004887c
+L000487dc       beq.w   exit_process_sound_commands     ; L0004887c
 L000487e0       subq.w  #$01,$001e(a4)
 L000487e4       bne.w   L00048866
 L000487e8       movea.l $0018(a4),a0
@@ -963,22 +1109,31 @@ L0004883a       neg.b   d0
 L0004883c       sub.w   $0052(a4),d0
 L00048840       bmi.b   L00048848
 L00048842       bclr.l  #$0004,d7
-L00048846       bra.b   L0004887c
+L00048846       bra.b   exit_process_sound_commands     ; L0004887c
+
 L00048848       neg.w   d0
 L0004884a       move.w  d0,$001e(a4)
 L0004884e       move.b  #$00,$001c(a4)
 L00048854       move.b  #$00,$001d(a4)
 L0004885a       move.b  #$00,$0020(a4)
 L00048860       move.l  a0,$0018(a4)
-L00048864       bra.b   L0004887c
+L00048864       bra.b   exit_process_sound_commands     ; L0004887c
+
 L00048866       subq.b  #$01,$001d(a4)
-L0004886a       bne.b   L0004887c
+L0004886a       bne.b   exit_process_sound_commands     ; L0004887c
+
 L0004886c       move.b  $001c(a4),$001d(a4)
 L00048872       move.b  $0020(a4),d0
 L00048876       ext.w   d0
 L00048878       add.w   d0,$004c(a4)
+
+exit_process_sound_commands                             ; original address $0004887c
 L0004887c       rts 
 
+
+
+
+update_audio_custom_registers
 L0004887e       move.w  audio_dma,d0                    ;L0004817c,d0
 L00048884       beq.b   L000488f4
 L00048886       move.w  d0,$0096(a6)
@@ -1034,7 +1189,7 @@ L0004892a       move.l  $003e(a0),$00a0(a6)
 L00048930       bra.b   L0004893e
 L00048932       move.w  $0048(a0),$00a4(a6)
 L00048938       move.l  $0044(a0),$00a0(a6)
-L0004893e       lea.l   L0004807a,a0
+L0004893e       lea.l   channel_01_status,a0                    ; L0004807a,a0
 L00048944       move.w  d1,d3
 L00048946       btst.b  #$0006,(a0)
 L0004894a       beq.b   L0004894e
@@ -1049,7 +1204,7 @@ L00048968       move.l  $003e(a0),$00b0(a6)
 L0004896e       bra.b   L0004897c
 L00048970       move.w  $0048(a0),$00b4(a6)
 L00048976       move.l  $0044(a0),$00b0(a6)
-L0004897c       lea.l   L000480d0,a0
+L0004897c       lea.l   channel_02_status,a0                    ; L000480d0,a0
 L00048982       move.w  d1,d3
 L00048984       btst.b  #$0006,(a0)
 L00048988       beq.b   L0004898c
@@ -1064,7 +1219,7 @@ L000489a6       move.l  $003e(a0),$00c0(a6)
 L000489ac       bra.b   L000489ba
 L000489ae       move.w  $0048(a0),$00c4(a6)
 L000489b4       move.l  $0044(a0),$00c0(a6)
-L000489ba       lea.l   L00048126,a0
+L000489ba       lea.l   channel_03_status,a0                    ; L00048126,a0
 L000489c0       move.w  d1,d3
 L000489c2       btst.b  #$0006,(a0)
 L000489c6       beq.b   L000489ca
@@ -1167,14 +1322,23 @@ process_instrument
 
 
 
+                ; --------------------- Note Period Table ------------------------
+                ;       - audio channel period values - note frequenies
+                ;       - indexes to $00004bba clamped to -48 bytes or +44 bytes to remain in table range
+                ;       - I've got the table running B to B (may be I'm a semi-tone out C to C - most likely) 
+note_period_table                                               ; original address $00048BD0
+L00048BD0       dc.w    $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB          
+L00048BE0       dc.w    $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1          
+L00048BF0       dc.w    $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA  
 
-L00048BD0       dc.w    $06FE, $0699, $063B, $05E1, $058D, $053D, $04F2, $04AB          ;.....;.....=....
-L00048BE0       dc.w    $0467, $0428, $03EC, $03B4, $037F, $034D, $031D, $02F1          ;.g.(.......M....
-L00048BF0       dc.w    $02C6, $029E, $0279, $0255, $0234, $0214, $01F6, $01DA          ;.....y.U.4......
+L00048c00       dc.w    $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B          
+L00048C10       dc.w    $011A, $010A, $00FB, $00ED, $00E0, $00D3, $00C7, $00BC          
+L00048C20       dc.w    $00B2, $00A8, $009E, $0095, $008D, $0085, $007E, $0077          
 
-L00048c00       dc.w    $01BF, $01A6, $018F, $0178, $0163, $014F, $013C, $012B          ;.......x.c.O.<.+
-L00048C10       dc.w    $011A, $010A, $00FB, $00ED, $00E0, $00D3, $00C7, $00BC          ;................
-L00048C20       dc.w    $00B2, $00A8, $009E, $0095, $008D, $0085, $007E, $0077          ;.............~.w
+
+
+
+command_17_data
 L00048C30       dc.w    $0021, $0004, $8D82, $000B, $0004, $8D82, $000B, $0000          ;.!..............
 
 instrument_data                                                 ; original address $00048C40
@@ -1372,23 +1536,63 @@ sample_file_14
 
 
 ; Music Data
-L00058378       dc.w $002A, $002B, $002D, $0030, $0043, $0046, $004A, $0050             ;.*.+.-.0.C.F.J.P
-L00058388       dc.w $0054, $0055, $0058, $005B, $005E, $0061, $0064, $0077             ;.T.U.X.[.^.a.d.w
-L00058398       dc.w $007A, $007D, $0080, $0083, $0086, $0101, $0001, $0200             ;.z.}............
-L000583A8       dc.w $0C01, $0300, $0307, $0113, $000C, $010B, $020A, $0309             ;................
-L000583B8       dc.w $0408, $0507, $0605, $0403, $0201, $0001, $0300, $0307             ;................
-L000583C8       dc.w $0104, $000C, $0307, $0106, $0003, $0507, $0C03, $0404             ;................
-L000583D8       dc.w $0003, $070C, $0101, $0001, $0300, $0509, $0103, $0004             ;................
-L000583E8       dc.w $0701, $0300, $0508, $0103, $0003, $0801, $0300, $0409             ;................
-L000583F8       dc.w $0113, $0018, $020B, $020A, $0309, $0408, $0507, $0605             ;................
-L00058408       dc.w $0403, $0201, $0001, $0300, $0507, $0103, $0003, $0701             ;................
-L00058418       dc.w $0300, $0107, $0103, $0005, $0901, $0300, $180C, $0202             ;................
-L00058428       dc.w $000C, $0014, $0019, $001E, $0020, $0025, $0029, $002B             ;......... .%.).+
-L00058438       dc.w $0031, $0037, $003D, $010A, $04FE, $0002, $FF01, $0A05             ;.1.7.=..........
+
+                ; command 14 data, is an indirection table of offsets to parameter values
+                ;
+command_14_data                 ; original address $00058378
+L00058378       dc.w $002A      ; $00058378 + $002a  = $000583a2
+L0005837a       dc.w $002B      ; $0005837a + $002b  = $000583a5
+L0005837c       dc.w $002D      ; $0005837c + $002d  = $000583a9
+L0005837e       dc.w $0030      ; $0005837e + $0030  = $000583ae
+L00058380       dc.w $0043      ; $00058380 + $0043  = $000583c3
+L00058382       dc.w $0046      ; $00058382 + $0046  = $000583c8
+L00058384       dc.w $004A      ; $00058384 + $004a  = $000583ce
+L00058386       dc.w $0050      ; $00058386 + $0050  = $000583d6
+L00058388       dc.w $0054      ; $00058388 + $0054  = $000583dc
+L0005838a       dc.w $0055      ; $0005838a + $0055  = $000583df
+L0005838c       dc.w $0058      ; $0005838c + $0058  = $000583e4
+L0005838e       dc.w $005B      ; $0005838e + $005b  = $000583e9
+L00058390       dc.w $005E      ; $00058390 + $005e  = $000583ee
+L00058392       dc.w $0061      ; $00058392 + $0061  = $000583f3
+L00058394       dc.w $0064      ; $00058394 + $0064  = $000583f8
+L00058396       dc.w $0077      ; $00058396 + $0077  = $0005840d
+L00058398       dc.w $007A      ; $00058398 + $007a  = $00058412
+L0005839a       dc.w $007D      ; $0005839a + $007d  = $00058417
+L0005839c       dc.w $0080      ; $000583a0 + $0080  = $00058420
+L0005839e       dc.w $0083      ; $000583a2 + $0083  = $00058425
+L000583a0       dc.w $0086      ; $000583a4 + $0086  = $0005842a
+
+L000583a2       dc.b    $01,$01,$00
+L000583a5       dc.b    $01,$02,$00,$0C
+L000583a9       dc.b    $01,$03,$00,$03,$07
+L000583ae       dc.b    $01,$13,$00,$0C,$01,$0B,$02,$0A,$03,$09,$04,$08,$05,$07,$06,$05,$04,$03,$02,$01,$00
+L000583c3       dc.b    $01,$03,$00,$03,$07
+L000583c8       dc.b    $01,$04,$00,$0C,$03,$07
+L000583ce       dc.b    $01,$06,$00,$03,$05,$07,$0C,$03
+L000583d6       dc.b    $04,$04,$00,$03,$07,$0C
+L000583dc       dc.b    $01,$01,$00
+L000583df       dc.b    $01,$03,$00,$05,$09
+L000583e4       dc.b    $01,$03,$00,$04,$07
+L000583e9       dc.b    $01,$03,$00,$05,$08
+L000583ee       dc.b    $01,$03,$00,$03,$08
+L000583f3       dc.b    $01,$03,$00,$04,$09
+L000583f8       dc.b    $01,$13,$00,$18,$02,$0B,$02,$0A,$03,$09,$04,$08,$05,$07,$06,$05,$04,$03,$02,$01,$00
+L0005840d       dc.b    $01,$03,$00,$05,$07
+L00058412       dc.b    $01,$03,$00,$03,$07
+L00058417       dc.b    $01,$03,$00,$01,$07,$01,$03,$00,$05
+L00058420       dc.b    $09,$01,$03,$00,$18
+L00058425       dc.b    $0C,$02,$02,$00,$0C
+
+command_16_data ; also last command_14_data
+L0005842a       dc.b    $00,$14,$00,$19,$00,$1E,$00,$20,$00,$25,$00,$29,$00,$2B,$00,$31,$00,$37,$00,$3D
+        
+L0005843e       dc.w $010A, $04FE, $0002, $FF01, $0A05             ;.1.7.=..........
 L00058448       dc.w $FF00, $05FF, $010A, $0000, $0C01, $0AFF, $0002, $FF01             ;................
 L00058458       dc.w $0A08, $FF00, $0001, $0A00, $0001, $0A0B, $FF01, $FE00             ;................
 L00058468       dc.w $0001, $160A, $FF01, $FE00, $0001, $2014, $FF01, $FE00             ;.......... .....
 L00058478       dc.w $0001, $3E00, $0000
+
+
 
 
 
@@ -1483,6 +1687,8 @@ L00058668       dc.w $018D, $028C, $8490, $3737, $378E, $8529, $0C2B, $0C8F     
 L00058678       dc.w $018B, $1801, $032B, $7880, $9005, $8F02, $8E1F, $061F           ;.....+x.........
 L00058688       dc.w $0C1F, $061A, $0C1D, $0C1F, $061D, $061A, $0C1F, $121F             ;................
 L00058698       dc.w $061A, $0C1D, $0C1F, $061D, $0622, $0624, $0680, $9001             ;.........".$....
+
+.pattern_s0_p1
 L000586A8       dc.w $8F02, $8E84, $0637, $3735, $3784, $0C32, $333A, $393A             ;.....7757..23:9:
 L000586B8       dc.w $3932, $333A, $3985, $8090, $058F, $028E, $8406, $1F1F             ;923:9...........
 L000586C8       dc.w $1D84, $121F, $840C, $1A1D, $1F84, $061A, $1A18, $8412             ;................
