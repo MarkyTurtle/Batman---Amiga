@@ -30,9 +30,26 @@ kill_system
                 lea     kill_system,a7                              ; initialise stack 
                 bsr     init_system
 
-                ;--------------------------------------------------
+                ;--------------------------------------------------------------
                 ; TEST PROGRAM
+                ; set song number below 'SOUND_TO_PLAY' for different songs/sfx
+                ;   #$01 = Level 1 Music
+                ;   #$02 = Level 1 Completed
+                ;   #$03 = Player Live Lost
+                ;   #$04 = Unknown/Unused Music
+                ;   #$05 = Drip SFX
+                ;   #$06 = Gas Leak
+                ;   #$07 = Batarang
+                ;   #$08 = Batrope
+                ;   #$09 = Grenade
+                ;   #$0a = Bad Guy Hit
+                ;   #$0b = Splash (jack in the vat)
+                ;   #$0c = Ricochet
+                ;   #$0d = Explosion (grenade)
                 ;--------------------------------------------------
+
+SOUND_TO_PLAY   EQU     $01                                     ; valid range #$01 to #$0d
+
 init_test_prg
                 jsr     L00048000                               ; init music routine/instruments
 
@@ -42,7 +59,7 @@ init_test_prg
                 move.W  #$c020,INTENA(a6)                       ; enable level 3 interrupt
                 move.W  #$c020,INTENA(a6)                       ; enable level 3 interrupt
 
-                moveq   #$01,d0
+                moveq   #SOUND_TO_PLAY,d0                       ; song number to play
                 jsr     L00048010                               ; init song 1
 
 loop
