@@ -8,4 +8,19 @@ Just load the project into VSCode and build and run the project to hear the Leve
 
 Future development will include more reverse engineering of the music/sfx data format and also a better test program to select the tunes/sfx from a menu.
 
+                ; set song number below 'SOUND_TO_PLAY' for different songs/sfx
+                ;   #$01 = Level 1 Music
+                ;   #$02 = Level 1 Completed
+                ;   #$03 = Player Live Lost
+                ;   #$04 = Unknown/Unused Music
+                ;   #$05 = Drip SFX
+                ;   #$06 = Gas Leak
+                ;   #$07 = Batarang
+                ;   #$08 = Batrope
+                ;   #$09 = Grenade
+                ;   #$0a = Bad Guy Hit
+                ;   #$0b = Splash (jack in the vat)
+                ;   #$0c = Ricochet
+                ;   #$0d = Explosion (grenade)
 
+                
