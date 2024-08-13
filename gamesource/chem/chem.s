@@ -21,13 +21,69 @@ TEST_TITLEPRG SET 1             ; run a test build with imported GFX
                 org     $47fe4                                         ; original load address
         ELSE
 
+
+kill_system
+                lea     $dff000,a6
+                move.w  #$7fff,INTENA(a6)
+                move.w  #$7fff,DMACON(a6)
+                move.w  #$7fff,INTREQ(a6)   
+                lea     kill_system,a7                              ; initialise stack 
+                bsr     init_system
+
                 ;--------------------------------------------------
                 ; TEST PROGRAM
                 ;--------------------------------------------------
-start
-                Add.w   #$1,d0
-                move.w  d0,$dff180
-                jmp start     
+init_test_prg
+                jsr     L00048000                               ; init music routine/instruments
+
+                lea     $dff000,a6
+                lea     level_3_interrupt,a0
+                move.l  a0,$6c.w
+                move.W  #$c020,INTENA(a6)                       ; enable level 3 interrupt
+                move.W  #$c020,INTENA(a6)                       ; enable level 3 interrupt
+
+                moveq   #$01,d0
+                jsr     L00048010                               ; init song 1
+
+loop
+                jmp     loop     
+
+
+
+                ;---------------- level 3 interrupt ----------------
+                ; vertical blank interrupt handler.
+                ; play the song at 25 frames per second.
+                ;
+level_3_interrupt
+                movem.l d0-d7/a0-a6,-(a7)
+                
+                lea     $dff000,a6
+                move.w  INTREQR(a6),d0
+                and.w   #$0020,d0
+                beq     .exit_isr
+
+.play_music     ; play music @ 25 frames per second.
+                eor.w   #$0001,frameskipper
+;                add.w   #$0001,frameskipper
+;                and.w   #$0001,frameskipper
+                beq.s   .exit_isr
+                jsr     L00048018
+
+.exit_isr
+                ; clear level 3 interrut bits
+                move.w  d0,INTREQ(a6)
+
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
+frameskipper:   dc.w    $0000                   ; used to only update music at 25 frames per second.
+                                                ; otherwise it's too fast.
+
+
+
+                ; ------------------- kill system -----------------
+                include "./lib/kill_system.s"
 
         ENDC    
    
