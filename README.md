@@ -63,6 +63,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 ## Progress to Date
 
+2024-08-13 - Added test program to the 'chem' project which plays the level 1 music. [Project Link](./gamesource/chem/)
+
 2024-08-03 - Rebuild the test ADF image using the rebuilt batspr.shrunk and mapgr.shrunk files which were rebuilt from the source data. So this disk image now contains a rebuilt titleprg.shrunk, batspr1.shrunk and mapgr.shrunk files. [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) - give it a go ( works on my machine **:)** )
 
 2024-08-03 - Added raw data project for batspr1.iff, this file is data only. Need to get around to adding a test GFX viewer to the project in the furure.
