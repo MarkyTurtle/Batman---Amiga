@@ -1729,18 +1729,86 @@ L00058508       dc.w $0307, $0315, $0322, $0338, $0367, $0398, $03B1, $03C4     
 L00058518       dc.w $03C9, $03CE, $03D3, $03D8, $03DD, $03E2, $03E7, $03EC             ;................
 
 
-sound_00_chan_00
-L00058528       dc.w $8183, $040A, $0182, $F401, $8200, $0182, $F401, $8200
-L00058538       dc.w $0182, $F401, $8200, $0182, $F401, $8308, $0507, $0783
-L00058548       dc.w $020C, $0707
+; Song Pattern Sequence Commands
+PATSEQ_END      EQU     $80
+PATSEQ_SETLOOP  EQU     $81
+PATSEQ_UNKNOWN  EQU     $82
+PATSEQ_PATLOOP  EQU     $83
+
+sound_00_chan_00        ; pattern sequence for song 00, channel 00
+L00058528       dc.b PATSEQ_SETLOOP             ; $81 - Track loops back to here
+                dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
+                dc.b $0A                        ; pattern id (loop 4 times)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$f4         ; unknown command $82,$F4 (-12) (key offset?)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$00         ; unknown command $82,$00 (key offset?)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$f4         ; unknown command $82,$F4 (-12) (key offset?)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$00         ; unknown command $82,$00 (key offset?)
+L00058538       dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$f4         ; unknown command $82,$F4 (-12) (key offset?)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$00         ; unknown command $82,$00 (key offset?)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_UNKNOWN,$f4         ; unknown command $82,$F4 (-12) (key offset?)
+                dc.b $01                        ; pattern id (play 1 time)
+                dc.b PATSEQ_PATLOOP,$08         ; $83,$08 (set loop x 8)
+                dc.b $05                        ; pattern id (loop 8 times)
+                dc.b $07                        ; pattern id (play 1 time)
+                dc.b $07                        ; pattern id (play 1 time)
+                dc.b $83,$02                    ; $83,$08 (set loop x 2)
+L00058549       dc.b $0C                        ; pattern id (loop 2 times)
+                dc.b $07                        ; pattern id (play 1 time)
+                dc.b $07                        ; pattern id (play 1 time)
+                ;dc.b PATSEQ_END                ; $80 ; Loop Byte Added for myself
+                                                ; 26 patterns in loop (including repeats)
 
 sound_00_chan_01                ; *** appears to be a byte out, should be $0005854e (see sound_table entry)
-L0005854d       dc.w $8081, $8308, $0208, $8304, $0683, $020D
-L00058558       dc.w $8302, $0680
+L0005854d       dc.b PATSEQ_END                 ; $80 - looks like the end of previous (not start of this track)
+                dc.b PATSEQ_SETLOOP             ; $81 - Track loops back to here
+                dc.b PATSEQ_PATLOOP,$08         ; $83,$08 (set loop x 8)
+                dc.b $02                        ; pattern id (loop 8 times)
+                dc.b $08                        ; pattern id (play 1 time)
+                dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
+                dc.b $06                        ; pattern id (loop 4 times)
+                dc.b PATSEQ_PATLOOP,$02         ; $83,$02 (set loop x 2)
+                dc.b $0D                        ; pattern id (loop 2 times)
+L00058558       dc.b PATSEQ_PATLOOP,$02         ; $83,$02 (set loop x 2)
+                dc.b $06                        ; pattern id (loop 2 times)
+                dc.b PATSEQ_END                 ; $80 - Loop back to start
+                                                ; 17 patterns in loop (including repeats)
 
 sound_00_chan_02
-L0005855c       dc.w $8183, $0403, $8308, $0483, $0409, $8302
-L00058568       dc.w $0B83, $0409, $8085, $6087, $8090, $018F, $028E, $8406           ;......`.........
+L0005855c       dc.b PATSEQ_SETLOOP             ; $81 - Track loops back to here
+                dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
+                dc.b $03                        ; pattern id (loop 4 times)
+                dc.b PATSEQ_PATLOOP,$08         ; $83,$08 (set loop x 8)
+                dc.b $04                        ; pattern id (loop 8 times)
+                dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
+                dc.b $09                        ; pattern id (loop 4 times)
+                dc.b PATSEQ_PATLOOP,$02         ; $83,$02 (set loop x 2)
+L00058568       dc.b $0B                        ; pattern id (loop 2 times)
+                dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
+                dc.b $09                        ; pattern id (loop 4 times)
+                dc.b $80                        ; $80 - Loop back to start
+                                                ; 22 patterns in loop (including repeats)
+
+;sound_00_chan_00
+;L00058528       dc.w $8183, $040A, $0182, $F401, $8200, $0182, $F401, $8200
+;L00058538       dc.w $0182, $F401, $8200, $0182, $F401, $8308, $0507, $0783
+;L00058548       dc.w $020C, $0707
+
+;sound_00_chan_01                ; *** appears to be a byte out, should be $0005854e (see sound_table entry)
+;L0005854d       dc.w $8081, $8308, $0208, $8304, $0683, $020D
+;L00058558       dc.w $8302, $0680
+
+;sound_00_chan_02
+;L0005855c       dc.w $8183, $0403, $8308, $0483, $0409, $8302
+;L00058568       dc.w $0B83, $0409, $80
+
+L0005856d       dc.b $85,$60,$87,$80,$90,$01,$8F,$02,$8E,$84,$06 
 L00058578       dc.w $4645, $4342, $3F3E, $3F42, $4342, $3F3E, $8580, $9002             ;FECB?>?BCB?>....
 L00058588       dc.w $8F01, $8D02, $3718, $9003, $8F02, $8E18, $1890, $028F             ;....7...........
 L00058598       dc.w $018D, $0233, $1837, $1890, $048F, $028E, $180C, $180C           ;...3.7..........
