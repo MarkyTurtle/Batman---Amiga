@@ -48,7 +48,7 @@ kill_system
                 ;   #$0d = Explosion (grenade)
                 ;--------------------------------------------------
 
-SOUND_TO_PLAY   EQU     $08                                     ; valid range #$01 to #$0d
+SOUND_TO_PLAY   EQU     $01                                     ; valid range #$01 to #$0d
 
 init_test_prg
                 jsr     L00048000                               ; init music routine/instruments
