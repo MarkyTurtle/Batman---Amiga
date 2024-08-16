@@ -39,8 +39,8 @@ kill_system
                 ;   #$04 = Unknown/Unused Music - Level Timer Run out?
                 ;   #$05 = Drip SFX
                 ;   #$06 = Gas Leak
-                ;   #$07 = Batarang
-                ;   #$08 = Batrope
+                ;   #$07 = Batrope
+                ;   #$08 = Batarang
                 ;   #$09 = Grenade
                 ;   #$0a = Bad Guy Hit
                 ;   #$0b = Splash (jack in the vat)
@@ -48,7 +48,7 @@ kill_system
                 ;   #$0d = Explosion (grenade)
                 ;--------------------------------------------------
 
-SOUND_TO_PLAY   EQU     $05                                     ; valid range #$01 to #$0d
+SOUND_TO_PLAY   EQU     $08                                     ; valid range #$01 to #$0d
 
 init_test_prg
                 jsr     L00048000                               ; init music routine/instruments
@@ -1688,8 +1688,8 @@ L00058478       dc.w $0001, $3E00, $0000
                 ;   #$04 = Unknown/Unused Music
                 ;   #$05 = Drip SFX
                 ;   #$06 = Gas Leak
-                ;   #$07 = Batarang
-                ;   #$08 = Batrope
+                ;   #$07 = Batrope
+                ;   #$08 = Batarang
                 ;   #$09 = Grenade (throw)
                 ;   #$0a = Bad Guy Hit
                 ;   #$0b = Splash (jack in the vat)
@@ -1724,19 +1724,19 @@ L00058496       dc.w    sound_04_chan_00-sound_04       ; data addr: $00058496 +
 
 sound_05        ; sfx - drip                            ; original address $0005849e
 L0005849e       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    sound_05_chan_03-(sound_05+6)   ; data addr: $00058454 + $0426 = $0005887a
+                dc.w    sound_05_chan_03-(sound_05+6)   ; data addr: $00058454 + $0426 = $000588CA
 
 sound_06        ; sfx - gas leak                        ; original address $000584A6
 L000584A6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $0420                           ; data addr: $000584ac + $0420 = $000588CC
+                dc.w    sound_06_chan_03-(sound_06+6)   ; data addr: $000584ac + $0420 = $000588CC
 
-sound_07        ; sfx - batarang                        ; original address $000584Ae
+sound_07        ; sfx - batrope                         ; original address $000584Ae
 L000584Ae       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $041E                           ; data addr: $000584B4 + $041e = $000588D2
+                dc.w    sound_07_chan_03-(sound_07+6)   ; data addr: $000584B4 + $041e = $000588D2
 
-sound_08        ; sfx - batrope                         ; original address $000584B6
+sound_08        ; sfx - batarang                        ; original address $000584B6
 L000584B6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $0414                           ; data addr: $000584BC + $0414 = $000588D0
+                dc.w    sound_08_chan_03-(sound_08+6)   ; data addr: $000584BC + $0414 = $000588D0
 
 sound_09        ; sfx - grenade throw                   ; original address $000584Be
 L000584Be       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
@@ -1960,19 +1960,32 @@ L000588c8       dc.b $18,$80
 
 
                 ; ---------------- Sound 05 - Drip SFX - Pattern Sequences ----------------
-sound_05_chan_03                ; pattern sequence for SFX 05, channel 05 - original address $000588ca
+sound_05_chan_03                ; pattern sequence for SFX 05, channel 04 - original address $000588ca
 L000588ca       dc.b $19                        ; $19 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
 
 
-L000588cc       dc.b $1A,$80
+                ; ---------------- Sound 06 - Gas Leak SFX - Pattern Sequences ----------------
+sound_06_chan_03                ; pattern sequence for SFX 06, channel 04 - original address $000588cc
+L000588cc       dc.b $1A                        ; $1a - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
                 
+
 L000588ce       dc.b $1B,$80
+
+
+                ; ---------------- Sound 08 - Batarang SFX - Pattern Sequences ----------------
+sound_08_chan_03                ; pattern sequence for SFX 08, channel 04 - original address $000588d0              
+L000588d0       dc.b $1C                        ; $1c - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+
+                ; ---------------- Sound 07 - Batrope SFX - Pattern Sequences ----------------
+sound_07_chan_03                ; pattern sequence for SFX 07, channel 04 - original address $000588d2         
+L000588d2       dc.b $1D                        ; $1d - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
                 
-L000588d0       dc.b $1C,$80
-                
-L000588d2       dc.b $1D,$80
-                
+
 L000588d4       dc.b $1E,$80
                 
 L000588d6       dc.b $1F,$80
