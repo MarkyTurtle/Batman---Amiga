@@ -36,7 +36,7 @@ kill_system
                 ;   #$01 = Level 1 Music
                 ;   #$02 = Level 1 Completed
                 ;   #$03 = Player Live Lost
-                ;   #$04 = Unknown/Unused Music
+                ;   #$04 = Unknown/Unused Music - Level Timer Run out?
                 ;   #$05 = Drip SFX
                 ;   #$06 = Gas Leak
                 ;   #$07 = Batarang
@@ -48,7 +48,7 @@ kill_system
                 ;   #$0d = Explosion (grenade)
                 ;--------------------------------------------------
 
-SOUND_TO_PLAY   EQU     $03                                     ; valid range #$01 to #$0d
+SOUND_TO_PLAY   EQU     $05                                     ; valid range #$01 to #$0d
 
 init_test_prg
                 jsr     L00048000                               ; init music routine/instruments
@@ -1690,7 +1690,7 @@ L00058478       dc.w $0001, $3E00, $0000
                 ;   #$06 = Gas Leak
                 ;   #$07 = Batarang
                 ;   #$08 = Batrope
-                ;   #$09 = Grenade
+                ;   #$09 = Grenade (throw)
                 ;   #$0a = Bad Guy Hit
                 ;   #$0b = Splash (jack in the vat)
                 ;   #$0c = Ricochet
@@ -1715,26 +1715,48 @@ L0005848e       dc.w    sound_03_chan_00-sound_03       ; data addr: $0005848e +
                 dc.w    $0000                           ; unused channel - reserved for SFX 
 
 
-sound_04                                        ; original address $00058496
-L00058496       dc.w    $03A5, $03A1, $03A3, $0000
-sound_05                                        ; original address $0005849e
-L0005849e       dc.w    $0000, $0000, $0000, $0426
-sound_06                                        ; original address $000584A6
-L000584A6       dc.w    $0000, $0000, $0000, $0420
-sound_07                                        ; original address $000584Ae
-L000584Ae       dc.w    $0000, $0000, $0000, $041E
-sound_08                                        ; original address $000584B6
-L000584B6       dc.w    $0000, $0000, $0000, $0414
-sound_09                                        ; original address $000584Be
-L000584Be       dc.w    $0000, $0000, $0000, $040A
-sound_10                                        ; original address $000584C6
-L000584C6       dc.w    $0000, $0000, $0000, $0408
-sound_11                                        ; original address $000584Ce
-L000584Ce       dc.w    $0000, $0000, $0000, $0404
-sound_12                                        ; original address $000584D6
-L000584D6       dc.w    $0000, $0000, $0000, $03EC
-sound_13                                        ; original address $000584De
-L000584De       dc.w    $0000, $0000, $0000, $03F2
+sound_04        ; unknown music - timer run out?        ; original address $00058496
+L00058496       dc.w    sound_04_chan_00-sound_04       ; data addr: $00058496 + $03A5 = $0005883b
+                dc.w    sound_04_chan_01-(sound_04+2)   ; data addr: $00058498 + $03A1 = $00058839
+                dc.w    sound_04_chan_02-(sound_04+4)   ; data addr: $0005849a + $03A3 = $0005883d
+                dc.w    $0000                           ; unused channel - reserved for SFX 
+
+
+sound_05        ; sfx - drip                            ; original address $0005849e
+L0005849e       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    sound_05_chan_03-(sound_05+6)   ; data addr: $00058454 + $0426 = $0005887a
+
+sound_06        ; sfx - gas leak                        ; original address $000584A6
+L000584A6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $0420                           ; data addr: $000584ac + $0420 = $000588CC
+
+sound_07        ; sfx - batarang                        ; original address $000584Ae
+L000584Ae       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $041E                           ; data addr: $000584B4 + $041e = $000588D2
+
+sound_08        ; sfx - batrope                         ; original address $000584B6
+L000584B6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $0414                           ; data addr: $000584BC + $0414 = $000588D0
+
+sound_09        ; sfx - grenade throw                   ; original address $000584Be
+L000584Be       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $040A                           ; data addr: $000584C4 + $040a = $000588CE
+
+sound_10        ; sfx - bad guy hit                     ; original address $000584C6
+L000584C6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $0408                           ; data addr: $000584CC + $0408 = $000588D4
+
+sound_11        ; sfx - Splash (jack in the vat)        ; original address $000584Ce
+L000584Ce       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $0404                           ; data addr: $000584D4 + $0404 = $000588D8
+
+sound_12        ; sfx - Ricochet                        ; original address $000584D6
+L000584D6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $03EC                           ; data addr: $000584DC + $03ec = $000588C8
+
+sound_13        ; sfx - Explosion (grenade)             ; original address $000584De
+L000584De       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
+                dc.w    $03F2                           ; data addr: $000584E4 + $03f2 = $000588D6
                 
 
 
@@ -1753,7 +1775,9 @@ PATSEQ_SETLOOP          EQU     $81             ; Set ptr to End of Sequence Loo
 PATSEQ_TRANSPOSE        EQU     $82             ; Transpose the Pattern by the number of semi-tones (+ or -) parameter is next byte (12 = octave)
 PATSEQ_PATLOOP          EQU     $83             ; Loop the next pattern a et number of times, number of repeats set by next byte.
 
-sound_01_chan_00        ; pattern sequence for song 00, channel 00 - Lead & Arpeggios
+
+                ; ------------ Sound 01 - Level 1 Music - Pattern Sequences --------------
+sound_01_chan_00        ; pattern sequence for song 01, channel 00 - Lead & Arpeggios
 L00058528       dc.b PATSEQ_SETLOOP             ; $81 - Track loops back to here
                 dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
                 dc.b $0A                        ; pattern id (loop 4 times)
@@ -1783,7 +1807,7 @@ L00058549       dc.b $0C                        ; pattern id (loop 2 times)
                 dc.b PATSEQ_END                 ; $80 ; Loop Byte Added for myself
                                                 ; 26 patterns in loop (including repeats)
 
-sound_01_chan_01        ; pattern sequence for song 00, channel 00 - Chords, Rhythm & a bit of lead
+sound_01_chan_01        ; pattern sequence for song 01, channel 00 - Chords, Rhythm & a bit of lead
 L0005854e       dc.b PATSEQ_SETLOOP             ; $81 - Track loops back to here
                 dc.b PATSEQ_PATLOOP,$08         ; $83,$08 (set loop x 8)
                 dc.b $02                        ; pattern id (loop 8 times)
@@ -1797,7 +1821,7 @@ L00058558       dc.b PATSEQ_PATLOOP,$02         ; $83,$02 (set loop x 2)
                 dc.b PATSEQ_END                 ; $80 - Loop back to start
                                                 ; 17 patterns in loop (including repeats)
 
-sound_01_chan_02         ; pattern sequence for song 00, channel 03 - Bass Line
+sound_01_chan_02         ; pattern sequence for song 01, channel 03 - Bass Line
 L0005855c       dc.b PATSEQ_SETLOOP             ; $81 - Track loops back to here
                 dc.b PATSEQ_PATLOOP,$04         ; $83,$04 (set loop x 4)
                 dc.b $03                        ; pattern id (loop 4 times)
@@ -1851,13 +1875,15 @@ L00058758       dc.w $840C, $8739, $3032, $8406, $4545, $4345, $840C, $8734     
 L00058768       dc.w $3739, $8406, $4040, $3E40, $840C, $873B, $3234, $8580             ;79..@@>@...;24..
 
 
-sound_02_chan_00                 ; pattern sequence for song 01, channel 01 - original address $00058778
+
+                ; --------------- Sound 02 - Level 1 Completed - Pattern Sequences -------------------
+sound_02_chan_00                 ; pattern sequence for song 02, channel 01 - original address $00058778
 L00058778       dc.b $0F                        ; $0f - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-sound_02_chan_01                 ; pattern sequence for song 01, channel 02 - original address $0005877a
+sound_02_chan_01                 ; pattern sequence for song 02, channel 02 - original address $0005877a
 L0005877a       dc.b $0E                        ; $0e - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-sound_02_chan_02                 ; pattern sequence for song 01, channel 03 - original address $0005877c
+sound_02_chan_02                 ; pattern sequence for song 02, channel 03 - original address $0005877c
 L0005877c       dc.b $10                        ; $10 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
 
@@ -1875,13 +1901,15 @@ L000587F8       dc.w $3006, $3006, $8D0A, $300C, $8D0C, $2F0C, $8D0A, $300C     
 L00058808       dc.b $80
 
 
-sound_03_chan_00                 ; pattern sequence for song 02, channel 01 - original address $00058809
+
+                ; -------------- Sound 03 - Player Life Lost - Pattern Sequences ----------------
+sound_03_chan_00                 ; pattern sequence for song 03, channel 01 - original address $00058809
 L00058809       dc.b $11                        ; $11 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-sound_03_chan_01                 ; pattern sequence for song 02, channel 02 - original address $0005880b
+sound_03_chan_01                 ; pattern sequence for song 03, channel 02 - original address $0005880b
 L0005880b       dc.b $13                        ; $13 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-sound_03_chan_02                 ; pattern sequence for song 02, channel 03 - original address $0005880d
+sound_03_chan_02                 ; pattern sequence for song 03, channel 03 - original address $0005880d
 L0005880d       dc.b $12                        ; $12 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
                 
@@ -1889,17 +1917,69 @@ L0005880d       dc.b $12                        ; $12 - Pattern Id (Play 1 time)
                 dc.b $8F,$02,$90,$02,$8D,$04,$84,$06,$2B
 L00058818       dc.w $2B29, $2B85, $8718, $808F, $0290, $018E, $8406, $4645           ;+)+...........FE
 L00058828       dc.w $4443, $8587, $1880, $8406, $9004, $8F02, $1818, $1818             ;DC..............
-L00058838       dc.w $8014, $8015, $8016, $82FE, $1682, $0116, $1780, $9001             ;................
+L00058838       dc.b $80
+
+
+
+                ; ---------------- Sound 04 - Unknown Music - Pattern Sequences ----------------
+sound_04_chan_01                 ; pattern sequence for song 04, channel 01 - original address $00058809
+L00058839       dc.b $14                        ; $14 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+sound_04_chan_00                 ; pattern sequence for song 04, channel 00 - original address $00058809
+L0005883b       dc.b $15                        ; $15 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+sound_04_chan_02                 ; pattern sequence for song 04, channel 02 - original address $00058809
+L0005883d       dc.b $16                        ; $16 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_TRANSPOSE,$fe       ; $82,$FE - Transpose Pattern down -2 semi-tones
+                dc.b $16                        ; $16 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_TRANSPOSE,$01       ; $82,$01 - Transpose Pattern up 1 semi-tone
+                dc.b $16                        ; $16 - Pattern Id (Play 1 time)
+                dc.b $17                        ; $17 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+
+
+                dc.b $90,$01 
 L00058848       dc.w $8F02, $8E84, $0646, $453E, $3F46, $4546, $453E, $3F46             ;.....FE>?FEFE>?F
 L00058858       dc.w $4544, $433C, $3D44, $4344, $433C, $3D44, $4340, $3F37             ;EDC<=DCDC<=DC@?7
 L00058868       dc.w $3840, $3F40, $3F37, $3840, $3F85, $8D09, $3718, $8090             ;8@?@?78@?...7...
-L00058878       dc.w $028F, $048D, $0B32, $0C32, $0C32, $0C32, $0632, $0C32             ;.....2.2.2.2.2.2
+L00058878       dc.w $028F
+
+
+L0005887a       dc.b $04,$8D,$0B,$32,$0C,$32,$0C,$32,$0C,$32,$06,$32,$0C,$32
+
 L00058888       dc.w $1230, $0C30, $0C30, $0C30, $0630, $0C30, $128D, $0C30             ;.0.0.0.0.0.0...0
 L00058898       dc.w $0C30, $0C30, $0C30, $0630, $0C30, $128D, $148F, $0130             ;.0.0.0.0.0.....0
 L000588A8       dc.w $1880, $9005, $8F02, $8B06, $0103, $1F06, $1F06, $1F06             ;................
-L000588B8       dc.w $1F06, $1F0C, $1F0C, $1F06, $1F06, $1F0C, $8018, $1880             ;................
-L000588C8       dc.w $1880, $1980, $1A80, $1B80, $1C80, $1D80, $1E80, $1F80             ;................
-L000588D8       dc.w $2080, $8F09, $9006, $0C32, $808F, $0990, $0724, $1E80             ; ......2.....$..
+L000588B8       dc.w $1F06, $1F0C, $1F0C, $1F06, $1F06, $1F0C, $8018
+L000588c6       dc.b $18,$80
+
+L000588c8       dc.b $18,$80
+
+
+                ; ---------------- Sound 05 - Drip SFX - Pattern Sequences ----------------
+sound_05_chan_03                ; pattern sequence for SFX 05, channel 05 - original address $000588ca
+L000588ca       dc.b $19                        ; $19 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+
+L000588cc       dc.b $1A,$80
+                
+L000588ce       dc.b $1B,$80
+                
+L000588d0       dc.b $1C,$80
+                
+L000588d2       dc.b $1D,$80
+                
+L000588d4       dc.b $1E,$80
+                
+L000588d6       dc.b $1F,$80
+
+L000588d8       dc.b $20,$80
+
+L000588da       dc.b $8F,$09,$90,$06,$0C,$32,$80,$8F,$09,$90,$07,$24,$1E,$80
 L000588E8       dc.w $8F09, $9008, $0C3C, $808F, $0990, $0916, $3280, $8F09             ;.....<......2...
 L000588F8       dc.w $900A, $1C1E, $808F, $0990, $0B18, $1E80, $8F09, $900C             ;................
 L00058908       dc.w $161E, $808F, $0990, $0D07, $3280, $8F09, $900E, $1896             ;........2.......
