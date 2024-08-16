@@ -560,7 +560,7 @@ init_sound                                                      ; original addre
                         ; is MSB=0 - store ptr & set pattern data
 .init_channel_data_and_exit                                     ; original address $000482de
                         move.l  a2,$0006(a1)                    ; next pattern ptr
-                        lea.l   song_channel_data_base,a2       ; L000584e6,a2
+                        lea.l   sound_pattern_data_base,a2      ; L000584e6,a2
                         ext.w   d0
                         add.w   d0,d0
                         adda.w  d0,a2
@@ -759,7 +759,7 @@ L00048408               movea.l $000a(a4),a3                    ; a3 = CMD2 save
 
 .set_next_pattern_ptr                                           ; original address $0004846e
                         move.l  a3,$0006(a4)
-                        lea.l   song_channel_data_base,a3       ; pattern indirection table address
+                        lea.l   sound_pattern_data_base,a3      ; pattern indirection table address
                         ext.w   d0                              ; d0 = byte extended to word  
                         add.w   d0,d0                           ; d0 = table address index
                         adda.w  d0,a3                           ; a3 = table entry ptr
@@ -1697,76 +1697,116 @@ L00058478       dc.w $0001, $3E00, $0000
                 ;   #$0d = Explosion (grenade)
 sounds_table                                            ; original address $0005847e
 sound_01        ; Level Music                           ; original address $0005847e
-L0005847e       dc.w    sound_01_chan_00-sound_01       ; data addr: $0005847e + $00aa = $00058528
-                dc.w    sound_01_chan_01-(sound_01+2)   ; data addr: $00058480 + $00cd = $0005854d - ; *** offset was a byte out, altered to be $0005854e 
-                dc.w    sound_01_chan_02-(sound_01+4)   ; data addr: $00058480 + $00da = $0005855c
+L0005847e       dc.w    sound_01_chan_00-sound_01       ; pattern sequence byte offset: $0005847e + $00aa = $00058528
+                dc.w    sound_01_chan_01-(sound_01+2)   ; pattern sequence byte offset: $00058480 + $00cd = $0005854d - ; *** offset was a byte out, altered to be $0005854e 
+                dc.w    sound_01_chan_02-(sound_01+4)   ; pattern sequence byte offset: $00058480 + $00da = $0005855c
                 dc.w    $0000                           ; unused channel - reserved for SFX 
 
 sound_02        ; Level Completed                       ; original address $00058486
-L00058486       dc.w    sound_02_chan_00-sound_02       ; data addr: $00058486 + $02f2 = $00058778
-                dc.w    sound_02_chan_01-(sound_02+2)   ; data addr: $00058488 + $02f2 = $0005877a
-                dc.w    sound_02_chan_02-(sound_02+4)   ; data addr: $0005848a + $02f2 = $0005877c
+L00058486       dc.w    sound_02_chan_00-sound_02       ; pattern sequence byte offset: $00058486 + $02f2 = $00058778
+                dc.w    sound_02_chan_01-(sound_02+2)   ; pattern sequence byte offset: $00058488 + $02f2 = $0005877a
+                dc.w    sound_02_chan_02-(sound_02+4)   ; pattern sequence byte offset: $0005848a + $02f2 = $0005877c
                 dc.w    $0000                           ; unused channel - reserved for SFX 
 
 sound_03        ; Player Life Lost                      ; original address $0005848e
-L0005848e       dc.w    sound_03_chan_00-sound_03       ; data addr: $0005848e + $037B = $00058809
-                dc.w    sound_03_chan_01-(sound_03+2)   ; data addr: $00058480 + $037B = $0005880b
-                dc.w    sound_03_chan_02-(sound_03+4)   ; data addr: $00058482 + $037B = $0005880d
+L0005848e       dc.w    sound_03_chan_00-sound_03       ; pattern sequence byte offset: $0005848e + $037B = $00058809
+                dc.w    sound_03_chan_01-(sound_03+2)   ; pattern sequence byte offset: $00058480 + $037B = $0005880b
+                dc.w    sound_03_chan_02-(sound_03+4)   ; pattern sequence byte offset: $00058482 + $037B = $0005880d
                 dc.w    $0000                           ; unused channel - reserved for SFX 
 
 
 sound_04        ; unknown music - timer run out?        ; original address $00058496
-L00058496       dc.w    sound_04_chan_00-sound_04       ; data addr: $00058496 + $03A5 = $0005883b
-                dc.w    sound_04_chan_01-(sound_04+2)   ; data addr: $00058498 + $03A1 = $00058839
-                dc.w    sound_04_chan_02-(sound_04+4)   ; data addr: $0005849a + $03A3 = $0005883d
+L00058496       dc.w    sound_04_chan_00-sound_04       ; pattern sequence byte offset: $00058496 + $03A5 = $0005883b
+                dc.w    sound_04_chan_01-(sound_04+2)   ; pattern sequence byte offset: $00058498 + $03A1 = $00058839
+                dc.w    sound_04_chan_02-(sound_04+4)   ; pattern sequence byte offset: $0005849a + $03A3 = $0005883d
                 dc.w    $0000                           ; unused channel - reserved for SFX 
 
 
 sound_05        ; sfx - drip                            ; original address $0005849e
 L0005849e       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    sound_05_chan_03-(sound_05+6)   ; data addr: $00058454 + $0426 = $000588CA
+                dc.w    sound_05_chan_03-(sound_05+6)   ; pattern sequence byte offset: $00058454 + $0426 = $000588CA
 
 sound_06        ; sfx - gas leak                        ; original address $000584A6
 L000584A6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    sound_06_chan_03-(sound_06+6)   ; data addr: $000584ac + $0420 = $000588CC
+                dc.w    sound_06_chan_03-(sound_06+6)   ; pattern sequence byte offset: $000584ac + $0420 = $000588CC
 
 sound_07        ; sfx - batrope                         ; original address $000584Ae
 L000584Ae       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    sound_07_chan_03-(sound_07+6)   ; data addr: $000584B4 + $041e = $000588D2
+                dc.w    sound_07_chan_03-(sound_07+6)   ; pattern sequence byte offset: $000584B4 + $041e = $000588D2
 
 sound_08        ; sfx - batarang                        ; original address $000584B6
 L000584B6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    sound_08_chan_03-(sound_08+6)   ; data addr: $000584BC + $0414 = $000588D0
+                dc.w    sound_08_chan_03-(sound_08+6)   ; pattern sequence byte offset: $000584BC + $0414 = $000588D0
 
 sound_09        ; sfx - grenade throw                   ; original address $000584Be
 L000584Be       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $040A                           ; data addr: $000584C4 + $040a = $000588CE
+                dc.w    sound_09_chan_03-(sound_09+6)   ; pattern sequence byte offset: $000584C4 + $040a = $000588CE
 
 sound_10        ; sfx - bad guy hit                     ; original address $000584C6
 L000584C6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $0408                           ; data addr: $000584CC + $0408 = $000588D4
+                dc.w    sound_10_chan_03-(sound_10+6)   ; pattern sequence byte offset: $000584CC + $0408 = $000588D4
 
 sound_11        ; sfx - Splash (jack in the vat)        ; original address $000584Ce
 L000584Ce       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $0404                           ; data addr: $000584D4 + $0404 = $000588D8
+                dc.w    sound_11_chan_03-(sound_11+6)   ; pattern sequence byte offset: $000584D4 + $0404 = $000588D8
 
 sound_12        ; sfx - Ricochet                        ; original address $000584D6
 L000584D6       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $03EC                           ; data addr: $000584DC + $03ec = $000588C8
+                dc.w    sound_12_chan_03-(sound_12+6)   ; pattern sequence byte offset: $000584DC + $03ec = $000588C8
 
 sound_13        ; sfx - Explosion (grenade)             ; original address $000584De
 L000584De       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
-                dc.w    $03F2                           ; data addr: $000584E4 + $03f2 = $000588D6
+                dc.w    sound_13_chan_03-(sound_13+6)   ; pattern sequence byte offset: $000584E4 + $03f2 = $000588D6
                 
 
 
 
-song_channel_data_base                          ; original address $000584e6
-L000584e6       dc.w $0087
-L000584E8       dc.w $0089, $009C, $00C5, $00EA, $0104, $010B, $0138, $016F             ;.............8.o
-L000584F8       dc.w $0188, $01AC, $01C3, $01FC, $0241, $027C, $02A9, $02C6           ;.........A.|....
-L00058508       dc.w $0307, $0315, $0322, $0338, $0367, $0398, $03B1, $03C4             ;.....".8.g......
-L00058518       dc.w $03C9, $03CE, $03D3, $03D8, $03DD, $03E2, $03E7, $03EC             ;................
+
+;----------------------------- Sound Pattern Database --------------------------
+; database of Sound Pattern data offsets.
+; The Sound Pattern Sequences (e.g. sound_01_chan_00) contain indexes into this 
+; table that identify the pattern/track to be played.
+;
+; The byte offests in this table are added to the table entry address to find
+; the address of the pattern/track data.
+;
+; e.g. the first pattern $00
+;       Address = $000584e6 + $0087 = $0005856d (labelled by 'pattern_00')
+;
+sound_pattern_data_base                         ; original address $000584e6
+L000584e6       dc.w pattern_00-(sound_pattern_data_base)       ; $000584e6 + $0087 = $0005856d
+L000584E8       dc.w $0089
+                dc.w $009C
+                dc.w $00C5
+                dc.w $00EA
+                dc.w $0104
+                dc.w $010B
+                dc.w $0138
+                dc.w $016F
+L000584F8       dc.w $0188
+                dc.w $01AC
+                dc.w $01C3
+                dc.w $01FC
+                dc.w $0241
+                dc.w $027C
+                dc.w $02A9
+                dc.w $02C6
+L00058508       dc.w $0307
+                dc.w $0315
+                dc.w $0322
+                dc.w $0338
+                dc.w $0367
+                dc.w $0398
+                dc.w $03B1
+                dc.w $03C4
+L00058518       dc.w $03C9
+                dc.w $03CE
+                dc.w $03D3
+                dc.w $03D8
+                dc.w $03DD
+                dc.w $03E2
+                dc.w $03E7
+                dc.w $03EC
 
 
 ; Song Pattern Sequence Commands
@@ -1837,7 +1877,7 @@ L00058568       dc.b $0B                        ; pattern id (loop 2 times)
                                                 ; 22 patterns in loop (including repeats)
 
 
-
+pattern_00
 L0005856d       dc.b $85,$60,$87,$80,$90,$01,$8F,$02,$8E,$84,$06 
 L00058578       dc.w $4645, $4342, $3F3E, $3F42, $4342, $3F3E, $8580, $9002             ;FECB?>?BCB?>....
 L00058588       dc.w $8F01, $8D02, $3718, $9003, $8F02, $8E18, $1890, $028F             ;....7...........
@@ -1912,11 +1952,12 @@ L0005880b       dc.b $13                        ; $13 - Pattern Id (Play 1 time)
 sound_03_chan_02                 ; pattern sequence for song 03, channel 03 - original address $0005880d
 L0005880d       dc.b $12                        ; $12 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-                
+
+
 
                 dc.b $8F,$02,$90,$02,$8D,$04,$84,$06,$2B
-L00058818       dc.w $2B29, $2B85, $8718, $808F, $0290, $018E, $8406, $4645           ;+)+...........FE
-L00058828       dc.w $4443, $8587, $1880, $8406, $9004, $8F02, $1818, $1818             ;DC..............
+L00058818       dc.b $2B,$29,$2B,$85,$87,$18,$80,$8F,$02,$90,$01,$8E,$84,$06,$46,$45
+L00058828       dc.b $44,$43,$85,$87,$18,$80,$84,$06,$90,$04,$8F,$02,$18,$18,$18,$18
 L00058838       dc.b $80
 
 
@@ -1942,21 +1983,26 @@ L0005883d       dc.b $16                        ; $16 - Pattern Id (Play 1 time)
 
 
                 dc.b $90,$01 
-L00058848       dc.w $8F02, $8E84, $0646, $453E, $3F46, $4546, $453E, $3F46             ;.....FE>?FEFE>?F
-L00058858       dc.w $4544, $433C, $3D44, $4344, $433C, $3D44, $4340, $3F37             ;EDC<=DCDC<=DC@?7
-L00058868       dc.w $3840, $3F40, $3F37, $3840, $3F85, $8D09, $3718, $8090             ;8@?@?78@?...7...
-L00058878       dc.w $028F
-
+L00058848       dc.b $8F,$02,$8E,$84,$06,$46,$45,$3E,$3F,$46,$45,$46,$45,$3E,$3F,$46
+L00058858       dc.b $45,$44,$43,$3C,$3D,$44,$43,$44,$43,$3C,$3D,$44,$43,$40,$3F,$37
+L00058868       dc.b $38,$40,$3F,$40,$3F,$37,$38,$40,$3F,$85,$8D,$09,$37,$18,$80,$90
+L00058878       dc.b $02,$8F
 
 L0005887a       dc.b $04,$8D,$0B,$32,$0C,$32,$0C,$32,$0C,$32,$06,$32,$0C,$32
 
-L00058888       dc.w $1230, $0C30, $0C30, $0C30, $0630, $0C30, $128D, $0C30             ;.0.0.0.0.0.0...0
-L00058898       dc.w $0C30, $0C30, $0C30, $0630, $0C30, $128D, $148F, $0130             ;.0.0.0.0.0.....0
-L000588A8       dc.w $1880, $9005, $8F02, $8B06, $0103, $1F06, $1F06, $1F06             ;................
-L000588B8       dc.w $1F06, $1F0C, $1F0C, $1F06, $1F06, $1F0C, $8018
+L00058888       dc.b $12,$30,$0C,$30,$0C,$30,$0C,$30,$06,$30,$0C,$30,$12,$8D,$0C,$30
+L00058898       dc.b $0C,$30,$0C,$30,$0C,$30,$06,$30,$0C,$30,$12,$8D,$14,$8F,$01,$30
+L000588A8       dc.b $18,$80,$90,$05,$8F,$02,$8B,$06,$01,$03,$1F,$06,$1F,$06,$1F,$06
+L000588B8       dc.b $1F,$06,$1F,$0C,$1F,$0C,$1F,$06,$1F,$06,$1F,$0C,$80,$18
 L000588c6       dc.b $18,$80
 
-L000588c8       dc.b $18,$80
+
+
+                ; ---------------- Sound 12 - Ricochet SFX - Pattern Sequences ----------------
+sound_12_chan_03                ; pattern sequence for SFX 12, channel 04 - original address $000588ca
+L000588c8       dc.b $18                        ; $18 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
 
 
                 ; ---------------- Sound 05 - Drip SFX - Pattern Sequences ----------------
@@ -1965,13 +2011,19 @@ L000588ca       dc.b $19                        ; $19 - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
 
 
+
                 ; ---------------- Sound 06 - Gas Leak SFX - Pattern Sequences ----------------
 sound_06_chan_03                ; pattern sequence for SFX 06, channel 04 - original address $000588cc
 L000588cc       dc.b $1A                        ; $1a - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-                
 
-L000588ce       dc.b $1B,$80
+
+
+                ; ---------------- Sound 09 - Grenade Throw SFX - Pattern Sequences ----------------              
+sound_09_chan_03                ; pattern sequence for SFX 09, channel 04 - original address $000588ce
+L000588ce       dc.b $1B                        ; $1b - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
 
 
                 ; ---------------- Sound 08 - Batarang SFX - Pattern Sequences ----------------
@@ -1980,80 +2032,39 @@ L000588d0       dc.b $1C                        ; $1c - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
 
 
+
                 ; ---------------- Sound 07 - Batrope SFX - Pattern Sequences ----------------
 sound_07_chan_03                ; pattern sequence for SFX 07, channel 04 - original address $000588d2         
 L000588d2       dc.b $1D                        ; $1d - Pattern Id (Play 1 time)
                 dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
-                
 
-L000588d4       dc.b $1E,$80
-                
-L000588d6       dc.b $1F,$80
 
-L000588d8       dc.b $20,$80
+
+                ; ---------------- Sound 10 - Bad Guy Hit SFX - Pattern Sequences ----------------               
+sound_10_chan_03                ; pattern sequence for SFX 10, channel 04 - original address $000588d4
+L000588d4       dc.b $1E                        ; $1e - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+
+
+                ; ---------------- Sound 13 - Explosion (Grenade) SFX - Pattern Sequences ----------------
+sound_13_chan_03                ; pattern sequence for SFX 13, channel 04 - original address $000588d6
+L000588d6       dc.b $1F                        ; $1f - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+
+
+                ; ---------------- Sound 11 - Splash (Jack in the Vat) SFX - Pattern Sequences ---------------- 
+sound_11_chan_03                ; pattern sequence for SFX 11, channel 04 - original address $000588d4
+L000588d8       dc.b $20                        ; $20 - Pattern Id (Play 1 time)
+                dc.b PATSEQ_END                 ; $80 - End of Track (no loop set)
+
+
 
 L000588da       dc.b $8F,$09,$90,$06,$0C,$32,$80,$8F,$09,$90,$07,$24,$1E,$80
-L000588E8       dc.w $8F09, $9008, $0C3C, $808F, $0990, $0916, $3280, $8F09             ;.....<......2...
-L000588F8       dc.w $900A, $1C1E, $808F, $0990, $0B18, $1E80, $8F09, $900C             ;................
-L00058908       dc.w $161E, $808F, $0990, $0D07, $3280, $8F09, $900E, $1896             ;........2.......
-L00058918       dc.w $8090, $0000, $0000  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+L000588E8       dc.b $8F,$09,$90,$08,$0C,$3C,$80,$8F,$09,$90,$09,$16,$32,$80,$8F,$09
+L000588F8       dc.b $90,$0A,$1C,$1E,$80,$8F,$09,$90,$0B,$18,$1E,$80,$8F,$09,$90,$0C
+L00058908       dc.b $16,$1E,$80,$8F,$09,$90,$0D,$07,$32,$80,$8F,$09,$90,$0E,$18,$96
+L00058918       dc.b $80,$90,$00,$00,$00,$00  
 
 
