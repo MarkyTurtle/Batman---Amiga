@@ -7,16 +7,18 @@
                 ; by the game loader
                 ;
                 ;
-                ; Filename/Area Start   End         Additional Info
+                ; Filename/Area     Start   End         Additional Info
                 ;---------------------------------------------------------------------------------------------
-                ; BATMAN        $800                - Game Loader (always resident across loads)
-                ; CODE1         $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
-                ; MAPGR         $7FFC
-                ; BATSPR1       $10FFC
-                ; CHEM          $47FE4
-                ; STACK         $5a36c              - Address of program stack - not a file load.
-                ; LOADBUFFER    $5a36C  $7C7FC      - File Load Area (files loaded here before depacked/relocated)
-                ; PANEL         $7C7FC  $80000      - Game State/Lives manager (always resident across loads)
+                ; BATMAN            $800                - Game Loader (always resident across loads)
+                ; CODE1             $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
+                ; MAPGR             $7FFC
+                ; BATSPR1           $10FFC
+                ; CHEM              $47FE4
+                ; STACK             $5a36c              - Address of program stack - not a file load.
+                ; DISPLAY BUFFER 1  $5a36c
+                ; DISPLAY BUFFER 2  $61b9c  $70000
+                ; LOADBUFFER        $5a36C  $7C7FC      - File Load Area (files loaded here before depacked/relocated)
+                ; PANEL             $7C7FC  $80000      - Game State/Lives manager (always resident across loads)
                 ;
                 ;
                 ;
@@ -32,6 +34,15 @@ LOADER_LEVEL_3          EQU $0000082c               ; Load Level 3
 LOADER_LEVEL_4          EQU $00000830               ; Load Level 4
 LOADER_LEVEL_5          EQU $00000834               ; Load Level 5
 
+
+; Music Player Constants
+PLAYER_INIT             EQU $00048000               ; initialise music/sfx player
+PLAYER_SILENCE          EQU $00048004               ; Silence all audio
+PLAYER_INIT_SFX_1       EQU $00048008               ; Initialise SFX Audio Channnel
+PLAYER_INIT_SFX_2       EQU $0004800c               ; same as init_sfx_1 above
+PLAYER_INIT_SONG        EQU $00048010               ; initialise song to play - D0.l = song/sound 1 to 13
+PLAYER_INIT_SFX         EQU $00048014               ; initialise sfx to play - d0.l = sfx 5 to 13
+PLAYER_UPDATE           EQU $00048018               ; regular update (vblank to keep sounds/music playing)
 
 
 ; Panel Constants - original function addresses
@@ -86,6 +97,10 @@ PANELST2_CHEAT_ACTIVE      EQU $7
 ;-------------------
 STACK_ADDRESS               EQU $0005a36c
 
+DISPLAY_BUFFER_1            EQU $00061b9c   ; - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
+DISPLAY_BUFFER_2            EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+
+
 
                 section code1,code_c
                 ;org     $0                                          ; original load address
@@ -105,6 +120,7 @@ original_start:                                     ; original address $2FFC
            
 
 game_start:
+                    ; kill the system & initialise h/w
 L00003000           moveq   #$00,d0
 L00003002           move.w  #$1fff,$00dff09a        ; DMACON - Disable DMA (All DMA Channels)
 L0000300a           move.w  #$1fff,$00dff096        ; INTENA - Disable Interrupts (apart from EXTER, INTEN) level 6 still active
@@ -158,119 +174,161 @@ L000030d2           move.b  #$ff,$00bfd300          ; CIAB-DDRB - PORT B dir = a
                     ; set stack address
 L000030da           lea.l   STACK_ADDRESS,a7        ; External Address - Stack = $0005a36c
 
-L000030e0           moveq   #$02,d7
-L000030e2           lea.l   L000031b0,a0
-L000030e8           lea.l   $00000064,a1                        ; Vector 
-L000030ee           move.l  (a0)+,(a1)+
-L000030f0           dbf.w   d7,L000030ee
 
-L000030f4           move.w  #$ff00,$00dff034
-L000030fc           move.w  d0,$00dff036
-L00003102           or.b    #$ff,$00bfd100
-L0000310a           and.b   #$87,$00bfd100
-L00003112           and.b   #$87,$00bfd100
-L0000311a           or.b    #$ff,$00bfd100
-L00003122           move.b  #$f0,$00bfe601
-L0000312a           move.b  #$37,$00bfeb01
-L00003132           move.b  #$11,$00bfef01
-L0000313a           move.b  #$91,$00bfd600
-L00003142           move.b  d0,$00bfdb00
-L00003148           move.b  d0,$00bfdf00
-L0000314e           move.w  #$7fff,$00dff09c
-L00003156           tst.b   $00bfed01
-L0000315c           move.b  #$8a,$00bfed01
-L00003164           tst.b   $00bfdd00
-L0000316a           move.b  #$93,$00bfdd00
-L00003172           move.w  #$e078,$00dff09a
+                    ; set interrupt handlers (only level 1,2 & 3)
+                    ; odd as additional handlers exist
+L000030e0           moveq   #$02,d7                 ; count 2 + 1 
+L000030e2           lea.l   L000031b0,a0
+L000030e8           lea.l   $00000064,a1            ; Level 1 Autovector Address
+.int_loop
+                    move.l  (a0)+,(a1)+             ; Set autovectors for level 1,2 & 3
+                    dbf.w   d7,.int_loop            ; L000030ee
+
+
+                    ; Initialise CIA Timers & 
+L000030f4           move.w  #$ff00,$00dff034        ; POTGO
+L000030fc           move.w  d0,$00dff036            ; JOYTEST = $00 (reset counters)
+L00003102           or.b    #$ff,$00bfd100          ; CIAB - PRB - deselect all drive bits
+L0000310a           and.b   #$87,$00bfd100          ; CIAB - PRB - latch motor off, deselect all drives
+L00003112           and.b   #$87,$00bfd100          ; CIAB - PRB - latch motor off, deselect all drives
+L0000311a           or.b    #$ff,$00bfd100          ; CIAB - PRB - deselect all drive bits
+L00003122           move.b  #$f0,$00bfe601          ; CIAA - TBLO - Timer B Low Byte
+L0000312a           move.b  #$37,$00bfeb01          ; CIAA - UNUSED - according to H/W Ref (BUG? )
+L00003132           move.b  #$11,$00bfef01          ; CIAA - CRB - Force Load & Start Timer B
+
+                    ; CIAA - Timer B Low = $f0      ; 0.33 second
+
+L0000313a           move.b  #$91,$00bfd600          ; CIAB - TBLO - Timer B Low Byte
+L00003142           move.b  d0,$00bfdb00            ; CIAB - TBLO - Timer B Low Byte = $00
+L00003148           move.b  d0,$00bfdf00            ; CIAB - CRB = $00
+
+                    ; CIAB - Timer B Low = $00
+
+L0000314e           move.w  #$7fff,$00dff09c        ; INTREQ - clear all interrupt request bits
+L00003156           tst.b   $00bfed01               ; CIAA - ICR - Clear by reading (interrupt control)
+L0000315c           move.b  #$8a,$00bfed01          ; CIAA - ICR - Enable SP & Timer A & B Interrupts
+L00003164           tst.b   $00bfdd00               ; CIAB - ICR - Clear by reading (interrupt control)
+L0000316a           move.b  #$93,$00bfdd00          ; CIAB - ICR - Enable FLG & Timer A & B Interrupts
+L00003172           move.w  #$e078,$00dff09a        ; INTENA - Enable - EXTER (disk sync), BLIT, VERTB, COPER, PORTS (keyboard & Timers)
+
+
+                    ; start initialising the game
 L0000317a           jsr     PANEL_INIT_LIVES            ; Panel - Initialise Player Lives - $0007c838
 L00003180           jsr     PANEL_INIT_SCORE            ; Panel - Initialise Player Score to 0 - $0007c81c
 L00003186           jsr     PANEL_INIT_ENERGY           ; Panel - Initialise Player Energy - $0007c854
 L0000318c           move.w  #$0800,d0                   ; BCD Encoding of Level Timer MM:SS
 L00003190           jsr     PANEL_INIT_TIMER            ; Panel - Initalise the Level Timer - $0007c80e 
-L00003196           bsr.w   L00003746
-L0000319a           lea.l   L000031c8,a0
-L000031a0           bsr.w   L0000368a
-L000031a4           bsr.w   L000036fa
-L000031a8           bra.w   L00003ae4
+L00003196           bsr.w   clear_display_memory        ; Clear display buffers - $00003746
+L0000319a           lea.l   copper_list,a0              ; L000031c8,a0
+L000031a0           bsr.w   reset_display               ; reset display (320x218) 4 bitplanes - L0000368a
+L000031a4           bsr.w   double_buffer_playfield     ; L000036fa
+L000031a8           bra.w   start_game                  ;  L00003ae4
 
 
+                    ; maybe second copper list
 L000031ac           dc.w $ffff                      ; illegal
 L000031ae           dc.w $fffe                      ; illegal
-L000031b0           dc.w $0000, $32c0               ; or.b #$c0,d0
-L000031b4           dc.w $0000, $32f8               ; or.b #$f8,d0
-L000031b8           dc.w $0000, $331e               ; or.b #$1e,d0
-L000031bc           dc.w $0000, $335a               ; or.b #$5a,d0
-L000031c0           dc.w $0000, $3370               ; or.b #$70,d0
-L000031c4           dc.w $0000, $3396               ; or.b #$96,d0
-L000031c8           dc.w $2c01                      ; move.l d1,d6
-L000031ca           dc.w $fffe                      ; illegal
-L000031cc           dc.w $010a, $0002               ; movep.w (a2,$0002) == $0006d7ea,d0
-L000031d0           dc.w $0108, $0002               ; movep.w (a0,$0002) == $00000a02,d0
-L000031d4           dc.w $00e2                      ; illegal
-L000031d6           dc.w $7680                      ; moveq #$80,d3
-L000031d8           dc.w $00e0                      ; illegal
-L000031da           dc.w $0006, $00e6               ; or.b #$e6,d6
-L000031de           dc.w $98e0                      ; suba.w -(a0) [3000],a4
-L000031e0           dc.w $00e4                      ; illegal
-L000031e2           dc.w $0006, $00ea               ; or.b #$ea,d6
-L000031e6           dc.w $bb40                      ; eor.w d5,d0
-L000031e8           dc.w $00e8                      ; $0006, $00ee [ cmp2.b (a0,$00ee) == $00000aee,d0 ]
-L000031ea           dc.w $0006, $00ee               ; or.b #$ee,d6
-L000031ee           dc.w $dda0                      ; add.l d6,-(a0) [4ef83000]
-L000031f0           dc.w $00ec                      ; $0006, $0182 [ cmp2.b (a4,$0182) == $00bfe283,d0 ]
-L000031f2           dc.w $0006, $0182               ; or.b #$82,d6
-L000031f6           dc.w $0446, $0184               ; sub.w #$0184,d6
-L000031fa           dc.w $088a                      ; illegal
-L000031fc           dc.w $0186                      ; bclr.l d0,d6
-L000031fe           dc.w $0cce                      ; illegal
-L00003200           dc.w $0188, $0048             ; movep.w d0,(a0,$0048) == $00000a48
-L00003204           dc.w $018a, $028c             ; movep.w d0,(a2,$028c) == $0006da74
-L00003208           dc.w $018c, $0c64             ; movep.w d0,(a4,$0c64) == $00bfed65
-L0000320c           dc.w $018e, $0a22             ; movep.w d0,(a6,$0a22) == $00dffa22
-L00003210           dc.w $0190                      ; bclr.b d0,(a0) [00]
-L00003212           dc.w $06a6, $0192, $0c4a      ; add.l #$01920c4a,-(a6)
-L00003218           dc.w $0194                      ; bclr.b d0,(a4)
-L0000321a           dc.w $0ec6                      ; illegal
-L0000321c           dc.w $0196                      ; bclr.b d0,(a6)
-L0000321e           dc.w $0e88                      ; illegal
-L00003220           dc.w $0198                      ; bclr.b d0,(a0)+ [00]
-L00003222           dc.w $0600, $019a               ; add.b #$9a,d0
-L00003226           dc.w $0262, $019c               ; and.w #$019c,-(a2) [93f1]
-L0000322a           dc.w $0668, $019e, $06ae      ; add.w #$019e,(a0,$06ae) == $000010ae [0d1b]
-L00003230           dc.w $da01                      ; add.b d1,d5
-L00003232           dc.w $fffe                      ; illegal
-L00003234           dc.w $010a, $0000               ; movep.w (a2,$0000) == $0006d7e8,d0
-L00003238           dc.w $0108, $0000               ; movep.w (a0,$0000) == $00000a00,d0
-L0000323c           dc.w $00e2                      ; illegal
-L0000323e           dc.w $c89a                      ; and.l (a2)+ [124197f7],d4
-L00003240           dc.w $00e0                      ; illegal
-L00003242           dc.w $0007, $00e6               ; or.b #$e6,d7
-L00003246           dc.w $d01a                      ; add.b (a2)+ [12],d0
-L00003248           dc.w $00e4                      ; illegal
-L0000324a           dc.w $0007, $00ea               ; or.b #$ea,d7
-L0000324e           dc.w $d79a                      ; add.l d3,(a2)+ [124197f7]
-L00003250           dc.w $00e8                      ; $0007, $00ee [ cmp2.b (a0,$00ee) == $00000aee,d0 ]
-L00003252           dc.w $0007, $00ee               ; or.b #$ee,d7
-L00003256           dc.w $df1a                      ; add.b d7,(a2)+ [12]
-L00003258           dc.w $00ec                      ; $0007, $0180 [ cmp2.b (a4,$0180) == $00bfe281,d0 ]
-L0000325a           dc.w $0007, $0180               ; or.b #$80,d7
-L0000325e           dc.w $0000, $0182               ; or.b #$82,d0
-L00003262           dc.w $0000, $0184               ; or.b #$84,d0
-L00003266           dc.w $0000, $0186               ; or.b #$86,d0
-L0000326a           dc.w $0000, $0188               ; or.b #$88,d0
-L0000326e           dc.w $0000, $018a               ; or.b #$8a,d0
-L00003272           dc.w $0000, $018c               ; or.b #$8c,d0
-L00003276           dc.w $0000, $018e               ; or.b #$8e,d0
-L0000327a           dc.w $0000, $0190               ; or.b #$90,d0
-L0000327e           dc.w $0000, $0192               ; or.b #$92,d0
-L00003282           dc.w $0000, $0194               ; or.b #$94,d0
-L00003286           dc.w $0000, $0196               ; or.b #$96,d0
-L0000328a           dc.w $0000, $0198               ; or.b #$98,d0
-L0000328e           dc.w $0000, $019a               ; or.b #$9a,d0
-L00003292           dc.w $0000, $019c               ; or.b #$9c,d0
-L00003296           dc.w $0000, $019e               ; or.b #$9e,d0
-L0000329a           dc.w $0000, $ffff               ; or.b #$ff,d0
-L0000329e           dc.w $fffe                      ; illegal
+
+interrupt_handlers
+L000031b0           dc.l level1_interrupt_handler   ; $000032c0
+L000031b4           dc.l level2_interrupt_handler   ; $000032f8
+L000031b8           dc.l level3_interrupt_handler   ; $0000331e
+L000031bc           dc.l level4_interrupt_handler   ; $0000335a - unused by game init above
+L000031c0           dc.l level5_interrupt_handler   ; $00003370 - unused by game init above
+L000031c4           dc.l level6_interrupt_handler   ; $00003396 - unused by game init above
+
+
+
+
+                    ; -------------------- copper list -------------------
+                    ; Playfield Display
+                    ; ($67680) - Bitplane1 size = $2260 (8800) (336*209 @ 42 bytes per raster)
+                    ; ($698e0) - Bitplane2 size = $2260 (8800) (336*209 @ 42 bytes per raster)  
+                    ; ($6bb40) - Bitplane3 size = $2260 (8800) (336*209 @ 42 bytes per raster) 
+                    ; ($6dda0) - Bitplane4 size = $2260 (8800) (336*209 @ 42 bytes per raster) 
+                    ;
+                    ; Panel Display
+                    ; ($67680) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)  
+                    ; ($698e0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)  
+                    ; ($6bb40) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)   
+                    ; ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)
+                    ; 
+copper_list                                         ; original address $000031c8
+                    ; playfield display
+L000031c8           dc.w $2c01,$fffe                ; $da - $2c = $ae (174 + 32 = 206) - aaauming 32 pixels for vertical scroll off-screen
+L000031cc           dc.w BPL2MOD,$0002              ; BPL2MOD (extra 16 bits bitplane width)
+L000031d0           dc.w BPL1MOD,$0002              ; BPL1MOD (extra 16 bits bitplane width)
+copper_playfield_planes                             ; original address $000031d4
+                    dc.w BPL1PTL                    ; $00e2                     
+                    dc.w $7680                      
+                    dc.w BPL1PTH                    ; $00e0 ($67680) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                   
+                    dc.w $0006
+                    dc.w BPL2PTL                    ; $00e6               
+L000031de           dc.w $98e0                      
+L000031e0           dc.w BPL2PTH                    ; $00e4 ($698e0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                       
+L000031e2           dc.w $0006
+                    dc.w BPL3PTL                    ; $00ea               
+L000031e6           dc.w $bb40                      
+L000031e8           dc.w BPL3PTH                    ; $00e8 ($6bb40) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                        
+L000031ea           dc.w $0006
+                    dc.w BPL4PTL                    ; $00ee               
+L000031ee           dc.w $dda0                      
+L000031f0           dc.w BPL4PTH                    ; $00ec ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                    
+L000031f2           dc.w $0006
+                    dc.w COLOR01,$0446
+                    dc.w COLOR02,$088a                      
+L000031fc           dc.w COLOR03,$0cce                      
+L00003200           dc.w COLOR04,$0048             
+L00003204           dc.w COLOR05,$028c
+L00003208           dc.w COLOR06,$0c64
+L0000320c           dc.w COLOR07,$0a22
+L00003210           dc.w COLOR08,$06a6
+                    dc.w COLOR09,$0c4a
+L00003218           dc.w COLOR10,$0ec6
+L0000321c           dc.w COLOR11,$0e88
+L00003220           dc.w COLOR12,$0600
+                    dc.w COLOR13,$0262
+                    dc.w COLOR14,$0668
+                    dc.w COLOR15,$06ae
+                    ; panel display
+L00003230           dc.w $da01,$fffe
+L00003234           dc.w BPL2MOD,$0000              ; Modulo = 0
+L00003238           dc.w BPL1MOD,$0000              ; Modulo = 0
+L0000323c           dc.w BPL1PTL                    ; $00e2                     
+L0000323e           dc.w $c89a                      ; Bitplane 1 - $7C89A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+L00003240           dc.w BPL1PTH                    ; $00e0                      
+L00003242           dc.w $0007
+                    dc.w BPL2PTL                    ; $00e6              
+L00003246           dc.w $d01a                      ; Bitplane 2 = $7D10A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+L00003248           dc.w BPL2PTH                    ; $00e4                   
+L0000324a           dc.w $0007
+                    dc.w BPL3PTL                    ; $00ea             
+L0000324e           dc.w $d79a                      ; Bitplane 3 = $7D79A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+L00003250           dc.w BPL3PTH                    ; $00e8                  
+L00003252           dc.w $0007
+                    dc.w BPL4PTL                    ; $00ee             
+L00003256           dc.w $df1a                      ; Bitplane 4 = $7DF1A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+L00003258           dc.w BPL4PTH                    ; $00ec                     
+L0000325a           dc.w $0007
+
+copper_panel_colors                                 ; original address $0000325c
+                    dc.w COLOR00,$0000
+                    dc.w COLOR01,$0000
+                    dc.w COLOR02,$0000
+                    dc.w COLOR03,$0000
+                    dc.w COLOR04,$0000
+                    dc.w COLOR05,$0000
+                    dc.w COLOR06,$0000
+                    dc.w COLOR07,$0000
+                    dc.w COLOR08,$0000
+                    dc.w COLOR09,$0000
+                    dc.w COLOR10,$0000
+                    dc.w COLOR11,$0000
+                    dc.w COLOR12,$0000
+                    dc.w COLOR13,$0000
+                    dc.w COLOR14,$0000
+                    dc.w COLOR15,$0000
+                    dc.w $ffff,$fffe
 
 
 L000032a0           dc.w $0000, $0060               ; or.b #$60,d0
@@ -284,6 +342,9 @@ L000032ba           dc.w $0ea0                      ; $0ec0 [ moves.l d0,-(a0) [
 L000032bc           dc.w $0ec0                      ; illegal
 L000032be           dc.w $0eee                      ; $2f00 3039 [ cas.l d0,d4,(a6,$3039) == $00e02039 [6e011422] ]
 
+
+
+level1_interrupt_handler
 L000032c0           move.l  d0,-(a7)
 L000032c2           move.w  $00dff01e,d0
 L000032c8           btst.l  #$0002,d0
@@ -302,6 +363,9 @@ L000032ec           move.w  #$0004,$00dff09c
 L000032f4           move.l  (a7)+,d0
 L000032f6           rte
 
+
+
+level2_interrupt_handler
 L000032f8           move.l  d0,-(a7)
 L000032fa           move.b  $00bfed01,d0
 L00003300           bpl.b   L00003312
@@ -314,44 +378,65 @@ L00003312           move.w #$0008,$00dff09c
 L0000331a           move.l (a7)+,d0
 L0000331c           rte
 
+
+
+level3_interrupt_handler
 L0000331e           move.l  d0,-(a7) 
-L00003320           move.w  $00dff01e,d0
-L00003326           btst.l  #$0004,d0
-L0000332a           bne.b   L0000334e
-L0000332c           btst.l  #$0005,d0
-L00003330           bne.b   L0000333e
-L00003332           move.w  #$0040,$00dff09c
+L00003320           move.w  $00dff01e,d0                    ; d0 = INTREQR
+L00003326           btst.l  #$0004,d0                       ; Copper Interrupt?
+L0000332a           bne.b   lvl3_coper                      ; .... yes - L0000334e
+L0000332c           btst.l  #$0005,d0                       ; Vertical Blank
+L00003330           bne.b   lvl3_vertb                      ; .... yes - L0000333e
+L00003332           move.w  #$0040,$00dff09c                ; clear BLIT - INTREQ
 L0000333a           move.l  (a7)+,d0
 L0000333c           rte 
 
-L0000333e           bsr.w   L00003526
-L00003342           move.w  #$0020,$00dff09c
+                    ; level 3 interrupt handler
+lvl3_vertb
+L0000333e           bsr.w   update_sound_player             ; L00003526
+L00003342           move.w  #$0020,$00dff09c                ; clear VERTB - INTREQ
 L0000334a           move.l  (a7)+,d0
 L0000334c           rte 
 
-L0000334e           move.w  #$0010,$00dff09c
+                    ; copper interrupt - do nothing
+lvl3_coper
+L0000334e           move.w  #$0010,$00dff09c                ; clear COPER - INTREQ
 L00003356           move.l  (a7)+,d0
 L00003358           rte 
 
+
+
+                    ; level 4 - interrupt handler
+                    ; not installed to autovector by the game init
+level4_interrupt_handler
 L0000335a           move.l  d0,-(a7)
-L0000335c           move.w  $00dff01e,d0
-L00003362           and.w   #$0780,d0
-L00003366           move.w  d0,$00dff09a
+L0000335c           move.w  $00dff01e,d0                    ; d0 = INTREQR
+L00003362           and.w   #$0780,d0                       ; Preserve Raised Audio Interrupts (level 4 for audio 0 - 3)
+L00003366           move.w  d0,$00dff09a                    ; clear audio interrupts
 L0000336c           move.l  (a7)+,d0
 L0000336e           rte
 
+
+                    ; level 5 - interrupt handler
+                    ; not installed to autovector by the game init
+level5_interrupt_handler
 L00003370           move.l  d0,-(a7)
-L00003372           move.w  $00dff01e,d0
-L00003378           btst.l  #$000c,d0
-L0000337c           bne.b   L0000338a
-L0000337e           move.w  #$0800,$00dff09c
+L00003372           move.w  $00dff01e,d0                    ; d0 = INTREQR
+L00003378           btst.l  #$000c,d0                       ; Test DSKSYN bit?
+L0000337c           bne.b   lvl5_clear_dsksyn               ; .... yes - L0000338a                   
+L0000337e           move.w  #$0800,$00dff09c                ;  Clear RBF - Serial port buffer full (keyboard)
 L00003386           move.l  (a7)+,d0
 L00003388           rte 
 
-L0000338a           move.w  #$1000,$00dff09c
+lvl5_clear_dsksyn
+L0000338a           move.w  #$1000,$00dff09c                ; Clear DSKSYN bit
 L00003392           move.l  (a7)+,d0
 L00003394           rte 
 
+
+                    ; level 6 - interrupt handler
+                    ; not installed to autovector by the game init
+level6_interrupt_handler
 L00003396           move.l  d0,-(a7)
 L00003398           move.w  $00dff01e,d0
 L0000339e           btst.l  #$000e,d0
@@ -484,9 +569,11 @@ L00003520           rts                                 ; 4e75
 L00003522           dc.w    $0000, $3542                ; or.b #$42,d0
 
 
+                    ; update music/sfx player
+update_sound_player
 L00003526           movem.l d1-d7/a0-a6,-(a7)
-L0000352a           addq.w  #$01,L000036ee
-L00003530           jsr     $00048018               ; External Address - CHEM.IFF
+L0000352a           addq.w  #$01,frame_counter          ; L000036ee              ; frame counter
+L00003530           jsr     PLAYER_UPDATE               ; $00048018               ; External Address - CHEM.IFF
 L00003536           move.b  #$00,$00bfee01
 L0000353e           movem.l (a7)+,d1-d7/a0-a6
 L00003542           rts
@@ -605,66 +692,104 @@ L00003684           movem.l (a7)+,d1-d2/a0
 L00003688           rts 
 
 
-
-L0000368a           move.w  #$0080,$00dff096
-L00003692           move.l  a0,$00dff080
-L00003698           move.w  a0,$00dff088
-L0000369e           move.w  #$0000,$00dff10a
-L000036a6           move.w  #$0000,$00dff108
-L000036ae           move.w  #$0038,$00dff092
-L000036b6           move.w  #$00d0,$00dff094
-L000036be           move.w  #$3080,$00dff08e
-L000036c6           move.w  #$0ac0,$00dff090
-L000036ce           move.w  #$4200,$00dff100
-L000036d6           clr.w   L000036ee
-L000036dc           tst.w   L000036ee
-L000036e2           beq.b   L000036dc
-L000036e4           move.w  #$8180,$00dff096
+                    ;--------------- reset display -------------------
+                    ; Set the copper list and 4 bitplane display,
+                    ; reset bitplane modulos.
+                    ; reset display fetch and window size (320x218)
+                    ;
+                    ; IN:
+                    ;   a0 = copper list address
+                    ;
+reset_display
+L0000368a           move.w  #$0080,$00dff096                ; Disable Copper DMA
+L00003692           move.l  a0,$00dff080                    ; Set Copper List COP1LC
+L00003698           move.w  a0,$00dff088                    ; Strobe Copper (force start COPJMP1)
+L0000369e           move.w  #$0000,$00dff10a                ; BPL2MOD - modulo
+L000036a6           move.w  #$0000,$00dff108                ; BPL1MOD - modulp
+L000036ae           move.w  #$0038,$00dff092                ; DDFSTRT - DMA Fetch Start
+L000036b6           move.w  #$00d0,$00dff094                ; DDFSTOP - DMA Fetch Stop
+L000036be           move.w  #$3080,$00dff08e                ; DIWSTRT - Display Window Start Vertical Start = $30, Horizontal Start = $80 (320x218 window)
+L000036c6           move.w  #$0ac0,$00dff090                ; DIWSTOP - Display Window Stop Vertical Stop = $10a, Horizontal Stop = $1c0
+L000036ce           move.w  #$4200,$00dff100                ; BPLCON0 - 4 bitplane, colour display 
+L000036d6           clr.w   frame_counter                   ; L000036ee
+L000036dc           tst.w   frame_counter                   ; L000036ee
+L000036e2           beq.b   L000036dc                       ; wait for next vertb
+L000036e4           move.w  #$8180,$00dff096            ; Enable - Copper DMA
 L000036ec           rts 
 
 
+frame_counter                                           ; original address $000036ee
+                    dc.w    $0000                       ; incremeted every VERTB interrupt
 
-L000036ee           dc.w    $0000
-L000036f0           dc.w    $0000            ; or.b #$00,d0
-L000036f2           dc.w    $0006, $8dce            ; or.b #$ce,d6
-L000036f6           dc.w    $0006, $1b9c            ; or.b #$9c,d6
+target_frame_count                                      ; original address $000036f0
+                    dc.w    $0000                       ; target frame count - (used to delay and wait for frame counter value)     
+
+playfield_buffer_ptrs                                   ; original address $000036f2
+playfield_buffer_1                                      ; original address $000036f2
+                    dc.l    $00068dce                   ; double buffered playfield ptr 1
+playfield_buffer_2                                      ; original address $000036f6
+                    dc.l    $00061b9c                   ; double buffered playfield ptr 2            
 
 
 
-L000036fa           move.w  L000036ee,d0
-L000036fe           cmp.w   L000036ee,d0
-L00003702           beq.b   L000036fe
-L00003704           move.w  L000036f0,d1
-L00003708           cmp.w   d0,d1
-L0000370a           bpl.b   L000036fa
-L0000370c           add.w   #$0001,d0
-L00003710           move.w  d0,L000036f0
-L00003714           movem.l L000036f2,d0-d1
-L0000371a           exg.l   d0,d1
-L0000371c           movem.l d0-d1,L000036f2
-L00003722           lea.l   L000031d6,a0
-L00003726           move.l  #$00001c8c,d1
-L0000372c           moveq   #$03,d7
-L0000372e           move.w  d0,(a0)
-L00003730           addq.w #$04,a0                  ; addaq.w
-L00003732           swap.w  d0
-L00003734           move.w  d0,(a0)
-L00003736           addq.w #$04,a0                  ; addaq.w
-L00003738           swap.w  d0
-L0000373a           add.l   d1,d0
-L0000373c           dbf.w   d7,L0000372e
-L00003740           addq.w  #$01,L0000632c
+
+                    ; ---------------- double buffer playfield --------------------
+                    ; swap buffered playfield ptrs in copper list.
+                    ;  - waits for VERTB (updated frame count - next frame)
+                    ;  - checks if waited long enough (target_frame_count)
+                    ;  - sets frame number of next frame to wait for
+                    ;  - swaps buffer ptrs
+                    ;  - sets copper list bitplane addresses
+                    ;
+double_buffer_playfield                                         ; original addr: $000036fa
+.wait_again
+                    move.w  frame_counter,d0                    ; L000036ee,d0
+.vbwait                                                         ; original addr: $000036fe
+                    cmp.w   frame_counter,d0                    ; L000036ee,d0
+                    beq.b   .vbwait                             ; L000036fe
+.chk_wait_again                                                 ; original addr: $00003704
+                    move.w  target_frame_count,d1               ; L000036f0,d1
+                    cmp.w   d0,d1
+                    bpl.b   .wait_again                         ; jmp $000036fa
+
+                    add.w   #$0001,d0                           ; d0 = next frame to wait for
+                    move.w  d0,target_frame_count               ; store next frame counter to wait for
+
+                    ; double buffer screen display
+.swap_buffer_ptrs                                               ; original addr: $00003714
+                    movem.l playfield_buffer_ptrs,d0-d1         ; d0 - d1 = double buffer bitplane ptrs?
+                    exg.l   d0,d1                               ; swap buffer ptrs
+                    movem.l d0-d1,playfield_buffer_ptrs         ; store swapped buffer ptrs
+
+                    ; set bitplane ptrs
+.update_copper_list
+L00003722           lea.l   copper_playfield_planes+2,a0        ; L000031d6,a0
+L00003726           move.l  #$00001c8c,d1                       ; d1 = #$1c8c (7308) (7308 / 42 = 174 rasters per plane)
+L0000372c           moveq   #$03,d7                             ; d7 = 3 + 1 (4 bitplanes)
+L0000372e           move.w  d0,(a0)                             ; set bitplane low word
+L00003730           addq.w #$04,a0                              ; increment ptr to high word (in copper list)
+L00003732           swap.w  d0                                  ; d0.w = high word
+L00003734           move.w  d0,(a0)                             ; set bitplane high word
+L00003736           addq.w #$04,a0                              ; increment ptr to low word of next bitplane (in copper list)
+L00003738           swap.w  d0                                  ; correct address in d0.l
+L0000373a           add.l   d1,d0                               ; add bitplane size ($1c8c = 7308 bytes)
+L0000373c           dbf.w   d7,L0000372e                        ; loop for next bitplane
+L00003740           addq.w  #$01,playfield_swap_count           ; L0000632c ; add 1 to buffer swap count (maybe used to test which buffer is back buffer?)
 L00003744           rts
 
 
-                    ;-------------------------------------
-                    ; Clear Memory
-                    ;-------------------------------------
-L00003746           lea.l   $00061b9c,a0                ; External Address (screen ram?)
-L0000374c           move.w   #$3917,d7
+
+                    ; -------------- clear display memory ----------------
+                    ; clear buffers located at:-
+                    ;   - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
+                    ;   - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                    ;
+clear_display_memory
+L00003746           lea.l   DISPLAY_BUFFER_1,a0         ; $00061b9c,a0  ; External Address (screen ram?)
+L0000374c           move.w  #$3917,d7
 L00003750           clr.l   (a0)+
 L00003752           dbf.w   d7,L00003750
-L00003756           lea.l   $0005a36c,a0                ; External Address (screen ram?)
+L00003756           lea.l   DISPLAY_BUFFER_2,a0         ; $0005a36c,a0  ; External Address (screen ram?)
 L0000375c           move.w  #$1c8b,d7
 L00003760           clr.l   (a0)+
 L00003762           dbf.w   d7,L00003760
@@ -1004,20 +1129,24 @@ L00003ade           dc.w    $2e2e, $2e00                ; move.l (a6,$2e00) == $
 L00003ae2           dc.w    $ffb9                       ; illegal
 
 
-
-L00003ae4           clr.l   L000036ee
-L00003aea           bsr.w   L000036fa
+                    ; ------------------- start game -------------------
+                    ;
+start_game
+L00003ae4           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
+L00003aea           bsr.w   double_buffer_playfield ; L000036fa
 L00003aee           bsr.w   L000058e2
-L00003af2           jsr     $00048000               ; External Address $48000- CHEM.IFF
+L00003af2           jsr     PLAYER_INIT             ;  $00048000 - Initialise Music Player ; External Address $48000- CHEM.IFF
 L00003af8           clr.w   L000062fc
 L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
 L00003b02           clr.w   L00006318
-L00003b06           clr.l   L000036ee
-L00003b0c           bsr.w   L00003746
+L00003b06           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
+L00003b0c           bsr.w   clear_display_memory    ; L00003746
 L00003b10           move.w  #$0800,d0               ; Level Time as BCD mm:ss
 L00003b14           jsr     PANEL_INIT_TIMER        ; Panel - Initialise Level Timer - $0007c80e
 L00003b1a           jsr     PANEL_INIT_ENERGY       ; Panel - Initialise Player Energy - $0007c854
 L00003b20           bsr.w   L00003d40
+                    ; panel faded in
+
 L00003b24           lea.l   $0000807c,a0            ; External Address $807c - MAPGR.IFF
 L00003b2a           movea.l L00005f64,a5
 L00003b30           movem.w (a5)+,d2-d4
@@ -1056,6 +1185,7 @@ L00003b94           dbf.w   d7,L00003b92
 L00003b98           clr.w   L000062ee
 L00003b9c           lea.l   L000063d3,a0
 L00003ba0           bsr.w   L00005438
+
 L00003ba4           move.w  #$4c3e,L00003c92
 L00003baa           lea.l   L000067a0,a0
 L00003bae           move.w  L000062fc,d6
@@ -1065,19 +1195,31 @@ L00003bb8           move.w  (a0)+,(a1)+
 L00003bba           dbf.w   d7,L00003bb8
 L00003bbe           dbf.w   d6,L00003bb2
 L00003bc2           lea.l   L00003aa4,a0
+
 L00003bc6           bsr.w   L000067ca
-L00003bca           bsr.w   L000036fa
-L00003bce           bsr.w   L000058aa
-L00003bd2           bsr.w   L00004b62
+L00003bca           bsr.w   double_buffer_playfield                 ; L000036fa                               
+L00003bce           bsr.w   L000058aa                               ; display 'Axis Chemicals'
+
+L00003bd2           bsr.w   L00004b62                               
+
 L00003bd6           bsr.w   L000055c4
+
 L00003bda           moveq   #$32,d0
 L00003bdc           bsr.w   L00005e8c
+
 L00003be0           btst.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2       ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003be8           bne.b   L00003bf2
-L00003bea           moveq   #$01,d0
-L00003bec           jsr     $00048010                   ; External Address $48010 - CHEM.IFF
-L00003bf2           bsr.w   L00003cc0
-L00003bf6           clr.l   L000036ee
+L00003bea           moveq   #$01,d0                                 ; song number - 01 = level music
+L00003bec           jsr     PLAYER_INIT_SONG                        ; chem.iff - music/sfx - initialise song (d0 = song number) $00048010 ; External Address $48010 - CHEM.IFF
+
+
+L00003bf2           bsr.w   L00003cc0                               ; Wipe 'Axis Chemical' -> Show Playfield
+
+
+L00003bf6           clr.l   frame_counter                           ; NB: Long Clear - clears next word also -L000036ee
+
+                    ; ----------------- Game Loop -----------------
+game_loop
 L00003bfa           bsr.w   L0000365a
 L00003bfe           beq.b   L00003c5a
 L00003c00           cmp.w   #$0081,d0
@@ -1093,10 +1235,10 @@ L00003c22           cmp.w   #$0082,d0
 L00003c26           bne.b   L00003c48
 L00003c28           bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2       ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003c30           bne.b   L00003c3c
-L00003c32           jsr     $00048008                   ; External Address $48008 - CHEM.IFF
+L00003c32           jsr     PLAYER_INIT_SFX_1                       ; chem.iff - Music/SFX player - Init SFX audio channel - $00048008  ; External Address $48008 - CHEM.IFF
 L00003c38           bra.w   L00003c5a
-L00003c3c           moveq   #$01,d0
-L00003c3e           jsr     $00048010                   ; External Address $48010- CHEM.IFF
+L00003c3c           moveq   #$01,d0                                 ; song number - 01 = level music
+L00003c3e           jsr     PLAYER_INIT_SONG                        ; chem.iff - music/sfx - init song - d0.l = song number - $00048010  ; External Address $48010- CHEM.IFF
 L00003c44           bra.w   L00003c5a
 
 L00003c48           cmp.w   #$008a,d0
@@ -1129,13 +1271,16 @@ L00003ca4           bsr.w   L000055c4
 L00003ca8           bsr.w   L00003ee6
 L00003cac           bsr.w   L00004658
 L00003cb0           bsr.w   L000045fe
-L00003cb4           bsr.w   L000036fa
-L00003cb8           bra.w   L00003bfa
+L00003cb4           bsr.w   double_buffer_playfield         ; L000036fa
+L00003cb8           bra.w   L00003bfa                       ; jump back to main loop
+                    ; ----------------- End of Game Loop -----------------
+
+
 
 L00003cbc           bsr.w   L00004e28
 L00003cc0           move.w  #$002a,d0
 L00003cc4           move.w  #$00ae,d1
-L00003cc8           movem.l L000036f2,a0-a1
+L00003cc8           movem.l playfield_buffer_ptrs,a0-a1     ; L000036f2,a0-a1
 L00003cce           clr.w   d2
 L00003cd0           moveq   #$7f,d3
 L00003cd2           and.w   d2,d3
@@ -1185,7 +1330,7 @@ L00003d3c           bne.b   L00003cd0
 L00003d3e           rts
 
 L00003d40           moveq   #$0f,d7
-L00003d42           lea.l   $325e,a0
+L00003d42           lea.l   copper_panel_colors+2,a0            ; $325e,a0
 L00003d46           lea.l   $32a0,a1
 L00003d4a           moveq   #$0f,d6
 L00003d4c           move.w  (a0),d0
@@ -1206,15 +1351,16 @@ L00003d6e           move.w  d0,(a0)
 L00003d70           addq.w  #$04,a0              ; addaq.w
 L00003d72           dbf.w   d6,L00003d4c
 
-L00003d76           move.w  L000036ee,d0
+                    ; wait for 4 frame counts
+L00003d76           move.w  frame_counter,d0            ; L000036ee,d0
 L00003d7c           addq.w  #$04,d0
-L00003d7e           cmp.w   L000036ee,d0
+L00003d7e           cmp.w   frame_counter,d0            ; L000036ee,d0
 L00003d84           bne.b   L00003d7e
 L00003d86           dbf.w   d7,L00003d42
 L00003d8a           rts
 
 L00003d8c           moveq   #$0f,d7
-L00003d8e           lea.l   L0000325e,a0
+L00003d8e           lea.l   copper_panel_colors+2,a0    ; L0000325e,a0
 L00003d92           moveq   #$0f,d6
 L00003d94           move.w  (a0),d0
 L00003d96           moveq   #$0f,d1
@@ -1233,9 +1379,10 @@ L00003db6           move.w  d0,(a0)
 L00003db8           addq.w  #$04,a0              ; addaq.w
 L00003dba           dbf.w   d6,L00003d94
 
-L00003dbe           move.w  L000036ee,d0
+                    ; wait for 4 frame counts
+L00003dbe           move.w  frame_counter,d0        ; L000036ee,d0
 L00003dc4           addq.w  #$04,d0
-L00003dc6           cmp.w   L000036ee,d0
+L00003dc6           cmp.w   frame_counter,d0        ; L000036ee,d0
 L00003dcc           bne.b   L00003dc6
 L00003dce           dbf.w   d7,L00003d8e
 L00003dd2           rts
@@ -1383,8 +1530,8 @@ L00003f76           move.w  (a6),d0
 L00003f78           subq.w  #$02,d0
 L00003f7a           bmi.b   L00003fa6
 L00003f7c           move.w  #$0001,(a6)
-L00003f80           moveq   #$0a,d0
-L00003f82           jsr     $00048014               ; External Address $48014 - CHEM.IFF
+L00003f80           moveq   #$0a,d0                 ; sfx number - $0a = Bad Guy Hit
+L00003f82           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address $48014 - CHEM.IFF
 L00003f88           move.w  #$fffe,$000a(a6)
 L00003f8e           tst.w   L000062fa
 L00003f92           bmi.b   L00003fa6
@@ -1426,8 +1573,8 @@ L00003ff0           move.w  d3,$0006(a0)
 L00003ff4           cmp.w   #$0073,d1
 L00003ff8           bpl.b   L0000400a
 L00003ffa           movem.w d0-d1,-(a7)
-L00003ffe           moveq   #$09,d0
-L00004000           jsr     $00048014               ; External Address $48014 - CHEM.IFF
+L00003ffe           moveq   #$09,d0                 ; sfx number = 09 = Grenade Throw
+L00004000           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0.l = sound number - $00048014 ; External Address $48014 - CHEM.IFF
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
 
@@ -1713,7 +1860,7 @@ L0000437a           adda.w  d6,a0
 L0000437c           movea.w (a0),a0
 L0000437e           jmp     (a0)
 L00004380           move.w  $0004(a6),d4
-L00004384           btst.b  #$0000,L0000632d
+L00004384           btst.b  #$0000,L0000632d                    ; test even/odd playfield buffer swap value
 L0000438a           bne.b   L000043ce
 L0000438c           addq.w  #$01,d4
 L0000438e           move.w  d4,$0004(a6)
@@ -1723,7 +1870,7 @@ L00004398           bne.b   L000043ce
 L0000439a           bsr.w   L000055a0
 L0000439e           bra.b   L000043c6
 L000043a0           move.w  $0004(a6),d4
-L000043a4           btst.b  #$0000,L0000632d
+L000043a4           btst.b  #$0000,L0000632d                    ; test even/odd playfield buffer swap value
 L000043aa           bne.b   L000043ce
 L000043ac           subq.w  #$01,d4
 L000043ae           move.w  d4,$0004(a6)
@@ -1779,7 +1926,7 @@ L0000443c           move.w  #$0003,$0008(a6)
 L00004442           rts
 
 L00004444           bsr.w   L00004570
-L00004448           btst.b  #$0000,L0000632d
+L00004448           btst.b  #$0000,L0000632d                    ; test even/odd playfield buffer swap value
 L00004450           bne.b   L00004442
 L00004452           bsr.w   L0000463e
 L00004456           sub.w   (a5)+,d1
@@ -1813,13 +1960,15 @@ L000044ac           move.w  d2,$000c(a6)
 L000044b0           move.w $0002(a6),d4
 L000044b4           rts
 
+
+                    ; play sfx - d0 = sfx number to play 5 - 13
 L000044b6           cmp.w   #$00a0,d0
 L000044ba           bcc.b   L000044b4
 L000044bc           cmp.w   #$0059,d1
 L000044c0           bcc.b   L000044b4
 L000044c2           movem.w d0-d1,-(a7)
-L000044c6           move.w  d2,d0
-L000044c8           jsr     $00048014           ; External Address - CHEM.IFF
+L000044c6           move.w  d2,d0                       ; d0 = sfx number to play
+L000044c8           jsr     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
 L000044ce           movem.w (a7)+,d0-d1
 L000044d2           rts
 
@@ -2006,8 +2155,8 @@ L000046a6           cmp.w   L000062f0,d1
 L000046aa           bmi.b   L000046c0
 L000046ac           moveq   #$01,d6
 L000046ae           bsr.w   L00004ccc
-L000046b2           moveq   #$0a,d0
-L000046b4           jsr     $00048014           ; External Address - CHEM.IFF
+L000046b2           moveq   #$0a,d0                 ; sfx number - $0a = Bad guy hit
+L000046b4           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014           ; External Address - CHEM.IFF
 L000046ba           move.w  #$0004,-$0002(a6)   
 L000046c0           rts
 
@@ -2101,8 +2250,8 @@ L000047ac           rts
 L000047ae           move.w  #$0001,(a4)
 L000047b2           move.w  #$fffc,$000a(a4)
 L000047b8           bsr.w   L00004722
-L000047bc           moveq   #$0a,d0
-L000047be           jmp     $00048014           ; External Address -CHEM.IFF
+L000047bc           moveq   #$0a,d0                     ; sfx number - $0a = bad guy hit
+L000047be           jmp     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address -CHEM.IFF
 L000047c4           addq.w  #$02,d0
 L000047c6           move.w  $0004(a6),d2
 L000047ca           cmp.w   #$0028,d2
@@ -2149,7 +2298,7 @@ L0000483a           cmp.w   #$0060,d1
 L0000483e           bpl.w   L00004722
 L00004842           bra.b   L000047e4
 L00004844           movem.w d0-d1,(a6)
-L00004848           btst.b  #$0000,L0000632d
+L00004848           btst.b  #$0000,L0000632d                ; test even/odd playfield buffer swap value
 L0000484e           bne.b   L00004864
 L00004850           move.w  -$0002(a6),d2
 L00004854           addq.w  #$01,d2
@@ -2429,9 +2578,9 @@ L00004b60           rts
 
 
 L00004b62           move.w  #$8400,$00dff096
-L00004b6a           movea.l L000036f6,a6        ;  [00061b9c]
-L00004b6e           subq.w #$02,a6              ; subaq.w
-L00004b70           movea.l L0000631e,a5        ; [0005a36c]
+L00004b6a           movea.l playfield_buffer_2,a6           ; L000036f6,a6            ; playfield buffer 2
+L00004b6e           subq.w #$02,a6                          ; subaq.w
+L00004b70           movea.l L0000631e,a5                    ; [0005a36c] DISPLAY_BUFFER_2
 L00004b74           move.w  L00006312,d1
 L00004b78           clr.l   d6
 L00004b7a           subq.w  #$01,d6
@@ -2607,10 +2756,10 @@ L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
 L00004d7a           tst.b   PANEL_STATUS_1      ; Panel - Status Byte 1 - $0007c874
 L00004d80           beq.b   L00004d36
-L00004d82           jsr     $00048004
+L00004d82           jsr     PLAYER_SILENCE      ; Chem1.iff - Silence all Audio - $00048004
 L00004d88           clr.w   L00006318
-L00004d8c           moveq   #$03,d0
-L00004d8e           jsr     $00048010           ; External Address - CHEM.IFF
+L00004d8c           moveq   #$03,d0             ; song/sound number - 03 = player life lost
+L00004d8e           jsr     PLAYER_INIT_SONG    ; chem.iff - music/sfx - init song - d0.l = song number - $00048010           ; External Address - CHEM.IFF
 L00004d94           move.w  #$4da2,L00003c92
 L00004d9a           move.w  #$63dc,L00006326
 L00004da0           rts 
@@ -2621,7 +2770,7 @@ L00004da6            bsr.w   L00005438
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
 L00004db0            bne     L00004d36                                  ; bne.b
-L00004db2            jsr     $0004800c                                  ; External Address - CHEM.IFF
+L00004db2            jsr     PLAYER_INIT_SFX_2                          ; chem.iff - music/sfx - init sfx audio channel - $0004800c  ; External Address - CHEM.IFF
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   L00005e8c
 L00004dc0            bsr.w   L00004e28
@@ -2638,7 +2787,7 @@ L00004dec            move.w  #$001e,d0
 L00004df0            bsr.w   L00005e8c
 L00004df4            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1      ; Panel - Status Byte 1 - bit #$0001 of $0007c874
 L00004dfc            beq.w   L00003b02
-L00004e00            jsr     $00048004           ; External Address - CHEM.IFF
+L00004e00            jsr     PLAYER_SILENCE         ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
 L00004e06            bsr.w   L00003d8c
 L00004e0a            bra.w   LOADER_TITLE_SCREEN    ; $00000820 ; **** LOADER ****
 
@@ -2658,7 +2807,7 @@ L00004e24            dc.w    $5550                       ; subq.w #$02,(a0) [003
 L00004e26            dc.w    $00ff                       ; illegal
 
 
-L00004e28            movea.l L000036f6,a0                ; [00061b9c]
+L00004e28            movea.l playfield_buffer_2,a0      ; L000036f6,a0                ; [00061b9c]
 L00004e2e            move.w  #$1c8b,d7
 L00004e32            clr.l   (a0)+
 L00004e34            dbf.w   d7,L00004e32
@@ -2717,7 +2866,7 @@ L00004ed2            moveq   #$03,d6
 L00004ed4            cmp.w   #$0014,d6
 L00004ed8            bcc.b   L00004edc
 L00004eda            moveq   #$01,d6
-L00004edc            and.w   L0000632c,d6
+L00004edc            and.w   playfield_swap_count,d6            ;  d6 = 1 or 0, even/odd playfield swap value - L0000632c,d6
 L00004ee0            bne.b   L00004eec
 L00004ee2            and.w   #$0003,d4
 L00004ee6            asr.w   #$01,d4
@@ -2804,10 +2953,11 @@ L00004fd2           clr.w   L00006318
 L00004fd6           movem.w L000067c2,d0-d1
 L00004fdc           bra.w   L00005464
 
+                    ; bat rope?
 L00004fe0           move.w  #$6419,L00003626        ; Jump Table CMD9
 L00004fe8           move.w  #$4ff6,L00003c92
-L00004fee           moveq   #$08,d0
-L00004ff0           jsr     $00048014               ; External Address - CHEM.IFF
+L00004fee           moveq   #$08,d0                 ; sfx number - 08 = Bat Rope
+L00004ff0           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00004ff6           movea.w L00006326,a0
 L00004ffa           bsr.w   L00005438
 L00004ffe           move.w  a0,L00006326
@@ -2898,7 +3048,7 @@ L000050ee           move.w  #$e000,L000062ee        ; Jump Table CMD13
 L000050f4           moveq   #$81,d0
 L000050f6           bra.b   L000050fa
 
-
+                    ; bat-a-rang?
 L000050f8           clr.w   d0                          ; Jump Table CMD11
 L000050fa           move.w  #$0048,L000067c6
 L00005100           lea.l   $6314,a0
@@ -2909,8 +3059,8 @@ L0000510c           move.w  #$0001,(a0)
 L00005110           move.w  #$5132,L00003c92
 L00005116           lea.l   L000063d0,a0
 L0000511a           bsr.w   L00005438
-L0000511e           moveq   #$07,d0
-L00005120           jsr     $00048014               ; External Address - CHEM.IFF
+L0000511e           moveq   #$07,d0                 ; sfx number - 07 = Batarang
+L00005120           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00005126           movem.w L000067c2,d0-d1
 L0000512c           bclr.b  #$0004,L00006308
 L00005132           lea.l   L00006314,a0
@@ -3077,7 +3227,7 @@ L000052fe           move.w  #$4c3e,L00003c92
 L00005304           bra.w   L00004c3e
 L00005308           btst.b  #$0004,L00006308
 L0000530e           bne.w   L0000545a
-L00005312           btst.b  #$0000,L0000632d
+L00005312           btst.b  #$0000,L0000632d            ; test even/odd playfield buffer swap value
 L00005318           bne.b   L000052ec
 L0000531a           clr.w   d4
 L0000531c           move.b  L00006308,d4
@@ -3325,7 +3475,7 @@ L000055ec           and.w   #$0fff,d2
 L000055f0           add.w   d2,d2
 L000055f2           add.w   d2,d1
 L000055f4           ext.l   d1
-L000055f6           add.l   L000036f6,d1
+L000055f6           add.l   playfield_buffer_2,d1       ;  L000036f6,d1
 L000055fa           movem.w L0000631a,d2-d3
 L00005600           add.w   d2,d2
 L00005602           add.w   d3,d3
@@ -3510,7 +3660,7 @@ L000057d4           add.w   d2,d2
 L000057d6           moveq   #$15,d4
 L000057d8           sub.w   d5,d4
 L000057da           add.w   d4,d4
-L000057dc           movea.l L000036f6,a2
+L000057dc           movea.l playfield_buffer_2,a2           ; L000036f6,a2
 L000057e2           add.w   d0,d0
 L000057e4           adda.w  d0,a2
 L000057e6           mulu.w  #$002a,d1
@@ -3583,7 +3733,7 @@ L000058aa           clr.l   d0
 L000058ac           move.w  L000067bc,d0
 L000058b0           lsr.w   #$03,d0
 L000058b2           add.w   d0,d0
-L000058b4           movea.l #$0005a36c,a4           ; External Address - (Screem ram?)
+L000058b4           movea.l #DISPLAY_BUFFER_2,a4        ; #$0005a36c,a4 ; External Address - (Screem ram?)
 L000058ba           adda.l  d0,a4
 L000058bc           move.l  a4,L0000631e
 L000058c0           clr.w   L00006312
@@ -3702,7 +3852,7 @@ L000059d8           add.w   d4,d2
 L000059da           move.l  d2,d1
 L000059dc           add.w   d4,d1
 L000059de           subq.w  #$01,d5
-L000059e0           movea.l #$00061b9c,a2               ; External Address - (Screen Ram?)
+L000059e0           movea.l #DISPLAY_BUFFER_1,a2        ; #$00061b9c,a2  ; External Address - (Screen Ram?)
 L000059e6           move.w  (a0)+,(a2)
 L000059e8           not.w   (a2)
 L000059ea           move.w  (a0)+,$00(a2,d4.W)
@@ -3816,7 +3966,7 @@ L00005b0e           addq.w  #$02,$000a(a6)
 L00005b12           movea.l $0008(a6),a5
 L00005b16           move.w  (a5),d2
 L00005b18           bpl.w   L000045bc
-L00005b1c           bsr.w   L000036fa
+L00005b1c           bsr.w   double_buffer_playfield         ; L000036fa
 L00005b20           moveq   #$32,d0
 L00005b22           bsr.w   L00005e8c
 L00005b26           bra.w   L00005e3a
@@ -3853,9 +4003,10 @@ L00005b88           clr.w   (a6)
 L00005b8a           rts
 
 
+                    ; jack falls & hits the vat?
 L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a
-L00005b90           jsr     $00048008                               ; External Address - CHEM.IFF
+L00005b90           jsr     PLAYER_INIT_SFX_1                       ; chem.iff - Music/SFX player - init fsx audio channel - $00048008                               ; External Address - CHEM.IFF
 L00005b96           bset.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874
 L00005b9e           move.w  #$5290,L00003c92
 L00005ba4           clr.w   L000062fa
@@ -3867,8 +4018,8 @@ L00005bb6           move.w  #$0081,$0006(a5)                        ; $00bfd106
 L00005bbc           move.l  #$00005b28,$0008(a5)                    ; $00bfd108
 L00005bc4           move.w  #$0019,(a5)
 L00005bc8           clr.w   (a6)
-L00005bca           moveq   #$0b,d0
-L00005bcc           jmp     $00048014                               ; External Address - CHEM.IFF
+L00005bca           moveq   #$0b,d0                                 ; sfx number = $0b = Splash (jack in the vat)
+L00005bcc           jmp     PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 
 
 L00005bd2           subq.w  #$01,L000067c8
@@ -3988,20 +4139,21 @@ L00005d20           move.w  (a7)+,d2
 L00005d22           and.w   #$e000,d2
 L00005d26           addq.w  #$01,d2
 L00005d28           bsr.w   L0000458a
-L00005d2c           btst.b  #$0000,L0000632d
+L00005d2c           btst.b  #$0000,L0000632d        ; test even/odd playfield buffer swap value
 L00005d32           beq.b   L00005d02
 L00005d34           subq.w  #$01,$0004(a6)          ;$00dff004
 L00005d38           bmi.b   L00005d82
 L00005d3a           rts 
 
 
-L00005d3c           btst.b  #$0000,L0000632d
+                    ; jack falls hits the vat?
+L00005d3c           btst.b  #$0000,L0000632d                ; test even/odd playfield buffer swap value
 L00005d42           beq.b   L00005d54
 L00005d44           movem.l d0-d1/a6,-(a7)
-L00005d48           moveq   #$0b,d0
-L00005d4a           jsr     $00048014               ; External Address - CHEM.IFF
+L00005d48           moveq   #$0b,d0                         ; song number - $0b = Splash (jack in the vat)
+L00005d4a           jsr     PLAYER_INIT_SFX                 ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
 L00005d50           movem.l (a7)+,d0-d1/a6
-L00005d54           move.w  L0000632c,d2
+L00005d54           move.w  playfield_swap_count,d2         ; L0000632c,d2
 L00005d58           lsr.w   #$02,d2
 L00005d5a           and.w   #$0003,d2
 L00005d5e           addq.w  #$01,d2
@@ -4058,25 +4210,26 @@ L00005dfa           moveq   #$07,d2
 L00005dfc           cmp.w   #$0007,d2
 L00005e00           bmi.b   L00005e10
 L00005e02           moveq   #$0c,d2
-L00005e04           and.w   L0000632c,d2
-L00005e08           lsr.w   #$02,d2
-L00005e0a           bne.b   L00005e0e
-L00005e0c           moveq   #$02,d2
+L00005e04           and.w   playfield_swap_count,d2     ; L0000632c,d2
+L00005e08           lsr.w   #$02,d2                     ; divide swap count by 4
+L00005e0a           bne.b   L00005e0e                   ; frame swaps 4-7 - jmp $5e0e
+L00005e0c           moveq   #$02,d2                     ; frame swaps 0-3 - do this
 L00005e0e           addq.w  #$07,d2
 L00005e10           bsr.w   L000045bc
-L00005e14           jsr     $00048004                   ; External Address - CHEM.IFF
+L00005e14           jsr     PLAYER_SILENCE              ; Chem.iff - Music/SFX player - silence all audio - $00048004 ; External Address - CHEM.IFF
 L00005e1a           move.l  #$00000210,d0
 L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
 
+                    ; level completed ?
 L00005e26           moveq   #$50,d1
 L00005e28           moveq   #$0b,d2
 L00005e2a           bsr.w   L000045bc
-L00005e2e           bsr.w   L000036fa
+L00005e2e           bsr.w   double_buffer_playfield     ; L000036fa
 L00005e32           bset.b  #PANELST2_GAME_COMPLETE,PANEL_STATUS_2  ; Panel - Status 2 Bytes - bit #$0006 of $0007c875
-L00005e3a           jsr     $00048004
-L00005e40           moveq   #$02,d0
-L00005e42           jsr     $00048010                               ; External Address - CHEM.IFF
+L00005e3a           jsr     PLAYER_SILENCE              ; Chem.iff - Music/SFX player - Silence all audio - $00048004
+L00005e40           moveq   #$02,d0                     ; song number - 02 = Level completed
+L00005e42           jsr     PLAYER_INIT_SONG            ; chem.iff - music/sfx - init sonng - d0.l = song number - $00048010 ; External Address - CHEM.IFF
 L00005e48           move.w  #$00fa,d0
 L00005e4c           bsr.b   L00005e8c
 L00005e4e           moveq   #$64,d0
@@ -4098,8 +4251,9 @@ L00005e84           bsr.w   L00003d8c
 L00005e88           bra.w   LOADER_LEVEL_2              ; External Address - Loader $00000828 
 
 
-L00005e8c           add.w   L000036ee,d0
-L00005e90           cmp.w   L000036ee,d0
+                    ; wait for 1 frame count
+L00005e8c           add.w   frame_counter,d0            ; L000036ee,d0
+L00005e90           cmp.w   frame_counter,d0            ; L000036ee,d0
 L00005e94           bpl.b   L00005e90
 L00005e96           rts 
 
@@ -4341,8 +4495,11 @@ L00006324           dc.w $3DFE
 L00006326           dc.w $0000
 L00006328           dc.w $0000
 L0000632a           dc.b $0000   
-L0000632c           dc.b $00
+
+playfield_swap_count
+L0000632c           dc.b $00                    ; word value incremented when playfield buffers are swapped
 L0000632d           dc.b $00
+
 L0000632e           dc.w $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615         ;.."! ...........
 L0000633C           dc.w $1413, $1211, $100F, $0E0D, $0C0B, $0A09, $0807, $0605         ;................
 L0000634C           dc.w $0403, $0201, $0003, $0609, $0D10, $1316, $191C, $1F22         ;..............."
@@ -4448,8 +4605,8 @@ L000067d4           mulu.w  #$002a,d0
 L000067d8           move.b  (a0)+,d1
 L000067da           ext.w   d1
 L000067dc           add.w   d1,d0
-L000067de           movea.l L000036f6,a1
-L000067e4           lea.l   $00(a1,d0.W),a1         ; == $0003d7ba,a1
+L000067de           movea.l playfield_buffer_2,a1       ; L000036f6,a1
+L000067e4           lea.l   $00(a1,d0.W),a1             ; == $0003d7ba,a1
 
 
 L000067e8           moveq   #$00,d0
