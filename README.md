@@ -55,7 +55,10 @@ This exercise is not one of speed, but of learning. It looks like this game coul
     - The Title Screen code can be rebuilt from source and executed in VSCode
     - Updated Test ADF with Title Screen rebuilt from Source Code - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) 
  - Disassemble the Platform Levels.
+    - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/FSX
     - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - In Progress
+    - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Just Data - TODO: Write Test Project to Display Sprites
+    - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Just Data - TODO: Write Test Project to Display GFX/Level Data
  - Disassemble the Batmobile/Batwing Levels.
  - Disassemble the BatCave Level.
 
@@ -63,7 +66,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 ## Progress to Date
 
-2024-08-13 - Added test program to the 'chem' project which plays the level 1 music. [Project Link](./gamesource/chem/)
+2024-08-13 - Added test program to the 'chem' project which plays the level 1 music. [Project Link](./gamesource/chem/) - Left mouse button to cycle through music/sfx.
 
 2024-08-03 - Rebuild the test ADF image using the rebuilt batspr.shrunk and mapgr.shrunk files which were rebuilt from the source data. So this disk image now contains a rebuilt titleprg.shrunk, batspr1.shrunk and mapgr.shrunk files. [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) - give it a go ( works on my machine **:)** )
 
