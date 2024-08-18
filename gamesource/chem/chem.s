@@ -51,7 +51,7 @@ kill_system
 SOUND_TO_PLAY   EQU     $01                                   ; valid range #$01 to #$0d
 
 init_test_prg
-                jsr     L00048000                               ; init music routine/instruments
+                jsr     Init_Player                           ; init music routine/instruments
 
                 lea     $dff000,a6
                 lea     level_3_interrupt,a0
@@ -60,7 +60,7 @@ init_test_prg
                 move.W  #$c020,INTENA(a6)                       ; enable level 3 interrupt
 
                 moveq   #SOUND_TO_PLAY,d0                       ; song number to play
-                jsr     L00048010                               ; init song 1
+                jsr     Init_Song                               ; init song 1
 
 loop
                 jmp     loop     
@@ -84,7 +84,7 @@ level_3_interrupt
 .play_music     ; play music @ 25 frames per second.
                 eor.w   #$0001,frameskipper
                 beq.s   .exit_isr
-                jsr     L00048018
+                jsr     Play_Sounds
 
 .exit_isr
                 ; clear level 3 interrut bits
@@ -149,14 +149,20 @@ L00047ff6               dc.w  $0000, $0000                      ; or.b #$00,d0
 L00047ffa               dc.w  $0000, $0000                      ; or.b #$00,d0
 L00047ffe               dc.w  $0000
 
-
+Init_Player                                                     ; original address $00048000
 L00048000               bra.w do_initialise_music_player        ; jmp $00048180
+Stop_Playing                                                    ; original address $00048004
 L00048004               bra.w do_silence_all_audio              ; jmp $00048194
-L00048008               bra.w do_stop_audio                     ; jmp $000481e8 - could also be reinit_active audio channel
-L0004800c               bra.w do_stop_audio                     ; jmp $000481e8
+Init_SFX_1                                                      ; original address $00048008
+L00048008               bra.w do_init_sfx_channels              ; jmp $000481e8 - could also be reinit_active audio channel
+Init_SFX_2                                                      ; original address $0004800c
+L0004800c               bra.w do_init_sfx_channels              ; jmp $000481e8
+Init_Song                                                       ; original address $00048010
 L00048010               bra.w do_init_song                      ; jmp $0004824e
+Init_SFX                                                        ; original address $00048014
 L00048014               bra.w do_play_sfx                       ; jmp $0004822c
-L00048018               bra.w do_play_song                      ; jmp $0004830e
+Play_Sounds                                                     ; original address $00048018
+L00048018               bra.w do_play_sounds                      ; jmp $0004830e
 
 
 master_audio_volume_mask_1                                      ; original address $0004801c
@@ -372,7 +378,7 @@ L0004817c               dc.w  $0000                     ; Changes to DMACON (Act
                                                         ; also it's or'ed with #$54 of channel status
 
 play_counter                                            ; original address $0004817e
-L0004817e               dc.w  $0000                     ; incremented when 'do_play_song' called with active sound
+L0004817e               dc.w  $0000                     ; incremented when 'do_play_sounds' called with active sound
                                                         ; referenced as a word
                                                         ; cleared when playing new song/sound
                                                         ; incremented duting frame play routine every time 4020 is cleared
@@ -425,7 +431,7 @@ L000481ca               move.w  #$0000,(a0)
 
 
 
-                        ;----------------------------- do stop audio/do_reinit_song -----------------------------
+                        ;----------------------------- do_init_sfx_channels -----------------------------
                         ; Reset active channels for specified sound. 
                         ; Maybe used to silence channels before playing sfx over existing sound.
                         ;
@@ -434,9 +440,7 @@ L000481ca               move.w  #$0000,(a0)
                         ;
                         ; IN: D0.w      - Song Number/SFX Number?
                         ;
-do_reinit_active_channels
-do_reinit_song
-do_stop_audio                                                   ; original address $000481e8
+do_init_sfx_channels                                            ; original address $000481e8
 L000481e8               movem.l d0/d7/a0-a2,-(a7)
                         subq.w  #$01,d0
                         bmi.b   .unknown_song_number            ; d0 <= 0  ; jmp $000481f6
@@ -614,13 +618,15 @@ init_sound                                                      ; original addre
 
 
 
-                ;--------------------------- do play song -----------------------
+                ;--------------------------- do play sounds -----------------------
                 ; Call this routine at regular intervals to play the current
                 ; song/sfx combination. (e.g. during vbl)
+                ; The game calls this at 25 frames per second to play current 
+                ; songs/sfx
                 ;
                 ; IN:- no parameters
                 ;
-do_play_song                                                    ; original address $0004830e
+do_play_sounds                                                ; original address $0004830e
 L0004830e               lea.l   $00dff000,a6                    ; customer chip base register.
                         lea.l   note_period_table+48,a5         ; L00048c00 ; mid point of the note period table
                         clr.w   audio_dma                       ; L0004817c
@@ -1712,9 +1718,6 @@ L00058478       dc.w $0001, $3E00, $0000
                 ;               - each value is a byte offset from the current word's address in the table.
                 ;
                 ; 3 channel music, 1 channel sfx?
-                ;
-                ; used by:
-                ;       do_stop_audio (D0 index to channel reset data)
                 ;
                 ;   #$01 = Level 1 Music
                 ;   #$02 = Level 1 Completed
