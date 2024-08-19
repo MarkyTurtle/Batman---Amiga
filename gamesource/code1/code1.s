@@ -15,8 +15,13 @@
                 ; BATSPR1           $10FFC
                 ; CHEM              $47FE4
                 ; STACK             $5a36c              - Address of program stack - not a file load.
+                ;
                 ; DISPLAY BUFFER 1  $5a36c
                 ; DISPLAY BUFFER 2  $61b9c  $70000
+                ;   Double Buffered Display:
+                ;       DISPLAY_BUFFER_1            EQU $00061b9c   ; - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
+                ;       DISPLAY_BUFFER_2            EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ;
                 ; LOADBUFFER        $5a36C  $7C7FC      - File Load Area (files loaded here before depacked/relocated)
                 ; PANEL             $7C7FC  $80000      - Game State/Lives manager (always resident across loads)
                 ;
@@ -103,13 +108,15 @@ DISPLAY_BUFFER_2            EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 
 
 
                 section code1,code_c
-                ;org     $0                                          ; original load address
+                ;org     $2ffc                                         ; original load address
 
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
                 opt         o-
+
+
 start
                 jmp game_start     
            
@@ -210,6 +217,7 @@ L0000315c           move.b  #$8a,$00bfed01          ; CIAA - ICR - Enable SP & T
 L00003164           tst.b   $00bfdd00               ; CIAB - ICR - Clear by reading (interrupt control)
 L0000316a           move.b  #$93,$00bfdd00          ; CIAB - ICR - Enable FLG & Timer A & B Interrupts
 L00003172           move.w  #$e078,$00dff09a        ; INTENA - Enable - EXTER (disk sync), BLIT, VERTB, COPER, PORTS (keyboard & Timers)
+                                                    ;        - Level 2,3,6
 
 
                     ; start initialising the game
@@ -226,16 +234,17 @@ L000031a8           bra.w   start_game                  ;  L00003ae4
 
 
                     ; maybe second copper list
-L000031ac           dc.w $ffff                      ; illegal
-L000031ae           dc.w $fffe                      ; illegal
+L000031ac           dc.w $ffff                      ; not referenced by this code
+L000031ae           dc.w $fffe                      ; not referenced by this code
+
 
 interrupt_handlers
-L000031b0           dc.l level1_interrupt_handler   ; $000032c0
-L000031b4           dc.l level2_interrupt_handler   ; $000032f8
-L000031b8           dc.l level3_interrupt_handler   ; $0000331e
-L000031bc           dc.l level4_interrupt_handler   ; $0000335a - unused by game init above
-L000031c0           dc.l level5_interrupt_handler   ; $00003370 - unused by game init above
-L000031c4           dc.l level6_interrupt_handler   ; $00003396 - unused by game init above
+L000031b0           dc.l level1_interrupt_handler   ; $000032c0 - disabled
+L000031b4           dc.l level2_interrupt_handler   ; $000032f8 - enabled
+L000031b8           dc.l level3_interrupt_handler   ; $0000331e - enabled
+L000031bc           dc.l level4_interrupt_handler   ; $0000335a - disabled - unused by game init above
+L000031c0           dc.l level5_interrupt_handler   ; $00003370 - disabled - unused by game init above
+L000031c4           dc.l level6_interrupt_handler   ; $00003396 - enabled  - unused by game init above
 
 
 
@@ -344,6 +353,9 @@ L000032be           dc.w $0eee                      ; $2f00 3039 [ cas.l d0,d4,(
 
 
 
+                    ; --------------- level 1 interrupt handler -----------------
+                    ; NB: Not enabled by above code.
+                    ;
 level1_interrupt_handler
 L000032c0           move.l  d0,-(a7)
 L000032c2           move.w  $00dff01e,d0
