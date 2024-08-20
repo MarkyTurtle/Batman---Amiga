@@ -27,69 +27,70 @@
 
 ; Loader Constants
 ;------------------
-LOADER_TITLE_SCREEN     EQU $00000820               ; Load Title Screen 
-LOADER_LEVEL_1          EQU $00000824               ; Load Level 1
-LOADER_LEVEL_2          EQU $00000828               ; Load Level 2
-LOADER_LEVEL_3          EQU $0000082c               ; Load Level 3
-LOADER_LEVEL_4          EQU $00000830               ; Load Level 4
-LOADER_LEVEL_5          EQU $00000834               ; Load Level 5
+LOADER_TITLE_SCREEN         EQU $00000820                           ; Load Title Screen 
+LOADER_LEVEL_1              EQU $00000824                           ; Load Level 1
+LOADER_LEVEL_2              EQU $00000828                           ; Load Level 2
+LOADER_LEVEL_3              EQU $0000082c                           ; Load Level 3
+LOADER_LEVEL_4              EQU $00000830                           ; Load Level 4
+LOADER_LEVEL_5              EQU $00000834                           ; Load Level 5
+
 
 
 ; Music Player Constants
-PLAYER_INIT             EQU $00048000               ; initialise music/sfx player
-PLAYER_SILENCE          EQU $00048004               ; Silence all audio
-PLAYER_INIT_SFX_1       EQU $00048008               ; Initialise SFX Audio Channnel
-PLAYER_INIT_SFX_2       EQU $0004800c               ; same as init_sfx_1 above
-PLAYER_INIT_SONG        EQU $00048010               ; initialise song to play - D0.l = song/sound 1 to 13
-PLAYER_INIT_SFX         EQU $00048014               ; initialise sfx to play - d0.l = sfx 5 to 13
-PLAYER_UPDATE           EQU $00048018               ; regular update (vblank to keep sounds/music playing)
+PLAYER_INIT                 EQU $00048000                           ; initialise music/sfx player
+PLAYER_SILENCE              EQU $00048004                           ; Silence all audio
+PLAYER_INIT_SFX_1           EQU $00048008                           ; Initialise SFX Audio Channnel
+PLAYER_INIT_SFX_2           EQU $0004800c                           ; same as init_sfx_1 above
+PLAYER_INIT_SONG            EQU $00048010                           ; initialise song to play - D0.l = song/sound 1 to 13
+PLAYER_INIT_SFX             EQU $00048014                           ; initialise sfx to play - d0.l = sfx 5 to 13
+PLAYER_UPDATE               EQU $00048018                           ; regular update (vblank to keep sounds/music playing)
+
 
 
 ; Panel Constants - original function addresses
-PANEL_UPDATE                EQU $0007c800               ; called on VBL to update panel display
-PANEL_INIT_TIMER            EQU $0007c80e               ; initialise level timer (D0.w = BCD encoded MIN:SEC)
-PANEL_INIT_SCORE            EQU $0007c81c               ; initialise player score
-PANEL_ADD_SCORE             EQU $0007c82a               ; add value to player score (D0.l = BCD encoded value)
-PANEL_INIT_LIVES            EQU $0007c838               ; initialise player lives
-PANEL_ADD_LIFE              EQU $0007c846               ; add 1 to player lives
-PANEL_INIT_ENERGY           EQU $0007c854               ; initialise player energy to full value
-PANEL_LOSE_LIFE             EQU $0007c862               ; sub 1 from player lives, check end game, set status bytes
-PANEL_LOSE_ENERGY           EQU $0007c870               ; reduce player energy (increase hit damage) D0.w = amount to lose
+PANEL_UPDATE                EQU $0007c800                           ; called on VBL to update panel display
+PANEL_INIT_TIMER            EQU $0007c80e                           ; initialise level timer (D0.w = BCD encoded MIN:SEC)
+PANEL_INIT_SCORE            EQU $0007c81c                           ; initialise player score
+PANEL_ADD_SCORE             EQU $0007c82a                           ; add value to player score (D0.l = BCD encoded value)
+PANEL_INIT_LIVES            EQU $0007c838                           ; initialise player lives
+PANEL_ADD_LIFE              EQU $0007c846                           ; add 1 to player lives
+PANEL_INIT_ENERGY           EQU $0007c854                           ; initialise player energy to full value
+PANEL_LOSE_LIFE             EQU $0007c862                           ; sub 1 from player lives, check end game, set status bytes
+PANEL_LOSE_ENERGY           EQU $0007c870                           ; reduce player energy (increase hit damage) D0.w = amount to lose
 ; Panel Constants - original data value addresses
-PANEL_STATUS_1              EQU $0007c874               ; Game Status Bits
-PANEL_STATUS_2              EQU $0007c875               ; Game Status Bits
-PANEL_LIVES_COUNT           EQU $0007c876               ; player lives left
-PANEL_HISCORE               EQU $0007c878               ; hi-score BCD value
-PANEL_SCORE                 EQU $0007c87c               ; player score BCD value
-PANEL_FRAMETICK             EQU $0007c880               ; counts down from 50 to 0 on each update
-PANEL_TIMER_UPDATE_VALUE    EQU $0007c882               ; Timer BCD update value
-PANEL_TIMER_VALUE           EQU $0007c884               ; Timer BCD value Min:Sec (word)
-PANEL_TIMER_SECONDS         EQU $0007c885               ; Timer BCD seconds value
-PANEL_SCORE_UPDATE_VALUE    EQU $0007c886               ; player score update value
-PANEL_SCORE_DISPLAY_VALUE   EQU $0007c88a               ; player score copy BCD value used for display
-PANEL_ENERGY_VALUE          EQU $0007c88e               ; player energy value (40 max value)
-PANEL_HIT_DAMAGE            EQU $0007c890               ; player hit damge (subtracted from player energy on each panel update)
+PANEL_STATUS_1              EQU $0007c874                           ; Game Status Bits
+PANEL_STATUS_2              EQU $0007c875                           ; Game Status Bits
+PANEL_LIVES_COUNT           EQU $0007c876                           ; player lives left
+PANEL_HISCORE               EQU $0007c878                           ; hi-score BCD value
+PANEL_SCORE                 EQU $0007c87c                           ; player score BCD value
+PANEL_FRAMETICK             EQU $0007c880                           ; counts down from 50 to 0 on each update
+PANEL_TIMER_UPDATE_VALUE    EQU $0007c882                           ; Timer BCD update value
+PANEL_TIMER_VALUE           EQU $0007c884                           ; Timer BCD value Min:Sec (word)
+PANEL_TIMER_SECONDS         EQU $0007c885                           ; Timer BCD seconds value
+PANEL_SCORE_UPDATE_VALUE    EQU $0007c886                           ; player score update value
+PANEL_SCORE_DISPLAY_VALUE   EQU $0007c88a                           ; player score copy BCD value used for display
+PANEL_ENERGY_VALUE          EQU $0007c88e                           ; player energy value (40 max value)
+PANEL_HIT_DAMAGE            EQU $0007c890                           ; player hit damge (subtracted from player energy on each panel update)
 ; Panel Constants - resources
-PANEL_GFX                   EQU $0007c89a               ; main bottom display panel gfx
-PANEL_BATMAN_GFX            EQU $0007e69a               ; batman energy image
-PANEL_JOKER_GFX             EQU $0007ebba               ; joker energy image
-PANEL_SCORE_GFX             EQU $0007f30a               ; score digits gfx
-PANEL_LIVES_ON_GFX          EQU $0007f374               ; batman symbol - lives icon 'on'
-PANEL_LIVES_OFF_GFX         EQU $0007f838               ; batman symbol - lives icon 'off'
+PANEL_GFX                   EQU $0007c89a                           ; main bottom display panel gfx
+PANEL_BATMAN_GFX            EQU $0007e69a                           ; batman energy image
+PANEL_JOKER_GFX             EQU $0007ebba                           ; joker energy image
+PANEL_SCORE_GFX             EQU $0007f30a                           ; score digits gfx
+PANEL_LIVES_ON_GFX          EQU $0007f374                           ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX         EQU $0007f838                           ; batman symbol - lives icon 'off'
 ; Panel Status1 Bit Numbers
-PANELST1_TIMER_EXPIRED     EQU $0
-PANELST1_NO_LIVES_LEFT     EQU $1
-PANELST1_LIFE_LOST         EQU $2
+PANELST1_TIMER_EXPIRED      EQU $0
+PANELST1_NO_LIVES_LEFT      EQU $1
+PANELST1_LIFE_LOST          EQU $2
 ; Panel Status1 Bit Values
-PANELST1_VAL_TIMER_EXPIRED EQU $1
-PANELST2_VAL_NO_LIVES_LEFT EQU $2
-PANELST2_VAL_LIFE_LOST     EQU $4
-
+PANELST1_VAL_TIMER_EXPIRED  EQU $1
+PANELST2_VAL_NO_LIVES_LEFT  EQU $2
+PANELST2_VAL_LIFE_LOST      EQU $4
 ; Panel_Status2 Bit Numbers
-PANELST2_MUSIC_SFX         EQU $0
-PANELST2_GAME_OVER         EQU $5
-PANELST2_GAME_COMPLETE     EQU $6
-PANELST2_CHEAT_ACTIVE      EQU $7
+PANELST2_MUSIC_SFX          EQU $0
+PANELST2_GAME_OVER          EQU $5
+PANELST2_GAME_COMPLETE      EQU $6
+PANELST2_CHEAT_ACTIVE       EQU $7
 
 
 
@@ -106,6 +107,7 @@ DISPLAY_BUFFER_2            EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 
                 ;org     $0                                          ; original load address
 
 
+
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
@@ -117,7 +119,8 @@ start
 
 original_start:                                     ; original address $2FFC
                 dc.l    $00003000                   ; long word of start address
-           
+
+
 
 game_start:
                     ; kill the system & initialise h/w
@@ -229,6 +232,7 @@ L000031a8           bra.w   start_game                  ;  L00003ae4
 L000031ac           dc.w $ffff                      ; illegal
 L000031ae           dc.w $fffe                      ; illegal
 
+
 interrupt_handlers
 L000031b0           dc.l level1_interrupt_handler   ; $000032c0
 L000031b4           dc.l level2_interrupt_handler   ; $000032f8
@@ -236,7 +240,6 @@ L000031b8           dc.l level3_interrupt_handler   ; $0000331e
 L000031bc           dc.l level4_interrupt_handler   ; $0000335a - unused by game init above
 L000031c0           dc.l level5_interrupt_handler   ; $00003370 - unused by game init above
 L000031c4           dc.l level6_interrupt_handler   ; $00003396 - unused by game init above
-
 
 
 
@@ -255,62 +258,61 @@ L000031c4           dc.l level6_interrupt_handler   ; $00003396 - unused by game
                     ; 
 copper_list                                         ; original address $000031c8
                     ; playfield display
-L000031c8           dc.w $2c01,$fffe                ; $da - $2c = $ae (174 + 32 = 206) - aaauming 32 pixels for vertical scroll off-screen
-L000031cc           dc.w BPL2MOD,$0002              ; BPL2MOD (extra 16 bits bitplane width)
-L000031d0           dc.w BPL1MOD,$0002              ; BPL1MOD (extra 16 bits bitplane width)
+                    dc.w $2c01,$fffe                ; $da - $2c = $ae (174 + 32 = 206) - aaauming 32 pixels for vertical scroll off-screen
+                    dc.w BPL2MOD,$0002              ; BPL2MOD (extra 16 bits bitplane width)
+                    dc.w BPL1MOD,$0002              ; BPL1MOD (extra 16 bits bitplane width)
 copper_playfield_planes                             ; original address $000031d4
                     dc.w BPL1PTL                    ; $00e2                     
                     dc.w $7680                      
                     dc.w BPL1PTH                    ; $00e0 ($67680) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                   
                     dc.w $0006
                     dc.w BPL2PTL                    ; $00e6               
-L000031de           dc.w $98e0                      
-L000031e0           dc.w BPL2PTH                    ; $00e4 ($698e0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                       
-L000031e2           dc.w $0006
+                    dc.w $98e0                      
+                    dc.w BPL2PTH                    ; $00e4 ($698e0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                       
+                    dc.w $0006
                     dc.w BPL3PTL                    ; $00ea               
-L000031e6           dc.w $bb40                      
-L000031e8           dc.w BPL3PTH                    ; $00e8 ($6bb40) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                        
-L000031ea           dc.w $0006
+                    dc.w $bb40                      
+                    dc.w BPL3PTH                    ; $00e8 ($6bb40) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                        
+                    dc.w $0006
                     dc.w BPL4PTL                    ; $00ee               
-L000031ee           dc.w $dda0                      
-L000031f0           dc.w BPL4PTH                    ; $00ec ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                    
-L000031f2           dc.w $0006
+                    dc.w $dda0                      
+                    dc.w BPL4PTH                    ; $00ec ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                    
+                    dc.w $0006
                     dc.w COLOR01,$0446
                     dc.w COLOR02,$088a                      
-L000031fc           dc.w COLOR03,$0cce                      
-L00003200           dc.w COLOR04,$0048             
-L00003204           dc.w COLOR05,$028c
-L00003208           dc.w COLOR06,$0c64
-L0000320c           dc.w COLOR07,$0a22
-L00003210           dc.w COLOR08,$06a6
+                    dc.w COLOR03,$0cce                      
+                    dc.w COLOR04,$0048             
+                    dc.w COLOR05,$028c
+                    dc.w COLOR06,$0c64
+                    dc.w COLOR07,$0a22
+                    dc.w COLOR08,$06a6
                     dc.w COLOR09,$0c4a
-L00003218           dc.w COLOR10,$0ec6
-L0000321c           dc.w COLOR11,$0e88
-L00003220           dc.w COLOR12,$0600
+                    dc.w COLOR10,$0ec6
+                    dc.w COLOR11,$0e88
+                    dc.w COLOR12,$0600
                     dc.w COLOR13,$0262
                     dc.w COLOR14,$0668
                     dc.w COLOR15,$06ae
                     ; panel display
-L00003230           dc.w $da01,$fffe
-L00003234           dc.w BPL2MOD,$0000              ; Modulo = 0
-L00003238           dc.w BPL1MOD,$0000              ; Modulo = 0
-L0000323c           dc.w BPL1PTL                    ; $00e2                     
-L0000323e           dc.w $c89a                      ; Bitplane 1 - $7C89A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
-L00003240           dc.w BPL1PTH                    ; $00e0                      
-L00003242           dc.w $0007
+                    dc.w $da01,$fffe
+                    dc.w BPL2MOD,$0000              ; Modulo = 0
+                    dc.w BPL1MOD,$0000              ; Modulo = 0
+                    dc.w BPL1PTL                    ; $00e2                     
+                    dc.w $c89a                      ; Bitplane 1 - $7C89A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+                    dc.w BPL1PTH                    ; $00e0                      
+                    dc.w $0007
                     dc.w BPL2PTL                    ; $00e6              
-L00003246           dc.w $d01a                      ; Bitplane 2 = $7D10A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
-L00003248           dc.w BPL2PTH                    ; $00e4                   
-L0000324a           dc.w $0007
+                    dc.w $d01a                      ; Bitplane 2 = $7D10A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+                    dc.w BPL2PTH                    ; $00e4                   
+                    dc.w $0007
                     dc.w BPL3PTL                    ; $00ea             
-L0000324e           dc.w $d79a                      ; Bitplane 3 = $7D79A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
-L00003250           dc.w BPL3PTH                    ; $00e8                  
-L00003252           dc.w $0007
+                    dc.w $d79a                      ; Bitplane 3 = $7D79A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+                    dc.w BPL3PTH                    ; $00e8                  
+                    dc.w $0007
                     dc.w BPL4PTL                    ; $00ee             
-L00003256           dc.w $df1a                      ; Bitplane 4 = $7DF1A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
-L00003258           dc.w BPL4PTH                    ; $00ec                     
-L0000325a           dc.w $0007
-
+                    dc.w $df1a                      ; Bitplane 4 = $7DF1A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
+                    dc.w BPL4PTH                    ; $00ec                     
+                    dc.w $0007
 copper_panel_colors                                 ; original address $0000325c
                     dc.w COLOR00,$0000
                     dc.w COLOR01,$0000
@@ -331,6 +333,7 @@ copper_panel_colors                                 ; original address $0000325c
                     dc.w $ffff,$fffe
 
 
+
 L000032a0           dc.w $0000, $0060               ; or.b #$60,d0
 L000032a4           dc.w $0fff                      ; illegal
 L000032a6           dc.w $0008                      ; illegal
@@ -344,69 +347,87 @@ L000032be           dc.w $0eee                      ; $2f00 3039 [ cas.l d0,d4,(
 
 
 
-level1_interrupt_handler
-L000032c0           move.l  d0,-(a7)
-L000032c2           move.w  $00dff01e,d0
-L000032c8           btst.l  #$0002,d0
-L000032cc           bne.b   L000032ec
-L000032ce           btst.l  #$0001,d0
-L000032d2           bne.b   L000032e0
-L000032d4           move.w  #$0001,$00dff09c
-L000032dc           move.l  (a7)+,d0
-L000032de           rte
 
-L000032e0           move.w  #$0002,$00dff09c
-L000032e8           move.l  (a7)+,d0
-L000032ea           rte
+                    ; -------------------- level 1 - interrupt handler --------------------
+                    ; TBE, DSKBLK, SOFT - Interrupts, just clear the bits from INTREQ
+                    ;  
+level1_interrupt_handler                            ; original addr: $000032c0
+                    move.l  d0,-(a7)
+                    move.w  $00dff01e,d0            ; INTREQR
+                    btst.l  #$0002,d0               ; test SOFT 
+                    bne.b   lvl1_clear_SOFT         ; .... yes - L000032ec
+                    btst.l  #$0001,d0               ; test DSKBLK
+                    bne.b   lvl1_clear_DSKBLK       ; .... yes - L000032e0
+                    move.w  #$0001,$00dff09c        ; clear TBE (bit 0) - Transmit buffer empty
+                    move.l  (a7)+,d0
+                    rte
 
-L000032ec           move.w  #$0004,$00dff09c
-L000032f4           move.l  (a7)+,d0
-L000032f6           rte
+lvl1_clear_DSKBLK                                   ; original addr: $000032e0
+                    move.w  #$0002,$00dff09c        ; Clear INTREQ - DSKBLK (bit 1)
+                    move.l  (a7)+,d0
+                    rte
 
-
-
-level2_interrupt_handler
-L000032f8           move.l  d0,-(a7)
-L000032fa           move.b  $00bfed01,d0
-L00003300           bpl.b   L00003312
-L00003302           bsr.w   L000033d4
-L00003306           move.w  #$0008,$00dff09c
-L0000330e           move.l  (a7)+,d0
-L00003310           rte
-
-L00003312           move.w #$0008,$00dff09c
-L0000331a           move.l (a7)+,d0
-L0000331c           rte
+lvl1_clear_SOFT                                     ; original addr: $000032ec
+                    move.w  #$0004,$00dff09c        ; Clear INTREQ - SOFT (bit 2)
+                    move.l  (a7)+,d0
+                    rte
 
 
 
-level3_interrupt_handler
-L0000331e           move.l  d0,-(a7) 
-L00003320           move.w  $00dff01e,d0                    ; d0 = INTREQR
-L00003326           btst.l  #$0004,d0                       ; Copper Interrupt?
-L0000332a           bne.b   lvl3_coper                      ; .... yes - L0000334e
-L0000332c           btst.l  #$0005,d0                       ; Vertical Blank
-L00003330           bne.b   lvl3_vertb                      ; .... yes - L0000333e
-L00003332           move.w  #$0040,$00dff09c                ; clear BLIT - INTREQ
-L0000333a           move.l  (a7)+,d0
-L0000333c           rte 
+
+                    ; -------------------- level 2 - interrupt handler --------------------
+                    ; CIA Ports & Timers
+                    ;  
+level2_interrupt_handler                            ; original address $000032f8
+                    move.l  d0,-(a7)
+                    move.b  $00bfed01,d0            ; CIAA - ICR - Clear by reading
+                    bpl.b   lvl2_not_CIAA           ;   - No CIAA - Interrupt - $00003312
+                    bsr.w   lvl2_CIAA_Interrupt     ;   - yes - $000033d4
+                    move.w  #$0008,$00dff09c        ; Clear PORTS (bit 3)
+                    move.l  (a7)+,d0
+                    rte
+
+lvl2_not_CIAA                                       ; original address $00003312
+                    move.w #$0008,$00dff09c         ; Clear PORTS (bit 3)
+                    move.l (a7)+,d0
+                    rte
+
+
+
+
+                    ; -------------------- level 3 - interrupt handler --------------------
+                    ; COPER, VERTB, BLIT - interrupts
+                    ;
+level3_interrupt_handler                                    ; original addr: $0000331e
+                    move.l  d0,-(a7) 
+                    move.w  $00dff01e,d0                    ; d0 = INTREQR
+                    btst.l  #$0004,d0                       ; Copper Interrupt?
+                    bne.b   lvl3_coper                      ; .... yes - L0000334e
+                    btst.l  #$0005,d0                       ; Vertical Blank
+                    bne.b   lvl3_vertb                      ; .... yes - L0000333e
+                    move.w  #$0040,$00dff09c                ; clear BLIT - INTREQ
+                    move.l  (a7)+,d0
+                    rte 
+
 
                     ; level 3 interrupt handler
-lvl3_vertb
-L0000333e           bsr.w   update_sound_player             ; L00003526
-L00003342           move.w  #$0020,$00dff09c                ; clear VERTB - INTREQ
-L0000334a           move.l  (a7)+,d0
-L0000334c           rte 
+lvl3_vertb                                                  ; original addr: $0000333e
+                    bsr.w   update_sound_player             ; L00003526
+                    move.w  #$0020,$00dff09c                ; clear VERTB - INTREQ
+                    move.l  (a7)+,d0
+                    rte 
+
 
                     ; copper interrupt - do nothing
-lvl3_coper
-L0000334e           move.w  #$0010,$00dff09c                ; clear COPER - INTREQ
-L00003356           move.l  (a7)+,d0
-L00003358           rte 
+lvl3_coper                                                  ; original addr: $0000334e
+                    move.w  #$0010,$00dff09c                ; clear COPER - INTREQ
+                    move.l  (a7)+,d0
+                    rte 
 
 
 
-                    ; level 4 - interrupt handler
+
+                    ; -------------------- level 4 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
 level4_interrupt_handler
 L0000335a           move.l  d0,-(a7)
@@ -417,8 +438,11 @@ L0000336c           move.l  (a7)+,d0
 L0000336e           rte
 
 
-                    ; level 5 - interrupt handler
+
+
+                    ; -------------------- level 5 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
+                    ;
 level5_interrupt_handler
 L00003370           move.l  d0,-(a7)
 L00003372           move.w  $00dff01e,d0                    ; d0 = INTREQR
@@ -434,8 +458,11 @@ L00003392           move.l  (a7)+,d0
 L00003394           rte 
 
 
-                    ; level 6 - interrupt handler
+
+
+                    ; -------------------- level 6 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
+                    ;
 level6_interrupt_handler
 L00003396           move.l  d0,-(a7)
 L00003398           move.w  $00dff01e,d0
@@ -458,34 +485,44 @@ L000033d2           rte
 
 
 
-L000033d4           lsr.b   #$02,d0
-L000033d6           bcc.b   L000033dc
-L000033d8           bsr.w   L00003544
-L000033dc           lsr.b   #$02,d0
-L000033de           bcc.b   L0000344e
-L000033e0           movem.l d1-d2/a0,-(a7)
-L000033e4           move.b  $00bfec01,d1
+
+                    ; ------------------ level 2 - CIAA - Interrupt Handler ------------------
+                    ;
+                    ; IN:
+                    ;  - D0 - CIAA - ICR
+                    ;
+lvl2_CIAA_Interrupt                                         ; original addr: $000033d4
+lvl2_chk_TB                                                 ; original addr: $000033d4
+                    lsr.b   #$02,d0                         ; chk for Timer B
+                    bcc.b   lvl2_chk_SP                     ;   no  - not Timer B - $000033dc
+                    bsr.w   lvl2_CIAB_TimerB_Handler        ;   yes - is Timer B Interrupt - $00003544
+lvl2_chk_SP                                                 ; original addr: $000033dc
+                    lsr.b   #$02,d0                         ; chk for SP 
+                    bcc.b   lvl2_exit_handler               ;   no  - not SP - $0000344e
+lvl2_SP
+L000033e0           movem.l d1-d2/a0,-(a7)                  ;   yes - is SP
+L000033e4           move.b  $00bfec01,d1                    ; CIAA - SDR - 
 L000033ea           not.b   d1
 L000033ec           lsr.b   #$01,d1
 L000033ee           bcc.b   L00003406
 L000033f0           lea.l   L000034f4,a0
 L000033f6           ext.w   d1
-L000033f8           move.b  L000033f8(pc,d1.w),d1            ; $00003450 (warning 2069: encoding absolute displacement directly)
+L000033f8           move.b  L000033f8(pc,d1.w),d1           ; $00003450 (warning 2069: encoding absolute displacement directly)
 L000033fc           move.w  d1,d2
 L000033fe           lsr.w   #$03,d2
-L00003400           bclr.b  d1,$00(a0,d2.W)         ; $00001407
+L00003400           bclr.b  d1,$00(a0,d2.W)                 ; $00001407
 L00003404           bra.b   L00003442
 L00003406           lea.l   L000034f4,a0
 L0000340c           ext.w   d1
-L0000340e           move.b  L0000340e(pc,d1.w),d1            ; $00003450 (warning 2069: encoding absolute displacement directly)
+L0000340e           move.b  L0000340e(pc,d1.w),d1           ; $00003450 (warning 2069: encoding absolute displacement directly)
 L00003412           move.w  d1,d2
 L00003414           lsr.w   #$03,d2
-L00003416           bset.b  d1,$00(a0,d2.W)         ; $00001407 [28]
+L00003416           bset.b  d1,$00(a0,d2.W)                 ; $00001407 [28]
 L0000341a           tst.b   d1
 L0000341c           beq.b   L00003442
 L0000341e           lea.l   L000034d0,a0
 L00003424           move.w  L000034f0,d2
-L0000342a           move.b  d1,$00(a0,d2.W)         ; $00001407 [28]
+L0000342a           move.b  d1,$00(a0,d2.W)                 ; $00001407 [28]
 L0000342e           addq.w  #$01,d2
 L00003430           and.w   #$001f,d2
 L00003434           cmp.w   L000034f2,d2
@@ -493,6 +530,7 @@ L0000343a           beq.b   L00003442
 L0000343c           move.w  d2,L000034f0
 L00003442           move.b  #$40,$00bfee01
 L0000344a           movem.l (a7)+,d1-d2/a0
+lvl2_exit_handler
 L0000344e           rts 
 
 
@@ -548,16 +586,26 @@ L000034ea           dc.w    $0000, $0000                ; or.b #$00,d0
 L000034ee           dc.w    $0000
 L000034f0           dc.w    $0000                ; or.b #$00,d0
 L000034f2           dc.w    $0000
-L000034f4           dc.w    $0000                ; or.b #$00,d0
-L000034f6           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034fa           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034fe           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003502           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003506           dc.w    $0000, $0000                ; or.b #$00,d0
-L0000350a           dc.w    $0000, $0000                ; or.b #$00,d0
-L0000350e           dc.w    $0000, $0000                ; or.b #$00,d0
+
+
+                    ; table accessed from lvl2 SP interrupt handler
+L000034f4           dc.w    $0000
+L000034f6           dc.w    $0000
+                    dc.w    $0000
+L000034fa           dc.w    $0000
+                    dc.w    $0000
+L000034fe           dc.w    $0000
+                    dc.w    $0000
+L00003502           dc.w    $0000
+                    dc.w    $0000
+L00003506           dc.w    $0000
+                    dc.w    $0000
+L0000350a           dc.w    $0000
+                    dc.w    $0000
+L0000350e           dc.w    $0000
+                    dc.w    $0000
 L00003512           dc.w    $0000
-L00003514           dc.w    $e408                ; or.b #$08,d0
+L00003514           dc.w    $e408
     
 
 
@@ -579,6 +627,8 @@ L0000353e           movem.l (a7)+,d1-d7/a0-a6
 L00003542           rts
 
 
+
+lvl2_CIAB_TimerB_Handler
 L00003544           movem.l d0-d7/a0-a6,-(a7)
 L00003548           bsr.w   L00003566
 L0000354c           addq.w  #$01,L00003564
@@ -1088,13 +1138,13 @@ L00003a80           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003a84           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003a88           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003a8c           dc.w    $0000
-L00003a8e           dc.w    $0000                ; or.b #$00,d0
+L00003a8e           dc.w    $0000                       ; or.b #$00,d0
 L00003a90           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
 L00003a96           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003a9a           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003a9e           dc.w    $0000, $0000                ; or.b #$00,d0
 L00003aa2           dc.w    $0000
-L00003aa4           dc.w    $5009                ; or.b #$09,d0
+L00003aa4           dc.w    $5009                       ; or.b #$09,d0
 L00003aa6           dc.w    $4158                       ; illegal
 L00003aa8           dc.w    $4953                       ; illegal
 L00003aaa           dc.w    $2043                       ; movea.l d3,a0
@@ -1107,7 +1157,7 @@ L00003ab6           dc.w    $4354                       ; illegal
 L00003ab8           dc.w    $4f52                       ; illegal
 L00003aba           dc.w    $5900                       ; subq.b #$04,d0
 L00003abc           dc.b    $ff
-L00003abd           dc.b    $40                       ; illegal
+L00003abd           dc.b    $40                         ; illegal
 L00003abe           dc.w    $0e4a                       ; illegal
 L00003ac0           dc.w    $4143                       ; illegal
 L00003ac2           dc.w    $4b20                       ; [ chk.l -(a0),d5 ]
@@ -1116,7 +1166,7 @@ L00003ac6           dc.w    $2044                       ; movea.l d4,a0
 L00003ac8           dc.w    $4541                       ; illegal
 L00003aca           dc.w    $4400                       ; neg.b d0
 L00003acc           dc.b    $ff
-L00003acd           dc.b    $60                       ; illegal
+L00003acd           dc.b    $60                         ; illegal
 L00003ace           dc.w    $0b54                       ; bchg.b d5,(a4)
 L00003ad0           dc.w    $4845                       ; swap.w d5
 L00003ad2           dc.w    $204a                       ; movea.l a2,a0
