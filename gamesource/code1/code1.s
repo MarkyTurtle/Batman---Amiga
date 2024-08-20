@@ -128,7 +128,8 @@ original_start:                                     ; original address $2FFC
 
 
 
-game_start:
+game_start                                          ; original address $00003000
+init_system
                     ; kill the system & initialise h/w
 L00003000           moveq   #$00,d0
 L00003002           move.w  #$1fff,$00dff09a        ; DMACON - Disable DMA (All DMA Channels)
@@ -358,7 +359,8 @@ L000032be           dc.w $0eee                      ; $2f00 3039 [ cas.l d0,d4,(
 
                     ; -------------------- level 1 - interrupt handler --------------------
                     ; TBE, DSKBLK, SOFT - Interrupts, just clear the bits from INTREQ
-                    ;  
+                    ;  NB: not enabled by init_system above
+                    ;
 level1_interrupt_handler                            ; original addr: $000032c0
                     move.l  d0,-(a7)
                     move.w  $00dff01e,d0            ; INTREQR
@@ -385,6 +387,7 @@ lvl1_clear_SOFT                                     ; original addr: $000032ec
 
                     ; -------------------- level 2 - interrupt handler --------------------
                     ; CIA Ports & Timers
+                    ; - Enabled by 'init_system' above
                     ;  
 level2_interrupt_handler                            ; original address $000032f8
                     move.l  d0,-(a7)
@@ -405,6 +408,7 @@ lvl2_not_CIAA                                       ; original address $00003312
 
                     ; -------------------- level 3 - interrupt handler --------------------
                     ; COPER, VERTB, BLIT - interrupts
+                    ; - Enabled by 'init_system' above
                     ;
 level3_interrupt_handler                                    ; original addr: $0000331e
                     move.l  d0,-(a7) 
@@ -470,26 +474,33 @@ L00003394           rte
 
                     ; -------------------- level 6 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
+                    ; NB: level 6 is enabled by 'init_system' but is not raised during 
+                    ;     level 1 play.
                     ;
-level6_interrupt_handler
-L00003396           move.l  d0,-(a7)
-L00003398           move.w  $00dff01e,d0
-L0000339e           btst.l  #$000e,d0
-L000033a2           bne.b   L000033c8
-L000033a4           move.b  $00bfdd00,d0
-L000033aa           bpl.b   L000033bc
-L000033ac           bsr.w   L00003514
-L000033b0           move.w  #$2000,$00dff09c
-L000033b8           move.l  (a7)+,d0
-L000033ba           rte 
+                    ; The Vector is still pointing to $2182 (loader level6 handler
+                    ; a bug or intentional?
+                    ;
+level6_interrupt_handler                            ; original addres $00003396
+                    move.l  d0,-(a7)
+                    move.w  $00dff01e,d0            ; d0 = INTREQR
+                    btst.l  #$000e,d0               ; INTEN - Master Interrupt - set only (bug?)
+                    bne.b   lvl6_clear_INTEN
+                    move.b  $00bfdd00,d0            ; CIAB - ICR - read also clears
+                    bpl.b   lvl6_clear_EXTER        ; MSB = 0, no CIAB interrupt
+                    bsr.w   lvl6_timerb_interrupt
+                    move.w  #$2000,$00dff09c        ; INTREQ - Clear EXTER - Level 6 CIAB - Disk Index
+                    move.l  (a7)+,d0
+                    rte 
 
-L000033bc           move.w  #$2000,$00dff09c
-L000033c4           move.l  (a7)+,d0
-L000033c6           rte  
+lvl6_clear_EXTER                                ; original address $000033bc
+                    move.w  #$2000,$00dff09c    ; INTREQ - Clear EXTER - Level 6 CIAB - Disk Index
+                    move.l  (a7)+,d0
+                    rte  
 
-L000033c8           move.w  #$4000,$00dff09c
-L000033d0           move.l  (a7)+,d0
-L000033d2           rte
+lvl6_clear_INTEN                                ; original address $000033c8
+                    move.w  #$4000,$00dff09c    ; INTREQ - Clear INTEN (never set on read) - never called
+                    move.l  (a7)+,d0
+                    rte
 
 
 
@@ -515,14 +526,14 @@ L000033ec           lsr.b   #$01,d1
 L000033ee           bcc.b   L00003406
 L000033f0           lea.l   L000034f4,a0
 L000033f6           ext.w   d1
-L000033f8           move.b  L000033f8(pc,d1.w),d1           ; $00003450 (warning 2069: encoding absolute displacement directly)
+L000033f8           move.b  L00003450(pc,d1.w),d1         
 L000033fc           move.w  d1,d2
 L000033fe           lsr.w   #$03,d2
 L00003400           bclr.b  d1,$00(a0,d2.W)                 ; $00001407
 L00003404           bra.b   L00003442
 L00003406           lea.l   L000034f4,a0
 L0000340c           ext.w   d1
-L0000340e           move.b  L0000340e(pc,d1.w),d1           ; $00003450 (warning 2069: encoding absolute displacement directly)
+L0000340e           move.b  L00003450(pc,d1.w),d1           
 L00003412           move.w  d1,d2
 L00003414           lsr.w   #$03,d2
 L00003416           bset.b  d1,$00(a0,d2.W)                 ; $00001407 [28]
@@ -543,25 +554,25 @@ L0000344e           rts
 
 
 
-L00003450           dc.w    $2731, $3233                ; move.l (a1,d3.W[*2],$33) == $000402a0 (68020+) [17000018],-(a3) [43338718]
-L00003454           dc.w    $3435, $3637                ; move.w (a5,d3.W[*8],$37) == $00bfd44a (68020+),d2
-L00003458           dc.w    $3839, $302d 3d5c           ; move.w $302d3d5c,d4
-L0000345e           dc.w    $0030, $5157 4552           ; or.b #$57,(a0,d4.W[*4],$52) == $00000b53 (68020+) [7c]
-L00003464           dc.w    $5459                       ; addq.w #$02,(a1)+ [0400]
-L00003466           dc.w    $5549                       ; subaq.w #$02,a1
-L00003468           dc.w    $4f50                       ; illegal
-L0000346a           dc.w    $5b5d                       ; subq.w #$05,(a5)+
-L0000346c           dc.w    $0031, $3233 4153           ; or.b #$33,(a1,d4.W,$53) == $000400ae (68020+) [00]
-L00003472           dc.w    $4446                       ; neg.w d6
-L00003474           dc.w    $4748                       ; illegal
-L00003476           dc.w    $4a4b                       ; [ tst.w a3 ]
-L00003478           dc.w    $4c3b                       ; 2300 0034 [ mulu.l (pc,d0.W,$34=$000034b0) == $00001440,d2 ]
-L0000347a           dc.w    $2300                       ; move.l d0,-(a1) [00000000]
-L0000347c           dc.w    $0034, $3536, $005a         ; or.b #$36,(a4,d0.W,$5a) == $00bfc0eb
-L00003482           dc.w    $5843                       ; addq.w #$04,d3
-L00003484           dc.w    $5642                       ; addq.w #$03,d2
-L00003486           dc.w    $4e4d                       ; trap #$0d
-L00003488           dc.w    $2c2e, $2f00                ; move.l (a6,$2f00) == $00e01f00 [33fcc000],d6
+L00003450           dc.w    $2731, $3233                
+L00003454           dc.w    $3435, $3637                
+L00003458           dc.w    $3839, $302d 3d5c           
+L0000345e           dc.w    $0030, $5157 4552           
+L00003464           dc.w    $5459                       
+L00003466           dc.w    $5549                       
+L00003468           dc.w    $4f50                       
+L0000346a           dc.w    $5b5d                       
+L0000346c           dc.w    $0031, $3233 4153           
+L00003472           dc.w    $4446                       
+L00003474           dc.w    $4748                       
+L00003476           dc.w    $4a4b                       
+L00003478           dc.w    $4c3b                       
+L0000347a           dc.w    $2300                       
+L0000347c           dc.w    $0034, $3536, $005a         
+L00003482           dc.w    $5843                       
+L00003484           dc.w    $5642                       
+L00003486           dc.w    $4e4d                       
+L00003488           dc.w    $2c2e, $2f00                
 L0000348c           dc.w    $0037, $3839 2008           ; or.b #$39,(a7,d2.W,$08) == $0000122b [b0]
 L00003492           dc.w    $090d, $0d1b                ; movep.w (a5,$0d1b) == $00bfde1b,d4
 L00003496           dc.w    $7f00                       ; illegal
@@ -613,16 +624,25 @@ L0000350a           dc.w    $0000
 L0000350e           dc.w    $0000
                     dc.w    $0000
 L00003512           dc.w    $0000
-L00003514           dc.w    $e408
-    
 
 
-L00003516           bcc.b   L00003520 4e75              ; 6408
-L00003518           move.b  #$00,$00bfee01              ; 13fc 0000 00bf ee01
-L00003520           rts                                 ; 4e75
+
+                    ;----------------------------------------------------------------------------
+                    ; never called because a level 6 interrupt never genrated by level 1 code
+                    ; IN:
+                    ;   d0.b = CIAB - ICR
+                    ;
+lvl6_timerb_interrupt                           ; original address: $00003514
+                    lsr.b   #$00000002,D0       ; test for TB interrupt
+                    bcc.b   .exit               ; no Timer B Interrupt
+                    move.b  #$00,$00bfee01      ; CIAA - CRA - Stop Timer A 
+.exit               rts                     
 
 
-L00003522           dc.w    $0000, $3542                ; or.b #$42,d0
+
+
+
+L00003522           dc.w    $0000, $3542
 
 
                     ; update music/sfx player
@@ -1345,7 +1365,7 @@ L00003cd2           and.w   d2,d3
 L00003cd4           moveq   #$0f,d5
 L00003cd6           lsr.w   #$01,d3
 L00003cd8           bcc.b   L00003cdc
-L00003cda           moveq   #$f0,d5                     ; (warning 2028: using signed operand as unsigned: 240 (valid: -128..127), -16 to fix)
+L00003cda           MOVE.L  #$fffffff0,D5                    
 L00003cdc           cmp.w   d0,d3
 L00003cde           bcc.b   L00003d32
 L00003ce0           move.w  d2,d4
@@ -1398,7 +1418,7 @@ L00003d52           moveq   #$0f,d2
 L00003d54           and.w   d1,d2
 L00003d56           beq.b   L00003d5a
 L00003d58           addq.w  #$01,d0
-L00003d5a           moveq   #$f0,d2                     ; (warning 2028: using signed operand as unsigned: 240 (valid: -128..127), -16 to fix)
+L00003d5a           MOVE.L  #$fffffff0,D2
 L00003d5c           and.b   d1,d2
 L00003d5e           beq.b   L00003d64
 L00003d60           add.w   #$0010,d0
@@ -1626,7 +1646,7 @@ L00003fe4           moveq   #$08,d3
 L00003fe6           bra.b   L00003ff0
 L00003fe8           cmp.w   #$ffe8,d3
 L00003fec           bcc.b   L00003ff0
-L00003fee           moveq   #$e8,d3                 ; (warning 2028: using signed operand as unsigned: 232 (valid: -128..127), -24 to fix)
+L00003fee           MOVE.L  #$ffffffe8,D3
 L00003ff0           move.w  d3,$0006(a0)
 L00003ff4           cmp.w   #$0073,d1
 L00003ff8           bpl.b   L0000400a
@@ -2448,7 +2468,7 @@ L0000495a           bcs.b   L00004980
 L0000495c           cmp.w   #$fffd,d0
 L00004960           bcc.b   L00004980
 L00004962           bpl.b   L00004968
-L00004964           moveq   #$fe,d0
+L00004964           MOVE.L  #$fffffffe,D0
 L00004966           bra.b   L00004980
 L00004968           moveq   #$02,d0
 L0000496a           bra.b   L00004980
@@ -2459,7 +2479,7 @@ L00004976           bcc.b   L00004980
 L00004978           bmi.b   L0000497e
 L0000497a           moveq   #$07,d0
 L0000497c           bra.b   L00004980
-L0000497e           moveq   #$fd,d0
+L0000497e           MOVE.L  #$fffffffd,D0
 L00004980           move.w  L000067be,d1
 L00004984           move.w  d1,d3
 L00004986           add.w   d0,d1
@@ -2944,7 +2964,7 @@ L00004f06            bra.b   L00004f16
 L00004f08            clr.w   d3
 L00004f0a            sub.w   #$0080,d2
 L00004f0e            bpl.b   L00004f14
-L00004f10            moveq   #$81,d2
+L00004f10            MOVE.L  #$ffffff81,D2
 L00004f12            bra.b   L00004f16
 L00004f14            moveq   #$7f,d2
 L00004f16            movem.w d2-d3,(a0)
@@ -2999,7 +3019,7 @@ L00004fae           movem.w L000062f4,d4-d5
 L00004fb4           subq.w  #$03,d5
 L00004fb6           cmp.w   #$fffa,d5
 L00004fba           bpl.b   L00004fbe
-L00004fbc           moveq   #$fa,d5
+L00004fbc           MOVE.L #$fffffffa,D5
 L00004fbe           subq.w  #$02,d4
 L00004fc0           cmp.w   #$fffc,d4
 L00004fc4           bcc.b   L00004fca
@@ -3103,7 +3123,7 @@ L000050ea           moveq   #$7f,d0
 L000050ec           bra.b   L000050fa
 
 L000050ee           move.w  #$e000,L000062ee        ; Jump Table CMD13
-L000050f4           moveq   #$81,d0
+L000050f4           MOVE.L #$ffffff81,D0
 L000050f6           bra.b   L000050fa
 
                     ; bat-a-rang?
@@ -3310,7 +3330,7 @@ L00005358           move.b  d5,L00006308
 L0000535c           moveq   #$01,d5
 L0000535e           asr.w   #$01,d4
 L00005360           bcs.w   L000052ee               ; bcs.b 
-L00005362           moveq   #$ff,d5
+L00005362           MOVE.L #$ffffffff,D5
 L00005364           asr.w   #$01,d4
 L00005366           bcs.w   L000052ee               ; bcs.b
 L00005368           asr.w   #$01,d4
@@ -3664,7 +3684,7 @@ L0000575e           bls.w   L00005852
 L00005762           cmp.w   d3,d6
 L00005764           bpl.b   L00005768
 L00005766           move.w  d6,d3
-L00005768           moveq   #$ff,d7
+L00005768           MOVE.L #$ffffffff,D7
 L0000576a           move.w  d2,d5
 L0000576c           moveq   #$07,d6
 L0000576e           and.w   d0,d6
@@ -3694,7 +3714,7 @@ L000057a0           sub.w   d0,d5
 L000057a2           bls.w   L00005852
 L000057a6           adda.w  d0,a0
 L000057a8           adda.w  d0,a0
-L000057aa           moveq   #$ff,d0
+L000057aa           MOVE.L #$ffffffff,D0
 L000057ac           moveq   #$08,d4
 L000057ae           sub.w   d6,d4
 L000057b0           add.w   d4,d4
@@ -3707,7 +3727,7 @@ L000057bc           ble.w   L00005852
 L000057c0           cmp.w   d4,d5
 L000057c2           bls.b   L000057ce
 L000057c4           move.w  d4,d5
-L000057c6           moveq   #$ff,d4
+L000057c6           MOVE.L #$ffffffff,D4
 L000057c8           lsl.w   d6,d4
 L000057ca           lsl.w   d6,d4
 L000057cc           move.w  d4,d7
@@ -4247,7 +4267,7 @@ L00005dbe           moveq   #$70,d2
 L00005dc0           sub.w   d0,d2
 L00005dc2           cmp.w   #$fffd,d2
 L00005dc6           bcc.b   L00005dca
-L00005dc8           moveq   #$fe,d2
+L00005dc8           MOVE.L #$fffffffe,D2
 L00005dca           add.w   d2,L000067c8
 L00005dce           cmp.w   #$0048,d1
 L00005dd2           bcc.b   L00005e26
@@ -4655,7 +4675,7 @@ L000067c8           dc.w $0050                 ;.......P.H.H.P
 
 
 
-
+                    even
 L000067ca           move.b  (a0)+,d0
 L000067cc           bmi.w   L0000689e
 L000067d0           and.w   #$00ff,d0
@@ -4672,10 +4692,10 @@ L000067ea           move.b  (a0)+,d0
 L000067ec           beq.b   L000067ca
 L000067ee           cmp.b   #$20,d0
 L000067f2           beq.w   L00006896
-L000067f6           moveq   #$cd,d1
+L000067f6           MOVE.L #$ffffffcd,D1
 L000067f8           cmp.b   #$41,d0
 L000067fc           bcc.b   L00006822
-L000067fe           moveq   #$d4,d1
+L000067fe           MOVE.L #$ffffffd4,D1
 L00006800           cmp.b   #$30,d0
 L00006804           bcc.b   L00006822
 L00006806           moveq   #$00,d1
