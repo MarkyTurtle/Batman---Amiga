@@ -222,21 +222,20 @@ init_system
                     move.b  #$8a,$00bfed01                  ; CIAA - ICR - Enable SP & Timer A & B Interrupts
                     tst.b   $00bfdd00                       ; CIAB - ICR - Clear by reading (interrupt control)
                     move.b  #$93,$00bfdd00                  ; CIAB - ICR - Enable FLG & Timer A & B Interrupts
-                    move.w  #$e078,$00dff09a                ; INTENA - Enable - EXTER (disk sync), BLIT, VERTB, COPER, PORTS (keyboard & Timers)
+                    move.w  #$e078,$00dff09a                ; INTENA - Enable - EXTER (disk sync), BLIT, VERTB, COPER, PORTS (keyboard & Timers)                
                                                             ;        - Level 2,3,6
 
-
-                    ; start initialising the game
-L0000317a           jsr     PANEL_INIT_LIVES            ; Panel - Initialise Player Lives - $0007c838
-L00003180           jsr     PANEL_INIT_SCORE            ; Panel - Initialise Player Score to 0 - $0007c81c
-L00003186           jsr     PANEL_INIT_ENERGY           ; Panel - Initialise Player Energy - $0007c854
-L0000318c           move.w  #$0800,d0                   ; BCD Encoding of Level Timer MM:SS
-L00003190           jsr     PANEL_INIT_TIMER            ; Panel - Initalise the Level Timer - $0007c80e 
-L00003196           bsr.w   clear_display_memory        ; Clear display buffers - $00003746
-L0000319a           lea.l   copper_list,a0              ; L000031c8,a0
-L000031a0           bsr.w   reset_display               ; reset display (320x218) 4 bitplanes - L0000368a
-L000031a4           bsr.w   double_buffer_playfield     ; L000036fa
-L000031a8           bra.w   start_game                  ;  L00003ae4
+                    ; start initialising the game           ; original address $0000317a
+                    jsr     PANEL_INIT_LIVES                ; Panel - Initialise Player Lives - $0007c838
+                    jsr     PANEL_INIT_SCORE                ; Panel - Initialise Player Score to 0 - $0007c81c
+                    jsr     PANEL_INIT_ENERGY               ; Panel - Initialise Player Energy - $0007c854
+                    move.w  #$0800,d0                       ; BCD Encoding of Level Timer MM:SS
+                    jsr     PANEL_INIT_TIMER                ; Panel - Initalise the Level Timer - $0007c80e 
+                    bsr.w   clear_display_memory            ; Clear display buffers - $00003746
+                    lea.l   copper_list,a0                  ; L000031c8,a0
+                    bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
+                    bsr.w   double_buffer_playfield         ; L000036fa
+                    bra.w   start_game                      ; L00003ae4
 
 
                     ; maybe second copper list
@@ -345,17 +344,12 @@ copper_panel_colors                                 ; original address $0000325c
                     dc.w $ffff,$fffe
 
 
-
-L000032a0           dc.w $0000, $0060               ; or.b #$60,d0
-L000032a4           dc.w $0fff                      ; illegal
-L000032a6           dc.w $0008                      ; illegal
-L000032a8           dc.w $0a22, $0444               ; eor.b #$44,-(a2) [f1]
-L000032ac           dc.w $0862, $0666               ; bchg.b #$0666,-(a2) [f1]
-L000032b0           dc.w $0888                      ; illegal
-L000032b2           dc.w $0aaa, $0a40, $0c60, $0e80 ; eor.l #$0a400c60,(a2,$0e80) == $0006e668 [25e19a09]
-L000032ba           dc.w $0ea0                      ; $0ec0 [ moves.l d0,-(a0) [4ef83000] ]
-L000032bc           dc.w $0ec0                      ; illegal
-L000032be           dc.w $0eee                      ; $2f00 3039 [ cas.l d0,d4,(a6,$3039) == $00e02039 [6e011422] ]
+                    ;------------------- 16 colours for the Panel ---------------------
+panel_colours                                       ; original address $000032a0
+L000032a0           dc.w $0000,$0060,$0fff,$0008                      
+L000032a8           dc.w $0a22,$0444,$0862,$0666               
+L000032b0           dc.w $0888,$0aaa,$0a40,$0c60
+                    dc.w $0e80,$0ea0,$0ec0,$0eee                      
 
 
 
@@ -1218,7 +1212,7 @@ L00003ae2           dc.w    $ffb9                       ; illegal
                     ; Called after the system is initialised, initialise the
                     ; game level & play the game loop
                     ;
-start_game
+start_game                                          ; original address $00003ae4
 L00003ae4           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
 L00003aea           bsr.w   double_buffer_playfield ; L000036fa
 L00003aee           bsr.w   L000058e2
@@ -1231,8 +1225,8 @@ L00003b0c           bsr.w   clear_display_memory    ; L00003746
 L00003b10           move.w  #$0800,d0               ; Level Time as BCD mm:ss
 L00003b14           jsr     PANEL_INIT_TIMER        ; Panel - Initialise Level Timer - $0007c80e
 L00003b1a           jsr     PANEL_INIT_ENERGY       ; Panel - Initialise Player Energy - $0007c854
-L00003b20           bsr.w   L00003d40
-                    ; panel faded in
+
+L00003b20           bsr.w   panel_fade_in           ; L00003d40
 
 L00003b24           lea.l   $0000807c,a0            ; External Address $807c - MAPGR.IFF
 L00003b2a           movea.l L00005f64,a5
@@ -1416,35 +1410,55 @@ L00003d38           and.w   #$1fff,d2
 L00003d3c           bne.b   L00003cd0
 L00003d3e           rts
 
-L00003d40           moveq   #$0f,d7
-L00003d42           lea.l   copper_panel_colors+2,a0            ; $325e,a0
-L00003d46           lea.l   $32a0,a1
-L00003d4a           moveq   #$0f,d6
-L00003d4c           move.w  (a0),d0
-L00003d4e           move.w  (a1)+,d1
-L00003d50           eor.w   d0,d1
-L00003d52           moveq   #$0f,d2
-L00003d54           and.w   d1,d2
-L00003d56           beq.b   L00003d5a
-L00003d58           addq.w  #$01,d0
-L00003d5a           MOVE.L  #$fffffff0,D2
-L00003d5c           and.b   d1,d2
-L00003d5e           beq.b   L00003d64
-L00003d60           add.w   #$0010,d0
-L00003d64           and.w   #$0f00,d1
-L00003d68           beq.b   L00003d6e
-L00003d6a           add.w   #$0100,d0
-L00003d6e           move.w  d0,(a0)
-L00003d70           addq.w  #$04,a0              ; addaq.w
-L00003d72           dbf.w   d6,L00003d4c
+
+
+                    ;---------------------- panel fade in -----------------------
+                    ; fades the panel colours from blank to expected colours.
+                    ; waits 4 frames between each fade loop.
+                    ; loops 16 times, 64 frames fade in. approx 1 seconds.
+                    ;
+panel_fade_in                                               ; original address $00003d40
+                    moveq   #$0f,d7                         ; d7 = 15+1 - outer loop
+.fade_loop                                                  ; original address $00003d42
+                    lea.l   copper_panel_colors+2,a0 
+                    lea.l   panel_colours,a1                
+                    moveq   #$0f,d6
+.next_colour                                                ; original address $00003d4c
+                    move.w  (a0),d0                         ; d0 = current display colour
+                    move.w  (a1)+,d1                        ; d1 = panel colour
+                    eor.w   d0,d1                           ; XOR will result in 000 copper value = expected value
+.fade_blue                                                  ; original address $00003d52
+                    moveq   #$0f,d2                         ; blue bits mask
+                    and.w   d1,d2                           ; d2 = blue bits
+                    beq.b   .fade_green                     ; L00003d5a ; if blue bits == 0 then equals target colour
+                    addq.w  #$01,d0                         ; else increment blue colour
+.fade_green                                                 ; original address $00003d5a
+                    move.l  #$fffffff0,D2                   ; d2 = green bits mask
+                    and.b   d1,d2                           ; mask out blue bits, leaving green bits
+                    beq.b   .fade_red                       ; L00003d64 ; if green bits == 0 then equals target colour
+                    add.w   #$0010,d0                       ; else increment green bits
+.fade_red                                                   ; original address $00003d64
+                    and.w   #$0f00,d1                       ; mask out green & blue bits
+                    beq.b   .end_fade                       ; L00003d6e ; if red bits == 0 then equals target colour
+                    add.w   #$0100,d0                       ; else increment red bits
+.end_fade                                                   ; original address $00003d6e
+                    move.w  d0,(a0)                         ; store new colour in copper list
+                    addq.w  #$04,a0                         ; next copper colour address ptr
+                    dbf.w   d6,.next_colour                 ; L00003d4c ; fade next colour
 
                     ; wait for 4 frame counts
-L00003d76           move.w  frame_counter,d0            ; L000036ee,d0
-L00003d7c           addq.w  #$04,d0
-L00003d7e           cmp.w   frame_counter,d0            ; L000036ee,d0
-L00003d84           bne.b   L00003d7e
-L00003d86           dbf.w   d7,L00003d42
-L00003d8a           rts
+.wait_4_frames                                              ; original address $00003d76
+                    move.w  frame_counter,d0                ; L000036ee,d0
+                    addq.w  #$04,d0
+.wait_frame_count                                           ; original address $00003d7e
+                    cmp.w   frame_counter,d0                ; L000036ee,d0
+                    bne.b   .wait_frame_count               ; L00003d7e
+                    dbf.w   d7,.fade_loop                   ; L00003d42
+                    rts
+
+
+
+
 
 L00003d8c           moveq   #$0f,d7
 L00003d8e           lea.l   copper_panel_colors+2,a0    ; L0000325e,a0
