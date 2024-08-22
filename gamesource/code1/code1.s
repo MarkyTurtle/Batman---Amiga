@@ -438,33 +438,34 @@ lvl3_coper                                                  ; original addr: $00
 
                     ; -------------------- level 4 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
-level4_interrupt_handler
-L0000335a           move.l  d0,-(a7)
-L0000335c           move.w  $00dff01e,d0                    ; d0 = INTREQR
-L00003362           and.w   #$0780,d0                       ; Preserve Raised Audio Interrupts (level 4 for audio 0 - 3)
-L00003366           move.w  d0,$00dff09a                    ; clear audio interrupts
-L0000336c           move.l  (a7)+,d0
-L0000336e           rte
+                    ; unused handler
+level4_interrupt_handler                                    ; original address $0000335a
+                    move.l  d0,-(a7)
+                    move.w  $00dff01e,d0                    ; d0 = INTREQR
+                    and.w   #$0780,d0                       ; Preserve Raised Audio Interrupts (level 4 for audio 0 - 3)
+                    move.w  d0,$00dff09a                    ; clear raised audio interrupts
+                    move.l  (a7)+,d0
+                    rte
 
 
 
 
                     ; -------------------- level 5 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
-                    ;
-level5_interrupt_handler
-L00003370           move.l  d0,-(a7)
-L00003372           move.w  $00dff01e,d0                    ; d0 = INTREQR
-L00003378           btst.l  #$000c,d0                       ; Test DSKSYN bit?
-L0000337c           bne.b   lvl5_clear_dsksyn               ; .... yes - L0000338a                   
-L0000337e           move.w  #$0800,$00dff09c                ;  Clear RBF - Serial port buffer full (keyboard)
-L00003386           move.l  (a7)+,d0
-L00003388           rte 
+                    ; unused handler
+level5_interrupt_handler                                    ; original address $00003370
+                    move.l  d0,-(a7)
+                    move.w  $00dff01e,d0                    ; d0 = INTREQR
+                    btst.l  #$000c,d0                       ; Test DSKSYN bit?
+                    bne.b   lvl5_clear_dsksyn               ; .... yes - L0000338a                   
+                    move.w  #$0800,$00dff09c                ;  Clear RBF - Serial port buffer full (keyboard)
+                    move.l  (a7)+,d0
+                    rte 
 
-lvl5_clear_dsksyn
-L0000338a           move.w  #$1000,$00dff09c                ; Clear DSKSYN bit
-L00003392           move.l  (a7)+,d0
-L00003394           rte 
+lvl5_clear_dsksyn                                           ; original address $0000338a
+                    move.w  #$1000,$00dff09c                ; Clear DSKSYN bit
+                    move.l  (a7)+,d0
+                    rte 
 
 
 
@@ -476,6 +477,8 @@ L00003394           rte
                     ;
                     ; The Vector is still pointing to $2182 (loader level6 handler
                     ; a bug or intentional?
+                    ;
+                    ; unused handler
                     ;
 level6_interrupt_handler                            ; original addres $00003396
                     move.l  d0,-(a7)
@@ -517,10 +520,11 @@ lvl2_chk_SP                                                 ; original addr: $00
                     bcc.b   lvl2_exit_handler               ;   no  - not SP - $0000344e
 lvl2_SP
 L000033e0           movem.l d1-d2/a0,-(a7)                  ;   yes - is SP
-L000033e4           move.b  $00bfec01,d1                    ; CIAA - SDR - 
-L000033ea           not.b   d1
+L000033e4           move.b  $00bfec01,d1                    ; CIAA - SDR - Serial Data Register (Keyboard)
+L000033ea           not.b   d1                              ; d1 = inverted keycode
 L000033ec           lsr.b   #$01,d1
-L000033ee           bcc.b   L00003406
+L000033ee           bcc.b   .not_key_up                    ; Not Key up? - L00003406
+.is_key_up
 L000033f0           lea.l   L000034f4,a0
 L000033f6           ext.w   d1
 L000033f8           move.b  L00003450(pc,d1.w),d1         
@@ -528,6 +532,8 @@ L000033fc           move.w  d1,d2
 L000033fe           lsr.w   #$03,d2
 L00003400           bclr.b  d1,$00(a0,d2.W)                 ; $00001407
 L00003404           bra.b   L00003442
+
+.not_key_up                                                ; original address $00003406
 L00003406           lea.l   L000034f4,a0
 L0000340c           ext.w   d1
 L0000340e           move.b  L00003450(pc,d1.w),d1           
@@ -544,7 +550,8 @@ L00003430           and.w   #$001f,d2
 L00003434           cmp.w   L000034f2,d2
 L0000343a           beq.b   L00003442
 L0000343c           move.w  d2,L000034f0
-L00003442           move.b  #$40,$00bfee01
+.set_ciaa_cra                                           ; original address $00003442
+L00003442           move.b  #$40,$00bfee01              ; CIAA - CRA - SPMODE = CNT, Stop Timer A
 L0000344a           movem.l (a7)+,d1-d2/a0
 lvl2_exit_handler
 L0000344e           rts 
@@ -1230,9 +1237,9 @@ L00003b20           bsr.w   panel_fade_in           ; L00003d40
 
 L00003b24           lea.l   $0000807c,a0            ; External Address $807c - MAPGR.IFF
 L00003b2a           movea.l L00005f64,a5
-L00003b30           movem.w (a5)+,d2-d4
+L00003b30           movem.w (a5)+,d2-d4             ; d2, d3 d4 (6 bytes), d3 = word index to $807c
 L00003b34           tst.w   d3
-L00003b36           beq.b   L00003b4e
+L00003b36           beq.b   L00003b4e               ; if d3 == 0 then exist loop
 L00003b38           move.b  d2,$01(a0,d3.W)
 L00003b3c           lsr.w   #$08,d2
 L00003b3e           move.b  d2,$00(a0,d3.W)
@@ -1242,7 +1249,7 @@ L00003b48           move.b  d4,$02(a0,d3.W)
 L00003b4c           bra.b   L00003b30
 
 L00003b4e           move.l  #$00005fc4,L00005f64
-L00003b58           lea.l   $4894,a0
+L00003b58           lea.l   L00004894,a0
 L00003b5c           moveq   #$27,d7
 L00003b5e           clr.l   (a0)+
 L00003b60           dbf.w   d7,L00003b5e
