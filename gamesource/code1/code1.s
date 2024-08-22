@@ -16,11 +16,20 @@
                 ; CHEM              $47FE4
                 ; STACK             $5a36c              - Address of program stack - not a file load.
                 ;
-                ; DISPLAY BUFFER 1  $5a36c
-                ; DISPLAY BUFFER 2  $61b9c  $70000
-                ;   Double Buffered Display:
-                ;       DISPLAY_BUFFER_1            EQU $00061b9c   ; - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
-                ;       DISPLAY_BUFFER_2            EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ; CHIP MEM BUFFER   $5a36c  ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ;
+                ; DISPLAY BUFFER (Double Buffered Display)  
+                ;    display buffer 1 - $61b9c - $68dcc 
+                ;                       - Bitplane 1 = $61b9c ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 2 = $63828 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 3 = $654b4 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 4 = $67140 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;    display buffer 2 - $68dce - $6fffe
+                ;                       - Bitplane 1 = $68dce ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 2 = $6aa5a ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 3 = $6c6e6 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 4 = $6e372 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;
                 ;
                 ; LOADBUFFER        $5a36C  $7C7FC      - File Load Area (files loaded here before depacked/relocated)
                 ; PANEL             $7C7FC  $80000      - Game State/Lives manager (always resident across loads)
@@ -102,9 +111,11 @@ PANELST2_CHEAT_ACTIVE       EQU $7
 ; Code1 - Constants
 ;-------------------
 STACK_ADDRESS               EQU $0005a36c
+CHIPMEM_BUFFER              EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+DISPLAY_BUFFER              EQU $00061b9c   ; - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
 
-DISPLAY_BUFFER_1            EQU $00061b9c   ; - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
-DISPLAY_BUFFER_2            EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+
+
 
 
 
@@ -275,19 +286,19 @@ copper_list                                         ; original address $000031c8
 copper_playfield_planes                             ; original address $000031d4
                     dc.w BPL1PTL                    ; $00e2                     
                     dc.w $7680                      
-                    dc.w BPL1PTH                    ; $00e0 ($67680) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                   
+                    dc.w BPL1PTH                    ; $00e0 ($67680) - These ptrs are nonsense (set by swap buffers)                 
                     dc.w $0006
                     dc.w BPL2PTL                    ; $00e6               
                     dc.w $98e0                      
-                    dc.w BPL2PTH                    ; $00e4 ($698e0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                       
+                    dc.w BPL2PTH                    ; $00e4 ($698e0) - These ptrs are nonsense (set by swap buffers)                     
                     dc.w $0006
                     dc.w BPL3PTL                    ; $00ea               
                     dc.w $bb40                      
-                    dc.w BPL3PTH                    ; $00e8 ($6bb40) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                        
+                    dc.w BPL3PTH                    ; $00e8 ($6bb40) - These ptrs are nonsense (set by swap buffers)                        
                     dc.w $0006
                     dc.w BPL4PTL                    ; $00ee               
                     dc.w $dda0                      
-                    dc.w BPL4PTH                    ; $00ec ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)                    
+                    dc.w BPL4PTH                    ; $00ec ($6dda0) - These ptrs are nonsense (set by swap buffers)                  
                     dc.w $0006
                     dc.w COLOR01,$0446
                     dc.w COLOR02,$088a                      
@@ -421,7 +432,7 @@ level3_interrupt_handler                                    ; original addr: $00
 
                     ; level 3 interrupt handler
 lvl3_vertb                                                  ; original addr: $0000333e
-                    bsr.w   update_sound_player             ; L00003526
+                    bsr.w   lvl_3_update_sound_player             ; L00003526
                     move.w  #$0020,$00dff09c                ; clear VERTB - INTREQ
                     move.l  (a7)+,d0
                     rte 
@@ -577,37 +588,37 @@ L00003482           dc.w    $5843
 L00003484           dc.w    $5642                       
 L00003486           dc.w    $4e4d                       
 L00003488           dc.w    $2c2e, $2f00                
-L0000348c           dc.w    $0037, $3839 2008           ; or.b #$39,(a7,d2.W,$08) == $0000122b [b0]
-L00003492           dc.w    $090d, $0d1b                ; movep.w (a5,$0d1b) == $00bfde1b,d4
-L00003496           dc.w    $7f00                       ; illegal
-L00003498           dc.w    $0000, $2d00                ; or.b #$00,d0
-L0000349c           dc.w    $8c8d                       ; illegal
-L0000349e           dc.w    $8e8f                       ; illegal
-L000034a0           dc.w    $8182                       ; [ unpk d2,d0,#$8384 ]
-L000034a2           dc.w    $8384                       ; [ unpk d4,d1,#$8586 ]
-L000034a4           dc.w    $8586                       ; [ unpk d6,d2,#$8788 ]
-L000034a6           dc.w    $8788                       ; [ unpk -(a0),-(a3),#$898a ]
-L000034a8           dc.w    $898a                       ; [ unpk -(a2),-(a4),#$2829 ]
-L000034aa           dc.w    $2829, $2f2a                ; move.l (a1,$2f2a) == $00042e84 [00000000],d4
-L000034ae           dc.w    $2b8b, $0000                ; move.l a3,(a5,d0.W,$00) == $00bfb090
-L000034b2           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034b6           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034ba           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034be           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034c2           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034c6           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034ca           dc.w    $0000, $0000                ; or.b #$00,d0
+L0000348c           dc.w    $0037, $3839 2008           
+L00003492           dc.w    $090d, $0d1b                
+L00003496           dc.w    $7f00                       
+L00003498           dc.w    $0000, $2d00               
+L0000349c           dc.w    $8c8d                
+L0000349e           dc.w    $8e8f               
+L000034a0           dc.w    $8182                  
+L000034a2           dc.w    $8384                
+L000034a4           dc.w    $8586           
+L000034a6           dc.w    $8788                
+L000034a8           dc.w    $898a                    
+L000034aa           dc.w    $2829, $2f2a         
+L000034ae           dc.w    $2b8b, $0000             
+L000034b2           dc.w    $0000, $0000 
+L000034b6           dc.w    $0000, $0000 
+L000034ba           dc.w    $0000, $0000 
+L000034be           dc.w    $0000, $0000 
+L000034c2           dc.w    $0000, $0000 
+L000034c6           dc.w    $0000, $0000 
+L000034ca           dc.w    $0000, $0000 
 L000034ce           dc.w    $0000
-L000034d0           dc.w    $0000                ; or.b #$00,d0
-L000034d2           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034d6           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034da           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034de           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034e2           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034e6           dc.w    $0000, $0000                ; or.b #$00,d0
-L000034ea           dc.w    $0000, $0000                ; or.b #$00,d0
+L000034d0           dc.w    $0000                
+L000034d2           dc.w    $0000, $0000
+L000034d6           dc.w    $0000, $0000
+L000034da           dc.w    $0000, $0000
+L000034de           dc.w    $0000, $0000
+L000034e2           dc.w    $0000, $0000
+L000034e6           dc.w    $0000, $0000
+L000034ea           dc.w    $0000, $0000
 L000034ee           dc.w    $0000
-L000034f0           dc.w    $0000                ; or.b #$00,d0
+L000034f0           dc.w    $0000                
 L000034f2           dc.w    $0000
 
 
@@ -646,39 +657,48 @@ lvl6_timerb_interrupt                           ; original address: $00003514
 
 
 
-L00003522           dc.w    $0000, $3542
+L00003522           dc.l    L00003542           ; unused ptr to 'rts' below
 
 
-                    ; update music/sfx player
-update_sound_player
+
+
+                    ; ---------------------- update music/sfx player ---------------------------
+                    ; called from lvl3 vertb handler
+                    ;
+lvl_3update_sound_player                                    ; original address $00003526
 L00003526           movem.l d1-d7/a0-a6,-(a7)
-L0000352a           addq.w  #$01,frame_counter          ; L000036ee              ; frame counter
-L00003530           jsr     PLAYER_UPDATE               ; $00048018               ; External Address - CHEM.IFF
-L00003536           move.b  #$00,$00bfee01
-L0000353e           movem.l (a7)+,d1-d7/a0-a6
+                    addq.w  #$01,frame_counter              ; increment frame counter - $000036ee 
+                    jsr     PLAYER_UPDATE                   ; External Address - CHEM.IFF (music player) - $00048018 
+                    move.b  #$00,$00bfee01
+                    movem.l (a7)+,d1-d7/a0-a6
 L00003542           rts
 
 
 
-lvl2_CIAB_TimerB_Handler
+
+                    ; --------------------- Level 2 - CIAB Timer B Handler -------------------
+                    ; CIAB - Timer B underflow handler
+                    ;
+lvl2_CIAB_TimerB_Handler                                    ; original address $00003544
 L00003544           movem.l d0-d7/a0-a6,-(a7)
-L00003548           bsr.w   L00003566
-L0000354c           addq.w  #$01,L00003564
-L00003552           movea.l L00003560,a0
-L00003558           jsr     (a0)
-L0000355a           movem.l (a7)+,d0-d7/a0-a6
-L0000355e           rts
+                    bsr.w   ciab_timerb_function
+                    addq.w  #$01,ciab_timerb_ticker
+                    movea.l ciab_timerb_function_ptr,a0
+                    jsr     (a0)
+                    movem.l (a7)+,d0-d7/a0-a6
+                    rts
 
 
-L00003560           dc.w $0000, $3542               ; or.b #$42,d0
-L00003564           dc.w $0000
-L00003566           dc.w $3039               ; or.b #$39,d0
-L00003568           dc.w $00df                      ; illegal
-L0000356a           dc.w $f00a                      ; $3239 [ F-LINE (MMU 68030) ]
+ciab_timerb_function_ptr                    ; original address $00003560
+                    dc.l    L00003542       ; CIAB - Timer B - Handler Routine - Default NOP (rts)
+ciab_timerb_ticker                          ; original address $00003564
+                    dc.w    $0000           ; CIAB - Timer B - Ticker Count
 
 
-L0000356c           move.w  L00003630,d1
-L00003572           move.w  d0,L00003630
+ciab_timerb_function                        ; original address $00003566
+L00003566           move.w  $00dff00a,d0    ; d0 = JOY0DAT
+L0000356c           move.w  Joystick_0,d1   ; L00003630 ; d1 = last JOY0DAT
+L00003572           move.w  d0,Joystick_0   ; L00003630 ; store new JOY0DAT
 L00003578           bsr.w   L000035fa
 L0000357c           move.b  d0,L00003637
 L00003582           add.w   d1,L00003646
@@ -688,10 +708,12 @@ L00003596           seq.b   L00003636
 L0000359c           seq.b   L00003644
 L000035a2           btst.b  #$0002,$00dff016
 L000035aa           seq.b   L00003645
-L000035b0           move.w  $00dff00c,d0
-L000035b6           move.w  L00003632,d1
-L000035bc           move.w  d0,L00003632
+
+L000035b0           move.w  $00dff00c,d0    ; d0 = JOY1DAT
+L000035b6           move.w  L00003632,d1    ; d1 = last JOY1DAT
+L000035bc           move.w  d0,L00003632    ; store new JOY1DAT
 L000035c2           bsr.b   L000035fa
+
 L000035c4           move.b  d0,L0000363b
 L000035ca           add.w   d1,L0000364c
 L000035d0           add.w   d2,L0000364e
@@ -724,29 +746,36 @@ L0000361e           rts
 
 
 
-L00003620           dc.w $0004, $0501               ; or.b #$01,d4
-L00003624           dc.w $080c                      ; illegal
-L00003626           dc.w $0d09, $0a0e               ; movep.w (a1,$0a0e) == $00040968,d6
-L0000362a           dc.w $0f0b, $0206               ; movep.w (a3,$0206) == $00063daf,d7
-L0000362e           dc.w $0703                      ; btst.l d3,d3
-L00003630           dc.w $0000
-L00003632           dc.w $0000               ; or.b #$00,d0
+L00003620           dc.w $0004, $0501               
+L00003624           dc.w $080c                      
+L00003626           dc.w $0d09, $0a0e               
+L0000362a           dc.w $0f0b, $0206               
+L0000362e           dc.w $0703                      
+
+Joystick_0                                          ; original address $00003630
+L00003630           dc.w $0000                      ; H/W register value read from JOY0DAT
+
+Joystick_1                                          ; original address $00003632
+L00003632           dc.w $0000                      ; H/W register value read from JOY1DAT    
+
 L00003634           dc.w $0000
 L00003636           dc.b $00
-L00003637           dc.b $00               ; or.b #$00,d0
+L00003637           dc.b $00               
 L00003638           dc.w $0000
 L0000363a           dc.b $00
-L0000363b           dc.b $00               ; or.b #$00,d0
-L0000363c           dc.w $0000, $0000               ; or.b #$00,d0
-L00003640           dc.w $0000, $0000               ; or.b #$00,d0
+L0000363b           dc.b $00               
+L0000363c           dc.w $0000
+                    dc.w $0000               
+L00003640           dc.w $0000
+                    dc.w $0000              
 L00003644           dc.b $00
 L00003645           dc.b $00
-L00003646           dc.w $0000               ; or.b #$00,d0
+L00003646           dc.w $0000               
 L00003648           dc.w $0000
 L0000364a           dc.b $00
-L0000364b           dc.b $00               ; or.b #$00,d0
+L0000364b           dc.b $00              
 L0000364c           dc.w $0000
-L0000364e           dc.w $0000               ; or.b #$00,d0
+L0000364e           dc.w $0000              
 
 
 
@@ -867,11 +896,11 @@ L00003744           rts
                     ;   - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
                     ;
 clear_display_memory
-L00003746           lea.l   DISPLAY_BUFFER_1,a0         ; $00061b9c,a0  ; External Address (screen ram?)
+L00003746           lea.l   DISPLAY_BUFFER,a0         ; $00061b9c,a0  ; External Address (screen ram?)
 L0000374c           move.w  #$3917,d7
 L00003750           clr.l   (a0)+
 L00003752           dbf.w   d7,L00003750
-L00003756           lea.l   DISPLAY_BUFFER_2,a0         ; $0005a36c,a0  ; External Address (screen ram?)
+L00003756           lea.l   CHIPMEM_BUFFER,a0           ; $0005a36c,a0  ; External Address (screen ram?)
 L0000375c           move.w  #$1c8b,d7
 L00003760           clr.l   (a0)+
 L00003762           dbf.w   d7,L00003760
@@ -2688,7 +2717,7 @@ L00004b60           rts
 L00004b62           move.w  #$8400,$00dff096
 L00004b6a           movea.l playfield_buffer_2,a6           ; L000036f6,a6            ; playfield buffer 2
 L00004b6e           subq.w #$02,a6                          ; subaq.w
-L00004b70           movea.l L0000631e,a5                    ; [0005a36c] DISPLAY_BUFFER_2
+L00004b70           movea.l L0000631e,a5                    ; [0005a36c] CHIPMEM_BUFFER
 L00004b74           move.w  L00006312,d1
 L00004b78           clr.l   d6
 L00004b7a           subq.w  #$01,d6
@@ -3841,7 +3870,7 @@ L000058aa           clr.l   d0
 L000058ac           move.w  L000067bc,d0
 L000058b0           lsr.w   #$03,d0
 L000058b2           add.w   d0,d0
-L000058b4           movea.l #DISPLAY_BUFFER_2,a4        ; #$0005a36c,a4 ; External Address - (Screem ram?)
+L000058b4           movea.l #CHIPMEM_BUFFER,a4        ; #$0005a36c,a4 ; External Address 
 L000058ba           adda.l  d0,a4
 L000058bc           move.l  a4,L0000631e
 L000058c0           clr.w   L00006312
@@ -3966,7 +3995,7 @@ L000059d8           add.w   d4,d2
 L000059da           move.l  d2,d1
 L000059dc           add.w   d4,d1
 L000059de           subq.w  #$01,d5
-L000059e0           movea.l #DISPLAY_BUFFER_1,a2        ; #$00061b9c,a2  ; External Address - (Screen Ram?)
+L000059e0           movea.l #DISPLAY_BUFFER,a2        ; #$00061b9c,a2  ; External Address - (Screen Ram?)
 L000059e6           move.w  (a0)+,(a2)
 L000059e8           not.w   (a2)
 L000059ea           move.w  (a0)+,$00(a2,d4.W)
