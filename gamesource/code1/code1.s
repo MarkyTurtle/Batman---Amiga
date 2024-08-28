@@ -710,8 +710,8 @@ L000035a2           btst.b  #$0002,$00dff016
 L000035aa           seq.b   L00003645
 
 L000035b0           move.w  $00dff00c,d0    ; d0 = JOY1DAT
-L000035b6           move.w  L00003632,d1    ; d1 = last JOY1DAT
-L000035bc           move.w  d0,L00003632    ; store new JOY1DAT
+L000035b6           move.w  Joystick_1,d1   ; L00003632 ; d1 = last JOY1DAT
+L000035bc           move.w  d0,Joystick_1   ; L00003632 ; store new JOY1DAT
 L000035c2           bsr.b   L000035fa
 
 L000035c4           move.b  d0,L0000363b
@@ -725,23 +725,25 @@ L000035f2           seq.b   L0000364b
 L000035f8           rts 
 
 
-
+                    ; IN:
+                    ; d0.w = JOYxDAT - h/w register read value (current value)
+                    ; d1.w = JOYxDAT - h/w register read value (previous value)
 L000035fa           move.w  d0,d3
 L000035fc           move.w  d1,d2
-L000035fe           sub.b   d3,d1
-L00003600           neg.b   d1
-L00003602           ext.w   d1
+L000035fe           sub.b   d3,d1               ; subtract (horizontal) new value from old value
+L00003600           neg.b   d1                  ; negate the result
+L00003602           ext.w   d1                  ; sign extend to 16 bits
 L00003604           lsr.w   #$08,d2
 L00003606           lsr.w   #$08,d3
-L00003608           sub.b   d3,d2
-L0000360a           neg.b   d2
-L0000360c           ext.w   d2
+L00003608           sub.b   d3,d2               ; subtract (vertical) new value fro mold value
+L0000360a           neg.b   d2                  ; negate the result
+L0000360c           ext.w   d2                  ; sign extend to 16 bits
 L0000360e           moveq   #$03,d3
 L00003610           and.w   d0,d3
 L00003612           lsr.w   #$06,d0
 L00003614           and.w   #$000c,d0
 L00003618           or.w    d3,d0
-L0000361a           move.b  L00003620(pc,d0.W),d0 ; $04(pc,d0.W),d0         ; $00003620? table? (warning 2069: encoding absolute displacement directly)
+L0000361a           move.b  L00003620(pc,d0.W),d0 
 L0000361e           rts 
 
 
