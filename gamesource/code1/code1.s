@@ -529,100 +529,238 @@ lvl2_chk_TB                                                 ; original addr: $00
 lvl2_chk_SP                                                 ; original addr: $000033dc
                     lsr.b   #$02,d0                         ; chk for SP 
                     bcc.b   lvl2_exit_handler               ;   no  - not SP - $0000344e
-lvl2_SP
-L000033e0           movem.l d1-d2/a0,-(a7)                  ;   yes - is SP
-L000033e4           move.b  $00bfec01,d1                    ; CIAA - SDR - Serial Data Register (Keyboard)
-L000033ea           not.b   d1                              ; d1 = inverted keycode
-L000033ec           lsr.b   #$01,d1
-L000033ee           bcc.b   .not_key_up                    ; Not Key up? - L00003406
-.is_key_up
-L000033f0           lea.l   L000034f4,a0
-L000033f6           ext.w   d1
-L000033f8           move.b  L00003450(pc,d1.w),d1         
-L000033fc           move.w  d1,d2
-L000033fe           lsr.w   #$03,d2
-L00003400           bclr.b  d1,$00(a0,d2.W)                 ; $00001407
-L00003404           bra.b   L00003442
 
-.not_key_up                                                ; original address $00003406
-L00003406           lea.l   L000034f4,a0
-L0000340c           ext.w   d1
-L0000340e           move.b  L00003450(pc,d1.w),d1           
-L00003412           move.w  d1,d2
-L00003414           lsr.w   #$03,d2
-L00003416           bset.b  d1,$00(a0,d2.W)                 ; $00001407 [28]
-L0000341a           tst.b   d1
-L0000341c           beq.b   L00003442
-L0000341e           lea.l   L000034d0,a0
-L00003424           move.w  L000034f0,d2
-L0000342a           move.b  d1,$00(a0,d2.W)                 ; $00001407 [28]
-L0000342e           addq.w  #$01,d2
-L00003430           and.w   #$001f,d2
-L00003434           cmp.w   L000034f2,d2
-L0000343a           beq.b   L00003442
-L0000343c           move.w  d2,L000034f0
+lvl2_SP             ; keyboard interrupt                    ; original address L000033e0
+                    movem.l d1-d2/a0,-(a7)                  ;   yes - is SP
+                    move.b  $00bfec01,d1                    ; CIAA - SDR - Serial Data Register (Keyboard)
+                    not.b   d1                              ; d1 = inverted keycode
+                    lsr.b   #$01,d1                         ; rotate out key down/up bit (1 = key up)
+                    bcc.b   .not_key_up                     ; Not Key up? - L00003406
+
+.is_key_up          ; key released (d1 = keycode)           ; original address L000033f0
+                    ; get ascii code and clear key pressed in bitmap table
+                    lea.l   keyboard_bitmap,a0              ; L000034f4,a0
+                    ext.w   d1                              ; extend keycode to 16 bits from byte
+                    move.b  acsii_lookup_table(pc,d1.w),d1  ; d1 = translated keycode ($00003450 = lookup table)
+                    move.w  d1,d2
+                    lsr.w   #$03,d2                         ; divide ascii code by 8 (d2 = get bitmap byte offset)
+                    bclr.b  d1,$00(a0,d2.W)                 ; clear key pressed bit in the bitmap table 
+                    bra.b   .set_ciaa_cra                    ; L00003442
+
+.not_key_up         ; key pressed (d1 = keycode)            ; original address $00003406
+                    lea.l   keyboard_bitmap,a0              ; L000034f4,a0
+                    ext.w   d1
+                    move.b  acsii_lookup_table(pc,d1.w),d1  ; d1 = translated keycode ($00003450 = lookup table)        
+                    move.w  d1,d2
+                    lsr.w   #$03,d2                         ; divide ascii code by 8 (d2 = get bitmap byte offset)
+                    bset.b  d1,$00(a0,d2.W)                 ; set key pressed bit in the bitmap table
+                    tst.b   d1                              ; test for NUL ascii code
+                    beq.b   .set_ciaa_cra                    ; L00003442 ; is NUL key
+
+                    ; enqueue the pressed key
+.enqueue_key                                                ; original address L0000341e
+                    lea.l   keyboard_buffer,a0              ; L000034d0,a0 ; keyboard queue.
+                    move.w  keyboard_queue_head,d2          ; L000034f0,d2                    ; 
+                    move.b  d1,$00(a0,d2.W)                 ; store ascii code in the queue
+                    addq.w  #$01,d2                         ; increment queue head
+                    and.w   #$001f,d2                       ; clamp head to end of buffer
+                    cmp.w   keyboard_queue_tail,d2          ; is the queue full? L000034f2,d2
+                    beq.b   .set_ciaa_cra                   ; yes, do not increment the queue head
+                    move.w  d2,keyboard_queue_head          ; no, increment the queue head L000034f0
+
 .set_ciaa_cra                                           ; original address $00003442
-L00003442           move.b  #$40,$00bfee01              ; CIAA - CRA - SPMODE = CNT, Stop Timer A
-L0000344a           movem.l (a7)+,d1-d2/a0
-lvl2_exit_handler
-L0000344e           rts 
+                    move.b  #$40,$00bfee01              ; CIAA - CRA - SPMODE = CNT, Stop Timer A
+                    movem.l (a7)+,d1-d2/a0
+lvl2_exit_handler                                       ; original address L0000344e
+                    rts 
+
+
+                    ; raw key code translation table (raw keycode index into the table, ascii lookup)
+                    ; keycode in range $00 - $7f
+acsii_lookup_table                          ; original address $00003450
+                                            ; Offset |  Value
+L00003450           dc.b    $27             ; $00       ' - single quote
+                    dc.b    $31             ; $01       '1'
+                    dc.b    $32             ; $02       '2'
+                    dc.b    $33             ; $03       '3'
+L00003454           dc.b    $34             ; $04       '4'
+                    dc.b    $35             ; $05       '5'
+                    dc.b    $36             ; $06       '6'
+                    dc.b    $37             ; $07       '7'      
+L00003458           dc.b    $38             ; $08       '8'
+                    dc.b    $39             ; $09       '9'
+                    dc.b    $30             ; $0a       '0'
+                    dc.b    $2d             ; $0b       '-'
+                    dc.b    $3d             ; $0c       '='
+                    dc.b    $5c             ; $0d       '\'   
+L0000345e           dc.b    $00             ; $0e       NUL
+                    dc.b    $30             ; $0f       0
+                    dc.b    $51             ; $10       'Q'
+                    dc.b    $57             ; $11       'W'
+                    dc.b    $45             ; $12       'E'
+                    dc.b    $52             ; $13       'R'   
+L00003464           dc.b    $54             ; $14       'T'
+                    dc.b    $59             ; $15       'Y'             
+L00003466           dc.b    $55             ; $16       'U'
+                    dc.b    $49             ; $17       'I'             
+L00003468           dc.b    $4f             ; $18       'O'
+                    dc.b    $50             ; $19       'P'
+L0000346a           dc.b    $5b             ; $1a       '['      
+                    dc.b    $5d             ; $1b       ']'               
+L0000346c           dc.b    $00             ; $1c       NUL
+                    dc.b    $31             ; $1d       '1'
+                    dc.b    $32             ; $1e       '2'
+                    dc.b    $33             ; $1f       '3'
+                    dc.b    $41             ; $20       'A'
+                    dc.b    $53             ; $21       'S'    
+L00003472           dc.b    $44             ; $22       'D'     
+                    dc.b    $46             ; $23       'F'                
+L00003474           dc.b    $47             ; $24       'G'
+                    dc.b    $48             ; $25       'H'                
+L00003476           dc.b    $4a             ; $26       'J'
+                    dc.b    $4b             ; $27       'K'                
+L00003478           dc.b    $4c             ; $28       'L'
+                    dc.b    $3b             ; $29       ';'                
+L0000347a           dc.b    $23             ; $2a       '#'
+                    dc.b    $00             ; $2b       NUL                
+L0000347c           dc.b    $00             ; $2c       NUL
+                    dc.b    $34             ; $2d       '4'
+                    dc.b    $35             ; $2e       '5'
+                    dc.b    $36             ; $2f       '6'
+                    dc.b    $00             ; $30       NUL
+                    dc.b    $5a             ; $31       'Z'    
+L00003482           dc.b    $58             ; $32       'X'
+                    dc.b    $43             ; $33       'C'              
+L00003484           dc.b    $56             ; $34       'V'
+                    dc.b    $42             ; $35       'B'              
+L00003486           dc.b    $4e             ; $36       'N'
+                    dc.b    $4d             ; $37       'M'                
+L00003488           dc.b    $2c             ; $38       ','
+                    dc.b    $2e             ; $39       '.'
+                    dc.b    $2f             ; $3a       '/'
+                    dc.b    $00             ; $3b       NUL        
+L0000348c           dc.b    $00             ; $3c       NUL
+                    dc.b    $37             ; $3d       '7'
+                    dc.b    $38             ; $3e       '8'
+                    dc.b    $39             ; $3f       '9'
+                    dc.b    $20             ; $40       ' ' (space)
+                    dc.b    $08             ; $41       BS  (back space)     
+L00003492           dc.b    $09             ; $42       TAB (horizontal tab)
+                    dc.b    $0d             ; $43       CR  (carriage return)
+                    dc.b    $0d             ; $44       CR  (carriage return)
+                    dc.b    $1b             ; $45       ESC (escape)   
+L00003496           dc.b    $7f             ; $46       DEL
+                    dc.b    $00             ; $47                       
+L00003498           dc.b    $00             ; $48
+                    dc.b    $00             ; $49
+                    dc.b    $2d             ; $4a       '-'
+                    dc.b    $00             ; $4b
+L0000349c           dc.b    $8c             ; $4c
+                    dc.b    $8d             ; $4d
+L0000349e           dc.b    $8e             ; $4e
+                    dc.b    $8f             ; $4f             
+L000034a0           dc.b    $81             ; $50       F1
+                    dc.b    $82             ; $51       F2       
+L000034a2           dc.b    $83             ; $52       F3
+                    dc.b    $84             ; $53       F4       
+L000034a4           dc.b    $85             ; $54       F5
+                    dc.b    $86             ; $55       F6    
+L000034a6           dc.b    $87             ; $56       F7
+                    dc.b    $88             ; $57       F8         
+L000034a8           dc.b    $89             ; $58       F9
+                    dc.b    $8a             ; $59       F10           
+L000034aa           dc.b    $28             ; $5a       '('
+                    dc.b    $29             ; $5b       ')'
+                    dc.b    $2f             ; $5c       '/'
+                    dc.b    $2a             ; $5d       '*'
+L000034ae           dc.b    $2b             ; $5e       '+'
+                    dc.b    $8b             ; $5f
+                    dc.b    $00             ; $60       NUL
+                    dc.b    $00             ; $61       NUL             
+L000034b2           dc.b    $00             ; $62       NUL
+                    dc.b    $00             ; $63       NUL
+                    dc.b    $00             ; $64       NUL
+                    dc.b    $00             ; $65       NUL 
+L000034b6           dc.b    $00             ; $66       NUL
+                    dc.b    $00             ; $67       NUL
+                    dc.b    $00             ; $68       NUL
+                    dc.b    $00             ; $69       NUL
+L000034ba           dc.b    $00             ; $6a       NUL
+                    dc.b    $00             ; $6b       NUL
+                    dc.b    $00             ; $6c       NUL
+                    dc.b    $00             ; $6d       NUL
+L000034be           dc.b    $00             ; $6e       NUL
+                    dc.b    $00             ; $6f       NUL
+                    dc.b    $00             ; $70       NUL
+                    dc.b    $00             ; $71       NUL 
+L000034c2           dc.b    $00             ; $72       NUL
+                    dc.b    $00             ; $73       NUL
+                    dc.b    $00             ; $74       NUL
+                    dc.b    $00             ; $75       NUL
+L000034c6           dc.b    $00             ; $76       NUL
+                    dc.b    $00             ; $77       NUL
+                    dc.b    $00             ; $78       NUL
+                    dc.b    $00             ; $79       NUL
+L000034ca           dc.b    $00             ; $7a       NUL 
+                    dc.b    $00             ; $7b       NUL
+                    dc.b    $00             ; $7c       NUL
+                    dc.b    $00             ; $7d       NUL 
+L000034ce           dc.b    $00             ; $7e       NUL
+                    dc.b    $00             ; $7f       NUL
+                    ; End of Keycode - Ascii lookup table
 
 
 
-L00003450           dc.w    $2731, $3233                
-L00003454           dc.w    $3435, $3637                
-L00003458           dc.w    $3839, $302d 3d5c           
-L0000345e           dc.w    $0030, $5157 4552           
-L00003464           dc.w    $5459                       
-L00003466           dc.w    $5549                       
-L00003468           dc.w    $4f50                       
-L0000346a           dc.w    $5b5d                       
-L0000346c           dc.w    $0031, $3233 4153           
-L00003472           dc.w    $4446                       
-L00003474           dc.w    $4748                       
-L00003476           dc.w    $4a4b                       
-L00003478           dc.w    $4c3b                       
-L0000347a           dc.w    $2300                       
-L0000347c           dc.w    $0034, $3536, $005a         
-L00003482           dc.w    $5843                       
-L00003484           dc.w    $5642                       
-L00003486           dc.w    $4e4d                       
-L00003488           dc.w    $2c2e, $2f00                
-L0000348c           dc.w    $0037, $3839 2008           
-L00003492           dc.w    $090d, $0d1b                
-L00003496           dc.w    $7f00                       
-L00003498           dc.w    $0000, $2d00               
-L0000349c           dc.w    $8c8d                
-L0000349e           dc.w    $8e8f               
-L000034a0           dc.w    $8182                  
-L000034a2           dc.w    $8384                
-L000034a4           dc.w    $8586           
-L000034a6           dc.w    $8788                
-L000034a8           dc.w    $898a                    
-L000034aa           dc.w    $2829, $2f2a         
-L000034ae           dc.w    $2b8b, $0000             
-L000034b2           dc.w    $0000, $0000 
-L000034b6           dc.w    $0000, $0000 
-L000034ba           dc.w    $0000, $0000 
-L000034be           dc.w    $0000, $0000 
-L000034c2           dc.w    $0000, $0000 
-L000034c6           dc.w    $0000, $0000 
-L000034ca           dc.w    $0000, $0000 
-L000034ce           dc.w    $0000
-L000034d0           dc.w    $0000                
-L000034d2           dc.w    $0000, $0000
-L000034d6           dc.w    $0000, $0000
-L000034da           dc.w    $0000, $0000
-L000034de           dc.w    $0000, $0000
-L000034e2           dc.w    $0000, $0000
-L000034e6           dc.w    $0000, $0000
-L000034ea           dc.w    $0000, $0000
-L000034ee           dc.w    $0000
-L000034f0           dc.w    $0000                
-L000034f2           dc.w    $0000
+                    ; --------------- keyboard buffer ------------------
+                    ; 32 byte keyboard buffer queue.
+                    ;
+keyboard_buffer                         ; original address L000034d0
+L000034d0           dc.b    $00
+                    dc.b    $00                
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+
+                    even
+                    ; Keyboard buffer offset (where new keys are queued into)
+keyboard_queue_head                     ; original address L000034f0
+                    dc.w    $0000
+                    ; Keyboard buffer offset (where keycodes are dequeued from)
+keyboard_queue_tail                     ; original address L000034f0                 
+                    dc.w    $0000
 
 
-                    ; table accessed from lvl2 SP interrupt handler
+                    ; Table contained a bitmap of the keys currently pressed on the keyboard
+                    ; each bit records the key press or release status of the key.
+                    ; range = $00 - $7f (16 bytes of bitmap data)
+keyboard_bitmap                         ; original address $000034f4
 L000034f4           dc.w    $0000
 L000034f6           dc.w    $0000
                     dc.w    $0000
@@ -631,7 +769,10 @@ L000034fa           dc.w    $0000
 L000034fe           dc.w    $0000
                     dc.w    $0000
 L00003502           dc.w    $0000
-                    dc.w    $0000
+
+                    ; extended bitmap for control keys (Function keys etc)
+                    ; ascii codes $80-$ff
+L00003504           dc.w    $0000
 L00003506           dc.w    $0000
                     dc.w    $0000
 L0000350a           dc.w    $0000
@@ -665,7 +806,7 @@ L00003522           dc.l    L00003542           ; unused ptr to 'rts' below
                     ; ---------------------- update music/sfx player ---------------------------
                     ; called from lvl3 vertb handler
                     ;
-lvl_3update_sound_player                                    ; original address $00003526
+lvl_3_update_sound_player                                    ; original address $00003526
 L00003526           movem.l d1-d7/a0-a6,-(a7)
                     addq.w  #$01,frame_counter              ; increment frame counter - $000036ee 
                     jsr     PLAYER_UPDATE                   ; External Address - CHEM.IFF (music player) - $00048018 
@@ -781,28 +922,42 @@ L0000364e           dc.w $0000
 
 
 
-                                                        ; Address L00003650 not called directly from this code.
+
+                    ; -------------------- wait key --------------------
+                    ; wait/loop until a key is pressed
+                    ;
+waitkey                                                 ; Address L00003650 not called directly from this code.
 L00003650           move.l  d0,-(a7)
-L00003652           bsr.b   L0000365a
-L00003654           bne.b   L00003652
+L00003652           bsr.b   getkey                      ; d0 = ascii code (z = 1 if no key) L0000365a
+L00003654           bne.b   L00003652                   ; loop until a key is pressed
 L00003656           move.l  (a7)+,d0
 L00003658           rts
 
 
 
-L0000365a           movem.l d1-d2/a0,-(a7)
-L0000365e           lea.l   L000034d0,a0
-L00003664           moveq   #$00,d0
-L00003666           movem.w L000034f0,d1-d2
-L0000366e           cmp.w   d1,d2
-L00003670           beq.b   L00003682
-L00003672           move.b  $00(a0,d2.W),d0
-L00003676           addq.w  #$01,d2
-L00003678           and.w   #$001f,d2
-L0000367c           move.w  d2,L000034f2
-L00003682           tst.b   d0
-L00003684           movem.l (a7)+,d1-d2/a0
-L00003688           rts 
+                    ; -------------------- get key --------------------
+                    ; dequeue an ascii code from the keybaord queue
+                    ;
+                    ; OUT:
+                    ;   d0.b    - Ascii code (0 if queue empty)
+                    ;           - Z = 1 if queue is empty
+                    ;
+getkey                                                  ; original address L0000365a
+                    movem.l d1-d2/a0,-(a7)
+                    lea.l   keyboard_buffer,a0          ; L000034d0,a0 ; a0 = keyboard buffer
+                    moveq   #$00,d0
+                    movem.w keyboard_queue_head,d1-d2   ; L000034f0,d1-d2 ; d1 = queue head, d2 = queue tail
+                    cmp.w   d1,d2                       ; check queue full/empty
+                    beq.b   .exit                       ; if queue is full/empty - jmp $00003682  
+.dequeue                                                ; original address L00003672
+                    move.b  $00(a0,d2.W),d0             ; d0 = get ascii code
+                    addq.w  #$01,d2                     ; increment keyboard tail
+                    and.w   #$001f,d2                   ; clamp queue size 32 bytes
+                    move.w  d2,keyboard_queue_tail      ; store updated queue tail
+.exit                                                   ; original address L00003682
+                    tst.b   d0
+                    movem.l (a7)+,d1-d2/a0
+                    rts 
 
 
                     ;--------------- reset display -------------------
@@ -1339,12 +1494,12 @@ L00003bf6           clr.l   frame_counter                           ; NB: Long C
 
                     ; ----------------- Game Loop -----------------
 game_loop
-L00003bfa           bsr.w   L0000365a
-L00003bfe           beq.b   L00003c5a
+L00003bfa           bsr.w   getkey                      ; d0 = ascii code (z = 1 if no key)- L0000365a
+L00003bfe           beq.b   L00003c5a                   ; no key pressed, jmp $00003c5a
 L00003c00           cmp.w   #$0081,d0
 L00003c04           bne.b   L00003c22
-L00003c06           bsr.w   L0000365a
-L00003c0a           beq.b   L00003c06
+L00003c06           bsr.w   getkey                      ; d0 = ascii code (z = 1 if no key) - L0000365a
+L00003c0a           beq.b   L00003c06                   ; no key pressed, jmp $00003c06
 L00003c0c           cmp.w   #$001b,d0
 L00003c10           bne.b   L00003c22
 L00003c12           bsr.w   L00003cbc
