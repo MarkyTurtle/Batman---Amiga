@@ -592,133 +592,133 @@ lvl2_exit_handler                                       ; original address L0000
                     ; keycode in range $00 - $7f
 acsii_lookup_table                          ; original address $00003450
                                             ; Offset |  Value
-L00003450           dc.b    $27             ; $00       ' - single quote
+                    dc.b    $27             ; $00       ' - single quote
                     dc.b    $31             ; $01       '1'
                     dc.b    $32             ; $02       '2'
                     dc.b    $33             ; $03       '3'
-L00003454           dc.b    $34             ; $04       '4'
+                    dc.b    $34             ; $04       '4'
                     dc.b    $35             ; $05       '5'
                     dc.b    $36             ; $06       '6'
                     dc.b    $37             ; $07       '7'      
-L00003458           dc.b    $38             ; $08       '8'
+                    dc.b    $38             ; $08       '8'
                     dc.b    $39             ; $09       '9'
                     dc.b    $30             ; $0a       '0'
                     dc.b    $2d             ; $0b       '-'
                     dc.b    $3d             ; $0c       '='
                     dc.b    $5c             ; $0d       '\'   
-L0000345e           dc.b    $00             ; $0e       NUL
+                    dc.b    $00             ; $0e       NUL
                     dc.b    $30             ; $0f       0
                     dc.b    $51             ; $10       'Q'
                     dc.b    $57             ; $11       'W'
                     dc.b    $45             ; $12       'E'
                     dc.b    $52             ; $13       'R'   
-L00003464           dc.b    $54             ; $14       'T'
+                    dc.b    $54             ; $14       'T'
                     dc.b    $59             ; $15       'Y'             
-L00003466           dc.b    $55             ; $16       'U'
+                    dc.b    $55             ; $16       'U'
                     dc.b    $49             ; $17       'I'             
-L00003468           dc.b    $4f             ; $18       'O'
+                    dc.b    $4f             ; $18       'O'
                     dc.b    $50             ; $19       'P'
-L0000346a           dc.b    $5b             ; $1a       '['      
+                    dc.b    $5b             ; $1a       '['      
                     dc.b    $5d             ; $1b       ']'               
-L0000346c           dc.b    $00             ; $1c       NUL
+                    dc.b    $00             ; $1c       NUL
                     dc.b    $31             ; $1d       '1'
                     dc.b    $32             ; $1e       '2'
                     dc.b    $33             ; $1f       '3'
                     dc.b    $41             ; $20       'A'
                     dc.b    $53             ; $21       'S'    
-L00003472           dc.b    $44             ; $22       'D'     
+                    dc.b    $44             ; $22       'D'     
                     dc.b    $46             ; $23       'F'                
-L00003474           dc.b    $47             ; $24       'G'
+                    dc.b    $47             ; $24       'G'
                     dc.b    $48             ; $25       'H'                
-L00003476           dc.b    $4a             ; $26       'J'
+                    dc.b    $4a             ; $26       'J'
                     dc.b    $4b             ; $27       'K'                
-L00003478           dc.b    $4c             ; $28       'L'
+                    dc.b    $4c             ; $28       'L'
                     dc.b    $3b             ; $29       ';'                
-L0000347a           dc.b    $23             ; $2a       '#'
+                    dc.b    $23             ; $2a       '#'
                     dc.b    $00             ; $2b       NUL                
-L0000347c           dc.b    $00             ; $2c       NUL
+                    dc.b    $00             ; $2c       NUL
                     dc.b    $34             ; $2d       '4'
                     dc.b    $35             ; $2e       '5'
                     dc.b    $36             ; $2f       '6'
                     dc.b    $00             ; $30       NUL
                     dc.b    $5a             ; $31       'Z'    
-L00003482           dc.b    $58             ; $32       'X'
+                    dc.b    $58             ; $32       'X'
                     dc.b    $43             ; $33       'C'              
-L00003484           dc.b    $56             ; $34       'V'
+                    dc.b    $56             ; $34       'V'
                     dc.b    $42             ; $35       'B'              
-L00003486           dc.b    $4e             ; $36       'N'
+                    dc.b    $4e             ; $36       'N'
                     dc.b    $4d             ; $37       'M'                
-L00003488           dc.b    $2c             ; $38       ','
+                    dc.b    $2c             ; $38       ','
                     dc.b    $2e             ; $39       '.'
                     dc.b    $2f             ; $3a       '/'
                     dc.b    $00             ; $3b       NUL        
-L0000348c           dc.b    $00             ; $3c       NUL
+                    dc.b    $00             ; $3c       NUL
                     dc.b    $37             ; $3d       '7'
                     dc.b    $38             ; $3e       '8'
                     dc.b    $39             ; $3f       '9'
                     dc.b    $20             ; $40       ' ' (space)
                     dc.b    $08             ; $41       BS  (back space)     
-L00003492           dc.b    $09             ; $42       TAB (horizontal tab)
+                    dc.b    $09             ; $42       TAB (horizontal tab)
                     dc.b    $0d             ; $43       CR  (carriage return)
                     dc.b    $0d             ; $44       CR  (carriage return)
                     dc.b    $1b             ; $45       ESC (escape)   
-L00003496           dc.b    $7f             ; $46       DEL
+                    dc.b    $7f             ; $46       DEL
                     dc.b    $00             ; $47                       
-L00003498           dc.b    $00             ; $48
+                    dc.b    $00             ; $48
                     dc.b    $00             ; $49
                     dc.b    $2d             ; $4a       '-'
                     dc.b    $00             ; $4b
-L0000349c           dc.b    $8c             ; $4c
+                    dc.b    $8c             ; $4c
                     dc.b    $8d             ; $4d
-L0000349e           dc.b    $8e             ; $4e
+                    dc.b    $8e             ; $4e
                     dc.b    $8f             ; $4f             
-L000034a0           dc.b    $81             ; $50       F1
+                    dc.b    $81             ; $50       F1
                     dc.b    $82             ; $51       F2       
-L000034a2           dc.b    $83             ; $52       F3
+                    dc.b    $83             ; $52       F3
                     dc.b    $84             ; $53       F4       
-L000034a4           dc.b    $85             ; $54       F5
+                    dc.b    $85             ; $54       F5
                     dc.b    $86             ; $55       F6    
-L000034a6           dc.b    $87             ; $56       F7
+                    dc.b    $87             ; $56       F7
                     dc.b    $88             ; $57       F8         
-L000034a8           dc.b    $89             ; $58       F9
+                    dc.b    $89             ; $58       F9
                     dc.b    $8a             ; $59       F10           
-L000034aa           dc.b    $28             ; $5a       '('
+                    dc.b    $28             ; $5a       '('
                     dc.b    $29             ; $5b       ')'
                     dc.b    $2f             ; $5c       '/'
                     dc.b    $2a             ; $5d       '*'
-L000034ae           dc.b    $2b             ; $5e       '+'
+                    dc.b    $2b             ; $5e       '+'
                     dc.b    $8b             ; $5f
                     dc.b    $00             ; $60       NUL
                     dc.b    $00             ; $61       NUL             
-L000034b2           dc.b    $00             ; $62       NUL
+                    dc.b    $00             ; $62       NUL
                     dc.b    $00             ; $63       NUL
                     dc.b    $00             ; $64       NUL
                     dc.b    $00             ; $65       NUL 
-L000034b6           dc.b    $00             ; $66       NUL
+                    dc.b    $00             ; $66       NUL
                     dc.b    $00             ; $67       NUL
                     dc.b    $00             ; $68       NUL
                     dc.b    $00             ; $69       NUL
-L000034ba           dc.b    $00             ; $6a       NUL
+                    dc.b    $00             ; $6a       NUL
                     dc.b    $00             ; $6b       NUL
                     dc.b    $00             ; $6c       NUL
                     dc.b    $00             ; $6d       NUL
-L000034be           dc.b    $00             ; $6e       NUL
+                    dc.b    $00             ; $6e       NUL
                     dc.b    $00             ; $6f       NUL
                     dc.b    $00             ; $70       NUL
                     dc.b    $00             ; $71       NUL 
-L000034c2           dc.b    $00             ; $72       NUL
+                    dc.b    $00             ; $72       NUL
                     dc.b    $00             ; $73       NUL
                     dc.b    $00             ; $74       NUL
                     dc.b    $00             ; $75       NUL
-L000034c6           dc.b    $00             ; $76       NUL
+                    dc.b    $00             ; $76       NUL
                     dc.b    $00             ; $77       NUL
                     dc.b    $00             ; $78       NUL
                     dc.b    $00             ; $79       NUL
-L000034ca           dc.b    $00             ; $7a       NUL 
+                    dc.b    $00             ; $7a       NUL 
                     dc.b    $00             ; $7b       NUL
                     dc.b    $00             ; $7c       NUL
                     dc.b    $00             ; $7d       NUL 
-L000034ce           dc.b    $00             ; $7e       NUL
+                    dc.b    $00             ; $7e       NUL
                     dc.b    $00             ; $7f       NUL
                     ; End of Keycode - Ascii lookup table
 
@@ -775,24 +775,24 @@ keyboard_queue_tail                     ; original address L000034f0
                     ; range = $00 - $7f (16 bytes of bitmap data)
 keyboard_bitmap                         ; original address $000034f4
 L000034f4           dc.w    $0000
-L000034f6           dc.w    $0000
                     dc.w    $0000
-L000034fa           dc.w    $0000
                     dc.w    $0000
-L000034fe           dc.w    $0000
                     dc.w    $0000
-L00003502           dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
 
                     ; extended bitmap for control keys (Function keys etc)
                     ; ascii codes $80-$ff
-L00003504           dc.w    $0000
-L00003506           dc.w    $0000
                     dc.w    $0000
-L0000350a           dc.w    $0000
                     dc.w    $0000
-L0000350e           dc.w    $0000
                     dc.w    $0000
-L00003512           dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
 
 
 
@@ -810,8 +810,8 @@ lvl6_timerb_interrupt                           ; original address: $00003514
 
 
 
-
-L00003522           dc.l    L00003542           ; unused ptr to 'rts' below
+                    ; unreferenced ptr?
+L00003522           dc.l    lvl_3_sfx_exit      ; L00003542 ; unused ptr to 'rts' below
 
 
 
@@ -824,12 +824,13 @@ L00003522           dc.l    L00003542           ; unused ptr to 'rts' below
                     ;       - so it doesn't actuall clear any bits?
                     ;
 lvl_3_update_sound_player                                    ; original address $00003526
-L00003526           movem.l d1-d7/a0-a6,-(a7)
+                    movem.l d1-d7/a0-a6,-(a7)
                     addq.w  #$01,frame_counter              ; increment frame counter - $000036ee 
                     jsr     PLAYER_UPDATE                   ; External Address - CHEM.IFF (music player) - $00048018 
                     move.b  #$00,$00bfee01
                     movem.l (a7)+,d1-d7/a0-a6
-L00003542           rts
+lvl_3_sfx_exit                                              ; original address L00003542
+                    rts
 
 
 
@@ -853,7 +854,7 @@ L00003544           movem.l d0-d7/a0-a6,-(a7)
 
 
 ciab_timerb_function_ptr                    ; original address $00003560
-                    dc.l    L00003542       ; CIAB - Timer B - Handler Routine - Default ptr to 'rts' @ $00003542
+                    dc.l    lvl_3_sfx_exit  ; L00003542 ; CIAB - Timer B - Handler Routine - Default ptr to 'rts' @ $00003542
 ciab_timerb_ticker                          ; original address $00003564
                     dc.w    $0000           ; CIAB - Timer B - Ticker Count
 
@@ -861,36 +862,37 @@ ciab_timerb_ticker                          ; original address $00003564
 
 
                     ; --------------------- level 2 - Timer B - read ports -----------------------
+                    ; read buttons and pot counters for joystick ports 0 and 1
                     ;
 ciab_timerb_function                                ; original address $00003566
                     ; joystick 1 counters
-L00003566           move.w  $00dff00a,d0            ; d0 = JOY0DAT
-L0000356c           move.w  Joystick_0,d1           ; L00003630 ; d1 = last JOY0DAT
-L00003572           move.w  d0,Joystick_0           ; L00003630 ; store new JOY0DAT
-L00003578           bsr.w   calc_counter_deltas     ; L000035fa
-L0000357c           move.b  d0,L00003637            ; d0 = random number $00 - $0f
-L00003582           add.w   d1,L00003646            ; d1 = horizontal count delta
-L00003588           add.w   d2,L00003648            ; d2 = vertical count delta
-L0000358e           btst.b  #$0006,$00bfe001        ; Test Button 0
-L00003596           seq.b   L00003636               ; Set Button 0 flag
-L0000359c           seq.b   L00003644               ; Set Button 0 flag
-L000035a2           btst.b  #$0002,$00dff016        ; test Button 1
-L000035aa           seq.b   L00003645               ; Set Button 1 flag
+                    move.w  $00dff00a,d0            ; d0 = JOY0DAT
+                    move.w  Joystick_0,d1           ; L00003630 ; d1 = last JOY0DAT
+                    move.w  d0,Joystick_0           ; L00003630 ; store new JOY0DAT
+                    bsr.w   calc_counter_deltas     ; L000035fa
+                    move.b  d0,joy0_random          ; L00003637 ; d0 = random number $00 - $0f
+                    add.w   d1,pot0_horizontal      ; L00003646 ; d1 = horizontal count delta
+                    add.w   d2,pot0_vertical        ; L00003648 ; d2 = vertical count delta
+                    btst.b  #$0006,$00bfe001        ; Test Button 0
+                    seq.b   joy0_button0            ; L00003636 ; Set Button 0 flag
+                    seq.b   joy0_button0b           ; L00003644 ; Set Button 0 flag
+                    btst.b  #$0002,$00dff016        ; test Button 1
+                    seq.b   joy0_button1b           ; L00003645 Set Button 1 flag
 
                     ; joystick 1 counters
-L000035b0           move.w  $00dff00c,d0            ; d0 = JOY1DAT
-L000035b6           move.w  Joystick_1,d1           ; L00003632 ; d1 = last JOY1DAT
-L000035bc           move.w  d0,Joystick_1           ; L00003632 ; store new JOY1DAT
-L000035c2           bsr.b   calc_counter_deltas     ; L000035fa
-L000035c4           move.b  d0,L0000363b            ; d0 = random number $00 - $0f
-L000035ca           add.w   d1,L0000364c            ; d1 = horizontal count delta
-L000035d0           add.w   d2,L0000364e            ; d2 = vertical count delts
-L000035d6           btst.b  #$0007,$00bfe001        ; Test Button 0
-L000035de           seq.b   L0000363a               ; Set Button 0 flag
-L000035e4           seq.b   L0000364a               ; Set Button 0 flag
-L000035ea           btst.b  #$0006,$00dff016        ; test Button 1
-L000035f2           seq.b   L0000364b               ; Set Button 1 flag
-L000035f8           rts 
+                    move.w  $00dff00c,d0            ; d0 = JOY1DAT
+                    move.w  Joystick_1,d1           ; L00003632 ; d1 = last JOY1DAT
+                    move.w  d0,Joystick_1           ; L00003632 ; store new JOY1DAT
+                    bsr.b   calc_counter_deltas     ; L000035fa
+                    move.b  d0,joy1_random          ; L0000363b ; d0 = random number $00 - $0f
+                    add.w   d1,pot1_horizontal      ; L0000364c ; d1 = horizontal count delta
+                    add.w   d2,pot1_vertical       ; 0000364e  ; d2 = vertical count delts
+                    btst.b  #$0007,$00bfe001        ; Test Button 0
+                    seq.b   joy1_button0            ; L0000363a ; Set Button 0 flag
+                    seq.b   joy1_button0b           ; L0000364a ; Set Button 0 flag
+                    btst.b  #$0006,$00dff016        ; test Button 1
+                    seq.b   L0000364b               ; Set Button 1 flag
+                    rts 
 
 
 
@@ -907,25 +909,25 @@ L000035f8           rts
                     ;   d2.w    = Vertical Counter Difference
                     ; 
 calc_counter_deltas                                     ; original address $000035fa
-L000035fa           move.w  d0,d3                       ; d0,d3 = current value
-L000035fc           move.w  d1,d2                       ; d1,d2 = previous value
-L000035fe           sub.b   d3,d1                       ; subtract (horizontal) new value from old value
-L00003600           neg.b   d1                          ; negate the result
-L00003602           ext.w   d1                          ; sign extend to 16 bits
-L00003604           lsr.w   #$08,d2
-L00003606           lsr.w   #$08,d3
-L00003608           sub.b   d3,d2                       ; subtract (vertical) new value fro mold value
-L0000360a           neg.b   d2                          ; negate the result
-L0000360c           ext.w   d2                          ; sign extend to 16 bits
+                    move.w  d0,d3                       ; d0,d3 = current value
+                    move.w  d1,d2                       ; d1,d2 = previous value
+                    sub.b   d3,d1                       ; subtract (horizontal) new value from old value
+                    neg.b   d1                          ; negate the result
+                    ext.w   d1                          ; sign extend to 16 bits
+                    lsr.w   #$08,d2
+                    lsr.w   #$08,d3
+                    sub.b   d3,d2                       ; subtract (vertical) new value fro mold value
+                    neg.b   d2                          ; negate the result
+                    ext.w   d2                          ; sign extend to 16 bits
 
                     ; random number $00 - $0f
-L0000360e           moveq   #$03,d3
-L00003610           and.w   d0,d3                       ; d3 = masked low 2 bits
-L00003612           lsr.w   #$06,d0
-L00003614           and.w   #$000c,d0                   ; d0 = 2 MSB bits, d3 = 2 LSB bits
-L00003618           or.w    d3,d0                       ; combine 2 MSB & 2 LB bits
-L0000361a           move.b  random_lookup(pc,d0.W),d0   ; L00003620
-L0000361e           rts 
+                    moveq   #$03,d3
+                    and.w   d0,d3                       ; d3 = masked low 2 bits
+                    lsr.w   #$06,d0
+                    and.w   #$000c,d0                   ; d0 = 2 MSB bits, d3 = 2 LSB bits
+                    or.w    d3,d0                       ; combine 2 MSB & 2 LB bits
+                    move.b  random_lookup(pc,d0.W),d0   ; L00003620
+                    rts 
 
 
                     ; ----------- 16 byte lookup table above ------------
@@ -934,46 +936,63 @@ L0000361e           rts
                     ; could be a randomnumber seed or similar.
                     ; 
 random_lookup                                  ; original address L00003620
-L00003620           dc.w $00
+                    dc.b $00
                     dc.b $04
-                    dc.w $05
+                    dc.b $05
                     dc.b $01               
-                    dc.w $08
+                    dc.b $08
                     dc.b $0c                      
-                    dc.w $0d
+L00003626           dc.b $0d
                     dc.b $09
-                    dc.w $0a
+                    dc.b $0a
                     dc.b $0e               
-                    dc.w $0f
+                    dc.b $0f
                     dc.b $0b
-                    dc.w $02
+                    dc.b $02
                     dc.b $06               
-                    dc.w $07
+                    dc.b $07
                     dc.b $03                      
 
 Joystick_0                                          ; original address $00003630
-L00003630           dc.w $0000                      ; H/W register value read from JOY0DAT
+                    dc.w $0000                      ; H/W register value read from JOY0DAT
 
 Joystick_1                                          ; original address $00003632
-L00003632           dc.w $0000                      ; H/W register value read from JOY1DAT    
+                    dc.w $0000                      ; H/W register value read from JOY1DAT    
 
-L00003634           dc.w $0000
-L00003636           dc.b $00
-L00003637           dc.b $00               
-L00003638           dc.w $0000
+L00003634           dc.w $0000                      ; unreferenced word
+
+joy0_button0
+                    dc.b $00
+joy0_random
+                    dc.b $00   
+
+L00003638           dc.w $0000                                            ; unreferenced word
+
+joy1_button0                                        ; original address L0000363a
 L0000363a           dc.b $00
-L0000363b           dc.b $00               
-L0000363c           dc.w $0000
-                    dc.w $0000               
-L00003640           dc.w $0000
-                    dc.w $0000              
+joy1_random
+L0000363b           dc.b $00   
+
+L0000363c           dc.w $0000                                            ; unreferenced word
+L0000363e           dc.w $0000                                            ; unreferenced word               
+L00003640           dc.w $0000                                            ; unreferenced word
+L00003642           dc.w $0000                                            ; unreferenced word
+
+joy0_button0b              
 L00003644           dc.b $00
+joy0_button1b
 L00003645           dc.b $00
-L00003646           dc.w $0000               
+pot0_horizontal
+L00003646           dc.w $0000    
+pot0_vertical           
 L00003648           dc.w $0000
+joy1_button0b
 L0000364a           dc.b $00
-L0000364b           dc.b $00              
+joy1_button1b
+L0000364b           dc.b $00 
+pot1_horizontal             
 L0000364c           dc.w $0000
+pot1_vertical
 L0000364e           dc.w $0000              
 
 
