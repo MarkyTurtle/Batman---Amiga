@@ -249,7 +249,7 @@ init_system
                     bra.w   start_game                      ; L00003ae4
 
 
-                    ; maybe second copper list
+                    ; maybe intended as a second copper list
 L000031ac           dc.w $ffff                      ; not referenced by this code
 L000031ae           dc.w $fffe                      ; not referenced by this code
 
@@ -358,8 +358,8 @@ copper_panel_colors                                 ; original address $0000325c
                     ;------------------- 16 colours for the Panel ---------------------
 panel_colours                                       ; original address $000032a0
 L000032a0           dc.w $0000,$0060,$0fff,$0008                      
-L000032a8           dc.w $0a22,$0444,$0862,$0666               
-L000032b0           dc.w $0888,$0aaa,$0a40,$0c60
+                    dc.w $0a22,$0444,$0862,$0666               
+                    dc.w $0888,$0aaa,$0a40,$0c60
                     dc.w $0e80,$0ea0,$0ec0,$0eee                      
 
 
@@ -430,14 +430,18 @@ level3_interrupt_handler                                    ; original addr: $00
                     rte 
 
 
-                    ; level 3 interrupt handler
+
+                    ; ------------------- Level 3 - VERTB - Handler --------------------
+                    ; update music player.
+                    ; level 3 vertical blank interrupt handler
 lvl3_vertb                                                  ; original addr: $0000333e
-                    bsr.w   lvl_3_update_sound_player             ; L00003526
+                    bsr.w   lvl_3_update_sound_player       ; L00003526
                     move.w  #$0020,$00dff09c                ; clear VERTB - INTREQ
                     move.l  (a7)+,d0
                     rte 
 
 
+                    ; ------------------- Level 3 - COPER - Handler -------------------
                     ; copper interrupt - do nothing
 lvl3_coper                                                  ; original addr: $0000334e
                     move.w  #$0010,$00dff09c                ; clear COPER - INTREQ
@@ -447,9 +451,11 @@ lvl3_coper                                                  ; original addr: $00
 
 
 
-                    ; -------------------- level 4 - interrupt handler -------------------- 
+
+                    ; ------------------------ level 4 - interrupt handler ------------------------- 
                     ; not installed to autovector by the game init
                     ; unused handler
+                    ; if used would clear raised audio interrupts.
 level4_interrupt_handler                                    ; original address $0000335a
                     move.l  d0,-(a7)
                     move.w  $00dff01e,d0                    ; d0 = INTREQR
@@ -461,9 +467,12 @@ level4_interrupt_handler                                    ; original address $
 
 
 
-                    ; -------------------- level 5 - interrupt handler -------------------- 
+
+                    ; ----------------------- level 5 - interrupt handler -------------------------- 
                     ; not installed to autovector by the game init
                     ; unused handler
+                    ; if usewd, then it would clear the disk sync interrupt & serial port interrupt
+                    ;
 level5_interrupt_handler                                    ; original address $00003370
                     move.l  d0,-(a7)
                     move.w  $00dff01e,d0                    ; d0 = INTREQR
@@ -481,12 +490,13 @@ lvl5_clear_dsksyn                                           ; original address $
 
 
 
+
                     ; -------------------- level 6 - interrupt handler -------------------- 
                     ; not installed to autovector by the game init
                     ; NB: level 6 is enabled by 'init_system' but is not raised during 
                     ;     level 1 play.
                     ;
-                    ; The Vector is still pointing to $2182 (loader level6 handler
+                    ; The Vector is still pointing to $2182 (the loader level6 handler)
                     ; a bug or intentional?
                     ;
                     ; unused handler
@@ -517,6 +527,9 @@ lvl6_clear_INTEN                                ; original address $000033c8
 
 
                     ; ------------------ level 2 - CIAA - Interrupt Handler ------------------
+                    ; Handles:
+                    ;   CIAA - Timer B
+                    ;   Reading the keybaord (adding ascii codes to the keyboard queue)
                     ;
                     ; IN:
                     ;  - D0 - CIAA - ICR
@@ -805,6 +818,10 @@ L00003522           dc.l    L00003542           ; unused ptr to 'rts' below
 
                     ; ---------------------- update music/sfx player ---------------------------
                     ; called from lvl3 vertb handler
+                    ;   - increments the frame counter
+                    ;   - play's current sfx/music
+                    ;   - writes '$00' to CIAA CRA (this does nothing due to bit 7 being set/clr)
+                    ;       - so it doesn't actuall clear any bits?
                     ;
 lvl_3_update_sound_player                                    ; original address $00003526
 L00003526           movem.l d1-d7/a0-a6,-(a7)
@@ -817,8 +834,12 @@ L00003542           rts
 
 
 
+
+
                     ; --------------------- Level 2 - CIAB Timer B Handler -------------------
-                    ; CIAB - Timer B underflow handler
+                    ; CIAB - Timer B underflow handler (read joystick/mouse counters)
+                    ;       - calls function ptr set at 'ciab_timerb_function_ptr'
+                    ;       - default this is rts.
                     ;
 lvl2_CIAB_TimerB_Handler                                    ; original address $00003544
 L00003544           movem.l d0-d7/a0-a6,-(a7)
@@ -830,70 +851,105 @@ L00003544           movem.l d0-d7/a0-a6,-(a7)
                     rts
 
 
+
 ciab_timerb_function_ptr                    ; original address $00003560
-                    dc.l    L00003542       ; CIAB - Timer B - Handler Routine - Default NOP (rts)
+                    dc.l    L00003542       ; CIAB - Timer B - Handler Routine - Default ptr to 'rts' @ $00003542
 ciab_timerb_ticker                          ; original address $00003564
                     dc.w    $0000           ; CIAB - Timer B - Ticker Count
 
 
-ciab_timerb_function                        ; original address $00003566
-L00003566           move.w  $00dff00a,d0    ; d0 = JOY0DAT
-L0000356c           move.w  Joystick_0,d1   ; L00003630 ; d1 = last JOY0DAT
-L00003572           move.w  d0,Joystick_0   ; L00003630 ; store new JOY0DAT
-L00003578           bsr.w   L000035fa
-L0000357c           move.b  d0,L00003637
-L00003582           add.w   d1,L00003646
-L00003588           add.w   d2,L00003648
-L0000358e           btst.b  #$0006,$00bfe001
-L00003596           seq.b   L00003636
-L0000359c           seq.b   L00003644
-L000035a2           btst.b  #$0002,$00dff016
-L000035aa           seq.b   L00003645
 
-L000035b0           move.w  $00dff00c,d0    ; d0 = JOY1DAT
-L000035b6           move.w  Joystick_1,d1   ; L00003632 ; d1 = last JOY1DAT
-L000035bc           move.w  d0,Joystick_1   ; L00003632 ; store new JOY1DAT
-L000035c2           bsr.b   L000035fa
 
-L000035c4           move.b  d0,L0000363b
-L000035ca           add.w   d1,L0000364c
-L000035d0           add.w   d2,L0000364e
-L000035d6           btst.b  #$0007,$00bfe001
-L000035de           seq.b   L0000363a
-L000035e4           seq.b   L0000364a
-L000035ea           btst.b  #$0006,$00dff016
-L000035f2           seq.b   L0000364b
+                    ; --------------------- level 2 - Timer B - read ports -----------------------
+                    ;
+ciab_timerb_function                                ; original address $00003566
+                    ; joystick 1 counters
+L00003566           move.w  $00dff00a,d0            ; d0 = JOY0DAT
+L0000356c           move.w  Joystick_0,d1           ; L00003630 ; d1 = last JOY0DAT
+L00003572           move.w  d0,Joystick_0           ; L00003630 ; store new JOY0DAT
+L00003578           bsr.w   calc_counter_deltas     ; L000035fa
+L0000357c           move.b  d0,L00003637            ; d0 = random number $00 - $0f
+L00003582           add.w   d1,L00003646            ; d1 = horizontal count delta
+L00003588           add.w   d2,L00003648            ; d2 = vertical count delta
+L0000358e           btst.b  #$0006,$00bfe001        ; Test Button 0
+L00003596           seq.b   L00003636               ; Set Button 0 flag
+L0000359c           seq.b   L00003644               ; Set Button 0 flag
+L000035a2           btst.b  #$0002,$00dff016        ; test Button 1
+L000035aa           seq.b   L00003645               ; Set Button 1 flag
+
+                    ; joystick 1 counters
+L000035b0           move.w  $00dff00c,d0            ; d0 = JOY1DAT
+L000035b6           move.w  Joystick_1,d1           ; L00003632 ; d1 = last JOY1DAT
+L000035bc           move.w  d0,Joystick_1           ; L00003632 ; store new JOY1DAT
+L000035c2           bsr.b   calc_counter_deltas     ; L000035fa
+L000035c4           move.b  d0,L0000363b            ; d0 = random number $00 - $0f
+L000035ca           add.w   d1,L0000364c            ; d1 = horizontal count delta
+L000035d0           add.w   d2,L0000364e            ; d2 = vertical count delts
+L000035d6           btst.b  #$0007,$00bfe001        ; Test Button 0
+L000035de           seq.b   L0000363a               ; Set Button 0 flag
+L000035e4           seq.b   L0000364a               ; Set Button 0 flag
+L000035ea           btst.b  #$0006,$00dff016        ; test Button 1
+L000035f2           seq.b   L0000364b               ; Set Button 1 flag
 L000035f8           rts 
 
 
+
+                    ; --------------------- calculate mouse counter deltas --------------------
+                    ; calculate delta differences for x,y pot counters.
+                    ; also generate a pseudo random number $00 - $0f 
+                    ;
                     ; IN:
                     ; d0.w = JOYxDAT - h/w register read value (current value)
                     ; d1.w = JOYxDAT - h/w register read value (previous value)
-L000035fa           move.w  d0,d3
-L000035fc           move.w  d1,d2
-L000035fe           sub.b   d3,d1               ; subtract (horizontal) new value from old value
-L00003600           neg.b   d1                  ; negate the result
-L00003602           ext.w   d1                  ; sign extend to 16 bits
+                    ; OUT:
+                    ;   d0.b    = lookup table value (random number lookup?)
+                    ;   d1.w    = Horizontal Counter Difference#
+                    ;   d2.w    = Vertical Counter Difference
+                    ; 
+calc_counter_deltas                                     ; original address $000035fa
+L000035fa           move.w  d0,d3                       ; d0,d3 = current value
+L000035fc           move.w  d1,d2                       ; d1,d2 = previous value
+L000035fe           sub.b   d3,d1                       ; subtract (horizontal) new value from old value
+L00003600           neg.b   d1                          ; negate the result
+L00003602           ext.w   d1                          ; sign extend to 16 bits
 L00003604           lsr.w   #$08,d2
 L00003606           lsr.w   #$08,d3
-L00003608           sub.b   d3,d2               ; subtract (vertical) new value fro mold value
-L0000360a           neg.b   d2                  ; negate the result
-L0000360c           ext.w   d2                  ; sign extend to 16 bits
+L00003608           sub.b   d3,d2                       ; subtract (vertical) new value fro mold value
+L0000360a           neg.b   d2                          ; negate the result
+L0000360c           ext.w   d2                          ; sign extend to 16 bits
+
+                    ; random number $00 - $0f
 L0000360e           moveq   #$03,d3
-L00003610           and.w   d0,d3
+L00003610           and.w   d0,d3                       ; d3 = masked low 2 bits
 L00003612           lsr.w   #$06,d0
-L00003614           and.w   #$000c,d0
-L00003618           or.w    d3,d0
-L0000361a           move.b  L00003620(pc,d0.W),d0 
+L00003614           and.w   #$000c,d0                   ; d0 = 2 MSB bits, d3 = 2 LSB bits
+L00003618           or.w    d3,d0                       ; combine 2 MSB & 2 LB bits
+L0000361a           move.b  random_lookup(pc,d0.W),d0   ; L00003620
 L0000361e           rts 
 
 
-
-L00003620           dc.w $0004, $0501               
-L00003624           dc.w $080c                      
-L00003626           dc.w $0d09, $0a0e               
-L0000362a           dc.w $0f0b, $0206               
-L0000362e           dc.w $0703                      
+                    ; ----------- 16 byte lookup table above ------------
+                    ; used by above routine to return a value beteen
+                    ; $00 - $0f depending on mouse counter values.
+                    ; could be a randomnumber seed or similar.
+                    ; 
+random_lookup                                  ; original address L00003620
+L00003620           dc.w $00
+                    dc.b $04
+                    dc.w $05
+                    dc.b $01               
+                    dc.w $08
+                    dc.b $0c                      
+                    dc.w $0d
+                    dc.b $09
+                    dc.w $0a
+                    dc.b $0e               
+                    dc.w $0f
+                    dc.b $0b
+                    dc.w $02
+                    dc.b $06               
+                    dc.w $07
+                    dc.b $03                      
 
 Joystick_0                                          ; original address $00003630
 L00003630           dc.w $0000                      ; H/W register value read from JOY0DAT
@@ -1614,7 +1670,7 @@ panel_fade_in                                               ; original address $
                     moveq   #$0f,d7                         ; d7 = 15+1 - outer loop
 .fade_loop                                                  ; original address $00003d42
                     lea.l   copper_panel_colors+2,a0 
-                    lea.l   panel_colours,a1                
+                    lea.l   panel_colours,a1                ; $000032a0   
                     moveq   #$0f,d6
 .next_colour                                                ; original address $00003d4c
                     move.w  (a0),d0                         ; d0 = current display colour
