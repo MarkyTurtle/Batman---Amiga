@@ -242,7 +242,7 @@ init_system
                     jsr     PANEL_INIT_ENERGY               ; Panel - Initialise Player Energy - $0007c854
                     move.w  #$0800,d0                       ; BCD Encoding of Level Timer MM:SS
                     jsr     PANEL_INIT_TIMER                ; Panel - Initalise the Level Timer - $0007c80e 
-                    bsr.w   clear_display_memory            ; Clear display buffers - $00003746
+                    bsr.w   clear_memory                    ; Clear display buffers - $00003746
                     lea.l   copper_list,a0                  ; L000031c8,a0
                     bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
                     bsr.w   double_buffer_playfield         ; L000036fa
@@ -877,7 +877,7 @@ ciab_timerb_function                                ; original address $00003566
                     seq.b   joy0_button0            ; L00003636 ; Set Button 0 flag
                     seq.b   joy0_button0b           ; L00003644 ; Set Button 0 flag
                     btst.b  #$0002,$00dff016        ; test Button 1
-                    seq.b   joy0_button1b           ; L00003645 Set Button 1 flag
+                    seq.b   joy0_button1b           ; L00003645 ; Set Button 1 flag
 
                     ; joystick 1 counters
                     move.w  $00dff00c,d0            ; d0 = JOY1DAT
@@ -886,12 +886,12 @@ ciab_timerb_function                                ; original address $00003566
                     bsr.b   calc_counter_deltas     ; L000035fa
                     move.b  d0,joy1_random          ; L0000363b ; d0 = random number $00 - $0f
                     add.w   d1,pot1_horizontal      ; L0000364c ; d1 = horizontal count delta
-                    add.w   d2,pot1_vertical       ; 0000364e  ; d2 = vertical count delts
+                    add.w   d2,pot1_vertical        ; 0000364e  ; d2 = vertical count delts
                     btst.b  #$0007,$00bfe001        ; Test Button 0
                     seq.b   joy1_button0            ; L0000363a ; Set Button 0 flag
                     seq.b   joy1_button0b           ; L0000364a ; Set Button 0 flag
                     btst.b  #$0006,$00dff016        ; test Button 1
-                    seq.b   L0000364b               ; Set Button 1 flag
+                    seq.b   joy1_button1b           ; L0000364b ; Set Button 1 flag
                     rts 
 
 
@@ -935,7 +935,7 @@ calc_counter_deltas                                     ; original address $0000
                     ; $00 - $0f depending on mouse counter values.
                     ; could be a randomnumber seed or similar.
                     ; 
-random_lookup                                  ; original address L00003620
+random_lookup                                       ; original address L00003620
                     dc.b $00
                     dc.b $04
                     dc.b $05
@@ -966,34 +966,34 @@ joy0_button0
 joy0_random
                     dc.b $00   
 
-L00003638           dc.w $0000                                            ; unreferenced word
+L00003638           dc.w $0000                      ; unreferenced word
 
 joy1_button0                                        ; original address L0000363a
-L0000363a           dc.b $00
+                    dc.b $00
 joy1_random
-L0000363b           dc.b $00   
+                    dc.b $00   
 
-L0000363c           dc.w $0000                                            ; unreferenced word
-L0000363e           dc.w $0000                                            ; unreferenced word               
-L00003640           dc.w $0000                                            ; unreferenced word
-L00003642           dc.w $0000                                            ; unreferenced word
+L0000363c           dc.w $0000                      ; unreferenced word
+L0000363e           dc.w $0000                      ; unreferenced word               
+L00003640           dc.w $0000                      ; unreferenced word
+L00003642           dc.w $0000                      ; unreferenced word
 
-joy0_button0b              
-L00003644           dc.b $00
+joy0_button0b                                       ; original address $00003644
+                    dc.b $00
 joy0_button1b
-L00003645           dc.b $00
+                    dc.b $00                        ; original address $00003645
 pot0_horizontal
-L00003646           dc.w $0000    
+                    dc.w $0000                      ; original address $00003646 
 pot0_vertical           
-L00003648           dc.w $0000
+                    dc.w $0000                      ; original address $00003648
 joy1_button0b
-L0000364a           dc.b $00
+                    dc.b $00                        ; original address $0000364a
 joy1_button1b
-L0000364b           dc.b $00 
+                    dc.b $00                        ; original address $0000364b
 pot1_horizontal             
-L0000364c           dc.w $0000
+                    dc.w $0000
 pot1_vertical
-L0000364e           dc.w $0000              
+                    dc.w $0000              
 
 
 
@@ -1002,11 +1002,11 @@ L0000364e           dc.w $0000
                     ; wait/loop until a key is pressed
                     ;
 waitkey                                                 ; Address L00003650 not called directly from this code.
-L00003650           move.l  d0,-(a7)
-L00003652           bsr.b   getkey                      ; d0 = ascii code (z = 1 if no key) L0000365a
-L00003654           bne.b   L00003652                   ; loop until a key is pressed
-L00003656           move.l  (a7)+,d0
-L00003658           rts
+                    move.l  d0,-(a7)
+.getkey             bsr.b   getkey                      ; d0 = ascii code (z = 1 if no key) L0000365a
+                    bne.b   .getkey                     ; loop until a key is pressed
+                    move.l  (a7)+,d0
+                    rts
 
 
 
@@ -1035,6 +1035,7 @@ getkey                                                  ; original address L0000
                     rts 
 
 
+
                     ;--------------- reset display -------------------
                     ; Set the copper list and 4 bitplane display,
                     ; reset bitplane modulos.
@@ -1043,22 +1044,23 @@ getkey                                                  ; original address L0000
                     ; IN:
                     ;   a0 = copper list address
                     ;
-reset_display
-L0000368a           move.w  #$0080,$00dff096                ; Disable Copper DMA
-L00003692           move.l  a0,$00dff080                    ; Set Copper List COP1LC
-L00003698           move.w  a0,$00dff088                    ; Strobe Copper (force start COPJMP1)
-L0000369e           move.w  #$0000,$00dff10a                ; BPL2MOD - modulo
-L000036a6           move.w  #$0000,$00dff108                ; BPL1MOD - modulp
-L000036ae           move.w  #$0038,$00dff092                ; DDFSTRT - DMA Fetch Start
-L000036b6           move.w  #$00d0,$00dff094                ; DDFSTOP - DMA Fetch Stop
-L000036be           move.w  #$3080,$00dff08e                ; DIWSTRT - Display Window Start Vertical Start = $30, Horizontal Start = $80 (320x218 window)
-L000036c6           move.w  #$0ac0,$00dff090                ; DIWSTOP - Display Window Stop Vertical Stop = $10a, Horizontal Stop = $1c0
-L000036ce           move.w  #$4200,$00dff100                ; BPLCON0 - 4 bitplane, colour display 
-L000036d6           clr.w   frame_counter                   ; L000036ee
-L000036dc           tst.w   frame_counter                   ; L000036ee
-L000036e2           beq.b   L000036dc                       ; wait for next vertb
-L000036e4           move.w  #$8180,$00dff096            ; Enable - Copper DMA
-L000036ec           rts 
+reset_display                                               ; original address $0000368a
+                    move.w  #$0080,$00dff096                ; Disable Copper DMA
+                    move.l  a0,$00dff080                    ; Set Copper List COP1LC
+                    move.w  a0,$00dff088                    ; Strobe Copper (force start COPJMP1)
+                    move.w  #$0000,$00dff10a                ; BPL2MOD - modulo
+                    move.w  #$0000,$00dff108                ; BPL1MOD - modulp
+                    move.w  #$0038,$00dff092                ; DDFSTRT - DMA Fetch Start
+                    move.w  #$00d0,$00dff094                ; DDFSTOP - DMA Fetch Stop
+                    move.w  #$3080,$00dff08e                ; DIWSTRT - Display Window Start Vertical Start = $30, Horizontal Start = $80 (320x218 window)
+                    move.w  #$0ac0,$00dff090                ; DIWSTOP - Display Window Stop Vertical Stop = $10a, Horizontal Stop = $1c0
+                    move.w  #$4200,$00dff100                ; BPLCON0 - 4 bitplane, colour display 
+                    clr.w   frame_counter                   ; L000036ee
+.wait_vbl
+                    tst.w   frame_counter                   ; L000036ee
+                    beq.b   .wait_vbl                       ; L000036dc ; wait for next vertb
+                    move.w  #$8180,$00dff096              ; Enable - Copper DMA
+                    rts 
 
 
 frame_counter                                           ; original address $000036ee
@@ -1105,20 +1107,21 @@ double_buffer_playfield                                         ; original addr:
                     movem.l d0-d1,playfield_buffer_ptrs         ; store swapped buffer ptrs
 
                     ; set bitplane ptrs
-.update_copper_list
-L00003722           lea.l   copper_playfield_planes+2,a0        ; L000031d6,a0
-L00003726           move.l  #$00001c8c,d1                       ; d1 = #$1c8c (7308) (7308 / 42 = 174 rasters per plane)
-L0000372c           moveq   #$03,d7                             ; d7 = 3 + 1 (4 bitplanes)
-L0000372e           move.w  d0,(a0)                             ; set bitplane low word
-L00003730           addq.w #$04,a0                              ; increment ptr to high word (in copper list)
-L00003732           swap.w  d0                                  ; d0.w = high word
-L00003734           move.w  d0,(a0)                             ; set bitplane high word
-L00003736           addq.w #$04,a0                              ; increment ptr to low word of next bitplane (in copper list)
-L00003738           swap.w  d0                                  ; correct address in d0.l
-L0000373a           add.l   d1,d0                               ; add bitplane size ($1c8c = 7308 bytes)
-L0000373c           dbf.w   d7,L0000372e                        ; loop for next bitplane
-L00003740           addq.w  #$01,playfield_swap_count           ; L0000632c ; add 1 to buffer swap count (maybe used to test which buffer is back buffer?)
-L00003744           rts
+.update_copper_list                                             ; original address L00003722
+                    lea.l   copper_playfield_planes+2,a0        ; L000031d6,a0
+                    move.l  #$00001c8c,d1                       ; d1 = #$1c8c (7308) (7308 / 42 = 174 rasters per plane)
+                    moveq   #$03,d7                             ; d7 = 3 + 1 (4 bitplanes)
+.next_bitplane
+                    move.w  d0,(a0)                             ; set bitplane low word
+                    addq.w #$04,a0                              ; increment ptr to high word (in copper list)
+                    swap.w  d0                                  ; d0.w = high word
+                    move.w  d0,(a0)                             ; set bitplane high word
+                    addq.w #$04,a0                              ; increment ptr to low word of next bitplane (in copper list)
+                    swap.w  d0                                  ; correct address in d0.l
+                    add.l   d1,d0                               ; add bitplane size ($1c8c = 7308 bytes)
+                    dbf.w   d7,.next_bitplane                   ; L0000372e ; loop for next bitplane
+                    addq.w  #$01,playfield_swap_count           ; L0000632c ; add 1 to buffer swap count (maybe used to test which buffer is back buffer?)
+                    rts
 
 
 
@@ -1127,329 +1130,162 @@ L00003744           rts
                     ;   - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
                     ;   - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
                     ;
-clear_display_memory
-L00003746           lea.l   DISPLAY_BUFFER,a0         ; $00061b9c,a0  ; External Address (screen ram?)
-L0000374c           move.w  #$3917,d7
-L00003750           clr.l   (a0)+
-L00003752           dbf.w   d7,L00003750
-L00003756           lea.l   CHIPMEM_BUFFER,a0           ; $0005a36c,a0  ; External Address (screen ram?)
-L0000375c           move.w  #$1c8b,d7
-L00003760           clr.l   (a0)+
-L00003762           dbf.w   d7,L00003760
-L00003766           rts 
+clear_memory                                            ; original address L00003746
+                    lea.l   DISPLAY_BUFFER,a0           ; $00061b9c,a0  ; External Address (screen ram?)
+                    move.w  #$3917,d7
+.clr_loop_1
+                    clr.l   (a0)+
+                    dbf.w   d7,.clr_loop_1              ; L00003750
+                    lea.l   CHIPMEM_BUFFER,a0           ; $0005a36c,a0  ; External Address (screen ram?)
+                    move.w  #$1c8b,d7
+.clr_loop_2
+                    clr.l   (a0)+
+                    dbf.w   d7,.clr_loop_2              ; L00003760
+                    rts 
 
 
-L00003768           dc.w $0a0a                      ; illegal
-L0000376a           dc.w $3030, $3030               ; move.w (a0,d3.W,$30) == $00000d43 [001b],d0
-L0000376e           dc.w $00ff                      ; illegal
-
-
-L00003770           lea.l   L00003768,a0
-L00003776           move.w  d1,(a0)
-L00003778           moveq   #$03,d2
-L0000377a           clr.w   d1
-L0000377c           move.w  d0,d1
-L0000377e           and.w   #$000f,d1
-L00003782           cmp.w   #$000a,d1
-L00003786           bcs.b   L0000378a
-L00003788           addq.w  #$07,d1
-L0000378a           add.b   #$30,d1
-L0000378e           move.b  d1,$02(a0,d2.W)             ; $00001409 [c8]
-L00003792           lsr.w   #$04,d0
-L00003794           dbf.w   d2,L0000377a
-L00003798           move.b  (a0)+,d0
-L0000379a           cmp.b   #$ff,d0
-L0000379e           beq.b   L000037ee
-L000037a0           and.w   #$00ff,d0
-L000037a4           mulu.w  #$0028,d0
-L000037a8           moveq   #$00,d1
-L000037aa           move.b  (a0)+,d1
-L000037ac           add.w   d1,d0
-L000037ae           movea.l #PANEL_GFX,a1               ; Panel GFX Address - $0007c89a
-L000037b4           lea.l   $02(a1,d0.W),a1
-L000037b8           moveq   #$00,d0
-L000037ba           move.b  (a0)+,d0
-L000037bc           beq.b   L00003798
-L000037be           sub.w   #$0020,d0
-L000037c2           lsl.w   #$03,d0
-L000037c4           lea.l   L000037f0,a2
-L000037ca           lea.l   $00(a2,d0.W),a2
-L000037ce           moveq   #$07,d7
-L000037d0           movea.l a1,a3
-L000037d2           move.b  (a2),(a3)
-L000037d4           move.b  (a2),$0780(a3)          ; $00064329
-L000037d8           move.b  (a2),$0f00(a3)          ; $00064aa9
-L000037dc           move.b  (a2)+,$1680(a3)         ; $00065229 [c6]
-L000037e0           lea.l   $0028(a3),a3            ; == $00063bd1,a3
-L000037e4           dbf.w   d7,L000037d2
-L000037e8           lea.l   $0001(a1),a1            ; == $0003ff5b,a1
-L000037ec           bra.b   L000037b8
-L000037ee           rts
+                    ; data for routine below $00003770
+L00003768           dc.w $0a0a                          ; location y,x (bytes)                 
+L0000376a           dc.w $3030                          ; 2 ascii characters
+                    dc.w $3030                          ; 2 ascii characters
+L0000376e           dc.w $00ff                          ; terminate debug display.                
 
 
 
-L000037f0           dc.w    $0000, $0000                ; or.b #$00,d0
-L000037f4           dc.w    $0000, $0000                ; or.b #$00,d0
-L000037f8           dc.w    $3030, $3030                ; move.w (a0,d3.W,$30) == $00000d43 [001b],d0
-L000037fc           dc.w    $0030, $3000, $3624         ; or.b #$00,(a0,d3.W[*8],$24) == $00000d37 (68020+) [7c]
-L00003802           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003806           dc.w    $0000, $6c9a                ; or.b #$9a,d0
-L0000380a           dc.w    $bcfa, $7428                ; cmpa.w (pc,$7428) == $0000ac34 [2000],a6
-L0000380e           dc.w    $1000                       ; move.b d0,d0
-L00003810           dc.w    $7ed6                       ; moveq #$d6,d7
-L00003812           dc.w    $d07c, $16d6                ; add.w #$16d6,d0
-L00003816           dc.w    $fc00                       ; illegal
-L00003818           dc.w    $82c6                       ; divu.w d6,d1
-L0000381a           dc.w    $fe54                       ; illegal
-L0000381c           dc.w    $7c38                       ; moveq #$38,d6
-L0000381e           dc.w    $1000                       ; move.b d0,d0
-L00003820           dc.w    $2874, $7474                ; movea.l (a4,d7.W[*4],$74) == $00bfe174 (68020+),a4
-L00003824           dc.w    $7420                       ; moveq #$20,d2
-L00003826           dc.w    $7400                       ; moveq #$00,d2
-L00003828           dc.w    $1810                       ; move.b (a0) [00],d4
-L0000382a           dc.w    $0000, $0000                ; or.b #$00,d0
-L0000382e           dc.w    $0000, $3870                ; or.b #$70,d0
-L00003832           dc.w    $7070                       ; moveq #$70,d0
-L00003834           dc.w    $7070                       ; moveq #$70,d0
-L00003836           dc.w    $3800                       ; move.w d0,d4
-L00003838           dc.w    $381c                       ; move.w (a4)+,d4
-L0000383a           dc.w    $1c1c                       ; move.b (a4)+,d6
-L0000383c           dc.w    $1c1c                       ; move.b (a4)+,d6
-L0000383e           dc.w    $3800                       ; move.w d0,d4
-L00003840           dc.w    $1054                       ; illegal
-L00003842           dc.w    $28d6                       ; move.l (a6),(a4)+
-L00003844           dc.w    $2854                       ; movea.l (a4),a4
-L00003846           dc.w    $1000                       ; move.b d0,d0
-L00003848           dc.w    $0000, $0808                ; or.b #$08,d0
-L0000384c           dc.w    $3e08                       ; move.w a0,d7
-L0000384e           dc.w    $0800, $0000                ; btst.l #$0000,d0
-L00003852           dc.w    $0000, $0008                ; or.b #$08,d0
-L00003856           dc.w    $0810, $0000                ; btst.b #$0000,(a0) [00]
-L0000385a           dc.w    $0000, $3e00                ; or.b #$00,d0
-L0000385e           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003862           dc.w    $0000, $0018                ; or.b #$18,d0
-L00003866           dc.w    $1800                       ; move.b d0,d4
-L00003868           dc.w    $3078, $b078                ; movea.w $b078 [42b0],a0
-L0000386c           dc.w    $3478, $3000                ; movea.w $3000 [7000],a2
-L00003870           dc.w    $7ce6                       ; moveq #$e6,d6
-L00003872           dc.w    $e6e6                       ; ror.w -(a6)
-L00003874           dc.w    $e6e6                       ; ror.w -(a6)
-L00003876           dc.w    $7c00                       ; moveq #$00,d6
-L00003878           dc.w    $7838                       ; moveq #$38,d4
-L0000387a           dc.w    $3838, $3838                ; move.w $3838 [381c],d4
-L0000387e           dc.w    $3800                       ; move.w d0,d4
-L00003880           dc.w    $7cce                       ; moveq #$ce,d6
-L00003882           dc.w    $0e7c                       ; illegal
-L00003884           dc.w    $c0ce                       ; illegal
-L00003886           dc.w    $fe00                       ; illegal
-L00003888           dc.w    $7cce                       ; moveq #$ce,d6
-L0000388a           dc.w    $0e3c                       ; illegal
-L0000388c           dc.w    $0ece                       ; illegal
-L0000388e           dc.w    $7c00                       ; moveq #$00,d6
-L00003890           dc.w    $7cdc                       ; moveq #$dc,d6
-L00003892           dc.w    $dcdc                       ; adda.w (a4)+,a6
-L00003894           dc.w    $fe1c                       ; illegal
-L00003896           dc.w    $1c00                       ; move.b d0,d6
-L00003898           dc.w    $fee6                       ; illegal
-L0000389a           dc.w    $e0fc                       ; illegal
-L0000389c           dc.w    $06e6                       ; illegal
-L0000389e           dc.w    $7c00                       ; moveq #$00,d6
-L000038a0           dc.w    $7ce6                       ; moveq #$e6,d6
-L000038a2           dc.w    $e0fc                       ; illegal
-L000038a4           dc.w    $e6e6                       ; ror.w -(a6)
-L000038a6           dc.w    $7c00                       ; moveq #$00,d6
-L000038a8           dc.w    $fece                       ; illegal
-L000038aa           dc.w    $0e1c                       ;  ; 1c38 [ moves.b d1,(a4)+ ]
-L000038ac           dc.w    $1c38, $3800                ; move.b $3800 [36],d6
-L000038b0           dc.w    $7ce6                       ; moveq #$e6,d6
-L000038b2           dc.w    $e67c                       ; ror.w d3,d4
-L000038b4           dc.w    $e6e6                       ; ror.w -(a6)
-L000038b6           dc.w    $7c00                       ; moveq #$00,d6
-L000038b8           dc.w    $7ce6                       ; moveq #$e6,d6
-L000038ba           dc.W    $e67e                       ; ror.w d3,d6
-L000038bc           dc.W    $06e6                       ; illegal
-L000038be           dc.W    $7c00                       ; moveq #$00,d6
-L000038c0           dc.W    $0030, $3000, $0030         ; or.b #$00,(a0,d0.W,$30) == $ffffe9c0 [49]
-L000038c6           dc.W    $3000                       ; move.w d0,d0
-L000038c8           dc.W    $0030, $3000, $3030         ; or.b #$00,(a0,d3.W,$30) == $00000d43 [00]
-L000038ce           dc.W    $6000, $1c38                ; bra.w #$1c38 == $00005508 (T)
-L000038d2           dc.W    $70e0                       ; moveq #$e0,d0
-L000038d4           dc.W    $7038                       ; moveq #$38,d0
-L000038d6           dc.W    $1c00                       ; move.b d0,d6
-L000038d8           dc.W    $007c, $7c00                ; or.w #$7c00,sr
-L000038dc           dc.W    $7c7c                       ; moveq #$7c,d6
-L000038de           dc.W    $0000, $e070                ; or.b #$70,d0
-L000038e2           dc.W    $381c                       ; move.w (a4)+,d4
-L000038e4           dc.W    $3870, $e000                ; movea.w (a0,a6.W,$00) == $fffffa00 [0048],a4
-L000038e8           dc.W    $7cee                       ; moveq #$ee,d6
-L000038ea           dc.W    $ce3c, $3000                ; and.b #$00,d7
-L000038ee           dc.W    $3000                       ; move.w d0,d0
-L000038f0           dc.W    $003c, $4a56                ; or.b #$4a56,ccr
-L000038f4           dc.W    $5e40                       ; addq.w #$07,d0
-L000038f6           dc.W    $3c00                       ; move.w d0,d6
-L000038f8           dc.W    $7ce6                       ; moveq #$e6,d6
-L000038fa           dc.W    $e6fe                       ; illegal
-L000038fc           dc.W    $e6e6                       ; ror.w -(a6)
-L000038fe           dc.W    $e600                       ; asr.b #$03,d0
-L00003900           dc.W    $fce6                       ; illegal
-L00003902           dc.W    $e6fc                       ; illegal
-L00003904           dc.W    $e6e6                       ; ror.w -(a6)
-L00003906           dc.W    $fc00                       ; illegal
-L00003908           dc.W    $7ce6                       ; moveq #$e6,d6
-L0000390a           dc.W    $e6e0                       ; ror.w -(a0) [3000]
-L0000390c           dc.W    $e6e6                       ; ror.w -(a6)
-L0000390e           dc.W    $7c00                       ; moveq #$00,d6
-L00003910           dc.W    $fce6                       ; illegal
-L00003912           dc.W    $e6e6                       ; ror.w -(a6)
-L00003914           dc.W    $e6e6                       ; ror.w -(a6)
-L00003916           dc.W    $fc00                       ; illegal
-L00003918           dc.W    $fee0                       ; illegal
-L0000391a           dc.W    $e0fe                       ; illegal
-L0000391c           dc.W    $e0e0                       ; asr.w -(a0) [3000]
-L0000391e           dc.W    $fe00                       ; illegal
-L00003920           dc.W    $fee0                       ; illegal
-L00003922           dc.w    $e0fe                       ; illegal
-L00003924           dc.w    $e0e0                       ; asr.w -(a0) [3000]
-L00003926           dc.w    $e000                       ; asr.b #$08,d0
-L00003928           dc.w    $7ce6                       ; moveq #$e6,d6
-L0000392a           dc.w    $e6e0                       ; ror.w -(a0) [3000]
-L0000392c           dc.w    $eee6                       ; illegal
-L0000392e           dc.w    $7e00                       ; moveq #$00,d7
-L00003930           dc.w    $e6e6                       ; ror.w -(a6)
-L00003932           dc.w    $e6fe                       ; illegal
-L00003934           dc.w    $e6e6                       ; ror.w -(a6)
-L00003936           dc.w    $e600                       ; asr.b #$03,d0
-L00003938           dc.w    $3838, $3838                ; move.w $3838 [381c],d4
-L0000393c           dc.w    $3838, $3800                ; move.w $3800 [3624],d4
-L00003940           dc.w    $0e0e                       ; illegal
-L00003942           dc.w    $0e0e                       ; illegal
-L00003944           dc.w    $0e0e                       ; illegal
-L00003946           dc.w    $fc00                       ; illegal
-L00003948           dc.w    $e6e6                       ; ror.w -(a6)
-L0000394a           dc.w    $e4f8, $e4e6                ; roxr.w $e4e6 [2229]
-L0000394e           dc.w    $e600                       ; asr.b #$03,d0
-L00003950           dc.w    $e0e0                       ; asr.w -(a0) [3000]
-L00003952           dc.w    $e0e0                       ; asr.w -(a0) [3000]
-L00003954           dc.w    $e0e0                       ; asr.w -(a0) [3000]
-L00003956           dc.w    $fe00                       ; illegal
-L00003958           dc.w    $fcda                       ; illegal
-L0000395a           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
-L0000395c           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
-L0000395e           dc.w    $da00                       ; add.b d0,d5
-L00003960           dc.w    $fce6                       ; illegal
-L00003962           dc.w    $e6e6                       ; ror.w -(a6)
-L00003964           dc.w    $e6e6                       ; ror.w -(a6)
-L00003966           dc.w    $e600                       ; asr.b #$03,d0
-L00003968           dc.w    $7ce6                       ; moveq #$e6,d6
-L0000396a           dc.w    $e6e6                       ; ror.w -(a6)
-L0000396c           dc.w    $e6e6                       ; ror.w -(a6)
-L0000396e           dc.w    $7c00                       ; moveq #$00,d6
-L00003970           dc.w    $fce6                       ; illegal
-L00003972           dc.w    $e6e6                       ; ror.w -(a6)
-L00003974           dc.w    $fce0                       ; illegal
-L00003976           dc.w    $e000                       ; asr.b #$08,d0
-L00003978           dc.w    $7ce6                       ; moveq #$e6,d6
-L0000397a           dc.w    $e6e2                       ; ror.w -(a2) [93f1]
-L0000397c           dc.w    $ecee                       ; 7600 fce6 [ bfclr (a6,-$031a) == $00dfece6 {24:0} ]
-L0000397e           dc.w    $7600                       ; moveq #$00,d3
-L00003980           dc.w    $fce6                       ; illegal
-L00003982           dc.w    $e6fc                       ; illegal
-L00003984           dc.w    $e6e6                       ; ror.w -(a6)
-L00003986           dc.w    $e600                       ; asr.b #$03,d0
-L00003988           dc.w    $7ce6                       ; moveq #$e6,d6
-L0000398a           dc.w    $f87c                       ; illegal
-L0000398c           dc.w    $1ee6                       ; move.b -(a6),(a7)+ [60]
-L0000398e           dc.w    $7c00                       ; moveq #$00,d6
-L00003990           dc.w    $fe38                       ; illegal
-L00003992           dc.w    $3838, $3838                ; move.w $3838 [381c],d4
-L00003996           dc.w    $3800                       ; move.w d0,d4
-L00003998           dc.w    $e6e6                       ; ror.w -(a6)
-L0000399a           dc.w    $e6e6                       ; ror.w -(a6)
-L0000399c           dc.w    $e6e6                       ; ror.w -(a6)
-L0000399e           dc.w    $7c00                       ; moveq #$00,d6
-L000039a0           dc.w    $e6e6                       ; ror.w -(a6)
-L000039a2           dc.w    $e6e6                       ; ror.w -(a6)
-L000039a4           dc.w    $e664                       ; asr.w d3,d4
-L000039a6           dc.w    $3800                       ; move.w d0,d4
-L000039a8           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
-L000039aa           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
-L000039ac           dc.w    $dada                       ; adda.w (a2)+ [1241],a5
-L000039ae           dc.w    $7c00                       ; moveq #$00,d6
-L000039b0           dc.w    $e6e6                       ; ror.w -(a6)
-L000039b2           dc.w    $e638                       ; ror.b d3,d0
-L000039b4           dc.w    $cece                       ; illegal
-L000039b6           dc.w    $ce00                       ; and.b d0,d7
-L000039b8           dc.w    $e6e6                       ; ror.w -(a6)
-L000039ba           dc.w    $e67c                       ; ror.w d3,d4
-L000039bc           dc.w    $3838, $3800                ; move.w $3800 [3624],d4
-L000039c0           dc.w    $feee                       ; illegal
-L000039c2           dc.w    $dc38, $76e6                ; add.b $76e6 [0e],d6
-L000039c6           dc.w    $fe00                       ; illegal
-L000039c8           dc.w    $0000, $0119                ; or.b #$19,d0
-L000039cc           dc.w    $003a                       ; illegal
-L000039ce           dc.w    $0097, $0000, $0000         ; or.l #$00000000,(a7) [6000001a]
-L000039d4           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039d8           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039dc           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039e0           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L000039e6           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039ea           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039ee           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039f2           dc.w    $0000, $0000                ; or.b #$00,d0
-L000039f6           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L000039fc           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a00           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a04           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a08           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a0c           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a12           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a16           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a1a           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a1e           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a22           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a28           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a2c           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a30           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a34           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a38           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a3e           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a42           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a46           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a4a           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a4e           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a54           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a58           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a5c           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a60           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a64           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a6a           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a6e           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a72           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a76           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a7a           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a80           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a84           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a88           dc.w    $0000, $0000                ; or.b #$00,d0
+                    ; routine doesn't appear to be called directly
+                    ; IN:
+                    ;   d0 - 16bit value converted to chars to display
+                    ;   d1 - 16bit value inserted into start of data buffer above
+debug_display_word_value                                ; original address L00003770
+                    lea.l   L00003768,a0
+                    move.w  d1,(a0)
+                    moveq   #$03,d2                     ; loop counter 3 + 1
+.nibble_to_ascii
+                    clr.w   d1
+                    move.w  d0,d1
+                    and.w   #$000f,d1                   ; mask low 4 bits ($0 - $f)
+                    cmp.w   #$000a,d1                   ; compare value to 10
+                    bcs.b   .add_0_offset               ; L0000378a ; value < 10
+.add_alpha_offset
+                    addq.w  #$07,d1                     ; add ascii offset from ':' to char 'A' for digits $a-$f
+.add_0_offset
+                    add.b   #$30,d1                     ; add ascii offset to char '0' for all digits $0-$f
+                    move.b  d1,$02(a0,d2.W)             ; store ascii character for hhex digit
+                    lsr.w   #$04,d0                     ; shift to get next nibble
+                    dbf.w   d2,.nibble_to_ascii
+
+.display_string                                         ; original address - $00003798
+                    move.b  (a0)+,d0
+                    cmp.b   #$ff,d0
+                    beq.b   .exit                       ; L000037ee
+                    and.w   #$00ff,d0                   ; mask byte value
+                    mulu.w  #$0028,d0                   ; d0 = multiple by 40 bytes ( y value )
+                    moveq   #$00,d1 
+                    move.b  (a0)+,d1                    ; d1 = x value (bytes x)
+                    add.w   d1,d0                       ; d0 = x + y (byte offset)
+                    movea.l #PANEL_GFX,a1               ; Panel GFX Address - $0007c89a
+                    lea.l   $02(a1,d0.w),a1             ; a1 = location inside PANEL GFX
+
+.display_char                                           ; original address L000037b8
+                    moveq   #$00,d0
+                    move.b  (a0)+,d0
+                    beq.b   .display_string             ; L00003798
+
+                    sub.w   #$0020,d0                   ; #$20 = 32 (space character?)
+                    lsl.w   #$03,d0                     ; d0 = d0 * 8
+                    lea.l   font8x8,a2                  ; L000037f0,a2        
+                    lea.l   $00(a2,d0.w),a2             ; a2 = source gfx, d0 = offset to the start
+                    moveq   #$07,d7                     ; loop counter 7 + 1 - raster lines
+                    movea.l a1,a3                       ; destination location inside PANEL GFX (calculated above and held in a1)
+.char_loop
+                    move.b  (a2),(a3)                   ; set value in bitplane 0 (48 lines high PANEL bitplane (1920 bytes)
+                    move.b  (a2),$0780(a3)              ; set value in bitplane 1 (48 lines high PANEL bitplane (1920 bytes)
+                    move.b  (a2),$0f00(a3)              ; set value in bitplane 2 (48 lines high PANEL bitplane (1920 bytes)
+                    move.b  (a2)+,$1680(a3)             ; set value in bitplane 3 (48 lines high PANEL bitplane (1920 bytes)
+                    lea.l   $0028(a3),a3                ; increment 40 bytes - next raster line
+                    dbf.w   d7,.char_loop               ; L000037d2 - draw next line of character data loop 8 times.
+
+.next_char                                              ; original address L000037e8
+                    lea.l   $0001(a1),a1                ; increment destination Location to next char for display
+                    bra.b   .display_char               ; display next char - L000037b8
+.exit                                                   ; original address L000037ee
+                    rts
+
+
+
+                    ; -------------------------- 8x8 pixel font ----------------------
+                    ; This font is used by the routine above.
+                    incdir  ./gfx/
+                    include font8x8.s
+                    
+
+
+L000039c8           dc.w    $0000, $0119
+L000039cc           dc.w    $003a
+L000039ce           dc.w    $0097, $0000, $0000
+L000039d4           dc.w    $0000, $0000
+L000039d8           dc.w    $0000, $0000
+L000039dc           dc.w    $0000, $0000
+L000039e0           dc.w    $00a0, $0038, $0046
+L000039e6           dc.w    $0000, $0000
+L000039ea           dc.w    $0000, $0000
+L000039ee           dc.w    $0000, $0000
+L000039f2           dc.w    $0000, $0000
+L000039f6           dc.w    $00a0, $0038, $0046
+L000039fc           dc.w    $0000, $0000
+L00003a00           dc.w    $0000, $0000
+L00003a04           dc.w    $0000, $0000
+L00003a08           dc.w    $0000, $0000
+L00003a0c           dc.w    $00a0, $0038, $0046
+L00003a12           dc.w    $0000, $0000
+L00003a16           dc.w    $0000, $0000
+L00003a1a           dc.w    $0000, $0000
+L00003a1e           dc.w    $0000, $0000
+L00003a22           dc.w    $00a0, $0038, $0046
+L00003a28           dc.w    $0000, $0000
+L00003a2c           dc.w    $0000, $0000
+L00003a30           dc.w    $0000, $0000
+L00003a34           dc.w    $0000, $0000
+L00003a38           dc.w    $00a0, $0038, $0046
+L00003a3e           dc.w    $0000, $0000
+L00003a42           dc.w    $0000, $0000
+L00003a46           dc.w    $0000, $0000
+L00003a4a           dc.w    $0000, $0000
+L00003a4e           dc.w    $00a0, $0038, $0046
+L00003a54           dc.w    $0000, $0000
+L00003a58           dc.w    $0000, $0000
+L00003a5c           dc.w    $0000, $0000
+L00003a60           dc.w    $0000, $0000
+L00003a64           dc.w    $00a0, $0038, $0046
+L00003a6a           dc.w    $0000, $0000
+L00003a6e           dc.w    $0000, $0000
+L00003a72           dc.w    $0000, $0000
+L00003a76           dc.w    $0000, $0000
+L00003a7a           dc.w    $00a0, $0038, $0046
+L00003a80           dc.w    $0000, $0000
+L00003a84           dc.w    $0000, $0000
+L00003a88           dc.w    $0000, $0000
 L00003a8c           dc.w    $0000
-L00003a8e           dc.w    $0000                       ; or.b #$00,d0
-L00003a90           dc.w    $00a0, $0038, $0046         ; or.l #$00380046,-(a0) [4ef83000]
-L00003a96           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a9a           dc.w    $0000, $0000                ; or.b #$00,d0
-L00003a9e           dc.w    $0000, $0000                ; or.b #$00,d0
+L00003a8e           dc.w    $0000
+L00003a90           dc.w    $00a0, $0038, $0046
+L00003a96           dc.w    $0000, $0000
+L00003a9a           dc.w    $0000, $0000
+L00003a9e           dc.w    $0000, $0000
 L00003aa2           dc.w    $0000
-L00003aa4           dc.w    $5009                       ; or.b #$09,d0
-L00003aa6           dc.w    $4158                       ; illegal
-L00003aa8           dc.w    $4953                       ; illegal
-L00003aaa           dc.w    $2043                       ; movea.l d3,a0
-L00003aac           dc.w    $4845                       ; swap.w d5
-L00003aae           dc.w    $4d49                       ; illegal
-L00003ab0           dc.w    $4341                       ; illegal
-L00003ab2           dc.w    $4c20                       ; 4641 [ mulu.l -(a0),d1:d4 ]
-L00003ab4           dc.w    $4641                       ; not.w d1
-L00003ab6           dc.w    $4354                       ; illegal
-L00003ab8           dc.w    $4f52                       ; illegal
-L00003aba           dc.w    $5900                       ; subq.b #$04,d0
+L00003aa4           dc.w    $5009
+L00003aa6           dc.w    $4158
+L00003aa8           dc.w    $4953
+L00003aaa           dc.w    $2043
+L00003aac           dc.w    $4845
+L00003aae           dc.w    $4d49
+L00003ab0           dc.w    $4341
+L00003ab2           dc.w    $4c20
+L00003ab4           dc.w    $4641
+L00003ab6           dc.w    $4354
+L00003ab8           dc.w    $4f52
+L00003aba           dc.w    $5900
 L00003abc           dc.b    $ff
+
 L00003abd           dc.b    $40                         ; illegal
 L00003abe           dc.w    $0e4a                       ; illegal
 L00003ac0           dc.w    $4143                       ; illegal
@@ -1489,7 +1325,7 @@ L00003af8           clr.w   L000062fc
 L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
 L00003b02           clr.w   L00006318
 L00003b06           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
-L00003b0c           bsr.w   clear_display_memory    ; L00003746
+L00003b0c           bsr.w   clear_memory            ; L00003746
 L00003b10           move.w  #$0800,d0               ; Level Time as BCD mm:ss
 L00003b14           jsr     PANEL_INIT_TIMER        ; Panel - Initialise Level Timer - $0007c80e
 L00003b1a           jsr     PANEL_INIT_ENERGY       ; Panel - Initialise Player Energy - $0007c854
