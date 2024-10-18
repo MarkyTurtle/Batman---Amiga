@@ -109,6 +109,9 @@ PANELST2_CHEAT_ACTIVE       EQU $7
 
 
 ; MAPPGR.IFF
+MAPGR_ADDRESS               EQU $7FFC
+MAPGR_START                 EQU $8000
+MAPGR_BASE                  EQU $8002
 MAPGR_INIT                  EQU $0000807c
 
 ; Code1 - Constants
@@ -1989,7 +1992,7 @@ L00004166           add.w   #$0010,d5
 L0000416a           cmp.w   #$0020,d5
 L0000416e           bcs.b   L000041a0
 L00004170           bpl.b   L00004184
-L00004172           move.w  $00008002,d2        ; External Address - MAPGR.IFF
+L00004172           move.w  MAPGR_BASE,d2        ; MAPGR.IFF (Value = $00c0)
 L00004178           add.w   d2,d2
 L0000417a           add.w   d2,d2
 L0000417c           sub.w   d2,d3
@@ -2831,7 +2834,7 @@ L00004a66           asl.w   #$04,d4
 L00004a68           move.b  d4,L00004aa1
 L00004a6e           move.w  d3,d4
 L00004a70           lsr.w   #$03,d4
-L00004a72           lea.l   $00008002,a0            ; External Address - MAPGR.IFF
+L00004a72           lea.l   MAPGR_BASE,a0            ;  MAPGR.IFF (addr $8002)
 L00004a78           mulu.w  (a0),d4
 L00004a7a           move.w  L000067bc,d0
 L00004a7e           lsr.w   #$03,d0
@@ -2870,31 +2873,32 @@ L00004ad0           dbf.w   d1,L00004a60
 L00004ad4           rts 
 
 
-L00004ad6           movea.l L0000630a,a2         ; [0000a07c]
-L00004ada           move.w  d1,d2
-L00004adc           lsr.w   #$03,d2
-L00004ade           move.w  L000067be,d1        ; [00f0]
+; a4 = destination chipmemptr, d1 = pixel offset, d7 = counter
+L00004ad6           movea.l L0000630a,a2        ; [0000a07c]
+L00004ada           move.w  d1,d2               ; d1, d2 = Pixel Offset 
+L00004adc           lsr.w   #$03,d2             ; d2 = byte offset
+L00004ade           move.w  L000067be,d1        ; 
 L00004ae2           move.w  d1,d0
-L00004ae4           and.w   #$0007,d0
-L00004ae8           move.w  d0,d5
+L00004ae4           and.w   #$0007,d0           ; mask low 3 bits (0-7)
+L00004ae8           move.w  d0,d5               ; d0, d5 = low 3 bits
 L00004aea           not.w   d5
 L00004aec           and.w   #$0007,d5
-L00004af0           lsl.w   #$04,d0
-L00004af2           lsr.w   #$03,d1
-L00004af4           lea.l   $00008002,a0        ; External Address - MAPGR.IFF
-L00004afa           move.w  (a0),d4
-L00004afc           mulu.w  d4,d1
-L00004afe           add.w   d2,d1
-L00004b00           lea.l   $7a(a0,d1.W),a0     ; $00000a79,a0
-L00004b04           moveq   #$56,d7
+L00004af0           lsl.w   #$04,d0             ; d0 = multiply by 16
+L00004af2           lsr.w   #$03,d1             ; d1 = divide by 8
+L00004af4           lea.l   MAPGR_BASE,a0       ; MAPGR.IFF (addr $8002)
+L00004afa           move.w  (a0),d4             ; d4 = word value (initial value $00c0 = 192)
+L00004afc           mulu.w  d4,d1               ; d1 = d1 * 192
+L00004afe           add.w   d2,d1               ; d1 = d1 + byte offset
+L00004b00           lea.l   $7a(a0,d1.W),a0     ; Source GFX PTR
+L00004b04           moveq   #$56,d7             ; d7 = counter $57 = 87 dec
 L00004b06           move.w  L00006312,d1
-L00004b0a           moveq   #$56,d6
+L00004b0a           moveq   #$56,d6             ; d6 = inner counter $57 = 87 dec
 L00004b0c           sub.w   d1,d6
-L00004b0e           mulu.w  #$0054,d1
+L00004b0e           mulu.w  #$0054,d1           ; $54 = 84 dec
 L00004b12           lea.l   $00(a4,d1.L),a1     
 L00004b16           clr.w   d1
-L00004b18           move.b  (a0),d1
-L00004b1a           asl.w   #$07,d1
+L00004b18           move.b  (a0),d1             ; d1 = source byte
+L00004b1a           asl.w   #$07,d1             ; d1 = d1 * 64
 L00004b1c           add.w   d1,d0
 L00004b1e           bra.b   L00004b2c
 L00004b20           dbf.w   d5,L00004b32
@@ -2915,7 +2919,7 @@ L00004b4c           move.w  (a3)+,$55ce(a1)      ; $00045528 [00f7]
 L00004b50           lea.l   $0054(a1),a1
 L00004b54           dbf.w   d6,L00004b5c
 L00004b58           lea.l   -$1c8c(a1),a1       ; $0003e2ce,a1
-L00004b5c           dbf.w   d7,L00004b20
+L00004b5c           dbf.w   d7,L00004b20            ; Loop 87 times
 L00004b60           rts 
 
 
@@ -3255,7 +3259,7 @@ L00004f58            bcs.b   L00004f8e
 L00004f5a            move.b  $01(a0,d3.W),d2
 L00004f5e            cmp.b   #$17,d2
 L00004f62            bcs.b   L00004f8e
-L00004f64            sub.w   $00008002,d3            ; External Address - MAPGR.IFF
+L00004f64            sub.w   MAPGR_BASE,d3            ; MAPGR.IFF (value $00c0)
 L00004f6a            dbf.w   d7,L00004f50
 L00004f6e            movem.w L000067c2,d0-d1
 L00004f74            add.w   d4,d1
@@ -3608,7 +3612,7 @@ L0000537e           bra.b   L000053a6
 L00005380           asr.w   #$01,d4
 L00005382           bcc.b   L000053cc
 L00005384           move.w  #$0048,L000067c6
-L0000538a           move.w  $00008002,d5            ; External Address - MAPGR.IFF
+L0000538a           move.w  MAPGR_BASE,d5           ; MAPGR.IFF (value = $00c0)
 L00005390           sub.w   d5,d3
 L00005392           sub.w   d5,d3
 L00005394           sub.w   d5,d3
@@ -3716,7 +3720,7 @@ L000054a6           bcs.b   L000054c8
 L000054a8           move.b  $01(a0,d3.W),d2
 L000054ac           cmp.b   #$17,d2
 L000054b0           bcs.b   L000054c8
-L000054b2           add.w   $00008002,d3                ; External Address - MAPGR.IFF
+L000054b2           add.w   MAPGR_BASE,d3               ; MAPGR.IFF (value = $00c0)
 L000054b8           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
 L000054bc           dbf.w   d7,L000054a2
 L000054c0           add.w   d0,d4
@@ -3797,7 +3801,7 @@ L000055a6           add.w   d0,d2
 L000055a8           add.w   d1,d3
 L000055aa           lsr.w   #$03,d2
 L000055ac           lsr.w   #$03,d3
-L000055ae           mulu.w  $00008002,d3            ; External Address - MAPGR.IFF
+L000055ae           mulu.w  MAPGR_BASE,d3           ; MAPGR.IFF (value = $00c0)
 L000055b4           add.w   d2,d3
 L000055b6           lea.l   MAPGR_INIT,a0           ; $0000807c,a0            ; External Address - MAPGR.IFF
 L000055bc           clr.w   d2
@@ -4080,21 +4084,22 @@ L000058a8           rts
 
 
 L000058aa           clr.l   d0
-L000058ac           move.w  L000067bc,d0
-L000058b0           lsr.w   #$03,d0
-L000058b2           add.w   d0,d0
-L000058b4           movea.l #CHIPMEM_BUFFER,a4        ; #$0005a36c,a4 ; External Address 
-L000058ba           adda.l  d0,a4
-L000058bc           move.l  a4,L0000631e
+L000058ac           move.w  L000067bc,d0                ; Pixel Offset Value?
+L000058b0           lsr.w   #$03,d0                     ; D0.w divide by 8 (d0 = byte offset)
+L000058b2           add.w   d0,d0                       ; D0.w multiply by 2 (word offset)
+L000058b4           movea.l #CHIPMEM_BUFFER,a4          ; #$0005a36c,a4 ; External Address 
+L000058ba           adda.l  d0,a4                       ; a4 = location in chip mem buffer (gfx base address?)
+L000058bc           move.l  a4,L0000631e                ; store location in chip mem buffer
+
 L000058c0           clr.w   L00006312
 L000058c4           clr.l   d1
-L000058c6           move.w  L000067bc,d1
-L000058ca           moveq   #$14,d7
+L000058c6           move.w  L000067bc,d1                ; Pixel Offset Value?
+L000058ca           moveq   #$14,d7                     ; counter = $15 + $1 = $16 (22 dec)
 L000058cc           movem.l d1/d7/a4,-(a7)
-L000058d0           bsr.w   L00004ad6
+L000058d0           bsr.w   L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
 L000058d4           movem.l (a7)+,d1/d7/a4
-L000058d8           addq.w  #$08,d1
-L000058da           addq.l  #$02,a4                 ; addaq.l
+L000058d8           addq.w  #$08,d1                     ; increase Pixel Offset by 8 bits?
+L000058da           addq.l  #$02,a4                     ; increase gfx ptr by 16 bits
 L000058dc           dbf.w   d7,L000058cc
 L000058e0           rts 
 
@@ -4114,7 +4119,7 @@ L00005900           addq.w  #$05,a0                     ; 5 byte structure.
 L00005902           dbf.w   d7,L000058ea
 
                     ; init map data?
-L00005906           lea.l   $00008002,a0                ; External Address - MAPGR.IFF
+L00005906           lea.l   MAPGR_BASE,a0               ; MAPGR.IFF (addr $8002)
 L0000590c           move.w  (a0)+,d5                    ; a0 = 8004
 L0000590e           move.w  (a0)+,d6                    ; a0 = 8006
 L00005910           lea.l   $0076(a0),a0                ; a0 = 807c
