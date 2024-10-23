@@ -1499,20 +1499,37 @@ sfx_only                                                            ; original a
 
 L00003bf6           clr.l   frame_counter                           ; NB: Long Clear - clears next word also -L000036ee
 
-                    ; ----------------- Game Loop -----------------
-game_loop
-L00003bfa           bsr.w   getkey                      ; d0 = ascii code (z = 1 if no key)- L0000365a
-L00003bfe           beq.b   L00003c5a                   ; no key pressed, jmp $00003c5a
-L00003c00           cmp.w   #$0081,d0
-L00003c04           bne.b   L00003c22
-L00003c06           bsr.w   getkey                      ; d0 = ascii code (z = 1 if no key) - L0000365a
-L00003c0a           beq.b   L00003c06                   ; no key pressed, jmp $00003c06
-L00003c0c           cmp.w   #$001b,d0
-L00003c10           bne.b   L00003c22
-L00003c12           bsr.w   L00003cbc
-L00003c16           bset.b  #PANELST2_GAME_OVER,PANEL_STATUS_2      ; Panel - Status 2 Bytes - bit #$0005 of $0007c875 
+
+
+                    ; --------------------------------------------------------------------------
+                    ; --------------------------------- Game Loop ------------------------------
+                    ; --------------------------------------------------------------------------
+                    ;
+game_loop                                                           ; original address $00003bfa
+                    ; key press checks
+L00003bfa           bsr.w   getkey                                  ; d0 = ascii code (z = 1 if no key)- L0000365a
+L00003bfe           beq.b   L00003c5a                               ; no key pressed, continue $00003c5a
+
+                    ; check 'f1' pressed (Pause Game)
+L00003c00           cmp.w   #$0081,d0                               ; Key = 'F1'
+L00003c04           bne.b   gl_continue                             ; 'F1' is not pressed - L00003c22
+
+gl_pause_game_loop
+L00003c06           bsr.w   getkey                                  ; d0 = ascii code (z = 1 if no key) - L0000365a
+L00003c0a           beq.b   gl_pause_game_loop                      ; L00003c06 ; no key pressed, loop $00003c06
+
+                    ; check 'esc' pressed (exit game)
+                    ; can only exit the game when paused
+L00003c0c           cmp.w   #$001b,d0                               ; Key = 'ESC'
+L00003c10           bne.b   gl_continue                             ; 'ESC' is not pressed - L00003c22
+
+                    ; 'ESC' is pressed
+L00003c12           bsr.w   L00003cbc                               ; wipe screen to black
+L00003c16           bset.b  #PANELST2_GAME_OVER,PANEL_STATUS_2      ; SET GAME OVER - Panel - Status 2 Bytes - bit #$0005 of $0007c875 
 L00003c1e           bra.w   L00004e00
-L00003c22           cmp.w   #$0082,d0
+
+gl_continue
+L00003c22           cmp.w   #$0082,d0                   ; Key = 'F2'
 L00003c26           bne.b   L00003c48
 L00003c28           bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2       ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003c30           bne.b   L00003c3c
@@ -1526,6 +1543,8 @@ L00003c48           cmp.w   #$008a,d0
 L00003c4c           bne.b   L00003c5a
 L00003c4e           btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2   ; Panel - Status 2 Bytes - bit #$0007 of $0007c875 
 L00003c56           bne.w   L00005e3a
+
+                    ; finished key press checks
 L00003c5a           btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874 
 L00003c62           bne.b   L00003c80
 L00003c64           jsr     PANEL_UPDATE                            ; Panel Update - $0007c800
@@ -1553,11 +1572,13 @@ L00003ca8           bsr.w   L00003ee6
 L00003cac           bsr.w   L00004658
 L00003cb0           bsr.w   L000045fe
 L00003cb4           bsr.w   double_buffer_playfield         ; L000036fa
-L00003cb8           bra.w   L00003bfa                       ; jump back to main loop
+L00003cb8           bra.w   game_loop                       ; L00003bfa ; jump back to main loop
                     ; ----------------- End of Game Loop -----------------
 
 
 
+                    ; Wipe Screen to Black
+                    ; Exit Game and Level Completed.
 L00003cbc           bsr.w   L00004e28
 L00003cc0           move.w  #$002a,d0
 L00003cc4           move.w  #$00ae,d1
@@ -2733,10 +2754,10 @@ L00004952           bmi.b   L0000496c
 L00004954           beq.b   L00004980
 L00004956           cmp.w   #$0004,d0
 L0000495a           bcs.b   L00004980
-L0000495c           cmp.w   #$fffd,d0
+L0000495c           cmp.w   #$fffd,d0               ; -3
 L00004960           bcc.b   L00004980
 L00004962           bpl.b   L00004968
-L00004964           MOVE.L  #$fffffffe,D0
+L00004964           MOVE.L  #$fffffffe,D0           ; d0 = -2
 L00004966           bra.b   L00004980
 L00004968           moveq   #$02,d0
 L0000496a           bra.b   L00004980
@@ -2747,7 +2768,8 @@ L00004976           bcc.b   L00004980
 L00004978           bmi.b   L0000497e
 L0000497a           moveq   #$07,d0
 L0000497c           bra.b   L00004980
-L0000497e           MOVE.L  #$fffffffd,D0
+L0000497e           MOVE.L  #$fffffffd,D0           ; d0 = -3
+
 L00004980           move.w  L000067be,d1
 L00004984           move.w  d1,d3
 L00004986           add.w   d0,d1
@@ -2763,6 +2785,7 @@ L0000499c           sub.w   d1,d0
 L0000499e           clr.w   d1
 L000049a0           sub.w   d0,L000067c4
 L000049a4           move.w  d1,L000067be
+
 L000049a8           sub.w   d3,d1
 L000049aa           move.w  d1,L00006310
 L000049ae           beq.b   L000049ec
@@ -2785,6 +2808,7 @@ L000049e0           move.w  d2,L00006312
 L000049e4           add.w   d1,d3
 L000049e6           neg.w   d1
 L000049e8           bsr.w   L00004a5e
+
 L000049ec           move.w  L000067c2,d0
 L000049f0           sub.w   L000067c8,d0
 L000049f4           move.w  d0,L0000630e
@@ -2874,6 +2898,7 @@ L00004ad4           rts
 
 
 ; a4 = destination chipmemptr, d1 = pixel offset, d7 = counter
+; L0000630a = base gfx ptr $0000A07C 
 L00004ad6           movea.l L0000630a,a2        ; [0000a07c]
 L00004ada           move.w  d1,d2               ; d1, d2 = Pixel Offset 
 L00004adc           lsr.w   #$03,d2             ; d2 = byte offset
@@ -2889,8 +2914,9 @@ L00004af4           lea.l   MAPGR_BASE,a0       ; MAPGR.IFF (addr $8002)
 L00004afa           move.w  (a0),d4             ; d4 = word value (initial value $00c0 = 192)
 L00004afc           mulu.w  d4,d1               ; d1 = d1 * 192
 L00004afe           add.w   d2,d1               ; d1 = d1 + byte offset
+
 L00004b00           lea.l   $7a(a0,d1.W),a0     ; Source GFX PTR
-L00004b04           moveq   #$56,d7             ; d7 = counter $57 = 87 dec
+L00004b04           moveq   #$56,d7             ; d7 = outer counter $57 = 87 dec
 L00004b06           move.w  L00006312,d1
 L00004b0a           moveq   #$56,d6             ; d6 = inner counter $57 = 87 dec
 L00004b0c           sub.w   d1,d6
@@ -2908,17 +2934,17 @@ L00004b28           move.b  (a0),d0
 L00004b2a           asl.w   #$07,d0
 L00004b2c           lea.l   $00(a2,d0.W),a3     ; $0006b778,a3
 L00004b30           adda.w  d4,a0
-L00004b32           move.w  (a3)+,(a1)
-L00004b34           move.w  (a3)+,$1c8c(a1)      ; $00041be6 [02c0]
-L00004b38           move.w  (a3)+,$3918(a1)      ; $00043872 [0101]
-L00004b3c           move.w  (a3)+,$55a4(a1)      ; $000454fe [00e0]
-L00004b40           move.w  (a3)+,$002a(a1)      ; $0003ff84 [0000]
-L00004b44           move.w  (a3)+,$1cb6(a1)      ; $00041c10 [0038]
-L00004b48           move.w  (a3)+,$3942(a1)      ; $0004389c [8000]
-L00004b4c           move.w  (a3)+,$55ce(a1)      ; $00045528 [00f7]
-L00004b50           lea.l   $0054(a1),a1
+L00004b32           move.w  (a3)+,(a1)           ; line 0, bpl0 (42 byte wide display?)
+L00004b34           move.w  (a3)+,$1c8c(a1)      ; line 0, bpl1 
+L00004b38           move.w  (a3)+,$3918(a1)      ; line 0, bpl2
+L00004b3c           move.w  (a3)+,$55a4(a1)      ; line 0, bpl3
+L00004b40           move.w  (a3)+,$002a(a1)      ; line 1, bpl0 - 42(a1)
+L00004b44           move.w  (a3)+,$1cb6(a1)      ; line 1, bpl1
+L00004b48           move.w  (a3)+,$3942(a1)      ; line 1, bpl2 
+L00004b4c           move.w  (a3)+,$55ce(a1)      ; line 1, bpl3
+L00004b50           lea.l   $0054(a1),a1         ; A1 = a1 + 84 bytes (skip 2 rasters)
 L00004b54           dbf.w   d6,L00004b5c
-L00004b58           lea.l   -$1c8c(a1),a1       ; $0003e2ce,a1
+L00004b58           lea.l   -$1c8c(a1),a1        ; a1 = a1 + 7308 bytes 
 L00004b5c           dbf.w   d7,L00004b20            ; Loop 87 times
 L00004b60           rts 
 
@@ -4850,8 +4876,9 @@ L00006304           dc.w $0000
 L00006306           dc.w $0000
 L00006308           dc.b $00
 L00006309           dc.b $00
-L0000630a           dc.w $0000        
-L0000630C           dc.w $A07C
+
+L0000630a           dc.l $0000A07C                  ; base level gfx ptr?
+
 L0000630e           dc.w $0000
 L00006310           dc.w $0000
 L00006312           dc.w $0000
