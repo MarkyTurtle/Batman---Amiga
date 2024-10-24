@@ -1466,7 +1466,7 @@ L00003b98           clr.w   L000062ee
                     ; copy 7 words init data
                     ; L000062fc has to be 0, or the routine will overwrite code.
                                                             ; original address L00003ba4
-L00003ba4           move.w  #$4c3e,L00003c92                ; //TODO: maybe an address, not a value 
+L00003ba4           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
                     lea.l   L000067a0,a0
                     move.w  L000062fc,d6                    ; cleared above on line number L00003af8
 .outer_loop                                                 ; original address L00003bb2
@@ -1570,10 +1570,15 @@ L00003c82           clr.l   d1
 L00003c84           bsr.w   L00005854
 L00003c88           movem.w L000067c2,d0-d1
 
+
+                    ; ----- SELF MODIFYING CODE -----
+                    ; default jsr address $4c3e = Command Loop (set at addresses $3ba4, $4d66, $504e, $51d2, $52fe, $53ce, $542a)
+                    ; updated address $555a = unknown (set in routine L000054e8)
 ;L00003c8e           jsr     L00004c3e                   ; 4eb9 0000 4c3e (self modifying code $3c92)
 L00003c8e           dc.w    $4eb9       ; jsr
 L00003c90           dc.w    $0000       ; high word of jsr address
-L00003c92           dc.w    $4c3e       ; low word of jsr address
+L00003c92           dc.w    $4c3e       ; low word of jsr address       ($4c3e - Run Commands) - Default Value = $4c3e (run command loop)
+                    ; ----- END OF SELF MODIFYING CODE -----
 
 L00003c94           bsr.w   update_view_window              ; L00004936 ; Scroll Background Window (not draw that's later)
 L00003c98           bsr.w   L00003dd4                       ; unknown
@@ -3184,7 +3189,7 @@ L00004d5a           beq.b   L00004d60
 L00004d5c           bsr.w   L000051b0
 L00004d60           subq.w  #$01,L00006306
 L00004d64           bne.b   L00004d36
-L00004d66           move.w  #$4c3e,L00003c92
+L00004d66           move.w  #$4c3e,L00003c92    ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00004d6c           tst.w   L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
@@ -3421,7 +3426,7 @@ L00005044           bne.b   L00005034
 L00005046           lea.l   L000063d3,a0
 L0000504a           bra.w   L00004538
 
-L0000504e           move.w  #$4c3e,L00003c92
+L0000504e           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005054           bra.w   L00004c3e
 
 L00005058           subq.w  #$01,L000062f2
@@ -3546,7 +3551,7 @@ L000051c4           subq.w  #$03,$0004(a0)
 L000051c8           bls.b   L000051ce
 L000051ca           bra.w   L000050aa
 L000051ce           clr.w   $0004(a0)
-L000051d2           move.w  #$4c3e,L00003c92
+L000051d2           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000051d8           lea.l   L000063d3,a0
 L000051dc           bra.w   L00005438
 L000051e0           rts 
@@ -3658,7 +3663,7 @@ L000052f0           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
 L000052f4           sub.b   #$79,d2
 L000052f8           cmp.b   #$0d,d2
 L000052fc           bcc.w   L00005368                   ; bcc.b
-L000052fe           move.w  #$4c3e,L00003c92
+L000052fe           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005304           bra.w   L00004c3e
 L00005308           btst.b  #$0004,L00006308
 L0000530e           bne.w   L0000545a
@@ -3724,7 +3729,7 @@ L000053ca           move.w  d2,(a0)
 L000053cc           rts 
 
 
-L000053ce           move.w #$4c3e,L00003c92
+L000053ce           move.w #$4c3e,L00003c92             ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000053d4           rts
 
 
@@ -3756,7 +3761,7 @@ L00005426           bne.b   L000053d6
 L00005428           rts 
 
 
-L0000542a           move.w  #$4c3e,L00003c92
+L0000542a           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005430           lea.l   L000063d3,a0
 L00005434           bra.w   L00005438
 
@@ -3850,7 +3855,7 @@ L00005520           bcc.b   L000054e6
 L00005522           move.w  #$0028,L000067c6
 L00005528           lea.l   L00005457,a0
 L0000552c           bsr.w   L00005438
-L00005530           move.l  #$0000555a,L00003c90
+L00005530           move.l  #$0000555a,L00003c90                    ; Update Main Game Loop Command JSR
 L00005538           clr.w   L000062f6
 L0000553c           move.w  #$0001,L000062fa
 L00005542           move.w  #$0002,L000062f2
@@ -3864,12 +3869,12 @@ L00005558           rts
 
 
 
-
+                    ; Called from GameLoop - Self Modifying code.
 L0000555a           subq.w  #$01,L000062f2
 L0000555e           bne.b   L00005558
 L00005560           tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
 L00005566           bne.w   L00004d82
-L0000556a           move.l  #$00004c3e,L00003c90
+L0000556a           move.l  #$00004c3e,L00003c90                    ; Update Game Loop Command Loop JSR
 L00005572           lea.l   L000063d3,a0
 L00005576           cmp.w   #$0050,L000062f8
 L0000557c           bmi.w   L00005438
