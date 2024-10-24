@@ -6,6 +6,10 @@
                 ; The following files are loaded and decrunched into the following locations
                 ; by the game loader
                 ;
+                ; NOTES:
+                ; ------
+                ; 1) If 'JAMMMM' cheat mode active then 'F10' skip to next level (Enter text 'JAMMMM' on title screen)
+                ;
                 ;
                 ; Filename/Area     Start   End         Additional Info
                 ;---------------------------------------------------------------------------------------------
@@ -1481,9 +1485,9 @@ L00003bca           bsr.w   double_buffer_playfield                 ; L000036fa
 
 L00003bce           bsr.w   L000058aa                               ; display 'Axis Chemicals'
 
-L00003bd2           bsr.w   L00004b62                               
+L00003bd2           bsr.w   draw_level_and_actors                   ; L00004b62                               
 
-L00003bd6           bsr.w   L000055c4
+L00003bd6           bsr.w   draw_batman_and_rope                    ; L000055c4
 
 L00003bda           moveq   #$32,d0
 L00003bdc           bsr.w   L00005e8c
@@ -1506,45 +1510,53 @@ L00003bf6           clr.l   frame_counter                           ; NB: Long C
                     ; --------------------------------------------------------------------------
                     ;
 game_loop                                                           ; original address $00003bfa
-                    ; key press checks
+                    ; --------- Start Key press checks ---------
 L00003bfa           bsr.w   getkey                                  ; d0 = ascii code (z = 1 if no key)- L0000365a
-L00003bfe           beq.b   L00003c5a                               ; no key pressed, continue $00003c5a
+L00003bfe           beq.b   gl_continue_03                          ; no key pressed, skip key checks - continue $00003c5a
 
-                    ; check 'f1' pressed (Pause Game)
+                    ; Check 'F1' pressed (Pause Game)
 L00003c00           cmp.w   #$0081,d0                               ; Key = 'F1'
-L00003c04           bne.b   gl_continue                             ; 'F1' is not pressed - L00003c22
+L00003c04           bne.b   gl_continue_01                          ; 'F1' is not pressed - L00003c22
 
 gl_pause_game_loop
 L00003c06           bsr.w   getkey                                  ; d0 = ascii code (z = 1 if no key) - L0000365a
 L00003c0a           beq.b   gl_pause_game_loop                      ; L00003c06 ; no key pressed, loop $00003c06
 
-                    ; check 'esc' pressed (exit game)
+                    ; Check 'ESC' - exit game, when on title screen
                     ; can only exit the game when paused
 L00003c0c           cmp.w   #$001b,d0                               ; Key = 'ESC'
-L00003c10           bne.b   gl_continue                             ; 'ESC' is not pressed - L00003c22
+L00003c10           bne.b   gl_continue_01                          ; 'ESC' is not pressed - L00003c22
 
                     ; 'ESC' is pressed
 L00003c12           bsr.w   L00003cbc                               ; wipe screen to black
 L00003c16           bset.b  #PANELST2_GAME_OVER,PANEL_STATUS_2      ; SET GAME OVER - Panel - Status 2 Bytes - bit #$0005 of $0007c875 
 L00003c1e           bra.w   L00004e00
 
-gl_continue
-L00003c22           cmp.w   #$0082,d0                   ; Key = 'F2'
-L00003c26           bne.b   L00003c48
-L00003c28           bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2       ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
-L00003c30           bne.b   L00003c3c
+gl_continue_01
+                    ; Check 'F2' - Toggle music/sfx
+L00003c22           cmp.w   #$0082,d0                               ; Key = 'F2'
+L00003c26           bne.b   gl_continue_02                          ; 'F2' is not pressed - L00003c48
+toggle_music_sfx
+L00003c28           bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2      ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
+L00003c30           bne.b   init_music                              ; bit = 1, init music - L00003c3c
+init_sfx
 L00003c32           jsr     PLAYER_INIT_SFX_1                       ; chem.iff - Music/SFX player - Init SFX audio channel - $00048008  ; External Address $48008 - CHEM.IFF
-L00003c38           bra.w   L00003c5a
+L00003c38           bra.w   gl_continue_03                          ; skip to end of key checks - L00003c5a
+init_music
 L00003c3c           moveq   #$01,d0                                 ; song number - 01 = level music
 L00003c3e           jsr     PLAYER_INIT_SONG                        ; chem.iff - music/sfx - init song - d0.l = song number - $00048010  ; External Address $48010- CHEM.IFF
-L00003c44           bra.w   L00003c5a
+L00003c44           bra.w   gl_continue_03                          ; skip to end oof key checks - L00003c5a
 
-L00003c48           cmp.w   #$008a,d0
-L00003c4c           bne.b   L00003c5a
+gl_continue_02
+                    ; Check 'F10' - Skip level if cheat is active
+L00003c48           cmp.w   #$008a,d0                               ; 'F10' - pressed
+L00003c4c           bne.b   gl_continue_03                          ; 'f10' is not pressed - skip to end of key checks - L00003c5a
 L00003c4e           btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2   ; Panel - Status 2 Bytes - bit #$0007 of $0007c875 
-L00003c56           bne.w   L00005e3a
+L00003c56           bne.w   L00005e3a                               ; - SKIP LEVEL IF 'JAMMMM' CHEAT IS ACTIVE AND F10 is Pressed
 
-                    ; finished key press checks
+                    ; --------- End of Key Press Checks ---------
+
+gl_continue_03
 L00003c5a           btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874 
 L00003c62           bne.b   L00003c80
 L00003c64           jsr     PANEL_UPDATE                            ; Panel Update - $0007c800
@@ -1563,18 +1575,22 @@ L00003c8e           dc.w    $4eb9       ; jsr
 L00003c90           dc.w    $0000       ; high word of jsr address
 L00003c92           dc.w    $4c3e       ; low word of jsr address
 
-L00003c94           bsr.w   L00004936
-L00003c98           bsr.w   L00003dd4
-L00003c9c           bsr.w   L00003dfe
-L00003ca0           bsr.w   L00004b62
-L00003ca4           bsr.w   L000055c4
-L00003ca8           bsr.w   L00003ee6
-L00003cac           bsr.w   L00004658
-L00003cb0           bsr.w   L000045fe
+L00003c94           bsr.w   update_view_window              ; L00004936 ; Scroll Background Window (not draw that's later)
+L00003c98           bsr.w   L00003dd4                       ; unknown
+L00003c9c           bsr.w   update_level_actors_01          ; L00003dfe ; Update Level Actors 01
+L00003ca0           bsr.w   draw_level_and_actors           ; L00004b62 ; Draw/Update Screen
+L00003ca4           bsr.w   draw_batman_and_rope            ; L000055c4 ; Draw Batman and Rope Swing
+L00003ca8           bsr.w   update_level_actor_02           ; L00003ee6 ; Update Level Actors 02
+L00003cac           bsr.w   update_projectiles              ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+L00003cb0           bsr.w   draw_projectiles                ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
 L00003cb4           bsr.w   double_buffer_playfield         ; L000036fa
-L00003cb8           bra.w   game_loop                       ; L00003bfa ; jump back to main loop
-                    ; ----------------- End of Game Loop -----------------
 
+L00003cb8           bra.w   game_loop                       ; L00003bfa ; jump back to main loop
+
+
+                    ;-----------------------------------------------------
+                    ;------------------ End of Game Loop -----------------
+                    ;-----------------------------------------------------
 
 
                     ; Wipe Screen to Black
@@ -1723,6 +1739,13 @@ L00003df4           bcc.b   L00003dec
 L00003df6           jmp     PANEL_ADD_SCORE         ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 L00003dfc           rts     
 
+
+                    ;---------------------------------------------------------------------------------------
+                    ; -- Update Level Actors - Routine 01
+                    ;---------------------------------------------------------------------------------------
+                    ; If this routine is not executed then the level has not active actors displayed on it.
+                    ;---------------------------------------------------------------------------------------
+update_level_actors_01                                              ; original address L00003dfe
 L00003dfe           movem.w L000067bc,d0-d1
 L00003e04           lea.l   L0000642e,a0
 L00003e08           movem.w (a0)+,d2-d3
@@ -1802,6 +1825,15 @@ L00003edc           move.w  (a1)+,d2
 L00003ede           move.l  a1,L00006322
 L00003ee4           rts
 
+
+
+
+                    ;-----------------------------------------------------------------------------------------------
+                    ; -- Update Level Actors 02
+                    ;-----------------------------------------------------------------------------------------------
+                    ; If this routine is skipped then the level is empty of any actors.
+                    ;
+update_level_actor_02                                       ; original address L00003ee6
 L00003ee6           lea.l   L000039c8,a6
 L00003eea           moveq   #$09,d7
 L00003eec           move.w  (a6),d6
@@ -2411,6 +2443,14 @@ L000045f2           move.l  #$00000350,d0
 L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
 
+
+
+                    ;----------------------------------------------------------------------------------------------
+                    ; Draw Projectiles (bombs, bullets, batarang)
+                    ;----------------------------------------------------------------------------------------------
+                    ; draws the projectiles on thhe screen (bombs, bullets, player's batarang)
+                    ;;
+draw_projectiles                                    ; original address L000045fe
 L000045fe           lea.l   L00004866,a5
 L00004602           lea.l   L00004894,a6
 L00004606           moveq   #$13,d7
@@ -2446,6 +2486,14 @@ L00004650           movea.l #$fffffff8,a0
 L00004656           rts
 
 
+
+                    ;-------------------------------------------------------------------------------------
+                    ; -- Update the Projectiles (bombs, bullets, player's batarang)
+                    ;-------------------------------------------------------------------------------------
+                    ; update projectiles on the level, including the player's projectiles
+                    ; it does not draw them..
+                    ;
+update_projectiles                              ; original address L00004658
 L00004658           lea.l   L00004866,a5
 L0000465c           lea.l   L00004894,a6
 L00004660           moveq   #$13,d7
@@ -2740,9 +2788,17 @@ L00004894           dc.w    $0000
 
 
 
-
+                    ; -------------------------------------------------------------------------------------------
+                    ; -- Update the View Window
+                    ;--------------------------------------------------------------------------------------------
+                    ; This routine updates the view into the background level.
+                    ; It does not draw the background graphics.
+                    ; It scrolls the view window around, following the player (i.e. the view camera)
+                    ; It may do other things also, haven't analysed in depth yet.
+                    ;--------------------------------------------------------------------------------------------
 L00004934           dc.w    $0000                       ; referenced as word below
 
+update_view_window                                      ; original address $00004936
 L00004936           movem.w L000067c4,D1-D2
 L0000493c           move.w  d1,d0
 L0000493e           sub.w   d2,d0
@@ -2949,7 +3005,13 @@ L00004b5c           dbf.w   d7,L00004b20            ; Loop 87 times
 L00004b60           rts 
 
 
-
+                    ;-------------------------------------------------------------------------------------------------------
+                    ; -- Draw the Background Level and Actors
+                    ;-------------------------------------------------------------------------------------------------------
+                    ; This routine draws the level background and the actors
+                    ; It does not draw the player.
+                    ;
+draw_level_and_actors                                       ; original address L00004b62
 L00004b62           move.w  #$8400,$00dff096
 L00004b6a           movea.l playfield_buffer_2,a6           ; L000036f6,a6            ; playfield buffer 2
 L00004b6e           subq.w #$02,a6                          ; subaq.w
@@ -3836,8 +3898,12 @@ L000055c2           rts
 
 
 
-
-
+                    ;------------------------------------------------------------------------------------------
+                    ; -- Draw Batman and Rope
+                    ;------------------------------------------------------------------------------------------
+                    ; This routine draws the Batman Player and the Rope Swing
+                    ;
+draw_batman_and_rope                                ; original address L000055c4
 L000055c4           move.w  L00006318,d2
 L000055c8           beq.w   L000056a6
 L000055cc           movem.w L000067c2,d0-d1
