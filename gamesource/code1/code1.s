@@ -1422,6 +1422,7 @@ L00003b4c           bra.b   L00003b30
 
 
                     ; clear 40 longs (160 bytes)
+                    ; data referenced by projectiles
                                                         ; original address L00003b4e
 L00003b4e           move.l  #$00005fc4,L00005f64
                     lea.l   L00004894,a0
@@ -2480,30 +2481,38 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
                     ;----------------------------------------------------------------------------------------------
                     ; Draw Projectiles (bombs, bullets, batarang)
                     ;----------------------------------------------------------------------------------------------
-                    ; draws the projectiles on thhe screen (bombs, bullets, player's batarang)
-                    ;;
+                    ; draws the projectiles on the screen (bombs, bullets, player's batarang)
+                    ;
+                    ; L00004894 - 8 byte structure (20 active projectiles?)
+                    ;
 draw_projectiles                                    ; original address L000045fe
 L000045fe           lea.l   L00004866,a5
-L00004602           lea.l   L00004894,a6
-L00004606           moveq   #$13,d7
-L00004608           move.w  (a6)+,d2
-L0000460a           beq.b   L00004636
-L0000460c           movem.w (a6),d0-d1
-L00004610           move.l  a6,-(a7)
-L00004612           move.w  d7,-(a7)
-L00004614           btst.l  #$000f,d2
-L00004618           beq.b   L00004622
-L0000461a           ext.w   d2
-L0000461c           move.w  d2,-$0002(a6)
-L00004620           moveq   #$04,d2
-L00004622           ror.w   #$01,d2
-L00004624           bpl.b   L0000462a
-L00004626           or.w    #$e000,d2
-L0000462a           add.w   #$003b,d2
+L00004602           lea.l   L00004894,a6            ; list cleared at game_start
+L00004606           moveq   #$13,d7                 ; d7 = 19 + 1 - counter
+.loop                                               ;                   original address L00004608
+L00004608           move.w  (a6)+,d2                ; get 2 bytes - active projectile?
+L0000460a           beq.b   .skip_to_next           ; if d2 == 0 then skip_to_next - L00004636
+
+L0000460c           movem.w (a6),d0-d1              ; get next 4 bytes from data struct.
+L00004610           move.l  a6,-(a7)                ; store data ptr - a6   
+L00004612           move.w  d7,-(a7)                ; store counter
+L00004614           btst.l  #$000f,d2               ;   test is d2 -ve?
+L00004618           beq.b   L00004622               ;     is +ve then jmp L00004622
+.is_neg_01                                          ;   else -ve
+L0000461a           ext.w   d2                      ;     sign extend byte to word
+L0000461c           move.w  d2,-$0002(a6)           ;     overwrite word back in data structure
+L00004620           moveq   #$04,d2                 ;     set d2 = #$04
+.is_pos_01
+L00004622           ror.w   #$01,d2                 ;   rotate bits right by 1
+L00004624           bpl.b   L0000462a               ;   test is d2 +ve                                                  
+L00004626           or.w    #$e000,d2               ;     is -ve set top 3 bits.
+.not_neg_02
+L0000462a           add.w   #$003b,d2               ;     is +ve, add 59 to d2
 L0000462e           bsr.w   L000056f4
-L00004632           move.w  (a7)+,d7
-L00004634           movea.l (a7)+,a6
-L00004636           addq.w  #$06,a6             ; addaq.w
+L00004632           move.w  (a7)+,d7                ; restore counter - d7
+L00004634           movea.l (a7)+,a6                ; restore data ptr - a6
+.skip_to_next
+L00004636           addq.w  #$06,a6                 ; a6 + 6 (start next structure in list)     
 L00004638           dbf.w   d7,L00004608
 L0000463c           rts
 
@@ -2712,7 +2721,7 @@ L00004860           move.w  d2,-$0002(a6)
 L00004864           rts
 
 
-
+; referenced by draw_projectiles
 L00004866           dc.w    $4758                       ; illegal
 L00004868           dc.w    $4728, $4740                ; [ chk.l (a0,$4740) == $00005140,d3 ]
 L0000486a           dc.w    $4740                       ; illegal
@@ -2736,6 +2745,10 @@ L0000488e           dc.w    $4844                       ; swap.w d4
 L00004890           dc.w    $4844                       ; swap.w d4
 L00004892           dc.w    $4844                       ; swap.w d4
 
+
+                    ; referenced by L0000463e
+                    ; referenced by update_projectiles
+                    ; referenced by draw_projectiles
                     ; referenced & (40 longs cleared) during game_start / level initialisation 
 L00004894           dc.w    $0000
                     dc.w    $0000
@@ -4030,13 +4043,22 @@ L000056f2           rts
 
 
 
-
-
+                    ;------------------------------------------------------------------------
+                    ; -- Draw Sprite
+                    ;------------------------------------------------------------------------
+                    ; in:
+                    ;   d0.w
+                    ;   d1.w
+                    ;   d2.w - index into table $63fe
+                    ;
+draw_sprite
 L000056f4           movea.l L000062fe,a1
-L000056f8           add.w   d1,d1
-L000056fa           asl.w   #$03,d2
-L000056fc           lea.l   -8(a1,d2.W),a1     ; $f8(a1,d2.W),a1
-L00005700           bcc.b   L00005724
+L000056f8           add.w   d1,d1               ; d1 = d1 * 2
+L000056fa           asl.w   #$03,d2             ; d2 = d2 * 8
+
+L000056fc           lea.l   -8(a1,d2.W),a1      ; $f8(a1,d2.W),a1
+L00005700           bcc.b   L00005724           ; last bit shifted out by asl = 0 then L00005724
+
 L00005702           move.b  (a1)+,d4
 L00005704           ext.w   d4
 L00005706           sub.w   d4,d1
@@ -4053,6 +4075,7 @@ L0000571a           move.b  (a1)+,d3
 L0000571c           movea.l (a1)+,a0
 L0000571e           adda.l  L00006302,a0
 L00005722           bra.b   L0000573a
+
 L00005724           move.b  (a1)+,d4
 L00005726           ext.w   d4
 L00005728           sub.w   d4,d1
@@ -4064,6 +4087,7 @@ L00005732           move.b  (a1)+,d2
 L00005734           clr.w   d3
 L00005736           move.b  (a1)+,d3
 L00005738           movea.l (a1)+,a0
+
 L0000573a           move.w  d3,d4
 L0000573c           mulu.w  d2,d4
 L0000573e           add.l   d4,d4
@@ -4138,18 +4162,26 @@ L000057d4           add.w   d2,d2
 L000057d6           moveq   #$15,d4
 L000057d8           sub.w   d5,d4
 L000057da           add.w   d4,d4
+
 L000057dc           movea.l playfield_buffer_2,a2           ; L000036f6,a2
-L000057e2           add.w   d0,d0
+L000057e2           add.w   d0,d0                           ; d0 = d2 * 2 (x byte value)
 L000057e4           adda.w  d0,a2
-L000057e6           mulu.w  #$002a,d1
-L000057ea           adda.l  d1,a2
+L000057e6           mulu.w  #$002a,d1                       ; d2 = d2 * 42 (y value)
+L000057ea           adda.l  d1,a2                           ; a2 = destination address for blit.
+
 L000057ec           ext.l   d6
-L000057ee           ror.l   #$03,d6
-L000057f0           move.l  d6,d0
-L000057f2           swap.w  d0
-L000057f4           or.l    d0,d6
+L000057ee           ror.l   #$03,d6                         ; 
+L000057f0           move.l  d6,d0                           ; copy d6 -> d0
+L000057f2           swap.w  d0                              ; swap high/low words
+L000057f4           or.l    d0,d6                           ; bits 15-12 src b shift
+
 L000057f6           movea.l #$00dff000,a5
-L000057fc           or.l    #$0fca0000,d6
+L000057fc           or.l    #$0fca0000,d6                   ; No src A shift, use all DMA channels, Logic = $ca (cookie cutter)
+                                                            ; use ABCD, D=AB+/AC
+                                                            ; A = Mask
+                                                            ; B = Source GFX
+                                                            ; C = Dest GFX
+                                                            ; D = Combined SRC & Dest
 L00005802           btst.b  #$0006,$00dff002
 L0000580a           bne.b   L00005802
 L0000580c           move.w  d2,$0064(a5)
@@ -4157,18 +4189,21 @@ L00005810           move.w  d2,$0062(a5)
 L00005814           move.l  d7,$0044(a5)
 L00005818           move.w  d4,$0060(a5)
 L0000581c           move.w  d4,$0066(a5)
-L00005820           move.l  d6,$0040(a5)
+L00005820           move.l  d6,BLTCON0(a5)                  ; $0040(a5)
 L00005824           lea.l   (a0),a3
-L00005826           moveq   #$03,d7
+
+L00005826           moveq   #$03,d7                         ; d7 = 4 bitplanes
+                    ; bitplane blit loop
 L00005828           btst.b  #$0006,$00dff002
 L00005830           bne.b   L00005828
+
 L00005832           lea.l   $00(a0,a1.L),a0
-L00005836           move.l  a3,$0050(a5)
-L0000583a           move.l  a0,$004c(a5)
-L0000583e           move.l  a2,$0048(a5)
-L00005842           move.l  a2,$0054(a5)
-L00005846           move.w  d3,$0058(a5)
-L0000584a           lea.l   $1c8c(a2),a2
+L00005836           move.l  a3,BLTAPT(a5)                   ;  $0050(a5) - A Channel = MASK GFX                  
+L0000583a           move.l  a0,BLTBPT(a5)                   ;  $004c(a5) - B Channel = SPRTIE GFX
+L0000583e           move.l  a2,BLTCPT(a5)                   ;  $0048(a5) ; C Channel = Dest GFX
+L00005842           move.l  a2,BLTDPT(a5)                   ;  $0054(a5) - D Channel = Dest GFX
+L00005846           move.w  d3,BLTSIZE(a5)                  ;  $0058(a5) - Start Blit
+L0000584a           lea.l   $1c8c(a2),a2                    ; Increase Dest GFX prt for next bitplane.
 L0000584e           dbf.w   d7,L00005828
 L00005852           rts
 
@@ -4967,6 +5002,8 @@ L000062fa           dc.w $0001
 
 L000062fc           dc.w $0000
 
+
+                    ; refernced by draw_sprite
 L000062fe           dc.w $0001
 L00006300           dc.w $0000
 L00006302           dc.w $0000
