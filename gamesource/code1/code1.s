@@ -1391,7 +1391,9 @@ L00003ae2           dc.w    $ffb9
 start_game                                          ; original address $00003ae4
 L00003ae4           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
 L00003aea           bsr.w   double_buffer_playfield ; L000036fa
-L00003aee           bsr.w   L000058e2
+
+L00003aee           bsr.w   L000058e2               ; Important Level Init Function
+
 L00003af2           jsr     PLAYER_INIT             ;  $00048000 - Initialise Music Player ; External Address $48000- CHEM.IFF
 L00003af8           clr.w   L000062fc
 L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
@@ -1440,11 +1442,11 @@ L00003b64           lea.l   L0000642e,a0
 
 
                     ; clear MSB flag of each data structure
-L00003b7e                                               ; original address                    
+L00003b7e                                                           ; original address                    
 .loop               bclr.b  #$0007,$0004(a0)
-                    addq.w  #$06,a0                     ; start of next data structure
-                    cmpa.w  L000067a0,a0                ; cmpa.w  #$67a0,a0
-                    bcs.b   .loop                       ; L00003b7e
+                    addq.w  #$06,a0                                 ; start of next data structure
+                    cmpa.l  default_level_parameters,a0             ; L000067a0,a0                ; cmpa.w  #$67a0,a0
+                    bcs.b   .loop                                   ; L00003b7e
 
 
                     ; clear 110 words (220 bytes) starting @ L000039c8
@@ -1467,11 +1469,11 @@ L00003b98           clr.w   L000062ee
                     ; L000062fc has to be 0, or the routine will overwrite code.
                                                             ; original address L00003ba4
 L00003ba4           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-                    lea.l   L000067a0,a0
+                    lea.l   default_level_parameters,a0     ; L000067a0,a0
                     move.w  L000062fc,d6                    ; cleared above on line number L00003af8
 .outer_loop                                                 ; original address L00003bb2
                     moveq   #$06,d7                         ; counter #$6 + 1 = #$7
-                    lea.l   L000067bc,a1
+                    lea.l   level_parameters,a1             ; L000067bc,a1
 .inner_loop                                                 ; original address L00003bb8
                     move.w  (a0)+,(a1)+
                     dbf.w   d7,.inner_loop                  ; loop 7 times
@@ -1581,7 +1583,7 @@ L00003c92           dc.w    $4c3e       ; low word of jsr address       ($4c3e -
                     ; ----- END OF SELF MODIFYING CODE -----
 
 L00003c94           bsr.w   update_view_window              ; L00004936 ; Scroll Background Window (not draw that's later)
-L00003c98           bsr.w   L00003dd4                       ; unknown
+L00003c98           bsr.w   update_score_by_distance_walked ; L00003dd4 ; Update Scre based upon comparison of $67bc.w and $67c0.w 
 L00003c9c           bsr.w   update_level_actors_01          ; L00003dfe ; Update Level Actors 01
 L00003ca0           bsr.w   draw_level_and_actors           ; L00004b62 ; Draw/Update Screen
 L00003ca4           bsr.w   draw_batman_and_rope            ; L000055c4 ; Draw Batman and Rope Swing
@@ -1730,19 +1732,44 @@ L00003dcc           bne.b   L00003dc6
 L00003dce           dbf.w   d7,L00003d8e
 L00003dd2           rts
 
-L00003dd4           clr.l   d0
-L00003dd6           move.w  L000067bc,d1
-L00003dda           sub.w   L000067c0,d1
-L00003dde           bls.b   L00003dfc
-L00003de0           move.w  L000067bc,L000067c0
-L00003de6           lsl.w   #$04,d1
-L00003de8           move.b  d1,d0
-L00003dea           bra.b   L00003df0
-L00003dec           add.w   #$0100,d0
-L00003df0           sub.w   #$0064,d1
-L00003df4           bcc.b   L00003dec
-L00003df6           jmp     PANEL_ADD_SCORE         ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
-L00003dfc           rts     
+
+
+                    ;--------------------------------------------------------------------------------------------------------
+                    ;  update score by distance walked
+                    ;--------------------------------------------------------------------------------------------------------     
+                    ; Updated the score based on the distance travelled through the level.
+                    ;
+                    ;
+                    ; called from game_loop every cycle.
+                    ; Adding a value to the score based upon the value held in $67bc compared with $67c0 (batman_distance_walked).
+                    ;
+                    ; when $67bc.w is greater than $67bc.w then no score is added.
+                    ; else
+                    ;       take the value ($67bc.w * 16)
+                    ;       Add 100 to the score for every multiple of #$64
+                    ;
+update_score_by_distance_walked                                     ; original address $00003dd4
+                    clr.l   d0                                      ; clear score update value
+                    move.w  updated_batman_distance_walked,d1
+                    sub.w   batman_distance_walked,d1               ; L000067c0,d1
+                    bls.b   .exit                                   ; if ($67c0 > $67bc) then exit
+
+.do_update_score                                                    ; original address L00003de0
+                    move.w  updated_batman_distance_walked,batman_distance_walked        ; else ($67c0 <= $67bc) so, copy $67bc into $67c0
+                    lsl.w   #$04,d1                                 ; d1 = d1 * 16 (multiple difference in distance by 16)
+                    move.b  d1,d0                                   ; copy d1 into d0 (low byte) - set initial score update value
+                    bra.b   .do_increase_score                       
+
+.increase_score_loop                                                ; original address L00003dec
+                    add.w   #$0100,d0
+.do_increase_score                                                  ; original address L00003df0
+                    sub.w   #$0064,d1                               ; subtract 64 from d1 (distance * 16)
+                    bcc.b   .increase_score_loop                    ; for every multiple of #$64, add 100 to the score.
+.update_score_value                                                 ; original address L00003df6
+                    jmp     PANEL_ADD_SCORE                         ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
+.exit                                                               ; original address L00003dfc
+                    rts     
+
 
 
                     ;---------------------------------------------------------------------------------------
@@ -1751,7 +1778,7 @@ L00003dfc           rts
                     ; If this routine is not executed then the level has not active actors displayed on it.
                     ;---------------------------------------------------------------------------------------
 update_level_actors_01                                              ; original address L00003dfe
-L00003dfe           movem.w L000067bc,d0-d1
+L00003dfe           movem.w level_parameters,d0-d1                  ;  L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
 L00003e04           lea.l   L0000642e,a0
 L00003e08           movem.w (a0)+,d2-d3
 L00003e0c           sub.w   d0,d2
@@ -1845,7 +1872,7 @@ L00003eec           move.w  (a6),d6
 L00003eee           beq.w   L00003fa8
 L00003ef2           movem.w $0002(a6),d0-d1
 L00003ef8           move.w  d0,d4
-L00003efa           movem.w L000067bc,d2-d3
+L00003efa           movem.w level_parameters,d2-d3          ; L000067bc,d2-d3 (updated_batman_distance_walked,unknown)
 L00003f00           sub.w   d2,d0
 L00003f02           sub.w   d3,d1
 L00003f04           cmp.w   #$0140,d0
@@ -2874,7 +2901,7 @@ L000049ec           move.w  L000067c2,d0
 L000049f0           sub.w   L000067c8,d0
 L000049f4           move.w  d0,L0000630e
 L000049f8           beq.w   L00004a5c
-L000049fc           move.w  L000067bc,d1
+L000049fc           move.w  L000067bc,d1                            ; updated_batman_distance_walked
 L00004a00           move.w  d1,d2
 L00004a02           add.w   d0,d1
 L00004a04           bpl.b   L00004a0c
@@ -2889,7 +2916,7 @@ L00004a18           sub.w   d0,d1
 L00004a1a           exg.l   d1,d0
 L00004a1c           add.w   L000067c8,d0
 L00004a20           move.w  d0,L000067c2 
-L00004a24           move.w  d1,L000067bc 
+L00004a24           move.w  d1,L000067bc                        ; updated_batman_distance_walked
 L00004a28           move.w  d1,d3
 L00004a2a           sub.w   d2,d3
 L00004a2c           move.w  d3,L0000630e
@@ -2921,7 +2948,7 @@ L00004a6e           move.w  d3,d4
 L00004a70           lsr.w   #$03,d4
 L00004a72           lea.l   MAPGR_BASE,a0            ;  MAPGR.IFF (addr $8002)
 L00004a78           mulu.w  (a0),d4
-L00004a7a           move.w  L000067bc,d0
+L00004a7a           move.w  L000067bc,d0                        ; updated_batman_distance_walked
 L00004a7e           lsr.w   #$03,d0
 L00004a80           add.w   d0,d4
 L00004a82           lea.l   $7a(a0,d4.W),a0
@@ -3025,7 +3052,7 @@ L00004b74           move.w  L00006312,d1
 L00004b78           clr.l   d6
 L00004b7a           subq.w  #$01,d6
 L00004b7c           swap.w  d6
-L00004b7e           move.w  L000067bc,d2
+L00004b7e           move.w  L000067bc,d2                        ; updated_batman_distance_walked
 L00004b82           and.w   #$0007,d2
 L00004b86           beq.b   L00004b8c
 L00004b88           ror.l   d2,d6
@@ -3558,7 +3585,7 @@ L000051e0           rts
 
 
 L000051e2           move.w  #$0028,L000067c6
-L000051e8           move.w  L000067bc,d2
+L000051e8           move.w  L000067bc,d2                    ; updated_batman_distance_walked
 L000051ec           add.w   d0,d2
 L000051ee           and.w   #$0007,d2
 L000051f2           subq.w  #$04,d2
@@ -3572,7 +3599,7 @@ L00005200           bra.b   L0000522e
 L00005202           bsr.b   L00005208           ; Jmp Table CMD6
 L00005204           bra.w   L00005430
 L00005208           move.w  #$0048,L000067c6
-L0000520e           move.w  L000067bc,d2
+L0000520e           move.w  L000067bc,d2                ; updated_batman_distance_walked
 L00005212           add.w   d0,d2
 L00005214           and.w   #$0007,d2
 L00005218           subq.w  #$04,d2
@@ -3607,7 +3634,7 @@ L00005260           sub.b   #$79,d2
 L00005264           cmp.b   #$0d,d2
 L00005268           bcc.w   L0000545a
 L0000526c           lea.l   L000062ea,a0
-L00005270           add.w   L000067bc,d0
+L00005270           add.w   L000067bc,d0                    ; updated_batman_distance_walked
 L00005274           lsr.w   #$01,d0
 L00005276           and.w   #$0007,d0
 L0000527a           addq.w  #$05,d0
@@ -3642,7 +3669,7 @@ L000052b6           sub.b   #$79,d2
 L000052ba           cmp.b   #$0d,d2
 L000052be           bcc.w   L0000545a
 L000052c2           lea.l   L000062ea,a0
-L000052c6           add.w   L000067bc,d0
+L000052c6           add.w   L000067bc,d0                ; updated_batman_distance_walked
 L000052ca           not.w   d0
 L000052cc           lsr.w   #$01,d0
 L000052ce           and.w   #$0007,d0
@@ -3889,7 +3916,7 @@ L0000559e           rts
 
 
 
-L000055a0           movem.w L000067bc,d2-d3
+L000055a0           movem.w level_parameters,d2-d3                  ; L000067bc,d2-d3 ; level parameters (updated_batman_distance_walked, unknown)
 L000055a6           add.w   d0,d2
 L000055a8           add.w   d1,d3
 L000055aa           lsr.w   #$03,d2
@@ -4181,7 +4208,7 @@ L000058a8           rts
 
 
 L000058aa           clr.l   d0
-L000058ac           move.w  L000067bc,d0                ; Pixel Offset Value?
+L000058ac           move.w  L000067bc,d0                ; Pixel Offset Value? (updated_batman_distance_walked)
 L000058b0           lsr.w   #$03,d0                     ; D0.w divide by 8 (d0 = byte offset)
 L000058b2           add.w   d0,d0                       ; D0.w multiply by 2 (word offset)
 L000058b4           movea.l #CHIPMEM_BUFFER,a4          ; #$0005a36c,a4 ; External Address 
@@ -4190,7 +4217,7 @@ L000058bc           move.l  a4,L0000631e                ; store location in chip
 
 L000058c0           clr.w   L00006312
 L000058c4           clr.l   d1
-L000058c6           move.w  L000067bc,d1                ; Pixel Offset Value?
+L000058c6           move.w  L000067bc,d1                ; Pixel Offset Value? (updated_batman_distance_walked)
 L000058ca           moveq   #$14,d7                     ; counter = $15 + $1 = $16 (22 dec)
 L000058cc           movem.l d1/d7/a4,-(a7)
 L000058d0           bsr.w   L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
@@ -4419,7 +4446,7 @@ L00005b02           clr.w   (a6)
 L00005b04           rts 
 
 L00005b06           move.w  #$0590,d0
-L00005b0a           sub.w   L000067bc,d0
+L00005b0a           sub.w   L000067bc,d0                        ; updated_batman_distance_walked
 L00005b0e           addq.w  #$02,$000a(a6)
 L00005b12           movea.l $0008(a6),a5
 L00005b16           move.w  (a5),d2
@@ -4639,7 +4666,7 @@ L00005da6           move.b  #2^PANELST1_TIMER_EXPIRED,PANEL_STATUS_1         ; P
 L00005dae           rts
 
 
-L00005db0           move.w  L000067bc,d2
+L00005db0           move.w  L000067bc,d2                                    ; updated_batman_distance_walked
 L00005db4           cmp.w   #$0540,d2
 L00005db8           beq.b   L00005dce
 L00005dba           addq.w  #$02,$0002(a6)          ; $00dff002
@@ -5078,16 +5105,22 @@ L00006722           dc.w $0014, $0118, $0038
                     dc.w $0014, $0570, $0108
                     dc.w $0014, $0578, $0108
 
-                    ; 7 words copied into L000067bc on game_start
+                    ; 7 words copied into L000067bc (level_parameters) on game_start
+default_level_parameters                                                        ; original address L000067a0
 L000067a0           dc.w $0000, $00F0, $0000, $0050, $0048, $0048
 
 L000067AC           dc.w $0050, $0200, $0000, $0200, $0050, $0038, $0038, $0050         ;.P.......P.8.8.P
 
-                    ; 7 words from L000067a0 (above) copied here on game_start
+
+                    ; 7 words from L000067a0 (default_level_parameters) copied here on game_start
+level_parameters                            ;               original address L000067bc
+updated_batman_distance_walked              ;               original address L000067bc
 L000067bc           dc.w $0000
 L000067be           dc.w $00F0
-L000067c0           dc.w $0000
-L000067c2           dc.w $0050              ; referenced in code
+batman_distance_walked                      ;               original address L000067c0
+L000067c0           dc.w $0000              ; value that keep track of Batman's distance walked through the level
+
+L000067c2           dc.w $0050              ; 
 L000067c4           dc.w $0048
 L000067c6           dc.w $0048
 L000067c8           dc.w $0050
