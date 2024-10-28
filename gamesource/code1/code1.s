@@ -1469,7 +1469,8 @@ L00003b98           clr.w   L000062ee
                     ; copy 7 words init data
                     ; L000062fc has to be 0, or the routine will overwrite code.
                                                             ; original address L00003ba4
-L00003ba4           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00003ba4           move.l  #player_move_commands,L00003c90                                                       
+;L00003ba4           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
                     lea.l   default_level_parameters,a0     ; L000067a0,a0
                     move.w  L000062fc,d6                    ; cleared above on line number L00003af8
 .outer_loop                                                 ; original address L00003bb2
@@ -3132,23 +3133,31 @@ L00004c3c           rts
 
 
 
+
+                    ;--------------------------------------------------
+                    ; Player Move Commands
+                    ;--------------------------------------------------
+                    ; Jump table into player input/movement commands
+                    ;
+player_move_commands                                                ; original address $00004c3e
 L00004c3e           clr.w   d2
-L00004c40           move.b  L00006308,d2
+L00004c40           move.b  L00006308,d2                            ; Player Movement Command Index
 L00004c44           asl.w   #$02,d2
-L00004c46           movea.l L00004c4c(pc,d2.W),a0        ; $04=$00004c4c
-L00004c4a           jmp (a0)
+L00004c46           movea.l player_input_cmd_table(pc,d2.W),a0      ; get input command address.
+L00004c4a           jmp (a0)                                        ; execute input command
 
 
-; Jump Table (for above)
+                    ; Jump Table (for above)
+player_input_cmd_table                                  ; original address $00004c4c
 L00004c4c           dc.l    $00005290                   ; rts
-L00004c50           dc.l    $00005246                   ; CMD1
-L00004c54           dc.l    $0000529c                   ; CMD2
+L00004c50           dc.l    $00005246                   ; CMD1 (Batman Walk Right)
+L00004c54           dc.l    $0000529c                   ; CMD2 (Batman Walk Left)
 L00004c58           dc.l    $00005290                   ; rts
-L00004c5c           dc.l    $000053f4                   ; CMD3
-L00004c60           dc.l    $00005240                   ; CMD4
-L00004c64           dc.l    $00005292                   ; CMD5
+L00004c5c           dc.l    $000053f4                   ; CMD3 (Batman Down (duck, scroll window)) - Not Ladder, Not Jump Down
+L00004c60           dc.l    $00005240                   ; CMD4 (Batman Diagonal Down Right)
+L00004c64           dc.l    $00005292                   ; CMD5 (Batman Diagaonal Down Left)
 L00004c68           dc.l    $00005290                   ; rts
-L00004c6c           dc.l    $00005202                   ; CMD6
+L00004c6c           dc.l    $00005202                   ; CMD6 (Batman Up (scroll window)) - Not Ladder, Not Batrope
 L00004c70           dc.l    $00005244                   ; CMD7
 L00004c74           dc.l    $00005298                   ; CMD8
 L00004c78           dc.l    $00005290                   ; rts
@@ -3156,17 +3165,17 @@ L00004c7c           dc.l    $00005290                   ; rts
 L00004c80           dc.l    $00005290                   ; rts
 L00004c84           dc.l    $00005290                   ; rts
 L00004c88           dc.l    $00005290                   ; rts
-L00004c8c           dc.l    $00004fe0                   ; CMD9 
-L00004c90           dc.l    $00004fe0                   ; CMD9 
-L00004c94           dc.l    $00004fe0                   ; CMD9 
-L00004c98           dc.l    $00004fe0                   ; CMD9 
-L00004c9c           dc.l    $000053d6                   ; CMD10
-L00004ca0           dc.l    $000053d6                   ; CMD10
-L00004ca4           dc.l    $000053d6                   ; CMD10
-L00004ca8           dc.l    $000053d6                   ; CMD10
-L00004cac           dc.l    $000050f8                   ; CMD11
-L00004cb0           dc.l    $000050e6                   ; CMD12
-L00004cb4           dc.l    $000050ee                   ; CMD13
+L00004c8c           dc.l    $00004fe0                   ; CMD9 (Fire + no direction)
+L00004c90           dc.l    $00004fe0                   ; CMD9 (Fire + Right)
+L00004c94           dc.l    $00004fe0                   ; CMD9 (Fire + Left)
+L00004c98           dc.l    $00004fe0                   ; CMD9 (Fire + Unknown)
+L00004c9c           dc.l    $000053d6                   ; CMD10 (Fire + Down)
+L00004ca0           dc.l    $000053d6                   ; CMD10 (Fire + Down Right Diag)
+L00004ca4           dc.l    $000053d6                   ; CMD10 (fire + Down Left Diag)
+L00004ca8           dc.l    $000053d6                   ; CMD10 (Fire + Unknown)
+L00004cac           dc.l    $000050f8                   ; CMD11 (Fire + Up)
+L00004cb0           dc.l    $000050e6                   ; CMD12 (Fire + Up Right)
+L00004cb4           dc.l    $000050ee                   ; CMD13 (Fire + Up Left)
 L00004cb8           dc.l    $00005290                   ; rts
 L00004cbc           dc.l    $00005290                   ; rts
 L00004cc0           dc.l    $00005290                   ; rts
@@ -3229,7 +3238,8 @@ L00004d5a           beq.b   L00004d60
 L00004d5c           bsr.w   L000051b0
 L00004d60           subq.w  #$01,L00006306
 L00004d64           bne.b   L00004d36
-L00004d66           move.w  #$4c3e,L00003c92    ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00004d66           move.l  #player_move_commands,L00003c90 
+;L00004d66           move.w  #$4c3e,L00003c92    ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00004d6c           tst.w   L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
@@ -3466,8 +3476,9 @@ L00005044           bne.b   L00005034
 L00005046           lea.l   L000063d3,a0
 L0000504a           bra.w   L00004538
 
-L0000504e           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005054           bra.w   L00004c3e
+L0000504e           move.l  #player_move_commands,L00003c90
+;L0000504e           move.w  #$4c3e,L00003c92                   ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00005054           bra.w   player_move_commands                ; L00004c3e
 
 L00005058           subq.w  #$01,L000062f2
 L0000505c           bne.b   L00005034
@@ -3591,7 +3602,8 @@ L000051c4           subq.w  #$03,$0004(a0)
 L000051c8           bls.b   L000051ce
 L000051ca           bra.w   L000050aa
 L000051ce           clr.w   $0004(a0)
-L000051d2           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L000051d2           move.l  #player_move_commands,L00003c90
+;L000051d2           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000051d8           lea.l   L000063d3,a0
 L000051dc           bra.w   L00005438
 L000051e0           rts 
@@ -3703,8 +3715,10 @@ L000052f0           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
 L000052f4           sub.b   #$79,d2
 L000052f8           cmp.b   #$0d,d2
 L000052fc           bcc.w   L00005368                   ; bcc.b
-L000052fe           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005304           bra.w   L00004c3e
+L000052fe           move.l  #player_move_commands,L00003c90
+;L000052fe           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00005304           bra.w   player_move_commands        ;L00004c3e
+
 L00005308           btst.b  #$0004,L00006308
 L0000530e           bne.w   L0000545a
 L00005312           btst.b  #$0000,L0000632d            ; test even/odd playfield buffer swap value
@@ -3768,8 +3782,8 @@ L000053c8           clr.l   (a0)+
 L000053ca           move.w  d2,(a0)
 L000053cc           rts 
 
-
-L000053ce           move.w #$4c3e,L00003c92             ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L000053ce           move.l  #player_move_commands,L00003c90
+;L000053ce           move.w  #$4c3e,L00003c92             ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000053d4           rts
 
 
@@ -3800,8 +3814,8 @@ L00005420           btst.b  #$0004,L00006308
 L00005426           bne.b   L000053d6
 L00005428           rts 
 
-
-L0000542a           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L0000542a           move.l  #player_move_commands,L00003c90
+;L0000542a           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005430           lea.l   L000063d3,a0
 L00005434           bra.w   L00005438
 
@@ -3914,7 +3928,7 @@ L0000555a           subq.w  #$01,L000062f2
 L0000555e           bne.b   L00005558
 L00005560           tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
 L00005566           bne.w   L00004d82
-L0000556a           move.l  #$00004c3e,L00003c90                    ; Update Game Loop Command Loop JSR
+L0000556a           move.l  #player_move_commands,L00003c90         ; #$00004c3e,L00003c90                    ; Update Game Loop Command Loop JSR
 L00005572           lea.l   L000063d3,a0
 L00005576           cmp.w   #$0050,L000062f8
 L0000557c           bmi.w   L00005438
