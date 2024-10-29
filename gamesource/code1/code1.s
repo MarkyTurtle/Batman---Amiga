@@ -3141,46 +3141,46 @@ L00004c3c           rts
                     ;
 player_move_commands                                                ; original address $00004c3e
 L00004c3e           clr.w   d2
-L00004c40           move.b  L00006308,d2                            ; Player Movement Command Index
+L00004c40           move.b  player_input_command,d2                 ; L00006308,d2 ; Player Movement Command Index
 L00004c44           asl.w   #$02,d2
 L00004c46           movea.l player_input_cmd_table(pc,d2.W),a0      ; get input command address.
 L00004c4a           jmp (a0)                                        ; execute input command
 
 
-                    ; Jump Table (for above)
+                    ; Jump Table (for above) - 32 Commands
 player_input_cmd_table                                  ; original address $00004c4c
-L00004c4c           dc.l    cmd_nop                     ; NOP 
-L00004c50           dc.l    input_right                 ; CMD1 - $00005246 - Batman Walk Right
-L00004c54           dc.l    input_left                  ; CMD2 - $0000529c - Batman Walk Left
-L00004c58           dc.l    cmd_nop                     ; NOP
-L00004c5c           dc.l    input_down                  ; CMD3 - $000053f4 - Batman Down (duck, scroll window)) - Not Ladder, Not Jump Down
-L00004c60           dc.l    input_down_right            ; CMD4 - $00005240 - Batman Down + Right
-L00004c64           dc.l    input_down_left             ; CMD5 - $00005292 - Batman Down + Left
-L00004c68           dc.l    cmd_nop                     ; NOP
-L00004c6c           dc.l    input_up                    ; CMD6 - $00005202 - Batman Up (scroll window) - Not Ladder, Not Batrope
-L00004c70           dc.l    input_up_right              ; CMD7 - $00005244 - Batman Up + Right
-L00004c74           dc.l    input_up_left               ; CMD8 - $00005298 - Batman Up + Left
-L00004c78           dc.l    cmd_nop                     ; NOP
-L00004c7c           dc.l    cmd_nop                     ; NOP 
-L00004c80           dc.l    cmd_nop                     ; NOP
-L00004c84           dc.l    cmd_nop                     ; NOP
-L00004c88           dc.l    cmd_nop                     ; NOP
-L00004c8c           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + no direction
-L00004c90           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + Right
-L00004c94           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + Left
-L00004c98           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + Unknown
-L00004c9c           dc.l    input_fire_down             ; CMD10 - $000053d6 - Fire + Down
-L00004ca0           dc.l    input_fire_down             ; CMD10 - $000053d6 - Fire + Down + Right
-L00004ca4           dc.l    input_fire_down             ; CMD10 - $000053d6 - fire + Down + Left
-L00004ca8           dc.l    input_fire_down             ; CMD10 - $000053d6 - Fire + Unknown
-L00004cac           dc.l    input_fire_up               ; CMD11 - $000050f8 - Fire + Up
-L00004cb0           dc.l    input_fire_up_right         ; CMD12 - $000050e6 - Fire + Up + Right
-L00004cb4           dc.l    input_fire_up_left          ; CMD13 - $000050ee - Fire + Up + Left
-L00004cb8           dc.l    cmd_nop                     ; NOP
-L00004cbc           dc.l    cmd_nop                     ; NOP
-L00004cc0           dc.l    cmd_nop                     ; NOP
-L00004cc4           dc.l    cmd_nop                     ; NOP
-L00004cc8           dc.l    cmd_nop                     ; NOP
+L00004c4c           dc.l    cmd_nop                     ; CMD00 - NOP 
+L00004c50           dc.l    input_right                 ; CMD01 - $00005246 - Batman Walk Right
+L00004c54           dc.l    input_left                  ; CMD02 - $0000529c - Batman Walk Left
+L00004c58           dc.l    cmd_nop                     ; CMD03 - NOP
+L00004c5c           dc.l    input_down                  ; CMD04 - $000053f4 - Batman Down (duck, scroll window)) - Not Ladder, Not Jump Down
+L00004c60           dc.l    input_down_right            ; CMD05 - $00005240 - Batman Down + Right
+L00004c64           dc.l    input_down_left             ; CMD06 - $00005292 - Batman Down + Left
+L00004c68           dc.l    cmd_nop                     ; CMD07 - NOP
+L00004c6c           dc.l    input_up                    ; CMD08 - $00005202 - Batman Up (scroll window) - Not Ladder, Not Batrope
+L00004c70           dc.l    input_up_right              ; CMD09 - $00005244 - Batman Up + Right
+L00004c74           dc.l    input_up_left               ; CMD10 - $00005298 - Batman Up + Left
+L00004c78           dc.l    cmd_nop                     ; CMD11 - NOP
+L00004c7c           dc.l    cmd_nop                     ; CMD12 - NOP 
+L00004c80           dc.l    cmd_nop                     ; CMD13 - NOP
+L00004c84           dc.l    cmd_nop                     ; CMD14 - NOP
+L00004c88           dc.l    cmd_nop                     ; CMD15 - NOP
+L00004c8c           dc.l    input_fire                  ; CMD16 - $00004fe0 - Fire + no direction
+L00004c90           dc.l    input_fire                  ; CMD17 - $00004fe0 - Fire + Right
+L00004c94           dc.l    input_fire                  ; CMD18 - $00004fe0 - Fire + Left
+L00004c98           dc.l    input_fire                  ; CMD19 - $00004fe0 - Fire + Unknown
+L00004c9c           dc.l    input_fire_down             ; CMD20 - $000053d6 - Fire + Down
+L00004ca0           dc.l    input_fire_down             ; CMD21 - $000053d6 - Fire + Down + Right
+L00004ca4           dc.l    input_fire_down             ; CMD22 - $000053d6 - fire + Down + Left
+L00004ca8           dc.l    input_fire_down             ; CMD23 - $000053d6 - Fire + Unknown
+L00004cac           dc.l    input_fire_up               ; CMD24 - $000050f8 - Fire + Up
+L00004cb0           dc.l    input_fire_up_right         ; CMD25 - $000050e6 - Fire + Up + Right
+L00004cb4           dc.l    input_fire_up_left          ; CMD26 - $000050ee - Fire + Up + Left
+L00004cb8           dc.l    cmd_nop                     ; CMD27 - NOP
+L00004cbc           dc.l    cmd_nop                     ; CMD28 - NOP
+L00004cc0           dc.l    cmd_nop                     ; CMD29 - NOP
+L00004cc4           dc.l    cmd_nop                     ; CMD30 - NOP
+L00004cc8           dc.l    cmd_nop                     ; CMD31 - NOP
 
 
 
@@ -3313,14 +3313,14 @@ L00004e48            move.w  (a0),d2
 L00004e4a            cmp.w   #$0050,d2
 L00004e4e            bcc.b   L00004e60
 L00004e50            addq.w  #$01,(a0)
-L00004e52            clr.w   d3
+L00004e52            clr.w   d3                         ; Player Movement Command 00
 L00004e54            subq.w  #$01,L00006306
 L00004e58            bne.b   L00004e60
 L00004e5a            move.w  #$4e64,L00003c92
-L00004e60            move.b  d3,L00006308
+L00004e60            move.b  d3,player_input_command    ; L00006308 ; CMD00
 L00004e64            lea.l   L00006318,a0                
 L00004e68            move.w  (a0),d5
-L00004e6a            move.b  L00006308,d4
+L00004e6a            move.b  player_input_command,d4    ; L00006308,d4
 L00004e6e            btst.l  #$0003,d4
 L00004e72            beq.b   L00004ea8
 L00004e74            move.w  #$0048,L000067c6
@@ -3410,7 +3410,7 @@ L00004f74            add.w   d4,d1
 L00004f76            add.w   d5,d0
 L00004f78            movem.w d0-d1,L000067c2
 L00004f7e            move.l  L0000631a,L00006328
-L00004f84            btst.b  #$0004,L00006308
+L00004f84            btst.b  #$0004,player_input_command            ; L00006308
 L00004f8a            bne.b   L00004fae
 L00004f8c            rts 
 
@@ -3472,7 +3472,7 @@ L00005030           movem.w d0-d1,(a0)
 L00005034           rts  
 
 
-L00005036           move.b  L00006308,d4
+L00005036           move.b  player_input_command,d4                 ; L00006308,d4
 L0000503c           bne.w   L0000504e
 L00005040           subq.w  #$01,L000062f2
 L00005044           bne.b   L00005034
@@ -3559,9 +3559,9 @@ L0000511a           bsr.w   L00005438
 L0000511e           moveq   #$07,d0                     ; sfx number - 07 = Batarang
 L00005120           jsr     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00005126           movem.w L000067c2,d0-d1
-L0000512c           bclr.b  #$0004,L00006308
+L0000512c           bclr.b  #$0004,player_input_command             ; L00006308
 L00005132           lea.l   L00006314,a0
-L00005136           btst.b  #$0004,L00006308
+L00005136           btst.b  #$0004,player_input_command             ; L00006308
 L0000513e           bne     L000051be                   ; bne.b 
 L00005140           move.w  $0004(a0),d2
 L00005144           addq.w  #$02,d2
@@ -3601,7 +3601,7 @@ L000051ae           rts
 
 
 L000051b0           lea.l   L00006314,a0
-L000051b4           btst.b  #$0004,L00006308
+L000051b4           btst.b  #$0004,player_input_command             ; L00006308
 L000051bc           beq.b   L000051c4
 L000051be           move.w  #$0002,$0004(a0)
 L000051c4           subq.w  #$03,$0004(a0)
@@ -3642,7 +3642,7 @@ L00005224           add.w   #$000c,d1
 L00005228           cmp.b   #$85,d2
 L0000522c           bcs.b   L000051e0
 L0000522e           addq.w  #$04,a7             ; addaq.w
-L00005230           and.b   #$0c,L00006308
+L00005230           and.b   #$0c,player_input_command               ; L00006308
 L00005236           move.w  #$5308,L00003c92
 L0000523c           bra.w   L00005308
 
@@ -3732,12 +3732,12 @@ L000052fe           move.l  #player_move_commands,L00003c90
 ;L000052fe           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005304           bra.w   player_move_commands        ;L00004c3e
 
-L00005308           btst.b  #$0004,L00006308
+L00005308           btst.b  #$0004,player_input_command             ; L00006308
 L0000530e           bne.w   L0000545a
 L00005312           btst.b  #$0000,L0000632d            ; test even/odd playfield buffer swap value
 L00005318           bne.b   L000052ec
 L0000531a           clr.w   d4
-L0000531c           move.b  L00006308,d4
+L0000531c           move.b  player_input_command,d4                 ; L00006308,d4
 L00005320           move.w  L000067be,d2
 L00005324           add.w   d1,d2
 L00005326           and.w   #$0007,d2
@@ -3755,7 +3755,7 @@ L0000534c           bra.b   L000053a6
 L0000534e           bsr.w   L000055a0
 L00005352           move.w  d4,d5
 L00005354           and.b   #$03,d5
-L00005358           move.b  d5,L00006308
+L00005358           move.b  d5,player_input_command                 ; L00006308
 L0000535c           moveq   #$01,d5
 L0000535e           asr.w   #$01,d4
 L00005360           bcs.w   L000052ee               ; bcs.b 
@@ -3820,12 +3820,12 @@ L00005404           rts
 
 L00005406           lea.l   L000063d9,a0
 L0000540a           bsr.b   L00005438
-L0000540c           btst.b  #$0002,L00006308
+L0000540c           btst.b  #$0002,player_input_command             ; L00006308
 L00005412           bne.b   L00005420
 L00005414           move.w  #$542a,L00003c92
 L0000541a           lea.l   L000063d6,a0
 L0000541e           bra.b   L00005438
-L00005420           btst.b  #$0004,L00006308
+L00005420           btst.b  #$0004,player_input_command             ; L00006308
 L00005426           bne.b   input_fire_down                 ; L000053d6
 L00005428           rts 
 
@@ -4264,7 +4264,7 @@ L00005898           bne.b   L000058a0
 L0000589a           and.w   #$0010,d0
 L0000589e           or.w    d0,d2
 L000058a0           move.b  d0,L00006309
-L000058a4           move.b  d2,L00006308
+L000058a4           move.b  d2,player_input_command                 ; L00006308
 L000058a8           rts
 
 
@@ -5038,7 +5038,11 @@ L00006300           dc.w $0000
 L00006302           dc.w $0000
 L00006304           dc.w $0000
 L00006306           dc.w $0000
-L00006308           dc.b $00
+
+player_input_command
+L00006308           dc.b $00                        ; value range 0 - 31 used by player_move_commands (main game loop)
+                                                    ; to identify commad to process.
+
 L00006309           dc.b $00
 
 L0000630a           dc.l $0000A07C                  ; base level gfx ptr?
