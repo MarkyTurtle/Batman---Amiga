@@ -2488,34 +2488,34 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
                     ;
 draw_projectiles                                    ; original address L000045fe
 L000045fe           lea.l   L00004866,a5
-L00004602           lea.l   L00004894,a6            ; list cleared at game_start
-L00004606           moveq   #$13,d7                 ; d7 = 19 + 1 - counter
+                    lea.l   L00004894,a6            ; list cleared at game_start
+                    moveq   #$13,d7                 ; d7 = 19 + 1 - counter
 .loop                                               ;                   original address L00004608
-L00004608           move.w  (a6)+,d2                ; get 2 bytes - active projectile?
-L0000460a           beq.b   .skip_to_next           ; if d2 == 0 then skip_to_next - L00004636
+                    move.w  (a6)+,d2                ; get 2 bytes - active projectile?
+                    beq.b   .skip_to_next           ; if d2 == 0 then skip_to_next - L00004636
 
-L0000460c           movem.w (a6),d0-d1              ; get next 4 bytes from data struct.
-L00004610           move.l  a6,-(a7)                ; store data ptr - a6   
-L00004612           move.w  d7,-(a7)                ; store counter
-L00004614           btst.l  #$000f,d2               ;   test is d2 -ve?
-L00004618           beq.b   L00004622               ;     is +ve then jmp L00004622
+                    movem.w (a6),d0-d1              ; get next 4 bytes from data struct.
+                    move.l  a6,-(a7)                ; store data ptr - a6   
+                    move.w  d7,-(a7)                ; store counter
+                    btst.l  #$000f,d2               ;   test is d2 -ve?
+                    beq.b   .is_pos_01              ; L00004622               ;     is +ve then jmp L00004622
 .is_neg_01                                          ;   else -ve
-L0000461a           ext.w   d2                      ;     sign extend byte to word
-L0000461c           move.w  d2,-$0002(a6)           ;     overwrite word back in data structure
-L00004620           moveq   #$04,d2                 ;     set d2 = #$04
+                    ext.w   d2                      ;     sign extend byte to word
+                    move.w  d2,-$0002(a6)           ;     overwrite word back in data structure
+                    moveq   #$04,d2                 ;     set d2 = #$04
 .is_pos_01
-L00004622           ror.w   #$01,d2                 ;   rotate bits right by 1
-L00004624           bpl.b   L0000462a               ;   test is d2 +ve                                                  
-L00004626           or.w    #$e000,d2               ;     is -ve set top 3 bits.
+                    ror.w   #$01,d2                 ;   rotate bits right by 1
+                    bpl.b   .not_neg_02             ;   L0000462a               ;   test is d2 +ve                                                  
+                    or.w    #$e000,d2               ;     is -ve set top 3 bits.
 .not_neg_02
-L0000462a           add.w   #$003b,d2               ;     is +ve, add 59 to d2
-L0000462e           bsr.w   L000056f4
-L00004632           move.w  (a7)+,d7                ; restore counter - d7
-L00004634           movea.l (a7)+,a6                ; restore data ptr - a6
+                    add.w   #$003b,d2               ;     is +ve, add 59 to d2
+                    bsr.w   L000056f4
+                    move.w  (a7)+,d7                ; restore counter - d7
+                    movea.l (a7)+,a6                ; restore data ptr - a6
 .skip_to_next
-L00004636           addq.w  #$06,a6                 ; a6 + 6 (start next structure in list)     
-L00004638           dbf.w   d7,L00004608
-L0000463c           rts
+                    addq.w  #$06,a6                 ; a6 + 6 (start next structure in list)     
+                    dbf.w   d7,.loop                ; L00004608
+                    rts
 
 
 L0000463e           lea.l   L00004894,a0
@@ -3149,38 +3149,39 @@ L00004c4a           jmp (a0)                                        ; execute in
 
                     ; Jump Table (for above)
 player_input_cmd_table                                  ; original address $00004c4c
-L00004c4c           dc.l    $00005290                   ; rts
-L00004c50           dc.l    $00005246                   ; CMD1 (Batman Walk Right)
-L00004c54           dc.l    $0000529c                   ; CMD2 (Batman Walk Left)
-L00004c58           dc.l    $00005290                   ; rts
-L00004c5c           dc.l    $000053f4                   ; CMD3 (Batman Down (duck, scroll window)) - Not Ladder, Not Jump Down
-L00004c60           dc.l    $00005240                   ; CMD4 (Batman Diagonal Down Right)
-L00004c64           dc.l    $00005292                   ; CMD5 (Batman Diagaonal Down Left)
-L00004c68           dc.l    $00005290                   ; rts
-L00004c6c           dc.l    $00005202                   ; CMD6 (Batman Up (scroll window)) - Not Ladder, Not Batrope
-L00004c70           dc.l    $00005244                   ; CMD7
-L00004c74           dc.l    $00005298                   ; CMD8
-L00004c78           dc.l    $00005290                   ; rts
-L00004c7c           dc.l    $00005290                   ; rts
-L00004c80           dc.l    $00005290                   ; rts
-L00004c84           dc.l    $00005290                   ; rts
-L00004c88           dc.l    $00005290                   ; rts
-L00004c8c           dc.l    $00004fe0                   ; CMD9 (Fire + no direction)
-L00004c90           dc.l    $00004fe0                   ; CMD9 (Fire + Right)
-L00004c94           dc.l    $00004fe0                   ; CMD9 (Fire + Left)
-L00004c98           dc.l    $00004fe0                   ; CMD9 (Fire + Unknown)
-L00004c9c           dc.l    $000053d6                   ; CMD10 (Fire + Down)
-L00004ca0           dc.l    $000053d6                   ; CMD10 (Fire + Down Right Diag)
-L00004ca4           dc.l    $000053d6                   ; CMD10 (fire + Down Left Diag)
-L00004ca8           dc.l    $000053d6                   ; CMD10 (Fire + Unknown)
-L00004cac           dc.l    $000050f8                   ; CMD11 (Fire + Up)
-L00004cb0           dc.l    $000050e6                   ; CMD12 (Fire + Up Right)
-L00004cb4           dc.l    $000050ee                   ; CMD13 (Fire + Up Left)
-L00004cb8           dc.l    $00005290                   ; rts
-L00004cbc           dc.l    $00005290                   ; rts
-L00004cc0           dc.l    $00005290                   ; rts
-L00004cc4           dc.l    $00005290                   ; rts
-L00004cc8           dc.l    $00005290                   ; rts
+L00004c4c           dc.l    cmd_nop                     ; NOP 
+L00004c50           dc.l    input_right                 ; CMD1 - $00005246 - Batman Walk Right
+L00004c54           dc.l    input_left                  ; CMD2 - $0000529c - Batman Walk Left
+L00004c58           dc.l    cmd_nop                     ; NOP
+L00004c5c           dc.l    input_down                  ; CMD3 - $000053f4 - Batman Down (duck, scroll window)) - Not Ladder, Not Jump Down
+L00004c60           dc.l    input_down_right            ; CMD4 - $00005240 - Batman Down + Right
+L00004c64           dc.l    input_down_left             ; CMD5 - $00005292 - Batman Down + Left
+L00004c68           dc.l    cmd_nop                     ; NOP
+L00004c6c           dc.l    input_up                    ; CMD6 - $00005202 - Batman Up (scroll window) - Not Ladder, Not Batrope
+L00004c70           dc.l    input_up_right              ; CMD7 - $00005244 - Batman Up + Right
+L00004c74           dc.l    input_up_left               ; CMD8 - $00005298 - Batman Up + Left
+L00004c78           dc.l    cmd_nop                     ; NOP
+L00004c7c           dc.l    cmd_nop                     ; NOP 
+L00004c80           dc.l    cmd_nop                     ; NOP
+L00004c84           dc.l    cmd_nop                     ; NOP
+L00004c88           dc.l    cmd_nop                     ; NOP
+L00004c8c           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + no direction
+L00004c90           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + Right
+L00004c94           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + Left
+L00004c98           dc.l    input_fire                  ; CMD9 - $00004fe0 - Fire + Unknown
+L00004c9c           dc.l    input_fire_down             ; CMD10 - $000053d6 - Fire + Down
+L00004ca0           dc.l    input_fire_down             ; CMD10 - $000053d6 - Fire + Down + Right
+L00004ca4           dc.l    input_fire_down             ; CMD10 - $000053d6 - fire + Down + Left
+L00004ca8           dc.l    input_fire_down             ; CMD10 - $000053d6 - Fire + Unknown
+L00004cac           dc.l    input_fire_up               ; CMD11 - $000050f8 - Fire + Up
+L00004cb0           dc.l    input_fire_up_right         ; CMD12 - $000050e6 - Fire + Up + Right
+L00004cb4           dc.l    input_fire_up_left          ; CMD13 - $000050ee - Fire + Up + Left
+L00004cb8           dc.l    cmd_nop                     ; NOP
+L00004cbc           dc.l    cmd_nop                     ; NOP
+L00004cc0           dc.l    cmd_nop                     ; NOP
+L00004cc4           dc.l    cmd_nop                     ; NOP
+L00004cc8           dc.l    cmd_nop                     ; NOP
+
 
 
 
@@ -3443,7 +3444,9 @@ L00004fd2           clr.w   L00006318
 L00004fd6           movem.w L000067c2,d0-d1
 L00004fdc           bra.w   L00005464
 
-                    ; bat rope?
+
+
+input_fire
 L00004fe0           move.w  #$6419,L00003626        ; Jump Table CMD9
 L00004fe8           move.w  #$4ff6,L00003c92
 L00004fee           moveq   #$08,d0                 ; sfx number - 08 = Bat Rope
@@ -3531,15 +3534,18 @@ L000050e0           move.w  d4,$0008(a0)            ; $00000a08 [0000]
 L000050e4           rts 
 
 
+input_fire_up_right
 L000050e6           clr.w   L000062ee               ; Jump Table CMD12
 L000050ea           moveq   #$7f,d0
 L000050ec           bra.b   L000050fa
 
+input_fire_up_left
 L000050ee           move.w  #$e000,L000062ee        ; Jump Table CMD13
-L000050f4           MOVE.L #$ffffff81,D0
+L000050f4           MOVE.L  #$ffffff81,D0
 L000050f6           bra.b   L000050fa
 
-                    ; bat-a-rang?
+
+input_fire_up                                           ; batrope up
 L000050f8           clr.w   d0                          ; Jump Table CMD11
 L000050fa           move.w  #$0048,L000067c6
 L00005100           lea.l   $6314,a0
@@ -3550,13 +3556,13 @@ L0000510c           move.w  #$0001,(a0)
 L00005110           move.w  #$5132,L00003c92
 L00005116           lea.l   L000063d0,a0
 L0000511a           bsr.w   L00005438
-L0000511e           moveq   #$07,d0                 ; sfx number - 07 = Batarang
-L00005120           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+L0000511e           moveq   #$07,d0                     ; sfx number - 07 = Batarang
+L00005120           jsr     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00005126           movem.w L000067c2,d0-d1
 L0000512c           bclr.b  #$0004,L00006308
 L00005132           lea.l   L00006314,a0
 L00005136           btst.b  #$0004,L00006308
-L0000513e           bne     L000051be               ; bne.b 
+L0000513e           bne     L000051be                   ; bne.b 
 L00005140           move.w  $0004(a0),d2
 L00005144           addq.w  #$02,d2
 L00005146           cmp.w   #$0028,d2
@@ -3621,6 +3627,7 @@ L000051fe           bcs.b   L000051e0
 L00005200           bra.b   L0000522e
 
 
+input_up
 L00005202           bsr.b   L00005208           ; Jmp Table CMD6
 L00005204           bra.w   L00005430
 L00005208           move.w  #$0048,L000067c6
@@ -3640,12 +3647,14 @@ L00005236           move.w  #$5308,L00003c92
 L0000523c           bra.w   L00005308
 
 
+input_down_right
 L00005240           bsr.b   L000051e2           ; jmp table CMD4
-L00005242           bra.b   L00005246 
+L00005242           bra.b   input_right         ; L00005246 
 
-
+input_up_right
 L00005244           bsr.b   L00005208           ; jmp table CMD7
 
+input_right
 L00005246           addq.w  #$04,d0                    ; jmp table CMD1
 L00005248           subq.w  #$02,d1
 L0000524a           bsr.w   L000055a0
@@ -3671,17 +3680,21 @@ L00005286           moveq   #$02,d0
 L00005288           addq.w  #$01,d0
 L0000528a           move.w  d0,(a0)+
 L0000528c           move.w  #$0001,(a0)
+cmd_exit
+cmd_nop
 L00005290           rts                      
 
 
-L00005292           bsr.w   L000051e2     ; Jump Table CMD5
-L00005296           bra.w   L0000592c     ; bra.b 
+input_down_left
+L00005292           bsr.w   L000051e2               ; Jump Table CMD5
+L00005296           bra.w   input_left              ; L0000592c     ; bra.b 
+
+input_up_left
+L00005298           bsr.w   L00005208               ; Jump Table CMD8
 
 
-L00005298           bsr.w   L00005208     ; Jump Table CMD8
-
-
-L0000529c           subq.w  #$05,d0                ; Jump Table CMD2
+input_left
+L0000529c           subq.w  #$05,d0                 ; Jump Table CMD2
 L0000529e           subq.w  #$02,d1
 L000052a0           bsr.w   L000055a0
 L000052a4           cmp.b   #$17,d2
@@ -3787,16 +3800,18 @@ L000053ce           move.l  #player_move_commands,L00003c90
 L000053d4           rts
 
 
-L000053d6            add.w   #$0008,d1                   ; Jump Table CMD10
+input_fire_down
+L000053d6            add.w   #$0008,d1                      ; Jump Table CMD10
 L000053da            bsr.w   L000055a0
 L000053de            movem.w L000067c2,d0-d1
 L000053e4            cmp.b   #$17,d2
-L000053e8            bcs.b   L000053f4
+L000053e8            bcs.b   input_down                     ; L000053f4
 L000053ea            move.w  #$8000,L00005506
 L000053f0            bra.w   L0000545a
 
 
-L000053f4           bsr.w   L000051e2         ; Jump table CMD3
+input_down
+L000053f4           bsr.w   L000051e2                       ; Jump table CMD3
 L000053f8           lea.l   L000063d6,a0
 L000053fc           bsr.b   L00005438
 L000053fe           move.w  #$5406,L00003c92
@@ -3811,7 +3826,7 @@ L00005414           move.w  #$542a,L00003c92
 L0000541a           lea.l   L000063d6,a0
 L0000541e           bra.b   L00005438
 L00005420           btst.b  #$0004,L00006308
-L00005426           bne.b   L000053d6
+L00005426           bne.b   input_fire_down                 ; L000053d6
 L00005428           rts 
 
 L0000542a           move.l  #player_move_commands,L00003c90
