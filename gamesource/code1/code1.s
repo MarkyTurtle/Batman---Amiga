@@ -1468,18 +1468,18 @@ L00003b98           clr.w   L000062ee
 
                     ; copy 7 words init data
                     ; L000062fc has to be 0, or the routine will overwrite code.
-                                                            ; original address L00003ba4
-L00003ba4           move.l  #player_move_commands,L00003c90                                                       
-;L00003ba4           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-                    lea.l   default_level_parameters,a0     ; L000067a0,a0
-                    move.w  L000062fc,d6                    ; cleared above on line number L00003af8
-.outer_loop                                                 ; original address L00003bb2
-                    moveq   #$06,d7                         ; counter #$6 + 1 = #$7
-                    lea.l   level_parameters,a1             ; L000067bc,a1
-.inner_loop                                                 ; original address L00003bb8
+                                                                    ; original address L00003ba4
+L00003ba4           move.l  #player_move_commands,L00003c90         ; Set Self Modifying code - GameLoop JSR - L00003c92                                                      
+;L00003ba4           move.w  #$4c3e,L00003c92                        ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+                    lea.l   default_level_parameters,a0             ; L000067a0,a0
+                    move.w  L000062fc,d6                            ; cleared above on line number L00003af8
+.outer_loop                                                         ; original address L00003bb2
+                    moveq   #$06,d7                                 ; counter #$6 + 1 = #$7
+                    lea.l   level_parameters,a1                     ; L000067bc,a1
+.inner_loop                                                         ; original address L00003bb8
                     move.w  (a0)+,(a1)+
-                    dbf.w   d7,.inner_loop                  ; loop 7 times
-                    dbf.w   d6,.outer_loop                  ; loop 0 times (d6 has to be 0, or code is overwritten) 
+                    dbf.w   d7,.inner_loop                          ; loop 7 times
+                    dbf.w   d6,.outer_loop                          ; loop 0 times (d6 has to be 0, or code is overwritten) 
 
 
 L00003bc2           lea.l   L00003aa4,a0
@@ -1578,23 +1578,23 @@ L00003c88           movem.w L000067c2,d0-d1
                     ; ----- SELF MODIFYING CODE -----
                     ; default jsr address $4c3e = Command Loop (set at addresses $3ba4, $4d66, $504e, $51d2, $52fe, $53ce, $542a)
                     ; updated address $555a = unknown (set in routine L000054e8)
-;L00003c8e           jsr     L00004c3e                   ; 4eb9 0000 4c3e (self modifying code $3c92)
-L00003c8e           dc.w    $4eb9       ; jsr
-L00003c90           dc.w    $0000       ; high word of jsr address
-L00003c92           dc.w    $4c3e       ; low word of jsr address       ($4c3e - Run Commands) - Default Value = $4c3e (run command loop)
+;L00003c8e           jsr     L00004c3e                              ; 4eb9 0000 4c3e (self modifying code $3c92)
+L00003c8e           dc.w    $4eb9                                   ; jsr
+L00003c90           dc.w    $0000                                   ; high word of jsr address
+L00003c92           dc.w    $4c3e                                   ; low word of jsr address       ($4c3e - Run Commands) - Default Value = $4c3e (run command loop)
                     ; ----- END OF SELF MODIFYING CODE -----
 
-L00003c94           bsr.w   update_view_window              ; L00004936 ; Scroll Background Window (not draw that's later)
-L00003c98           bsr.w   update_score_by_distance_walked ; L00003dd4 ; Update Scre based upon comparison of $67bc.w and $67c0.w 
-L00003c9c           bsr.w   update_level_actors_01          ; L00003dfe ; Update Level Actors 01
-L00003ca0           bsr.w   draw_level_and_actors           ; L00004b62 ; Draw/Update Screen
-L00003ca4           bsr.w   draw_batman_and_rope            ; L000055c4 ; Draw Batman and Rope Swing
-L00003ca8           bsr.w   update_level_actor_02           ; L00003ee6 ; Update Level Actors 02
-L00003cac           bsr.w   update_projectiles              ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
-L00003cb0           bsr.w   draw_projectiles                ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
-L00003cb4           bsr.w   double_buffer_playfield         ; L000036fa
+L00003c94           bsr.w   update_view_window                      ; L00004936 ; Scroll Background Window (not draw that's later)
+L00003c98           bsr.w   update_score_by_distance_walked         ; L00003dd4 ; Update Scre based upon comparison of $67bc.w and $67c0.w 
+L00003c9c           bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
+L00003ca0           bsr.w   draw_level_and_actors                   ; L00004b62 ; Draw/Update Screen
+L00003ca4           bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
+L00003ca8           bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
+L00003cac           bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+L00003cb0           bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
+L00003cb4           bsr.w   double_buffer_playfield                 ; L000036fa
 
-L00003cb8           bra.w   game_loop                       ; L00003bfa ; jump back to main loop
+L00003cb8           bra.w   game_loop                               ; L00003bfa ; jump back to main loop
 
 
                     ;-----------------------------------------------------
@@ -1604,7 +1604,7 @@ L00003cb8           bra.w   game_loop                       ; L00003bfa ; jump b
 
                     ; Wipe Screen to Black
                     ; Exit Game and Level Completed.
-L00003cbc           bsr.w   L00004e28
+L00003cbc           bsr.w   clear_backbuffer_playfield      ; L00004e28
 L00003cc0           move.w  #$002a,d0
 L00003cc4           move.w  #$00ae,d1
 L00003cc8           movem.l playfield_buffer_ptrs,a0-a1     ; L000036f2,a0-a1
@@ -3185,32 +3185,44 @@ L00004cc8           dc.l    cmd_nop                     ; CMD31 - NOP
 
 
 
-L00004ccc           tst.b   PANEL_STATUS_1              ; Panel - Status Byte 1 - $0007c874
+L00004ccc           tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
 L00004cd2           bne.b   L00004d36
 
 L00004cd4           movem.l d0-d7/a5-a6,-(a7)
 L00004cd8           move.w  d6,d0
-L00004cda           jsr     PANEL_LOSE_ENERGY           ; Panel - Lose Energy (D0.w) - $0007c870
+L00004cda           jsr     PANEL_LOSE_ENERGY                       ; Panel - Lose Energy (D0.w) - $0007c870
 L00004ce0           movem.l (a7)+,d0-d7/a5-a6
-L00004ce4           move.w  L00003c92,d2
-L00004ce8           cmp.w   #$5482,d2
+
+L00004ce4           move.l  L00003c90,d2                            ; Self Modified Code JSR - game_loop - JSR address
+;L00004ce4           move.w  L00003c92,d2                           ; game_loop JSR address
+L00004ce8           cmp.l   #L00005482,d2                           ; Address
+;L00004ce8           cmp.w   #$5482,d2                              ; Address
 L00004cec           beq.b   L00004d36
-L00004cee           move.w  #$4e3a,d3
-L00004cf2           cmp.w   d3,d2
+L00004cee           move.l  #L00004e3a,d3                           ; Address
+;L00004cee           move.w  #$4e3a,d3                              ; Address
+L00004cf2           cmp.l   d3,d2
+;L00004cf2           cmp.w   d3,d2
 L00004cf4           beq.b   L00004d1c
-L00004cf6           cmp.w   #$4e64,d2
+L00004cf6           cmp.l   #L00004e64,d2                           ; Address
+;L00004cf6           cmp.w   #$4e64,d2                              ; Address
 L00004cfa           beq.b   L00004d1c
-L00004cfc           cmp.w   #$5058,d2
+L00004cfc           cmp.l   #L00005058,d2                           ; Address
+;L00004cfc           cmp.w   #$5058,d2                              ; Address
 L00004d00           beq.b   L00004d38
-L00004d02           move.w  #$4d48,d3
-L00004d06           cmp.w   #$5308,d2
+L00004d02           move.l  #L00004d48,d3                           ; Address
+;L00004d02           move.w  #$4d48,d3                              ; Address
+L00004d06           cmp.l   #L00005308,d2                           ; Address
+;L00004d06           cmp.w   #$5308,d2                              ; Address
 L00004d0a           beq.b   L00004d1c
-L00004d0c           cmp.w   d2,d3
+L00004d0c           cmp.l   d2,d3
+;L00004d0c           cmp.w   d2,d3
 L00004d0e           beq.b   L00004d1c
 L00004d10           lea.l   L00005457,a0
 L00004d14           bsr.w   L00005438
-L00004d18           move.w  #$4d56,d3
-L00004d1c           move.w  d3,L00003c92 
+L00004d18           move.l  #L00004d56,d3                           ; Address
+;L00004d18           move.w  #$4d56,d3                              ; Address
+L00004d1c           move.l  d3,L00003c90                            ; UPDATE game_loop JSR address
+;L00004d1c           move.w  d3,L00003c92                           ; UPDATE game_loop JSR address
 L00004d20           move.w  L00006306,d2
 L00004d24           add.w   d6,d6
 L00004d26           add.w   d6,d6
@@ -3232,7 +3244,8 @@ L00004d46           rts
 
 L00004d48           subq.w  #$01,L00006306
 L00004d4c           bne.b   L00004d36
-L00004d4e           move.w  #$5308,L00003c92
+L00004d4e           move.l  #L00005308,L00003c90        ; Set Self Modifying Code JSR in game_loop
+;L00004d4e           move.w  #$5308,L00003c92
 L00004d54           bra.b   L00004d7a
 L00004d56           tst.w   L00006318
 L00004d5a           beq.b   L00004d60
@@ -3240,18 +3253,19 @@ L00004d5c           bsr.w   L000051b0
 L00004d60           subq.w  #$01,L00006306
 L00004d64           bne.b   L00004d36
 L00004d66           move.l  #player_move_commands,L00003c90 
-;L00004d66           move.w  #$4c3e,L00003c92    ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+;L00004d66           move.w  #$4c3e,L00003c92           ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00004d6c           tst.w   L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
-L00004d7a           tst.b   PANEL_STATUS_1      ; Panel - Status Byte 1 - $0007c874
+L00004d7a           tst.b   PANEL_STATUS_1              ; Panel - Status Byte 1 - $0007c874
 L00004d80           beq.b   L00004d36
-L00004d82           jsr     PLAYER_SILENCE      ; Chem1.iff - Silence all Audio - $00048004
+L00004d82           jsr     PLAYER_SILENCE              ; Chem1.iff - Silence all Audio - $00048004
 L00004d88           clr.w   L00006318
-L00004d8c           moveq   #$03,d0             ; song/sound number - 03 = player life lost
-L00004d8e           jsr     PLAYER_INIT_SONG    ; chem.iff - music/sfx - init song - d0.l = song number - $00048010           ; External Address - CHEM.IFF
-L00004d94           move.w  #$4da2,L00003c92
+L00004d8c           moveq   #$03,d0                     ; song/sound number - 03 = player life lost
+L00004d8e           jsr     PLAYER_INIT_SONG            ; chem.iff - music/sfx - init song - d0.l = song number - $00048010           ; External Address - CHEM.IFF
+L00004d94           move.l  #L00004da2,L00003c90        ; Set Self Modifying Code JSR in game_loop
+;L00004d94           move.w  #$4da2,L00003c92
 L00004d9a           move.w  #$63dc,L00006326
 L00004da0           rts 
 
@@ -3264,7 +3278,7 @@ L00004db0            bne     L00004d36                                  ; bne.b
 L00004db2            jsr     PLAYER_INIT_SFX_2                          ; chem.iff - music/sfx - init sfx audio channel - $0004800c  ; External Address - CHEM.IFF
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   L00005e8c
-L00004dc0            bsr.w   L00004e28
+L00004dc0            bsr.w   clear_backbuffer_playfield                 ; L00004e28
 L00004dc4            btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Panel - Status Byte 1 bit #$0000 of $0007c874
 L00004dcc            beq.b   L00004dd6
 L00004dce            lea.l   L00004e1c,a0
@@ -3298,26 +3312,47 @@ L00004e24            dc.w    $5550                       ; subq.w #$02,(a0) [003
 L00004e26            dc.w    $00ff                       ; illegal
 
 
-L00004e28            movea.l playfield_buffer_2,a0      ; L000036f6,a0                ; [00061b9c]
-L00004e2e            move.w  #$1c8b,d7
-L00004e32            clr.l   (a0)+
-L00004e34            dbf.w   d7,L00004e32
-L00004e38            rts 
+clear_backbuffer_playfield                              ; original address $00004e28
+L00004e28           movea.l playfield_buffer_2,a0      ; 
+                    move.w  #$1c8b,d7                  ; loop 7308 times / 42 = 174 rasters
+.clear_loop                                             ; original address L00004e32
+                    clr.l   (a0)+                      ; clear 29232 bytes = 4 bitplanes
+                    dbf.w   d7,.clear_loop             ; loop to $00004e32
+                    rts                                ; original address $00004e38
 
 
-L00004e3a            moveq   #$10,d3
-L00004e3c            tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - $0007c874
+
+
+                    ; game_loop - Self Modified JSR Address
+                    ; set at line of code L00004cee
+L00004e3a            moveq   #$10,d3                    ; CMD16 - Fire - No Direction
+L00004e3c            tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - (Clock Timer Expired, No Lives, Life Lost bits)
 L00004e42            bne.b   L00004e60
+
 L00004e44            lea.l   L00006318,a0
 L00004e48            move.w  (a0),d2
-L00004e4a            cmp.w   #$0050,d2
-L00004e4e            bcc.b   L00004e60
+L00004e4a            cmp.w   #$0050,d2                  ; compare 80 with d2
+L00004e4e            bcc.b   L00004e60                  ;   if d2 > 80 jmp $4e60
 L00004e50            addq.w  #$01,(a0)
-L00004e52            clr.w   d3                         ; Player Movement Command 00
+L00004e52            clr.w   d3                         ; Player Movement Command 00 - NOP
 L00004e54            subq.w  #$01,L00006306
 L00004e58            bne.b   L00004e60
-L00004e5a            move.w  #$4e64,L00003c92
-L00004e60            move.b  d3,player_input_command    ; L00006308 ; CMD00
+L00004e5a            move.l  #L00004e64,L00003c90        ; Set Self MOdified Code JSR in game_loop
+;L00004e5a            move.w  #$4e64,L00003c92           ; Update Main Loop JSR (Command Loop to )
+
+                    ; one of the following has occurred
+                    ; Panel Status 1
+                    ;  - Clock Timer Expired
+                    ;  - No Lives Left
+                    ;  - Life has been Lost
+                    ; Contents of $00006318
+                    ;  - is less than 80 (decimal) #$50
+                    ; Contents of $00006305
+                    ;  - is more than 0
+                    ;
+L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) Fire no Direction
+
+                    ; Updated Self Modified JSR (game_loop) when ($00006306).w is zero
 L00004e64            lea.l   L00006318,a0                
 L00004e68            move.w  (a0),d5
 L00004e6a            move.b  player_input_command,d4    ; L00006308,d4
@@ -3327,7 +3362,8 @@ L00004e74            move.w  #$0048,L000067c6
 L00004e7a            subq.w  #$01,d5
 L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
-L00004e80            move.w  #$5058,L00003c92
+L00004e80            move.l  #L00005058,L00003c90        ; Self modified code JSR game_loop
+;L00004e80            move.w  #$5058,L00003c92           ; Self modified code JSR game_loop
 L00004e86            move.w  #$0005,L000062f2
 L00004e8c            move.w  #$6426,L00006326
 L00004e92            move.w  d1,d2
@@ -3448,7 +3484,8 @@ L00004fdc           bra.w   L00005464
 
 input_fire
 L00004fe0           move.w  #$6419,L00003626        ; Jump Table CMD9
-L00004fe8           move.w  #$4ff6,L00003c92
+L00004fe8           move.l  #L00004ff6,L00003c90    ; Self Modified Code JSR - game_loop
+;L00004fe8           move.w  #$4ff6,L00003c92
 L00004fee           moveq   #$08,d0                 ; sfx number - 08 = Bat Rope
 L00004ff0           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00004ff6           movea.w L00006326,a0
@@ -3457,7 +3494,8 @@ L00004ffe           move.w  a0,L00006326
 L00005002           tst.b   (a0)
 L00005004           bne.b   L00005034
 L00005006           move.w  #$0008,L000062f2
-L0000500c           move.w  #$5036,L00003c92
+L0000500c           move.l  #L00005036,L00003c90    ; Self Modified Code JSR - game_loop
+;L0000500c           move.w  #$5036,L00003c92
 L00005012           bsr.w   L0000463e
 L00005016           sub.w   #$0007,d0
 L0000501a           move.w  L000062ee,d2
@@ -3483,6 +3521,11 @@ L0000504e           move.l  #player_move_commands,L00003c90
 ;L0000504e           move.w  #$4c3e,L00003c92                   ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005054           bra.w   player_move_commands                ; L00004c3e
 
+
+
+                    ; routine inserted into self modified JSR
+                    ; in game_loop by code line L00004e80
+                    ;
 L00005058           subq.w  #$01,L000062f2
 L0000505c           bne.b   L00005034
 L0000505e           move.w  #$0006,L000062f2
@@ -3506,7 +3549,8 @@ L00005096           bsr.w   L00005438
 L0000509a           move.w  a0,L00006326
 L0000509e           move.b  (a0),d7
 L000050a0           bne.b   L000050a8
-L000050a2           move.w  #$5414,L00003c92
+L000050a2           move.l  #$00005414,L00003c90            ; update self modified code JSR game_loop
+;L000050a2           move.w  #$5414,L00003c92            ; original code - update self modified code JSR game_loop
 L000050a8           rts 
 
 
@@ -3553,7 +3597,8 @@ L00005104           move.w  d0,(a0)+
 L00005106           clr.l   (a0)+
 L00005108           bsr.w   L0000463e
 L0000510c           move.w  #$0001,(a0)
-L00005110           move.w  #$5132,L00003c92
+L00005110           move.l  #L00005132,L00003c90        ; Self Modified Code JSR - game_loop
+;L00005110           move.w  #$5132,L00003c92
 L00005116           lea.l   L000063d0,a0
 L0000511a           bsr.w   L00005438
 L0000511e           moveq   #$07,d0                     ; sfx number - 07 = Batarang
@@ -3592,11 +3637,13 @@ L00005188           cmp.b   #$85,d2
 L0000518c           bcc.b   L000051a8
 L0000518e           cmp.b   #$79,d2
 L00005192           bcs.b   L000051ae
-L00005194           move.w  #$4e64,L00003c92
+L00005194           move.l  #L00004e64,L00003c90                    ; Self Modified Code JSR - game_loop
+;L00005194           move.w  #$4e64,L00003c92
 L0000519a           move.l  L0000631a,L00006328
 L000051a0           lea.l   L00006416,a0
 L000051a4           bra.w   L00005438
-L000051a8           move.w  #$51b0,L00003c92
+L000051a8           move.l  #L000051b0,L00003c90                    ; Self Modified Code JSR - game_loop
+;L000051a8           move.w  #$51b0,L00003c92
 L000051ae           rts
 
 
@@ -3628,10 +3675,10 @@ L00005200           bra.b   L0000522e
 
 
 input_up
-L00005202           bsr.b   L00005208           ; Jmp Table CMD6
+L00005202           bsr.b   L00005208                               ; Jmp Table CMD6
 L00005204           bra.w   L00005430
 L00005208           move.w  #$0048,L000067c6
-L0000520e           move.w  L000067bc,d2                ; updated_batman_distance_walked
+L0000520e           move.w  L000067bc,d2                            ; updated_batman_distance_walked
 L00005212           add.w   d0,d2
 L00005214           and.w   #$0007,d2
 L00005218           subq.w  #$04,d2
@@ -3641,9 +3688,10 @@ L00005220           bsr.w   L000055a0
 L00005224           add.w   #$000c,d1
 L00005228           cmp.b   #$85,d2
 L0000522c           bcs.b   L000051e0
-L0000522e           addq.w  #$04,a7             ; addaq.w
+L0000522e           addq.w  #$04,a7                                 ; addaq.w
 L00005230           and.b   #$0c,player_input_command               ; L00006308
-L00005236           move.w  #$5308,L00003c92
+L00005236           move.l  #L00005308,L00003c90                     ; Self Modified Code JSR - game_loop
+;L00005236           move.w  #$5308,L00003c92
 L0000523c           bra.w   L00005308
 
 
@@ -3724,17 +3772,17 @@ L000052ec           rts
 
 
 L000052ee           add.w   d5,d3
-L000052f0           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
+L000052f0           move.b  $00(a0,d3.W),d2                         ; $00000d13 [d6],d2
 L000052f4           sub.b   #$79,d2
 L000052f8           cmp.b   #$0d,d2
-L000052fc           bcc.w   L00005368                   ; bcc.b
+L000052fc           bcc.w   L00005368                               ; bcc.b
 L000052fe           move.l  #player_move_commands,L00003c90
-;L000052fe           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005304           bra.w   player_move_commands        ;L00004c3e
+;L000052fe           move.w  #$4c3e,L00003c92                       ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00005304           bra.w   player_move_commands                    ; L00004c3e
 
 L00005308           btst.b  #$0004,player_input_command             ; L00006308
 L0000530e           bne.w   L0000545a
-L00005312           btst.b  #$0000,L0000632d            ; test even/odd playfield buffer swap value
+L00005312           btst.b  #$0000,L0000632d                        ; test even/odd playfield buffer swap value
 L00005318           bne.b   L000052ec
 L0000531a           clr.w   d4
 L0000531c           move.b  player_input_command,d4                 ; L00006308,d4
@@ -3796,41 +3844,57 @@ L000053ca           move.w  d2,(a0)
 L000053cc           rts 
 
 L000053ce           move.l  #player_move_commands,L00003c90
-;L000053ce           move.w  #$4c3e,L00003c92             ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+;L000053ce           move.w  #$4c3e,L00003c92                       ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000053d4           rts
 
 
 input_fire_down
-L000053d6            add.w   #$0008,d1                      ; Jump Table CMD10
+L000053d6            add.w   #$0008,d1                              ; Jump Table CMD10
 L000053da            bsr.w   L000055a0
 L000053de            movem.w L000067c2,d0-d1
 L000053e4            cmp.b   #$17,d2
-L000053e8            bcs.b   input_down                     ; L000053f4
+L000053e8            bcs.b   input_down                             ; L000053f4
 L000053ea            move.w  #$8000,L00005506
 L000053f0            bra.w   L0000545a
 
 
 input_down
-L000053f4           bsr.w   L000051e2                       ; Jump table CMD3
+L000053f4           bsr.w   L000051e2                               ; Jump table CMD3
 L000053f8           lea.l   L000063d6,a0
 L000053fc           bsr.b   L00005438
-L000053fe           move.w  #$5406,L00003c92
+L000053fe           move.l  #L00005406,L00003c90                    ; Set Self Modifying Code - game_loop JSR
+;L000053fe           move.w  #$5406,L00003c92                       ; Set Self Modifying Code - game_loop JSR
 L00005404           rts
 
 
+
+                    ; address moved into self modified JSR
+                    ; by code line L000053fe
 L00005406           lea.l   L000063d9,a0
 L0000540a           bsr.b   L00005438
 L0000540c           btst.b  #$0002,player_input_command             ; L00006308
 L00005412           bne.b   L00005420
-L00005414           move.w  #$542a,L00003c92
+
+
+
+                    ; address moved into self modified JSR
+                    ; by code line L000050a2
+L00005414           move.l  #set_default_gl_jsr,L00003c90           ; Set game_loop JSR self modified code
+;L00005414           move.w  #$542a,L00003c92
 L0000541a           lea.l   L000063d6,a0
 L0000541e           bra.b   L00005438
 L00005420           btst.b  #$0004,player_input_command             ; L00006308
-L00005426           bne.b   input_fire_down                 ; L000053d6
+L00005426           bne.b   input_fire_down                         ; L000053d6
 L00005428           rts 
 
+
+
+                    ; code inserted into game_loop JSR self modified code
+                    ; by line L00005414
+                    ; reset self modified code JSR to default routine.
+set_default_gl_jsr
 L0000542a           move.l  #player_move_commands,L00003c90
-;L0000542a           move.w  #$4c3e,L00003c92                ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+;L0000542a           move.w  #$4c3e,L00003c92                       ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005430           lea.l   L000063d3,a0
 L00005434           bra.w   L00005438
 
@@ -3854,18 +3918,19 @@ L00005452           rts
 
 
 
-L00005454           dc.w    $0d01                       ; btst.l d6,d1
+L00005454           dc.w    $0d01                           ; btst.l d6,d1
 L00005456           dc.b    $01
-L00005457           dc.b    $11                       ; btst.b d0,(a1) [04]
-L00005458           dc.w    $ff02                       ; illegal
+L00005457           dc.b    $11                             ; btst.b d0,(a1) [04]
+L00005458           dc.w    $ff02                           ; illegal
 
 
 L0000545a           movem.w L000067c2,d0-d1
 L00005460           clr.l   L000062f4
 L00005464           move.w  L000067c4,L000067c6
-L0000546a           lea.l   L00005454(pc),a0             ; $00005454 -$ffe8(pc),a0 
+L0000546a           lea.l   L00005454(pc),a0                ; $00005454 -$ffe8(pc),a0 
 L0000546e           bsr.w   L00005438
-L00005472           move.w  #$5482,L00003c92            ; Self Modifying Code? 
+L00005472           move.l  #L00005482,L00003c90            ; Set Self Modifying Code JSR in game_loop 
+;L00005472           move.w  #$5482,L00003c92               ; Self Modifying Code? 
 L00005478           move.w  #$ffff,L000062fa
 L0000547e           clr.w   L000062f8
 L00005482           movem.w L000062f4,d4-d5
@@ -3882,8 +3947,8 @@ L000054a6           bcs.b   L000054c8
 L000054a8           move.b  $01(a0,d3.W),d2
 L000054ac           cmp.b   #$17,d2
 L000054b0           bcs.b   L000054c8
-L000054b2           add.w   MAPGR_BASE,d3               ; MAPGR.IFF (value = $00c0)
-L000054b8           move.b  $00(a0,d3.W),d2             ; $00000d13 [d6],d2
+L000054b2           add.w   MAPGR_BASE,d3                   ; MAPGR.IFF (value = $00c0)
+L000054b8           move.b  $00(a0,d3.W),d2                 ; $00000d13 [d6],d2
 L000054bc           dbf.w   d7,L000054a2
 L000054c0           add.w   d0,d4
 L000054c2           move.w  d4,L000067c2
@@ -4510,37 +4575,37 @@ L00005b02           clr.w   (a6)
 L00005b04           rts 
 
 L00005b06           move.w  #$0590,d0
-L00005b0a           sub.w   L000067bc,d0                        ; updated_batman_distance_walked
+L00005b0a           sub.w   L000067bc,d0                            ; updated_batman_distance_walked
 L00005b0e           addq.w  #$02,$000a(a6)
 L00005b12           movea.l $0008(a6),a5
 L00005b16           move.w  (a5),d2
 L00005b18           bpl.w   L000045bc
-L00005b1c           bsr.w   double_buffer_playfield         ; L000036fa
+L00005b1c           bsr.w   double_buffer_playfield                 ; L000036fa
 L00005b20           moveq   #$32,d0
 L00005b22           bsr.w   L00005e8c
 L00005b26           bra.w   L00005e3a
 
 
-L00005b2a           dc.w    $0001, $0001                    ; or.b #$01,d1
-L00005b2e           dc.w    $0001, $0001                    ; or.b #$01,d1
-L00005b32           dc.w    $0002, $0002                    ; or.b #$02,d2
-L00005b36           dc.w    $0002, $0002                    ; or.b #$02,d2
-L00005b3a           dc.w    $0003, $0003                    ; or.b #$03,d3
-L00005b3e           dc.w    $0003, $0003                    ; or.b #$03,d3
-L00005b42           dc.w    $0004, $0004                    ; or.b #$04,d4
-L00005b46           dc.w    $0004, $0004                    ; or.b #$04,d4
-L00005b4a           dc.w    $0002, $0002                    ; or.b #$02,d2
-L00005b4e           dc.w    $0002, $0002                    ; or.b #$02,d2
-L00005b52           dc.w    $0001, $0001                    ; or.b #$01,d1
-L00005b56           dc.w    $0001, $0001                    ; or.b #$01,d1
-L00005b5a           dc.w    $ffff                           ; illegal
+L00005b2a           dc.w    $0001, $0001                            ; or.b #$01,d1
+L00005b2e           dc.w    $0001, $0001                            ; or.b #$01,d1
+L00005b32           dc.w    $0002, $0002                            ; or.b #$02,d2
+L00005b36           dc.w    $0002, $0002                            ; or.b #$02,d2
+L00005b3a           dc.w    $0003, $0003                            ; or.b #$03,d3
+L00005b3e           dc.w    $0003, $0003                            ; or.b #$03,d3
+L00005b42           dc.w    $0004, $0004                            ; or.b #$04,d4
+L00005b46           dc.w    $0004, $0004                            ; or.b #$04,d4
+L00005b4a           dc.w    $0002, $0002                            ; or.b #$02,d2
+L00005b4e           dc.w    $0002, $0002                            ; or.b #$02,d2
+L00005b52           dc.w    $0001, $0001                            ; or.b #$01,d1
+L00005b56           dc.w    $0001, $0001                            ; or.b #$01,d1
+L00005b5a           dc.w    $ffff                                   ; illegal
 
 
-L00005b5c           move.w  #$0098,$0004(a6)                ; $00dff004
+L00005b5c           move.w  #$0098,$0004(a6)                        ; $00dff004
 L00005b62           lea.l   L000039c8,a5
 L00005b66           move.w  #$0085,d2
 L00005b6a           moveq   #$09,d7
-L00005b6c           cmp.w   $0006(a5),d2                    ; $00bfd106,d2
+L00005b6c           cmp.w   $0006(a5),d2                            ; $00bfd106,d2
 L00005b70           beq.b   L00005b7c
 L00005b72           lea.l   $0016(a5),a5
 L00005b76           dbf.w   d7,L00005b6c
@@ -4557,7 +4622,8 @@ L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a
 L00005b90           jsr     PLAYER_INIT_SFX_1                       ; chem.iff - Music/SFX player - init fsx audio channel - $00048008                               ; External Address - CHEM.IFF
 L00005b96           bset.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874
-L00005b9e           move.w  #$5290,L00003c92
+L00005b9e           move.l  #L00005290,L00003c90                    ; Set Self Modifying Code JSR in game_loop
+;L00005b9e           move.w  #$5290,L00003c92
 L00005ba4           clr.w   L000062fa
 L00005ba8           clr.w   L00006318
 L00005bac           move.w  $0004(a5),d0                            ; $00bfd104,d0
@@ -4696,13 +4762,13 @@ L00005d3a           rts
 
 
                     ; jack falls hits the vat?
-L00005d3c           btst.b  #$0000,L0000632d                ; test even/odd playfield buffer swap value
+L00005d3c           btst.b  #$0000,L0000632d                        ; test even/odd playfield buffer swap value
 L00005d42           beq.b   L00005d54
 L00005d44           movem.l d0-d1/a6,-(a7)
-L00005d48           moveq   #$0b,d0                         ; song number - $0b = Splash (jack in the vat)
-L00005d4a           jsr     PLAYER_INIT_SFX                 ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
+L00005d48           moveq   #$0b,d0                                 ; song number - $0b = Splash (jack in the vat)
+L00005d4a           jsr     PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
 L00005d50           movem.l (a7)+,d0-d1/a6
-L00005d54           move.w  playfield_swap_count,d2         ; L0000632c,d2
+L00005d54           move.w  playfield_swap_count,d2                 ; L0000632c,d2
 L00005d58           lsr.w   #$02,d2
 L00005d5a           and.w   #$0003,d2
 L00005d5e           addq.w  #$01,d2
@@ -4712,7 +4778,7 @@ L00005d68           bpl.b   L00005d54
 L00005d6a           lea.l   L000039c8,a5
 L00005d6e           move.w  #$0103,d2
 L00005d72           moveq   #$09,d7
-L00005d74           cmp.w   $0006(a5),d2            ; $00bfd106,d2
+L00005d74           cmp.w   $0006(a5),d2                            ; $00bfd106,d2
 L00005d78           beq.b   L00005d88
 L00005d7a           lea.l   $0016(a5),a5
 L00005d7e           dbf.w   d7,L00005d74
@@ -4722,11 +4788,12 @@ L00005d88           move.w  (a5),d2
 L00005d8a           beq.b   L00005d82
 L00005d8c           subq.w  #$01,d2
 L00005d8e           bne.w   L00005d02
-L00005d92           move.w  #$5290,L00003c92
+L00005d92           move.l  #L00005290,L00003c90                    ; Set Self Modifying Code JSR in game_loop
+;L00005d92           move.w  #$5290,L00003c92
 L00005d98           move.w  #$0021,(a5)
 L00005d9c           clr.w   L00006318
 L00005da0           move.w  #$ffff,L000062fa
-L00005da6           move.b  #2^PANELST1_TIMER_EXPIRED,PANEL_STATUS_1         ; Panel - Status Byte 1 - #$01 -> $0007c874
+L00005da6           move.b  #2^PANELST1_TIMER_EXPIRED,PANEL_STATUS_1    ; Panel - Status Byte 1 - #$01 -> $0007c874
 L00005dae           rts
 
 
@@ -4783,13 +4850,13 @@ L00005e48           move.w  #$00fa,d0
 L00005e4c           bsr.b   L00005e8c
 L00005e4e           moveq   #$64,d0
 L00005e50           bsr.w   L00005e8c
-L00005e54           bsr.w   L00004e28
+L00005e54           bsr.w   clear_backbuffer_playfield  ; L00004e28
 L00005e58           lea.l   L00003abd,a0
 L00005e5c           bsr.w   L000067ca
 L00005e60           bsr.w   L00003cc0
 L00005e64           moveq   #$64,d0
 L00005e66           bsr.w   L00005e8c
-L00005e6a           bsr.w   L00004e28
+L00005e6a           bsr.w   clear_backbuffer_playfield  ; L00004e28
 L00005e6e           lea.l   L00003acd,a0
 L00005e72           bsr.w   L000067ca
 L00005e76           bsr.w   L00003cc0
@@ -4861,7 +4928,8 @@ L00005f26           move.b  #$4f,$02(a0,d3.W)
 L00005f2c           move.b  #$4f,$03(a0,d3.W)
 L00005f32           bsr.w   L00005e98
 L00005f36           bcc.b   L00005f42
-L00005f38           move.w  #$53d6,L00003c92
+L00005f38           move.l  #L000053d6,L00003c90                    ; Set Self Modifying Code JSR in game_loop
+;L00005f38           move.w  #$53d6,L00003c92
 L00005f3e           clr.w   L00006318
 L00005f42           moveq   #$05,d2
 L00005f44           bsr.w   L000045bc
