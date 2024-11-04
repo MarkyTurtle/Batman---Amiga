@@ -2160,6 +2160,7 @@ L00004260           addq.w  #$04,d2
 L00004262           bsr.w   L000045bc
 L00004266           moveq   #$04,d2
 L00004268           bra.w   L0000458a
+
 L0000426c           move.w  d4,d2
 L0000426e           addq.w  #$04,d2
 L00004270           and.w   #$0007,d2
@@ -2436,10 +2437,10 @@ L00004586           bne.b   L000045bc
 L00004588           rts 
 
 
-
+; draw bad guy head/sprite 1
 L0000458a           add.w   $0006(a6),d2        ; $00dff006
 L0000458e           move.w  d2,d3
-L00004590           and.w   #$1fff,d3
+L00004590           and.w   #$1fff,d3           ; clamp value to max $1fff
 L00004594           lsl.w   #$01,d3
 L00004596           lea.l   L0000607c,a0
 L0000459a           move.w  d1,d4
@@ -2450,14 +2451,17 @@ L000045a4           sub.w   d5,d4
 L000045a6           asr.w   #$01,d4
 L000045a8           movem.w d0-d1/d4,$000e(a6)  ; $00dff00e
 L000045ae           movem.w d0-d1/a5-a6,-(a7)
-L000045b2           bsr.w   L000056f4
+L000045b2           bsr.w   draw_sprite         ; draw top/head of bad guy  ; L000056f4
 L000045b6           movem.w (a7)+,d0-d1/a5-a6
 L000045ba           rts 
 
 
 L000045bc           add.w   $0006(a6),d2        ; $00dff006
 L000045c0           movem.w d0-d1/a5-a6,-(a7)
-L000045c4           bsr.w   L000056f4
+L000045c4           bsr.w   draw_sprite         ; draw body & legs of bad guy ; L000056f4
+                                                ; draw acid drips
+                                                ; pipe leaks
+                                                ; draw bottom part of bad guy die/fall
 L000045c8           movem.w (a7)+,d0-d1/a5-a6
 L000045cc           rts 
 
@@ -2482,7 +2486,11 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
                     ;----------------------------------------------------------------------------------------------
                     ; Draw Projectiles (bombs, bullets, batarang)
                     ;----------------------------------------------------------------------------------------------
-                    ; draws the projectiles on the screen (bombs, bullets, player's batarang)
+                    ; draws the projectiles on the screen 
+                    ;  - bombs
+                    ;  - bullets
+                    ;  - player's batarang 
+                    ;  - end of bat-rope
                     ;
                     ; L00004894 - 8 byte structure (20 active projectiles?)
                     ;
@@ -2509,7 +2517,8 @@ L000045fe           lea.l   L00004866,a5
                     or.w    #$e000,d2               ;     is -ve set top 3 bits.
 .not_neg_02
                     add.w   #$003b,d2               ;     is +ve, add 59 to d2
-                    bsr.w   L000056f4
+                    bsr.w   draw_sprite             ; Draw projectile sprite - L000056f4
+                                                    ; bullets, bombs, batarang, grappling hook
                     move.w  (a7)+,d7                ; restore counter - d7
                     movea.l (a7)+,a6                ; restore data ptr - a6
 .skip_to_next
@@ -4061,10 +4070,12 @@ L000055f0           add.w   d2,d2
 L000055f2           add.w   d2,d1
 L000055f4           ext.l   d1
 L000055f6           add.l   playfield_buffer_2,d1       ;  L000036f6,d1
+
 L000055fa           movem.w L0000631a,d2-d3
 L00005600           add.w   d2,d2
 L00005602           add.w   d3,d3
-L00005604           beq.w   L000056a6
+L00005604           beq.w   L000056a6                   ; Jmp Draw Batman Sprite
+                    ; Draw BatRope as blitter line draw
 L00005608           and.w   #$e000,d0
 L0000560c           moveq   #$05,d4
 L0000560e           or.w    d0,d4
@@ -4089,50 +4100,70 @@ L00005638           or.w    #$0bca,d0
 L0000563c           swap.w  d0
 L0000563e           move.w  d4,d0
 L00005640           lea.l   $00dff000,a5
+                    ; blit wait
 L00005646           btst.b  #$0006,$00dff002
 L0000564e           bne.b   L00005646
-L00005650           move.w  d2,$0062(a5)
-L00005654           move.w  d6,$0064(a5)
-L00005658           move.w  #$002a,$0066(a5)
-L0000565e           move.w  #$002a,$0060(a5)
-L00005664           move.w  #$c000,$0074(a5)
-L0000566a           move.l  #$ffffffff,$0044(a5)
-L00005672           move.w  #$eeee,d6
-L00005676           moveq   #$03,d7
+                    ; set blitter for line draw
+L00005650           move.w  d2,$0062(a5)            ; Channel B modulo
+L00005654           move.w  d6,$0064(a5)            ; Channel A modulo
+L00005658           move.w  #$002a,$0066(a5)        ; Channel D modulo
+L0000565e           move.w  #$002a,$0060(a5)        ; Channel C modulo
+L00005664           move.w  #$c000,$0074(a5)        ; A Data Register
+L0000566a           move.l  #$ffffffff,$0044(a5)    ; Channel A First/Last word mask
+L00005672           move.w  #$eeee,d6               ; Line Pattern Data
+L00005676           moveq   #$03,d7                 ; bitplane count
+                    ; blit wait
 L00005678           btst.b  #$0006,$00dff002
 L00005680           bne.b   L00005678
-L00005682           move.w  d5,$0052(a5)
-L00005686           move.l  d0,$0040(a5)
-L0000568a           move.l  d1,$0048(a5)
-L0000568e           move.l  d1,$0054(a5)
-L00005692           move.w  d6,$0072(a5)
-L00005696           move.w  d3,$0058(a5)
-L0000569a           add.l   #$00001c8c,d1
-L000056a0           not.w   d6
-L000056a2           dbf.w   d7,L00005678
-L000056a6           movem.w L000067c2,d0-d1
-L000056ac           move.w  L000062ee,d2
+                    ; draw rope (Line Draw)
+L00005682           move.w  d5,$0052(a5)            ; A Channel
+L00005686           move.l  d0,$0040(a5)            ; BLTCON0
+L0000568a           move.l  d1,$0048(a5)            ; C Channel
+L0000568e           move.l  d1,$0054(a5)            ; D Channel
+L00005692           move.w  d6,$0072(a5)            ; B Data Register (line pattern)
+L00005696           move.w  d3,$0058(a5)            ; Blit Size
+L0000569a           add.l   #$00001c8c,d1           ; next bitplane dest offset
+L000056a0           not.w   d6                      ; invert mask/line pattern?
+L000056a2           dbf.w   d7,L00005678            ; loop next bitplane
+
+                    ; draw batman sprite
+L000056a6           movem.w L000067c2,d0-d1         ; Batman Display Co-Ords?
+L000056ac           move.w  L000062ee,d2            ; d2 = sprite details
 L000056b0           clr.w   d4
-L000056b2           move.b  d2,d4
-L000056b4           beq.w   L000056f2
+L000056b2           move.b  d2,d4                   ; d4 = sprite id
+L000056b4           beq.w   L000056f2               ; if (sprite id) == 0 then exit
 L000056b8           move.w  d1,d3
-L000056ba           lea.l   L0000607c,a0
-L000056be           add.w   d4,d4
-L000056c0           add.w   d3,d3
-L000056c2           sub.b   -2(a0,d4.W),d3         ; $fe(a0,d4.W),d3
+L000056ba           lea.l   L0000607c,a0            ; animation table? 
+L000056be           add.w   d4,d4                   ; d4 = d4 * 2
+L000056c0           add.w   d3,d3                   ; d3 = d4 * 2
+L000056c2           sub.b   -2(a0,d4.W),d3          ; $fe(a0,d4.W),d3
 L000056c6           asr.w   #$01,d3
 L000056c8           move.w  d3,L000062f0
-L000056cc           bsr.b   L000056f4
+                    ; draw first Batman Sprite
+L000056cc           bsr.b   draw_sprite             ; Draw Batman Part - L000056f4
+                                                    ;  - Batman walking Head (left/right)
+                                                    ;  - All of ladder climbing sprite
+                                                    ;  - swinging head
+                                                    ;  - throwing head & torso
+                                                    ;  - batman dead
+                    ; draw second Batman Sprite
 L000056ce           movem.w L000067c2,d0-d1
 L000056d4           move.w  L000062ec,d2
-L000056d8           move.b  d2,d2
-L000056da           beq.w   L000056f2
-L000056de           bsr.b   L000056f4
+L000056d8           move.b  d2,d2                   ; d2.b = $(62ed).b byte (sprite id?) 
+L000056da           beq.w   L000056f2               ; if (sprite id) == 0 then exit
+L000056de           bsr.b   draw_sprite             ; Draw Batman Walking Body - L000056f4
+                                                    ;  - not ladder climbing
+                                                    ;  - not swinging
+                                                    ;  - not throwing
+                    ; draw third Batman Sprite
 L000056e0           movem.w L000067c2,d0-d1
 L000056e6           move.w  L000062ea,d2
-L000056ea           move.b  d2,d2
-L000056ec           beq.w   L000056f2
-L000056f0           bsr.b   L000056f4
+L000056ea           move.b  d2,d2                   ; d2.b = $(52eb) (sprite id?)
+L000056ec           beq.w   L000056f2               ; if (sprite id == 0) then exit
+L000056f0           bsr.b   draw_sprite             ; Draw Batman walking legs - L000056f4
+                                                    ;  - not ladder climbing
+                                                    ;  - not swinging
+                                                    ;  - not throwing
 L000056f2           rts 
 
 
@@ -4145,7 +4176,7 @@ L000056f2           rts
                     ;   d1.w
                     ;   d2.w - index into table $63fe
                     ;
-draw_sprite
+draw_sprite                                     ; original address $L000056f4
 L000056f4           movea.l L000062fe,a1
 L000056f8           add.w   d1,d1               ; d1 = d1 * 2
 L000056fa           asl.w   #$03,d2             ; d2 = d2 * 8
@@ -5031,6 +5062,9 @@ L00006076           addq.w  #$01,d2
 L00006078           bra.w   L000045bc
 
                     even
+
+
+; animation table/sprite anim table?
 L0000607c           dc.w $2A02, $2005, $2005, $2004, $1505, $1506, $1506, $1507         ;*. . . .........
 L0000608C           dc.w $1507, $1506, $1507, $1507, $2C10, $2C08, $1402, $210D         ;........,.,...!.
 L0000609C           dc.w $2B05, $1905, $2504, $1706, $1702, $2005, $0F06, $0006         ;+...%..... .....
@@ -5076,6 +5110,7 @@ L000062d6           dc.w $1503
 L000062d8           dc.w $1503
 L000062da           dc.w $1503 
 L000062dc           dc.w $1503
+
 L000062de           dc.w $0001, $0002, $0003, $0004, $0005, $0007
 
 
