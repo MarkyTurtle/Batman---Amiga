@@ -3008,31 +3008,34 @@ L00004ad0           dbf.w   d1,L00004a60
 L00004ad4           rts 
 
 
-; a4 = destination chipmemptr, d1 = pixel offset, d7 = counter
+; a4 = destination chipmemptr, 
+; d1 = source pixel offset, d7 = counter
 ; L0000630a = base gfx ptr $0000A07C 
-L00004ad6           movea.l L0000630a,a2        ; [0000a07c]
+L00004ad6           movea.l L0000630a,a2        ; a2 = base src gfx ptr?
+
 L00004ada           move.w  d1,d2               ; d1, d2 = Pixel Offset 
 L00004adc           lsr.w   #$03,d2             ; d2 = byte offset
-L00004ade           move.w  L000067be,d1        ; 
-L00004ae2           move.w  d1,d0
+L00004ade           move.w  L000067be,d1        ; d1 = $00f0            - source x/y of gfx?
+L00004ae2           move.w  d1,d0               ; d0 = $00f0
 L00004ae4           and.w   #$0007,d0           ; mask low 3 bits (0-7)
 L00004ae8           move.w  d0,d5               ; d0, d5 = low 3 bits
 L00004aea           not.w   d5
 L00004aec           and.w   #$0007,d5
 L00004af0           lsl.w   #$04,d0             ; d0 = multiply by 16
-L00004af2           lsr.w   #$03,d1             ; d1 = divide by 8
+L00004af2           lsr.w   #$03,d1             ; d1 = divide by 8 (d1 = $0f)
 L00004af4           lea.l   MAPGR_BASE,a0       ; MAPGR.IFF (addr $8002)
-L00004afa           move.w  (a0),d4             ; d4 = word value (initial value $00c0 = 192)
+L00004afa           move.w  (a0),d4             ; d4 = word value (initial value $00c0 = 192) gfx width?
 L00004afc           mulu.w  d4,d1               ; d1 = d1 * 192
 L00004afe           add.w   d2,d1               ; d1 = d1 + byte offset
-
 L00004b00           lea.l   $7a(a0,d1.W),a0     ; Source GFX PTR
-L00004b04           moveq   #$56,d7             ; d7 = outer counter $57 = 87 dec
-L00004b06           move.w  L00006312,d1
-L00004b0a           moveq   #$56,d6             ; d6 = inner counter $57 = 87 dec
-L00004b0c           sub.w   d1,d6
+
+L00004b04           moveq   #$56,d7             ; d7 = outer counter $57 = 87 dec (*2 = 174 - height of display)
+L00004b06           move.w  L00006312,d1        ; d1 = Destination Offset Y
+L00004b0a           moveq   #$56,d6             ; d6 = inner counter $57 = 87 dec (*2 = 174 - height of display)
+L00004b0c           sub.w   d1,d6               ; (start y / gfx height)
 L00004b0e           mulu.w  #$0054,d1           ; $54 = 84 dec
-L00004b12           lea.l   $00(a4,d1.L),a1     
+L00004b12           lea.l   $00(a4,d1.L),a1     ; a1 = DESTINATION PTR   
+
 L00004b16           clr.w   d1
 L00004b18           move.b  (a0),d1             ; d1 = source byte
 L00004b1a           asl.w   #$07,d1             ; d1 = d1 * 64
@@ -4373,7 +4376,7 @@ L000058b0           lsr.w   #$03,d0                     ; D0.w divide by 8 (d0 =
 L000058b2           add.w   d0,d0                       ; D0.w multiply by 2 (word offset)
 L000058b4           movea.l #CHIPMEM_BUFFER,a4          ; #$0005a36c,a4 ; External Address 
 L000058ba           adda.l  d0,a4                       ; a4 = location in chip mem buffer (gfx base address?)
-L000058bc           move.l  a4,L0000631e                ; store location in chip mem buffer
+L000058bc           move.l  a4,L0000631e                ; SRC or DEST address
 
 L000058c0           clr.w   L00006312
 L000058c4           clr.l   d1
@@ -5152,7 +5155,7 @@ L0000630a           dc.l $0000A07C                  ; base level gfx ptr?
 
 L0000630e           dc.w $0000
 L00006310           dc.w $0000
-L00006312           dc.w $0000
+L00006312           dc.w $0000                      ; Y co-ord
 L00006314           dc.w $0000
 L00006316           dc.w $0000
 L00006318           dc.w $0000
