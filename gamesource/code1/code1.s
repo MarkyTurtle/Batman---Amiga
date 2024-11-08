@@ -2909,7 +2909,7 @@ L000049be           cmp.w   #$0057,d4
 L000049c2           bcs.b   L000049c8
 L000049c4           sub.w   #$0057,d4
 L000049c8           move.w  d4,L00006312
-L000049cc           bsr.w   L00004a5e
+L000049cc           bsr.w   draw_background_screen_vertical         ; L00004a5e
 L000049d0           bra.w   L000049ec
 L000049d4           move.w  L00006312,d2
 L000049d8           add.w   d1,d2
@@ -2918,7 +2918,7 @@ L000049dc           add.w   #$0057,d2
 L000049e0           move.w  d2,L00006312
 L000049e4           add.w   d1,d3
 L000049e6           neg.w   d1
-L000049e8           bsr.w   L00004a5e
+L000049e8           bsr.w   draw_background_screen_vertical         ; L00004a5e
 
 L000049ec           move.w  L000067c2,d0
 L000049f0           sub.w   L000067c8,d0
@@ -2957,11 +2957,12 @@ L00004a4c           lea.l   $0028(a4),a4
 L00004a50           bra.b   L00004a58
 L00004a52           subq.w  #$02,a4             ; subaq.w
 L00004a54           move.l  a4,L0000631e
-L00004a58           bsr.w   L00004ad6
+L00004a58           bsr.w   draw_background_screen_horizontal   ; L00004ad6
 L00004a5c           rts  
 
 
-
+; draw background screen blocks for Vertical Scroll
+draw_background_screen_vertical
 L00004a5e           subq.w  #$01,d1
 L00004a60           move.w  d3,d4
 L00004a62           and.w   #$0007,d4
@@ -3008,24 +3009,34 @@ L00004ad0           dbf.w   d1,L00004a60
 L00004ad4           rts 
 
 
+
+; draw background screen blocks for Horizonal Scroll
 ; a4 = destination chipmemptr, 
 ; d1 = source pixel offset, d7 = counter
 ; L0000630a = base gfx ptr $0000A07C 
-L00004ad6           movea.l L0000630a,a2        ; a2 = base src gfx ptr?
+draw_background_screen_horizontal
+L00004ad6           movea.l L0000630a,a2        ; a2 = src gfx address (sprite sheet?)
 
-L00004ada           move.w  d1,d2               ; d1, d2 = Pixel Offset 
-L00004adc           lsr.w   #$03,d2             ; d2 = byte offset
+                    ; d1 = source gfx offset value
+L00004ada           move.w  d1,d2               ; d1, d2 = source gfx offset value 
+L00004adc           lsr.w   #$03,d2             ; d2 = source gfx byte offset
+
 L00004ade           move.w  L000067be,d1        ; d1 = $00f0            - source x/y of gfx?
 L00004ae2           move.w  d1,d0               ; d0 = $00f0
 L00004ae4           and.w   #$0007,d0           ; mask low 3 bits (0-7)
 L00004ae8           move.w  d0,d5               ; d0, d5 = low 3 bits
 L00004aea           not.w   d5
 L00004aec           and.w   #$0007,d5
+
+                    
 L00004af0           lsl.w   #$04,d0             ; d0 = multiply by 16
+
+                    ; d1 = Y source co-ord (source gfx)
+                    ; d2 = X byte co-ord (source gfx)
 L00004af2           lsr.w   #$03,d1             ; d1 = divide by 8 (d1 = $0f)
 L00004af4           lea.l   MAPGR_BASE,a0       ; MAPGR.IFF (addr $8002)
-L00004afa           move.w  (a0),d4             ; d4 = word value (initial value $00c0 = 192) gfx width?
-L00004afc           mulu.w  d4,d1               ; d1 = d1 * 192
+L00004afa           move.w  (a0),d4             ; d4 = source gfx width (192 bytes? 48 bytes per plane interleaved? 384 pixels wide)
+L00004afc           mulu.w  d4,d1               ; d1 = d1 * width
 L00004afe           add.w   d2,d1               ; d1 = d1 + byte offset
 L00004b00           lea.l   $7a(a0,d1.W),a0     ; Source GFX PTR
 
@@ -3036,29 +3047,41 @@ L00004b0c           sub.w   d1,d6               ; (start y / gfx height)
 L00004b0e           mulu.w  #$0054,d1           ; $54 = 84 dec
 L00004b12           lea.l   $00(a4,d1.L),a1     ; a1 = DESTINATION PTR   
 
+calc_gfx_offset
 L00004b16           clr.w   d1
 L00004b18           move.b  (a0),d1             ; d1 = source byte
-L00004b1a           asl.w   #$07,d1             ; d1 = d1 * 64
-L00004b1c           add.w   d1,d0
-L00004b1e           bra.b   L00004b2c
-L00004b20           dbf.w   d5,L00004b32
+L00004b1a           asl.w   #$07,d1             ; d1 = d1 * 128
+L00004b1c           add.w   d1,d0               ; d0 = gfx offet
+L00004b1e           bra.b   start_gfx_copy      ; L00004b2c
+                    ;---------------------
+
+L00004b20           dbf.w   d5,copy_2_rasters   ; L00004b32
 L00004b24           moveq   #$07,d5
 L00004b26           clr.w   d0
 L00004b28           move.b  (a0),d0
 L00004b2a           asl.w   #$07,d0
-L00004b2c           lea.l   $00(a2,d0.W),a3     ; $0006b778,a3
+
+start_gfx_copy
+L00004b2c           lea.l   $00(a2,d0.W),a3     ; D0 = gfx start offset, a2 = gfx base address
 L00004b30           adda.w  d4,a0
+
+                    ; copy 16 bits to 4 bitplanes
+                    ; do 2 scan lines per loop iteration
+                    ; source data is interleaved bitmap data
+                    ; $1c81 = 7308 bytes
+                    ; 7308 / 42 = 174 rasters high
+copy_2_rasters
 L00004b32           move.w  (a3)+,(a1)           ; line 0, bpl0 (42 byte wide display?)
 L00004b34           move.w  (a3)+,$1c8c(a1)      ; line 0, bpl1 
 L00004b38           move.w  (a3)+,$3918(a1)      ; line 0, bpl2
 L00004b3c           move.w  (a3)+,$55a4(a1)      ; line 0, bpl3
-L00004b40           move.w  (a3)+,$002a(a1)      ; line 1, bpl0 - 42(a1)
-L00004b44           move.w  (a3)+,$1cb6(a1)      ; line 1, bpl1
-L00004b48           move.w  (a3)+,$3942(a1)      ; line 1, bpl2 
-L00004b4c           move.w  (a3)+,$55ce(a1)      ; line 1, bpl3
+L00004b40           move.w  (a3)+,$002a(a1)      ; line 1, bpl0 + 42(a1)
+L00004b44           move.w  (a3)+,$1cb6(a1)      ; line 1, bpl1 + 42(a1)
+L00004b48           move.w  (a3)+,$3942(a1)      ; line 1, bpl2 + 42(a1)
+L00004b4c           move.w  (a3)+,$55ce(a1)      ; line 1, bpl3 + 42(a1)
 L00004b50           lea.l   $0054(a1),a1         ; A1 = a1 + 84 bytes (skip 2 rasters)
 L00004b54           dbf.w   d6,L00004b5c
-L00004b58           lea.l   -$1c8c(a1),a1        ; a1 = a1 + 7308 bytes 
+L00004b58           lea.l   -$1c8c(a1),a1        ; subtract 1 bitplane from the destination.
 L00004b5c           dbf.w   d7,L00004b20            ; Loop 87 times
 L00004b60           rts 
 
@@ -4383,7 +4406,7 @@ L000058c4           clr.l   d1
 L000058c6           move.w  L000067bc,d1                ; Pixel Offset Value? (updated_batman_distance_walked)
 L000058ca           moveq   #$14,d7                     ; counter = $15 + $1 = $16 (22 dec)
 L000058cc           movem.l d1/d7/a4,-(a7)
-L000058d0           bsr.w   L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
+L000058d0           bsr.w   draw_background_screen_horizontal ; L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
 L000058d4           movem.l (a7)+,d1/d7/a4
 L000058d8           addq.w  #$08,d1                     ; increase Pixel Offset by 8 bits?
 L000058da           addq.l  #$02,a4                     ; increase gfx ptr by 16 bits
