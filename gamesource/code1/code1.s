@@ -4198,18 +4198,19 @@ L000056f2           rts
                     ; -- Draw Sprite
                     ;------------------------------------------------------------------------
                     ; in:
-                    ;   d0.w
-                    ;   d1.w
-                    ;   d2.w - index into table $63fe
+                    ;   d0.w - Sprite X Position
+                    ;   d1.w - Sprite Y Position
+                    ;   d2.w - index into table $63fe (Sprite id?)
                     ;
 draw_sprite                                     ; original address $L000056f4
-L000056f4           movea.l L000062fe,a1
+L000056f4           movea.l L000062fe,a1        ; Sprite Structure Data Ptr? 
 L000056f8           add.w   d1,d1               ; d1 = d1 * 2
 L000056fa           asl.w   #$03,d2             ; d2 = d2 * 8
 
 L000056fc           lea.l   -8(a1,d2.W),a1      ; $f8(a1,d2.W),a1
-L00005700           bcc.b   L00005724           ; last bit shifted out by asl = 0 then L00005724
+L00005700           bcc.b   L00005724           ; if d2 < 8192 (8k) then JMP 5724
 
+                    ; do enemy sprite                    
 L00005702           move.b  (a1)+,d4
 L00005704           ext.w   d4
 L00005706           sub.w   d4,d1
@@ -4227,9 +4228,10 @@ L0000571c           movea.l (a1)+,a0
 L0000571e           adda.l  L00006302,a0
 L00005722           bra.b   L0000573a
 
-L00005724           move.b  (a1)+,d4
-L00005726           ext.w   d4
-L00005728           sub.w   d4,d1
+                    ; do batman sprite
+L00005724           move.b  (a1)+,d4                ; d4 = offset value.b
+L00005726           ext.w   d4                      ; d4 = offset value.w
+L00005728           sub.w   d4,d1                   ; d1 = d1 = d4
 L0000572a           move.b  (a1)+,d4
 L0000572c           ext.w   d4
 L0000572e           sub.w   d4,d0
@@ -4237,40 +4239,43 @@ L00005730           clr.w   d2
 L00005732           move.b  (a1)+,d2
 L00005734           clr.w   d3
 L00005736           move.b  (a1)+,d3
-L00005738           movea.l (a1)+,a0
+L00005738           movea.l (a1)+,a0                        ; a0 = start of gfx mask data
 
 L0000573a           move.w  d3,d4
 L0000573c           mulu.w  d2,d4
 L0000573e           add.l   d4,d4
-L00005740           movea.l d4,a1
+L00005740           movea.l d4,a1                           ; a1 = size of src mask data?
 L00005742           move.w  d1,d1
 L00005744           bpl.b   L00005758
 L00005746           neg.w   d1
 L00005748           sub.w   d1,d3
 L0000574a           bls.w   L00005852
 L0000574e           mulu.w  d2,d1
-L00005750           adda.l  d1,a0
-L00005752           adda.l  d1,a0
+L00005750           adda.l  d1,a0                           ; a0 = start of gfx mask data
+L00005752           adda.l  d1,a0                           ; a0 = start of gfx mask data
 L00005754           moveq   #$00,d1
 L00005756           bra.b   L00005768
-L00005758           move.w  #$00ad,d6
-L0000575c           sub.w   d1,d6
+
+L00005758           move.w  #$00ad,d6                       ; d6 = bit shift (src gfx) #$ad = 173 decinal
+L0000575c           sub.w   d1,d6                           ; d6 = bit shift (src gfx)
 L0000575e           bls.w   L00005852
-L00005762           cmp.w   d3,d6
+L00005762           cmp.w   d3,d6                           ; d6 = bit shift (src gfx)
 L00005764           bpl.b   L00005768
-L00005766           move.w  d6,d3
-L00005768           MOVE.L #$ffffffff,D7
+L00005766           move.w  d6,d3                           ; d6 = bit shift (src gfx)
+L00005768           MOVE.L #$ffffffff,D7                    ; d7 = first word mask & last word mask
 L0000576a           move.w  d2,d5
-L0000576c           moveq   #$07,d6
-L0000576e           and.w   d0,d6
+
+L0000576c           moveq   #$07,d6                         ; d6 = bit shift (src gfx)
+L0000576e           and.w   d0,d6                           ; d6 = bit shift (src gfx)
+
 L00005770           bne.b   L00005794
 L00005772           asr.w   #$03,d0
 L00005774           bpl.b   L00005784
 L00005776           neg.w   d0
 L00005778           sub.w   d0,d5
 L0000577a           bls.w   L00005852
-L0000577e           adda.w  d0,a0
-L00005780           adda.w  d0,a0
+L0000577e           adda.w  d0,a0                           ; a0 = start of gfx mask data
+L00005780           adda.w  d0,a0                           ; a0 = start of gfx mask data
 L00005782           moveq   #$00,d0
 L00005784           moveq   #$14,d4
 L00005786           sub.w   d0,d4
@@ -4279,7 +4284,7 @@ L0000578c           cmp.w   d4,d5
 L0000578e           bls.b   L000057ce
 L00005790           move.w  d4,d5
 L00005792           bra.b   L000057ce
-L00005794           clr.w   d7
+L00005794           clr.w   d7                              ; d7 = first word mask & last word mask
 L00005796           addq.w  #$01,d5
 L00005798           asr.w   #$03,d0
 L0000579a           bpl.b   L000057b8
@@ -4287,15 +4292,15 @@ L0000579c           neg.w   d0
 L0000579e           subq.w  #$01,d0
 L000057a0           sub.w   d0,d5
 L000057a2           bls.w   L00005852
-L000057a6           adda.w  d0,a0
-L000057a8           adda.w  d0,a0
+L000057a6           adda.w  d0,a0                           ; a0 = start of gfx mask data
+L000057a8           adda.w  d0,a0                           ; a0 = start of gfx mask data
 L000057aa           MOVE.L #$ffffffff,D0
 L000057ac           moveq   #$08,d4
-L000057ae           sub.w   d6,d4
+L000057ae           sub.w   d6,d4                           ; d6 = bit shift (src gfx)
 L000057b0           add.w   d4,d4
 L000057b2           lsr.w   d4,d0
 L000057b4           swap.w  d0
-L000057b6           and.l   d0,d7
+L000057b6           and.l   d0,d7                           ; d7 = first word mask & last word mask
 L000057b8           moveq   #$14,d4
 L000057ba           sub.w   d0,d4
 L000057bc           ble.w   L00005852
@@ -4303,9 +4308,9 @@ L000057c0           cmp.w   d4,d5
 L000057c2           bls.b   L000057ce
 L000057c4           move.w  d4,d5
 L000057c6           MOVE.L #$ffffffff,D4
-L000057c8           lsl.w   d6,d4
-L000057ca           lsl.w   d6,d4
-L000057cc           move.w  d4,d7
+L000057c8           lsl.w   d6,d4                           ; d6 = bit shift (src gfx)
+L000057ca           lsl.w   d6,d4                           ; d6 = bit shift (src gfx)
+L000057cc           move.w  d4,d7                           ; d7 = first word mask & last word mask
 L000057ce           asl.w   #$06,d3
 L000057d0           add.w   d5,d3
 L000057d2           sub.w   d5,d2
@@ -4320,12 +4325,18 @@ L000057e4           adda.w  d0,a2
 L000057e6           mulu.w  #$002a,d1                       ; d2 = d2 * 42 (y value)
 L000057ea           adda.l  d1,a2                           ; a2 = destination address for blit.
 
-L000057ec           ext.l   d6
-L000057ee           ror.l   #$03,d6                         ; 
+L000057ec           ext.l   d6                              ; sign extend to long
+L000057ee           ror.l   #$03,d6                         ; d6 = bit shift value
 L000057f0           move.l  d6,d0                           ; copy d6 -> d0
 L000057f2           swap.w  d0                              ; swap high/low words
 L000057f4           or.l    d0,d6                           ; bits 15-12 src b shift
 
+                    ; d2 = source data modulo
+                    ; d4 = dest data modulo
+                    ; d6 = bltcon0 & bltcon1 (shift A & B, minterms)
+                    ; d7 = first word mask & last word mask
+                    ; a0 = gfx data ptr (starts with mask data)
+                    ; a1 = offset to gfx data (size of mask data)
 L000057f6           movea.l #$00dff000,a5
 L000057fc           or.l    #$0fca0000,d6                   ; No src A shift, use all DMA channels, Logic = $ca (cookie cutter)
                                                             ; use ABCD, D=AB+/AC
@@ -4335,20 +4346,20 @@ L000057fc           or.l    #$0fca0000,d6                   ; No src A shift, us
                                                             ; D = Combined SRC & Dest
 L00005802           btst.b  #$0006,$00dff002
 L0000580a           bne.b   L00005802
-L0000580c           move.w  d2,$0064(a5)
-L00005810           move.w  d2,$0062(a5)
-L00005814           move.l  d7,$0044(a5)
-L00005818           move.w  d4,$0060(a5)
-L0000581c           move.w  d4,$0066(a5)
+L0000580c           move.w  d2,BLTAMOD(a5)                  ; $0064(a5)
+L00005810           move.w  d2,BLTBMOD(a5)                  ; $0062(a5)
+L00005814           move.l  d7,BLTAFWM(a5)                  ; $0044(a5)
+L00005818           move.w  d4,BLTCMOD(a5)                  ; $0060(a5)
+L0000581c           move.w  d4,BLTDMOD(a5)                  ; $0066(a5)
 L00005820           move.l  d6,BLTCON0(a5)                  ; $0040(a5)
-L00005824           lea.l   (a0),a3
+L00005824           lea.l   (a0),a3                         ; a0 & a3 = gfx mask data
 
 L00005826           moveq   #$03,d7                         ; d7 = 4 bitplanes
                     ; bitplane blit loop
 L00005828           btst.b  #$0006,$00dff002
 L00005830           bne.b   L00005828
 
-L00005832           lea.l   $00(a0,a1.L),a0
+L00005832           lea.l   $00(a0,a1.L),a0                 ; a0 = gfx data
 L00005836           move.l  a3,BLTAPT(a5)                   ;  $0050(a5) - A Channel = MASK GFX                  
 L0000583a           move.l  a0,BLTBPT(a5)                   ;  $004c(a5) - B Channel = SPRTIE GFX
 L0000583e           move.l  a2,BLTCPT(a5)                   ;  $0048(a5) ; C Channel = Dest GFX
