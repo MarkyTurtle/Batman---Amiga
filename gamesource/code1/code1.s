@@ -4211,10 +4211,10 @@ L000056fc           lea.l   -8(a1,d2.W),a1      ; $f8(a1,d2.W),a1
 L00005700           bcc.b   L00005724           ; if d2 < 8192 (8k) then JMP 5724
 
                     ; Left Facing Sprite                  
-L00005702           move.b  (a1)+,d4
+L00005702           move.b  (a1)+,d4            ; get sprite y offset
 L00005704           ext.w   d4
 L00005706           sub.w   d4,d1
-L00005708           move.b  (a1)+,d4
+L00005708           move.b  (a1)+,d4            ; get sprite x offset
 L0000570a           ext.w   d4
 L0000570c           add.w   d4,d0
 L0000570e           clr.w   d2
@@ -4231,16 +4231,16 @@ L0000571e           adda.l  L00006302,a0            ; additional code for left f
 L00005722           bra.b   L0000573a
 
                     ; Right Facing Sprite
-L00005724           move.b  (a1)+,d4                ; d4 = offset value.b
+L00005724           move.b  (a1)+,d4                ; get sprite y ofset - d4 = offset value.b
 L00005726           ext.w   d4                      ; d4 = offset value.w
 L00005728           sub.w   d4,d1                   ; Subtract d4 from Y co-ordinate value
-L0000572a           move.b  (a1)+,d4                ; d4 = offset value.b
+L0000572a           move.b  (a1)+,d4                ; get sprite x offset - d4 = offset value.b
 L0000572c           ext.w   d4                      ; d4 = offset value.w
 L0000572e           sub.w   d4,d0                   ; Subtract d4 from X co-ordinate value
 L00005730           clr.w   d2                      ; init d2 = #$0.w
-L00005732           move.b  (a1)+,d2                ; d2 = value.b
+L00005732           move.b  (a1)+,d2                ; sprite width/height - d2 = value.b
 L00005734           clr.w   d3                      ; init d3 = #$0.w
-L00005736           move.b  (a1)+,d3
+L00005736           move.b  (a1)+,d3                ; sprite width/height - 
 L00005738           movea.l (a1)+,a0                ; a0 = start of gfx mask data
 
                     ; left/right facing common processing
@@ -4279,12 +4279,17 @@ L00005762           cmp.w   d3,d6                   ; d3 = bottom of sprite
 L00005764           bpl.b   L00005768
 L00005766           move.w  d6,d3                   ; bottom  of sprite = end of display
 
+
+                    ; d2 = width of sprite (bytes)
+                    ; d1 = start raster of sprite display
+                    ; d3 = last raster of sprite display
+                    ; a0 = start address offset of gfx mask data
 sprite_x_clipping
 L00005768           MOVE.L  #$ffffffff,D7                   ; d7 = first word mask & last word mask
 L0000576a           move.w  d2,d5
 
 L0000576c           moveq   #$07,d6                         ; d6 = bit shift (src gfx)
-L0000576e           and.w   d0,d6                           ; d6 = bit shift (src gfx)
+L0000576e           and.w   d0,d6                           ; d6 = shift value. d6 = bit shift (src gfx)
 
 L00005770           bne.b   L00005794
 L00005772           asr.w   #$03,d0
@@ -4302,9 +4307,10 @@ L0000578c           cmp.w   d4,d5
 L0000578e           bls.b   L000057ce
 L00005790           move.w  d4,d5
 L00005792           bra.b   L000057ce
+
 L00005794           clr.w   d7                              ; d7 = first word mask & last word mask
-L00005796           addq.w  #$01,d5
-L00005798           asr.w   #$03,d0
+L00005796           addq.w  #$01,d5                     ; add 1 to copy of width (words)
+L00005798           asr.w   #$03,d0                     ; divide x by 8
 L0000579a           bpl.b   L000057b8
 L0000579c           neg.w   d0
 L0000579e           subq.w  #$01,d0
@@ -4329,6 +4335,8 @@ L000057c6           MOVE.L #$ffffffff,D4
 L000057c8           lsl.w   d6,d4                           ; d6 = bit shift (src gfx)
 L000057ca           lsl.w   d6,d4                           ; d6 = bit shift (src gfx)
 L000057cc           move.w  d4,d7                           ; d7 = first word mask & last word mask
+
+
 L000057ce           asl.w   #$06,d3
 L000057d0           add.w   d5,d3
 L000057d2           sub.w   d5,d2
