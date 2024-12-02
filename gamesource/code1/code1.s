@@ -4197,17 +4197,34 @@ L000056f2           rts
                     ;------------------------------------------------------------------------
                     ; -- Draw Sprite
                     ;------------------------------------------------------------------------
+                    ; This routine blits a sprite to the destination using a cookie cut blit.
+                    ; There's a lot of faf around clipping sprites and working out shift, mask
+                    ; and blit sizes for clipping around the screen edges.
+                    ; This might be fine for a general sprite blit routine.
+                    ; Could have avoided a lot of the faf by giving sprites a max size and
+                    ; adding a bit of buffer around the screen edge -- maybe???
+                    ;
+                    ; Sprite X & Y is held in a byte value and multipled by 2 to give actual screen position.
+                    ;           Sprites have a position resolution of 2 pixels.
+                    ;
+                    ;   sprite_array_ptr ($62FE) holds a sprite draw structure
+                    ;       Byte 0 - Y Offset
+                    ;       Byte 1 - X Offset
+                    ;       Byte 2 - Sprite Width in Words
+                    ;       Byte 3 - Sprite Height in Lines
+                    ;       Long 4-7 - Sprite Data Memory Pointer (Mask, bpl0, bpl1, bpl2, bpl3)
+                    ;
                     ; in:
                     ;   d0.w - Sprite X Position 
                     ;   d1.w - Sprite Y Position
-                    ;   d2.w - index into table $63fe (Sprite id?)
+                    ;   d2.w - index into table $63fe (Sprite id - 1 based array index)
                     ;
-draw_sprite                                     ; original address $L000056f4
-L000056f4           movea.l L000062fe,a1        ; Sprite Structure Data Ptr? 
-L000056f8           add.w   d1,d1               ; d1 = d1 * 2
-L000056fa           asl.w   #$03,d2             ; d2 = d2 * 8 (sprite structure 8 bytes?)
+draw_sprite                                         ; original address $L000056f4
+L000056f4           movea.l sprite_array_ptr,a1     ; L000062fe,a1        ; Sprite Structure Data Pointer
+L000056f8           add.w   d1,d1                   ; d1 = d1 * 2
+L000056fa           asl.w   #$03,d2                 ; d2 = d2 * 8 (sprite structure 8 bytes?)
 
-L000056fc           lea.l   -8(a1,d2.W),a1      ; $f8(a1,d2.W),a1
+L000056fc           lea.l   -8(a1,d2.W),a1      ; a1 = sprite data structure.
 L00005700           bcc.b   L00005724           ; if d2 < 8192 (8k) then JMP 5724
 
                     ; Left Facing Sprite                  
@@ -4241,13 +4258,13 @@ L00005730           clr.w   d2                      ; init d2 = #$0.w
 L00005732           move.b  (a1)+,d2                ; sprite width/height - d2 = value.b
 L00005734           clr.w   d3                      ; init d3 = #$0.w
 L00005736           move.b  (a1)+,d3                ; sprite width/height - 
-L00005738           movea.l (a1)+,a0                ; a0 = start of gfx mask data
+L00005738           movea.l (a1)+,a0                ; a0 = start of gfx mask data (and sprite data follows)
 
                     ; left/right facing common processing
 L0000573a           move.w  d3,d4
 L0000573c           mulu.w  d2,d4                   ; d4 = d3 * d2
 L0000573e           add.l   d4,d4                   ; d4 = d4 * 2
-L00005740           movea.l d4,a1                   ; a1 = offset from mask to gfx data
+L00005740           movea.l d4,a1                   ; a1 = size of sprite bitplane (bytes)
 
 sprite_y_clipping
                     ; check top of sprite on screen
@@ -4256,7 +4273,7 @@ L00005744           bpl.b   L00005758               ; top of sprite Y is +ve
                     ; top of sprite is -ve (i.e. off screen)
 L00005746           neg.w   d1                      ; y = y * -1
 L00005748           sub.w   d1,d3                   ; subtract sprite top from bottom
-L0000574a           bls.w   L00005852               ; exit if whole sprite is off top of display
+L0000574a           bls.w   exit_draw_sprite        ; L00005852 ; exit if whole sprite is off top of display
 
                     ; adjust gfx ptr 
                     ; clip top of sprite by the amount off top of display
@@ -4279,122 +4296,158 @@ L00005762           cmp.w   d3,d6                   ; d3 = bottom of sprite
 L00005764           bpl.b   L00005768
 L00005766           move.w  d6,d3                   ; bottom  of sprite = end of display
 
-
-                    ; d2 = width of sprite (bytes)
-                    ; d1 = start raster of sprite display
-                    ; d3 = last raster of sprite display
+                    ; d0 = X Position
+                    ; d2 = width of sprite (words)
+                    ; d1 = start raster of sprite display - Y co-ord
+                    ; d3 = last raster of sprite display  - Y + height
                     ; a0 = start address offset of gfx mask data
 sprite_x_clipping
-L00005768           MOVE.L  #$ffffffff,D7                   ; d7 = first word mask & last word mask
+L00005768           MOVE.L  #$ffffffff,D7                   ; d7 = first word mask & last word mask (no mask)
 L0000576a           move.w  d2,d5
 
 L0000576c           moveq   #$07,d6                         ; d6 = bit shift (src gfx)
 L0000576e           and.w   d0,d6                           ; d6 = shift value. d6 = bit shift (src gfx)
+L00005770           bne.b   L00005794                       ; shift is > 0
 
-L00005770           bne.b   L00005794
-L00005772           asr.w   #$03,d0
+                    ; shift value = 0 (on a byte boundary)
+L00005772           asr.w   #$03,d0                         ; divide x by 8 to get byte offset
 L00005774           bpl.b   L00005784
+                    ; byte offset is -ve
 L00005776           neg.w   d0
-L00005778           sub.w   d0,d5
-L0000577a           bls.w   exit_draw_sprite                ; L00005852
+L00005778           sub.w   d0,d5                           ; subtract width from sprite
+L0000577a           bls.w   exit_draw_sprite                ; sprite is off the left hand side of thhe screen
+                    ; clip sprite left ptr
 L0000577e           adda.w  d0,a0                           ; a0 = start of gfx mask data
 L00005780           adda.w  d0,a0                           ; a0 = start of gfx mask data
 L00005782           moveq   #$00,d0
-L00005784           moveq   #$14,d4
-L00005786           sub.w   d0,d4
-L00005788           ble.w   exit_draw_sprite                ; L00005852
+                    ; byte offset is +ve
+L00005784           moveq   #$14,d4                         ; d4 = #$14 (20 decimal #of words screen width?)
+L00005786           sub.w   d0,d4                           ; 
+L00005788           ble.w   exit_draw_sprite                ; sprite is off screen right hand side
 L0000578c           cmp.w   d4,d5
 L0000578e           bls.b   L000057ce
-L00005790           move.w  d4,d5
+L00005790           move.w  d4,d5                           ; trim sprite width (clip right)
 L00005792           bra.b   L000057ce
 
+
+                    ; shift value is > 0
+                    ; d0 = X Position
+                    ; d2 = width of sprite (words)
+                    ; d1 = start raster of sprite display - Y co-ord
+                    ; d3 = last raster of sprite display  - Y + height
+                    ; d5 = copy of sprite width (words)
+                    ; a0 = start address offset of gfx mask data
 L00005794           clr.w   d7                              ; d7 = first word mask & last word mask
-L00005796           addq.w  #$01,d5                     ; add 1 to copy of width (words)
-L00005798           asr.w   #$03,d0                     ; divide x by 8
+L00005796           addq.w  #$01,d5                     ; add 1 to copy of width (words) - shifted bob needs area to shift into
+L00005798           asr.w   #$03,d0                     ; divide x by 8 - d0 - X word offset
 L0000579a           bpl.b   L000057b8
+                    ; x co-ord is -ve (off screen left)
 L0000579c           neg.w   d0
-L0000579e           subq.w  #$01,d0
-L000057a0           sub.w   d0,d5
-L000057a2           bls.w   exit_draw_sprite                ; L00005852
+L0000579e           subq.w  #$01,d0                         ; make x offset +ve
+L000057a0           sub.w   d0,d5                           ; subtract from the sprite width
+L000057a2           bls.w   exit_draw_sprite                ; sprite is off the screen (left hand side) - L00005852
+                    ; sprite is on screen
 L000057a6           adda.w  d0,a0                           ; a0 = start of gfx mask data
 L000057a8           adda.w  d0,a0                           ; a0 = start of gfx mask data
-L000057aa           MOVE.L #$ffffffff,D0
+L000057aa           MOVE.L  #$ffffffff,D0                   ; sprite mask
 L000057ac           moveq   #$08,d4
-L000057ae           sub.w   d6,d4                           ; d6 = bit shift (src gfx)
-L000057b0           add.w   d4,d4
-L000057b2           lsr.w   d4,d0
-L000057b4           swap.w  d0
-L000057b6           and.l   d0,d7                           ; d7 = first word mask & last word mask
-L000057b8           moveq   #$14,d4
+L000057ae           sub.w   d6,d4                           ; d4 = shift value - d6 = scroll value bit shift (src gfx)
+L000057b0           add.w   d4,d4                           ; multiply shift by 2 (co-ords stored halved in a byte)
+L000057b2           lsr.w   d4,d0                           ; shift mask by sprite shift value
+L000057b4           swap.w  d0                              ; swap to high word (first word mask)
+L000057b6           and.l   d0,d7                           ; d7 = first word mask, last word mask = #$ffff
+                    ; x co-ord is +ve (on screen)
+L000057b8           moveq   #$14,d4                         ; d4 = #$14 (20 decimal, width of display in words)
 L000057ba           sub.w   d0,d4
-L000057bc           ble.w   exit_draw_sprite                ; L00005852
+L000057bc           ble.w   exit_draw_sprite                ; sprite is off screen (right hand side)
+                    ; is sprite fully on screen (x axis) 
 L000057c0           cmp.w   d4,d5
-L000057c2           bls.b   L000057ce
-L000057c4           move.w  d4,d5
-L000057c6           MOVE.L #$ffffffff,D4
+L000057c2           bls.b   L000057ce                       ; sprite is all on screen
+                    ; clip sprite right hand side
+L000057c4           move.w  d4,d5                           ; update sprite width
+L000057c6           MOVE.L  #$ffffffff,D4
 L000057c8           lsl.w   d6,d4                           ; d6 = bit shift (src gfx)
 L000057ca           lsl.w   d6,d4                           ; d6 = bit shift (src gfx)
-L000057cc           move.w  d4,d7                           ; d7 = first word mask & last word mask
+L000057cc           move.w  d4,d7                           ; set last word mask - d7 = first word mask & last word mask
 
 
-L000057ce           asl.w   #$06,d3
-L000057d0           add.w   d5,d3
-L000057d2           sub.w   d5,d2
-L000057d4           add.w   d2,d2
-L000057d6           moveq   #$15,d4
-L000057d8           sub.w   d5,d4
-L000057da           add.w   d4,d4
+                    ; plot sprite positions
+                    ; d0 = X Position
+                    ; d2 = width of sprite (bytes)
+                    ; d1 = start raster of sprite display - Y co-ord
+                    ; d3 = last raster of sprite display  - Y + height
+                    ; a0 = start address offset of gfx mask data
+                    ; d6 = shift value / 2
+                    ; d5 = sprite width (clipped)
+                    ; d7 = Firstword & Lastword mask
+L000057ce           asl.w   #$06,d3                 ; shift sprite height << 6 (blitsize)
+L000057d0           add.w   d5,d3                   ; d3 = bltsize - add blit with to bltsize
+L000057d2           sub.w   d5,d2                   ; d2 = subtract blit width from sprite width
+L000057d4           add.w   d2,d2                   ; d2 = source sprite modulo
+L000057d6           moveq   #$15,d4                 ; screen buffer width (21 words)
+L000057d8           sub.w   d5,d4                   ; subtract blit width (words)
+L000057da           add.w   d4,d4                   ; d4 = screen width modulo (words * 2)
 
+                    ; d3 = blit size
+                    ; d2 = source modulo
+                    ; d4 = destination modulo
+                    ; d0 = x word offset
+                    ; d1 = y line offset
+                    ; Calc destination Ptr
+calc_dest_ptr
 L000057dc           movea.l playfield_buffer_2,a2           ; L000036f6,a2
 L000057e2           add.w   d0,d0                           ; d0 = d2 * 2 (x byte value)
 L000057e4           adda.w  d0,a2
 L000057e6           mulu.w  #$002a,d1                       ; d2 = d2 * 42 (y value)
 L000057ea           adda.l  d1,a2                           ; a2 = destination address for blit.
 
-L000057ec           ext.l   d6                              ; sign extend to long
-L000057ee           ror.l   #$03,d6                         ; d6 = bit shift value
+L000057ec           ext.l   d6                              ; d6 = shift value - sign extend to long
+L000057ee           ror.l   #$03,d6                         ; d6 = bit shift value (move shift value to top 3 bits of long word)
 L000057f0           move.l  d6,d0                           ; copy d6 -> d0
 L000057f2           swap.w  d0                              ; swap high/low words
-L000057f4           or.l    d0,d6                           ; bits 15-12 src b shift
+L000057f4           or.l    d0,d6                           ; copy shift bits to top 3 bits of low word - bits 15-12 src b shift
 
                     ; d2 = source data modulo
                     ; d4 = dest data modulo
-                    ; d6 = bltcon0 & bltcon1 (shift A & B, minterms)
+                    ; d6 = bltcon0 & bltcon1 (shift A & B) (top 3 bits of high word and low word)
                     ; d7 = first word mask & last word mask
                     ; a0 = gfx data ptr (starts with mask data)
                     ; a1 = offset to gfx data (size of mask data)
 L000057f6           movea.l #$00dff000,a5
-L000057fc           or.l    #$0fca0000,d6                   ; No src A shift, use all DMA channels, Logic = $ca (cookie cutter)
+L000057fc           or.l    #$0fca0000,d6                   ; D6 = BLTCON0 & BLTCON1 - apply minterms and chanel enable to shift bits
+                                                            ;; No src A shift, use all DMA channels, Logic = $ca (cookie cutter)
                                                             ; use ABCD, D=AB+/AC
                                                             ; A = Mask
                                                             ; B = Source GFX
                                                             ; C = Dest GFX
                                                             ; D = Combined SRC & Dest
-L00005802           btst.b  #$0006,$00dff002
+L00005802           btst.b  #$0006,$00dff002                ; blit wait
 L0000580a           bne.b   L00005802
 L0000580c           move.w  d2,BLTAMOD(a5)                  ; $0064(a5)
 L00005810           move.w  d2,BLTBMOD(a5)                  ; $0062(a5)
 L00005814           move.l  d7,BLTAFWM(a5)                  ; $0044(a5)
 L00005818           move.w  d4,BLTCMOD(a5)                  ; $0060(a5)
 L0000581c           move.w  d4,BLTDMOD(a5)                  ; $0066(a5)
-L00005820           move.l  d6,BLTCON0(a5)                  ; $0040(a5)
-L00005824           lea.l   (a0),a3                         ; a0 & a3 = gfx mask data
+L00005820           move.l  d6,BLTCON0(a5)                  ; $0040(a5) & $0042(a5)
+L00005824           lea.l   (a0),a3                         ; copy a0 -> a3, a0 & a3 = gfx mask data
 
 L00005826           moveq   #$03,d7                         ; d7 = 4 bitplanes
                     ; bitplane blit loop
-L00005828           btst.b  #$0006,$00dff002
-L00005830           bne.b   L00005828
+sprite_blit_loop                                            ; original address L00005828
+sprite_blt_wait                                             ; original address L00005828
+                    btst.b  #$0006,$00dff002
+                    bne.b   sprite_blt_wait                 ; L00005828
 
-L00005832           lea.l   $00(a0,a1.L),a0                 ; a0 = gfx data
-L00005836           move.l  a3,BLTAPT(a5)                   ;  $0050(a5) - A Channel = MASK GFX                  
-L0000583a           move.l  a0,BLTBPT(a5)                   ;  $004c(a5) - B Channel = SPRTIE GFX
-L0000583e           move.l  a2,BLTCPT(a5)                   ;  $0048(a5) ; C Channel = Dest GFX
-L00005842           move.l  a2,BLTDPT(a5)                   ;  $0054(a5) - D Channel = Dest GFX
-L00005846           move.w  d3,BLTSIZE(a5)                  ;  $0058(a5) - Start Blit
-L0000584a           lea.l   $1c8c(a2),a2                    ; Increase Dest GFX prt for next bitplane.
-L0000584e           dbf.w   d7,L00005828
-exit_draw_sprite
-L00005852           rts
+                    lea.l   $00(a0,a1.L),a0                 ; a0 = gfx data (increase source gfx by sprite size)
+                    move.l  a3,BLTAPT(a5)                   ;  $0050(a5) - A Channel = MASK GFX                  
+                    move.l  a0,BLTBPT(a5)                   ;  $004c(a5) - B Channel = SPRTIE GFX
+                    move.l  a2,BLTCPT(a5)                   ;  $0048(a5) ; C Channel = Dest GFX
+                    move.l  a2,BLTDPT(a5)                   ;  $0054(a5) - D Channel = Dest GFX
+                    move.w  d3,BLTSIZE(a5)                  ;  $0058(a5) - Start Blit
+                    lea.l   $1c8c(a2),a2                    ; Increase Dest GFX prt for next bitplane.
+                    dbf.w   d7,sprite_blit_loop             ; L00005828
+exit_draw_sprite                                            ; original address L00005852
+                    rts
 
 
 
@@ -4492,7 +4545,7 @@ L0000593c           suba.w  d5,a1
 L0000593e           dbf.w   d6,L0000592c
 
                     ; init some bat sprite data?
-L00005942           movea.l L000062fe,a1
+L00005942           movea.l sprite_array_ptr,a1         ; L000062fe,a1
 L00005946           movea.l #$00011002,a0           ; External Address - BATSPR1.IFF
 L0000594c           lea.l   L0000607c,a2
 L00005952           move.w  (a0)+,d7
@@ -4518,7 +4571,7 @@ L0000597a           move.l  d0,(a1)+
 L0000597c           dbf.w   d7,L00005962
 
 L00005980           move.w  d6,d7
-L00005982           movea.l L000062fe,a2
+L00005982           movea.l sprite_array_ptr,a2         ; L000062fe,a2
 L00005986           clr.l   d2
 L00005988           addq.w  #$02,a2                 ; Addaq.w
 L0000598a           clr.w   d0
@@ -4531,7 +4584,7 @@ L00005996           addq.w  #$06,a2                  ; addaq.w
 L00005998           dbf.w   d7,L0000598a
 L0000599c           mulu.w  #$000a,d2
 L000059a0           move.l  d2,L00006302
-L000059a4           movea.l L000062fe,a1
+L000059a4           movea.l sprite_array_ptr,a1         ; L000062fe,a1
 L000059a8           movea.l $0004(a1),a1
 L000059ac           addq.w  #$01,a1                 ; addaq.w
 L000059ae           btst.b  #$0000,(a1)
@@ -4543,7 +4596,7 @@ L000059b6           rts
 
 
 L000059b8           move.w  d6,d7
-L000059ba           movea.l L000062fe,a1
+L000059ba           movea.l sprite_array_ptr,a1     ; L000062fe,a1
 L000059be           addq.w  #$02,a1                 ; addaq.w
 L000059c0           movea.l a0,a5
 L000059c2           movea.l a0,a3
@@ -4588,7 +4641,7 @@ L00005a22           dbf.w   d4,L00005a04
 L00005a26           lea.l   $0007(a1),a1
 L00005a2a           dbf.w   d7,L000059c4
 L00005a2e           movea.l a3,a4
-L00005a30           movea.l L000062fe,a1
+L00005a30           movea.l sprite_array_ptr,a1             ; L000062fe,a1
 L00005a34           move.w  d6,d7
 L00005a36           moveq   #$04,d6
 L00005a38           movea.l $0004(a1),a0
@@ -5200,8 +5253,15 @@ L000062fc           dc.w $0000
 
 
                     ; refernced by draw_sprite
-L000062fe           dc.w $0001
-L00006300           dc.w $0000
+sprite_array_ptr                        ; original address L000062fe
+L000062fe           dc.l $00010000      ; ptr to an array of sprite definition data structures
+                                        ; structure def:
+                                        ;  byte offset | description
+                                        ;           0  | Y Offset
+                                        ;           1  | X Offset
+                                        ;           2  | Width in Words
+                                        ;           3  | Height in Lines
+                                        ;         4-7  | Long Pointer to GFX Data (Mask, BPL0, BPL1, BPL2, BPL3)
 L00006302           dc.w $0000
 L00006304           dc.w $0000
 L00006306           dc.w $0000
