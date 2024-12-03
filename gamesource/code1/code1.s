@@ -1343,7 +1343,7 @@ L00003a8e           dc.w    $0000
                     dc.w    $0000
 
 
-L00003aa4           dc.w    $5009
+L00003aa4           dc.w    $5009               ; raster line, byte offset
 L00003aa6           dc.w    $4158
 L00003aa8           dc.w    $4953
 L00003aaa           dc.w    $2043
@@ -1355,9 +1355,9 @@ L00003ab4           dc.w    $4641
 L00003ab6           dc.w    $4354
 L00003ab8           dc.w    $4f52
 L00003aba           dc.w    $5900
-L00003abc           dc.b    $ff
+L00003abc           dc.b    $ff                 ; end
 
-L00003abd           dc.b    $40
+L00003abd           dc.b    $40                 ; raster line, byte offset
 L00003abe           dc.w    $0e4a
 L00003ac0           dc.w    $4143
 L00003ac2           dc.w    $4b20
@@ -1365,8 +1365,9 @@ L00003ac4           dc.w    $4953
 L00003ac6           dc.w    $2044
 L00003ac8           dc.w    $4541
 L00003aca           dc.w    $4400
-L00003acc           dc.b    $ff
-L00003acd           dc.b    $60
+L00003acc           dc.b    $ff                 ; end
+
+L00003acd           dc.b    $60                 ; raster line, byte offset
 L00003ace           dc.w    $0b54
 L00003ad0           dc.w    $4845
 L00003ad2           dc.w    $204a
@@ -1377,7 +1378,9 @@ L00003ada           dc.w    $4956
 L00003adc           dc.w    $4553
 L00003ade           dc.w    $2e2e
                     dc.w    $2e00
-L00003ae2           dc.w    $ffb9
+L00003ae2           dc.b    $ff                 ; end
+
+                    dc.b    $b9                 ; pad byte?
 
 
 
@@ -5444,15 +5447,32 @@ L000067c8           dc.w $0050
 
 
                     even
+; called on level init
+;L00003bc2           lea.l   L00003aa4,a0
+;L00003bc6           bsr.w   L000067ca
+;L00003aa4           dc.b    $50, $09           ; raster line, byte offset
+;L00003aa6           dc.b    $41, $58
+;L00003aa8           dc.b    $49, $53
+;L00003aaa           dc.b    $20, $43
+;L00003aac           dc.b    $48, $45
+;L00003aae           dc.b    $4d, $49
+;L00003ab0           dc.b    $43, $41
+;L00003ab2           dc.b    $4c, $20
+;L00003ab4           dc.b    $46, $41
+;L00003ab6           dc.b    $43, $54
+;L00003ab8           dc.b    $4f, $52
+;L00003aba           dc.b    $59, $00
+;L00003abc           dc.b    $ff
+
 L000067ca           move.b  (a0)+,d0
-L000067cc           bmi.w   L0000689e
+L000067cc           bmi.w   L0000689e                   ; exit routine
 L000067d0           and.w   #$00ff,d0
-L000067d4           mulu.w  #$002a,d0
+L000067d4           mulu.w  #$002a,d0                   ; #$2a (42 decimal)
 L000067d8           move.b  (a0)+,d1
 L000067da           ext.w   d1
 L000067dc           add.w   d1,d0
-L000067de           movea.l playfield_buffer_2,a1       ; L000036f6,a1
-L000067e4           lea.l   $00(a1,d0.W),a1             ; == $0003d7ba,a1
+L000067de           movea.l playfield_buffer_2,a1       ; a1 = back buffer
+L000067e4           lea.l   $00(a1,d0.W),a1             ; increment a1 by number of raster lines
 
 
 L000067e8           moveq   #$00,d0
@@ -5516,6 +5536,7 @@ L0000688e           lea.l   $002a(a3),a3                ; == $00063bd3,a3
 L00006892           dbf.w   d7,L0000683a
 L00006896           lea.l   $0001(a1),a1                ; == $0003ff5b,a1
 L0000689a           bra.w   L000067e8
+
 L0000689e           rts 
 
 
