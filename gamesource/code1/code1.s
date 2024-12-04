@@ -1343,44 +1343,32 @@ L00003a8e           dc.w    $0000
                     dc.w    $0000
 
 
-L00003aa4           dc.w    $5009               ; raster line, byte offset
-L00003aa6           dc.w    $4158
-L00003aa8           dc.w    $4953
-L00003aaa           dc.w    $2043
-L00003aac           dc.w    $4845
-L00003aae           dc.w    $4d49
-L00003ab0           dc.w    $4341
-L00003ab2           dc.w    $4c20
-L00003ab4           dc.w    $4641
-L00003ab6           dc.w    $4354
-L00003ab8           dc.w    $4f52
-L00003aba           dc.w    $5900
-L00003abc           dc.b    $ff                 ; end
+                    ; AXIS CHEMICAL FACTORY - Original Address L00003aa4
+text_axis_chemicals
+L00003aa4           dc.b    $50, $09                                    ; raster line (Y), byte offset (X)
+                    dc.b    'AXIS '                                     ; $41, $58, $49, $53, $20
+                    dc.b    'CHEMICALS '                                ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
+                    dc.b    'FACTORY'                                   ; $46, $41, $43, $54, $4f, $52, $59
+                    dc.b    $00,$ff                                     ; Message Terminator
 
-L00003abd           dc.b    $40                 ; raster line, byte offset
-L00003abe           dc.w    $0e4a
-L00003ac0           dc.w    $4143
-L00003ac2           dc.w    $4b20
-L00003ac4           dc.w    $4953
-L00003ac6           dc.w    $2044
-L00003ac8           dc.w    $4541
-L00003aca           dc.w    $4400
-L00003acc           dc.b    $ff                 ; end
+                    ; JACK IS DEAD - Original Address L00003abd
+text_jack_is_dead
+L00003abd           dc.b    $40, $0e                                    ; raster line (Y), byte offset (X)
+                    dc.b    'JACK '                                     ; $4a, $41, $43, $4b, $20
+                    dc.b    'IS '                                       ; $49, $53, $20
+                    dc.b    'DEAD'                                      ; $44, $45, $41, $44 
+                    dc.b    $00, $ff                                    ; Message Terminator
 
-L00003acd           dc.b    $60                 ; raster line, byte offset
-L00003ace           dc.w    $0b54
-L00003ad0           dc.w    $4845
-L00003ad2           dc.w    $204a
-L00003ad4           dc.w    $4f4b
-L00003ad6           dc.w    $4552
-L00003ad8           dc.w    $204c
-L00003ada           dc.w    $4956
-L00003adc           dc.w    $4553
-L00003ade           dc.w    $2e2e
-                    dc.w    $2e00
-L00003ae2           dc.b    $ff                 ; end
+                    ; THE JOKER LIVES - Original Address L00003acd
+text_the_joker_lives
+L00003acd           dc.b    $60, $0b                                    ; raster line (Y), byte offset (X)
+                    dc.b    'THE '                                      ; $54, $48, $45, $20
+                    dc.b    'JOKER '                                    ; $4a, $4f, $4b, $45, $52, $20
+                    dc.b    'LIVES... '                                 ; $4c, $49, $56, $45, $53, $2e, $2e, $2e
+                    dc.b    $00, $ff                                    ; Message Terminator
 
-                    dc.b    $b9                 ; pad byte?
+                    even
+
 
 
 
@@ -1400,6 +1388,9 @@ L00003aee           bsr.w   L000058e2               ; Important Level Init Funct
 L00003af2           jsr     PLAYER_INIT             ;  $00048000 - Initialise Music Player ; External Address $48000- CHEM.IFF
 L00003af8           clr.w   L000062fc
 L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
+
+                    ; restart point after batman dies
+restart_level                                       ; original address L00003b02
 L00003b02           clr.w   L00006318
 L00003b06           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
 L00003b0c           bsr.w   clear_memory            ; L00003746
@@ -1485,8 +1476,8 @@ L00003ba4           move.l  #player_move_commands,L00003c90         ; Set Self M
                     dbf.w   d6,.outer_loop                          ; loop 0 times (d6 has to be 0, or code is overwritten) 
 
 
-L00003bc2           lea.l   L00003aa4,a0
-L00003bc6           bsr.w   L000067ca
+L00003bc2           lea.l   text_axis_chemicals,a0                  ; L00003aa4,a0 ; Axis Chemical Factory - Text
+L00003bc6           bsr.w   large_text_plotter                      ; L000067ca
 
 L00003bca           bsr.w   double_buffer_playfield                 ; L000036fa   
 
@@ -3308,48 +3299,55 @@ L00004d9a           move.w  #$63dc,L00006326
 L00004da0           rts 
 
 
+                        ; player dead processing?
 L00004da2            movea.w L00006326,a0
 L00004da6            bsr.w   L00005438
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
-L00004db0            bne     L00004d36                                  ; bne.b
+L00004db0            bne     L00004d36                                  ; Exit (JMP to RTS)
+
 L00004db2            jsr     PLAYER_INIT_SFX_2                          ; chem.iff - music/sfx - init sfx audio channel - $0004800c  ; External Address - CHEM.IFF
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   L00005e8c
 L00004dc0            bsr.w   clear_backbuffer_playfield                 ; L00004e28
 L00004dc4            btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Panel - Status Byte 1 bit #$0000 of $0007c874
 L00004dcc            beq.b   L00004dd6
-L00004dce            lea.l   L00004e1c,a0
-L00004dd2            bsr.w   L000067ca
+
+L00004dce            lea.l   text_time_up,a0                            ; L00004e1c,a0
+L00004dd2            bsr.w   large_text_plotter                         ; L000067ca
+
 L00004dd6            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
 L00004dde            beq.b   L00004de8
-L00004de0            lea.l   L00004e0e,a0
-L00004de4            bsr.w   L000067ca
+L00004de0            lea.l   text_game_over,a0                          ; L00004e0e,a0
+L00004de4            bsr.w   large_text_plotter                         ; L000067ca
+
 L00004de8            bsr.w   L00003cc0
 L00004dec            move.w  #$001e,d0
 L00004df0            bsr.w   L00005e8c
-L00004df4            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1      ; Panel - Status Byte 1 - bit #$0001 of $0007c874
-L00004dfc            beq.w   L00003b02
-L00004e00            jsr     PLAYER_SILENCE         ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
+L00004df4            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
+L00004dfc            beq.w   restart_level                              ; L00003b02
+
+L00004e00            jsr     PLAYER_SILENCE                             ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
 L00004e06            bsr.w   L00003d8c
-L00004e0a            bra.w   LOADER_TITLE_SCREEN    ; $00000820 ; **** LOADER ****
+L00004e0a            bra.w   LOADER_TITLE_SCREEN                        ; $00000820 ; **** LOADER ****
 
 
-L00004e0e            dc.w    $5f0f                       ; illegal
-L00004e10            dc.w    $4741                       ; illegal
-L00004e12            dc.w    $4d45                       ; illegal
-L00004e14            dc.w    $2020                       ; move.l -(a0) [4ef83000],d0
-L00004e16            dc.w    $4f56                       ; illegal
-L00004e18            dc.w    $4552                       ; illegal
-L00004e1a            dc.w    $00ff                       ; illegal
-L00004e1c            dc.w    $4310                       ; [ chk.l (a0),d1 ]
-L00004e1e            dc.w    $5449                       ; addaq.w #$02,a1
-L00004e20            dc.w    $4d45                       ; illegal
-L00004e22            dc.w    $2020                       ; move.l -(a0) [4ef83000],d0
-L00004e24            dc.w    $5550                       ; subq.w #$02,(a0) [003c]
-L00004e26            dc.w    $00ff                       ; illegal
+                    ; GAME OVER - original address L00004e0e
+text_game_over
+                     dc.b    $5f, $0f
+                     dc.b    'GAME  '                   ; $47, $41, $4d, $45, $20, $20
+                     dc.b    'OVER'                     ; $4f, $56, $45, $52
+                     dc.b    $00, $ff
 
+                    ; TIME UP - original address L00004e1c
+text_time_up
+                     dc.b    $43, $10
+                     dc.b    'TIME  '                   ; $54, $49, $4d, $45, $20, $20 
+                     dc.b    'UP'                       ; $55, $50
+                     dc.b    $00, $ff
 
+                    even
+                    
 clear_backbuffer_playfield                              ; original address $00004e28
 L00004e28           movea.l playfield_buffer_2,a0      ; 
                     move.w  #$1c8b,d7                  ; loop 7308 times / 42 = 174 rasters
@@ -4528,7 +4526,7 @@ L000058e0           rts
 
 
 L000058e2           move.w  #$013f,d7                   ; $13f + 1 = $140 (320)  [$140*5 = $640 (1600)]
-L000058e6           lea.l   L000068a0,a0                ; $6a80 + $640 = $6ee0
+L000058e6           lea.l   large_character_gfx,a0      ; L000068a0,a0                ; $6a80 + $640 = $6ee0
 L000058ea           move.b  $0004(a0),d0
 L000058ee           and.b   $0001(a0),d0
 L000058f2           not.b   d0
@@ -5018,14 +5016,14 @@ L00005e4c           bsr.b   L00005e8c
 L00005e4e           moveq   #$64,d0
 L00005e50           bsr.w   L00005e8c
 L00005e54           bsr.w   clear_backbuffer_playfield  ; L00004e28
-L00005e58           lea.l   L00003abd,a0
-L00005e5c           bsr.w   L000067ca
+L00005e58           lea.l   text_jack_is_dead,a0        ; L00003abd,a0
+L00005e5c           bsr.w   large_text_plotter          ; L000067ca 
 L00005e60           bsr.w   L00003cc0
 L00005e64           moveq   #$64,d0
 L00005e66           bsr.w   L00005e8c
 L00005e6a           bsr.w   clear_backbuffer_playfield  ; L00004e28
-L00005e6e           lea.l   L00003acd,a0
-L00005e72           bsr.w   L000067ca
+L00005e6e           lea.l   text_the_joker_lives,a0     ; L00003acd,a0
+L00005e72           bsr.w   large_text_plotter          ; L000067ca
 L00005e76           bsr.w   L00003cc0
 L00005e7a           moveq   #$64,d0
 L00005e7c           bsr.w   L00005e8c
@@ -5447,752 +5445,614 @@ L000067c8           dc.w $0050
 
 
                     even
-; called on level init
-;L00003bc2           lea.l   L00003aa4,a0
-;L00003bc6           bsr.w   L000067ca
-;L00003aa4           dc.b    $50, $09           ; raster line, byte offset
-;L00003aa6           dc.b    $41, $58
-;L00003aa8           dc.b    $49, $53
-;L00003aaa           dc.b    $20, $43
-;L00003aac           dc.b    $48, $45
-;L00003aae           dc.b    $4d, $49
-;L00003ab0           dc.b    $43, $41
-;L00003ab2           dc.b    $4c, $20
-;L00003ab4           dc.b    $46, $41
-;L00003ab6           dc.b    $43, $54
-;L00003ab8           dc.b    $4f, $52
-;L00003aba           dc.b    $59, $00
-;L00003abc           dc.b    $ff
-
-L000067ca           move.b  (a0)+,d0
-L000067cc           bmi.w   L0000689e                   ; exit routine
-L000067d0           and.w   #$00ff,d0
-L000067d4           mulu.w  #$002a,d0                   ; #$2a (42 decimal)
-L000067d8           move.b  (a0)+,d1
-L000067da           ext.w   d1
-L000067dc           add.w   d1,d0
-L000067de           movea.l playfield_buffer_2,a1       ; a1 = back buffer
-L000067e4           lea.l   $00(a1,d0.W),a1             ; increment a1 by number of raster lines
-
-
-L000067e8           moveq   #$00,d0
-L000067ea           move.b  (a0)+,d0
-L000067ec           beq.b   L000067ca
-L000067ee           cmp.b   #$20,d0
-L000067f2           beq.w   L00006896
-L000067f6           MOVE.L #$ffffffcd,D1
-L000067f8           cmp.b   #$41,d0
-L000067fc           bcc.b   L00006822
-L000067fe           MOVE.L #$ffffffd4,D1
-L00006800           cmp.b   #$30,d0
-L00006804           bcc.b   L00006822
-L00006806           moveq   #$00,d1
-L00006808           cmp.b   #$21,d0
-L0000680c           beq.b   L00006828
-L0000680e           moveq   #$01,d1
-L00006810           cmp.b   #$28,d0
-L00006814           beq.b   L00006828
-L00006816           moveq   #$02,d1
-L00006818           cmp.b   #$29,d0
-L0000681c           beq.b   L00006828
-L0000681e           moveq   #$03,d1
-L00006820           bra.b   L00006828
-L00006822           add.b   d0,d1
-L00006824           and.w   #$00ff,d1
-L00006828           mulu.w  #$0028,d1
-L0000682c           lea.l   L000068a0,a2
-L00006832           lea.l   $00(a2,d1.W),a2             ;  == $0006d7e7,a2
-L00006836           moveq   #$07,d7
-L00006838           movea.l a1,a3
-L0000683a           move.b  (a2)+,d1
-L0000683c           and.b   d1,(a3)
-L0000683e           move.b  (a2)+,d2
-L00006840           or.b    d2,(a3)
-L00006842           and.b   d1,$1c8c(a3);               ; == $00065835 [4e]
-L00006846           move.b  (a2)+,d2
-L00006848           or.b    d2,$1c8c(a3)                ; == $00065835 [4e]
-L0000684c           and.b   d1,$3918(a3)                ; == $000674c1 [b0]
-L00006850           move.b  (a2)+,d2
-L00006852           or.b    d2,$3918(a3)                ; == $000674c1 [b0]
-L00006856           and.b   d1,$55a4(a3)                ; == $0006914d [ec]
-L0000685a           move.b  (a2)+,d2
-L0000685c           or.b    d2,$55a4(a3)                ; == $0006914d [ec]
-L00006860           lea.l   $002a(a3),a3                ; == $00063bd3,a3
-L00006864           lea.l   -$0005(a2),a2               ; == $0006d7e3,a2
-L00006868           move.b  (a2)+,d1
-L0000686a           and.b   d1,(a3)
-L0000686c           move.b  (a2)+,d2
-L0000686e           or.b    d2,(a3)
-L00006870           and.b   d1,$1c8c(a3)                ; == $00065835 [4e]
-L00006874           move.b  (a2)+,d2
-L00006876           or.b    d2,$1c8c(a3)                ; == $00065835 [4e]
-L0000687a           and.b   d1,$3918(a3)                ; == $000674c1 [b0]
-L0000687e           move.b  (a2)+,d2
-L00006880           or.b    d2,$3918(a3)                ; == $000674c1 [b0]
-L00006884           and.b   d1,$55a4(a3)                ; == $0006914d [ec]
-L00006888           move.b  (a2)+,d2
-L0000688a           or.b    d2,$55a4(a3)                ; == $0006914d [ec]
-L0000688e           lea.l   $002a(a3),a3                ; == $00063bd3,a3
-L00006892           dbf.w   d7,L0000683a
-L00006896           lea.l   $0001(a1),a1                ; == $0003ff5b,a1
-L0000689a           bra.w   L000067e8
-
-L0000689e           rts 
 
 
 
 
+                ; -------------------------- Large Text Plotter --------------------------
+                ; Use to display large text on black background at:-
+                ; - Start Level
+                ; - Game Over
+                ; - Time Up
+                ; - Level Completed
+                ; 
+                ; Uses an 8*8 font to display 8*16 font by doubling the font height.
+                ;
+                ; Data structure:
+                ; raster line (y co-ord), byte offset (x co-ord), null terminated string
+                ; raster line, byte offset, null terminated string
+                ; ...
+                ; terminate print loop
+                ;
+                ;   e.g
+                ;   dc.b $50,$10        -- (Y,X co-ords)
+                ;   dc.b 'DISPLAY STRING'
+                ;   dc.b $00,$ff        -- Terminator
+                ;
+large_text_plotter                                                  ; original address L000067ca
+.lpt_new_line                                                       ; original address L000067ca
+                    move.b  (a0)+,d0                                ; Get raster/display line
+                    bmi.w   .exit                                   ; L0000689e ; if negative then exit routine
+                    and.w   #$00ff,d0
+                    mulu.w  #$002a,d0                               ; d0 = byte offset for display line
+                    move.b  (a0)+,d1                                ; d1 = raster/line byte offset
+                    ext.w   d1
+                    add.w   d1,d0                                   ; d0 = total display location byte offset
+                    movea.l playfield_buffer_2,a1                   ; a1 = back buffer
+                    lea.l   $00(a1,d0.W),a1                         ; a1 = address of display offset.
+                    ; plot next character
+.plot_loop                                                          ; original address
+                    moveq   #$00,d0
+                    move.b  (a0)+,d0                                ; d0 = ascii value?
+                    beq.b   .lpt_new_line                           ; L000067ca ; if 0 then get new x & y position
+                    cmp.b   #$20,d0                                 ; #$20 (32 decimal) - ASCII Space?
+                    beq.w   .increase_cursor                        ; L00006896
+                    move.l  #$ffffffcd,D1                           ; #$cd (-51 decimal)
+                    cmp.b   #$41,d0                                 ; #$41 (65 decimal) - ASCII 'A'
+                    bcc.b   .calc_src_gfx_ptr_1                     ; L00006822
+                    move.l  #$ffffffd4,D1                           ; #$d4 (-44 decimal)
+                    cmp.b   #$30,d0                                 ; #$30 (48 decimal) - ASCII '0'
+                    bcc.b   .calc_src_gfx_ptr_1                     ; L00006822
+                    moveq   #$00,d1
+                    cmp.b   #$21,d0                                 ; #$21 (33 decimal) - ASCII '!'
+                    beq.b   .calc_src_gfx_ptr_2                     ; L00006828
+                    moveq   #$01,d1
+                    cmp.b   #$28,d0                                 ; #$28 (40 decimal) - ASCII '('
+                    beq.b   .calc_src_gfx_ptr_2                     ; L00006828
+                    moveq   #$02,d1
+                    cmp.b   #$29,d0                                 ; #$29 (41 decimal) - ASCII ')'
+                    beq.b   .calc_src_gfx_ptr_2                     ; L00006828
+                    moveq   #$03,d1
+                    bra.b   .calc_src_gfx_ptr_2                     ;L00006828
 
-                    ; 5 byte sequences of data
-L000068a0           dc.b    $CF, $30, $30, $00, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $E7, $00, $18, $18, $00
-                    dc.b    $CF, $30, $30, $00, $00
-                    dc.b    $E7, $00, $18, $18, $00
-                    dc.b    $F3, $0C, $0C, $00, $00
-                    dc.b    $E1, $18, $1E, $06, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $F3, $0C, $0C, $00, $00
-                    dc.b    $F9, $00, $06, $06, $00
-L000068F0           dc.b    $9F, $60, $60, $00, $00
-                    dc.b    $CF, $30, $30, $00, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $87, $60, $78, $18, $00
-                    dc.b    $CF, $00, $30, $30, $00
-                    dc.b    $FF, $00, $00, $00, $00
-                    dc.b    $FF, $00, $00, $00, $00
-                    dc.b    $FF, $00, $00, $00, $00
-                    dc.b    $FF, $00, $00, $00, $00
-                    dc.b    $FF, $00, $00, $00, $00
-                    dc.b    $9F, $60, $60, $00, $00
-                    dc.b    $8F, $60, $70, $10, $00
-                    dc.b    $CF, $00, $30, $30, $00
-L00006940           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $10, $CE, $EF, $21, $00
-                    dc.b    $00, $D6, $FF, $29, $00
-                    dc.b    $08, $E6, $F7, $11, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $C7, $38, $38, $00, $00
-                    dc.b    $C3, $38, $3C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $F3, $00, $0C, $0C, $00
-L00006990           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $90, $0C, $6F, $63, $00
-                    dc.b    $E1, $18, $1E, $06, $00
-                    dc.b    $C3, $30, $3C, $0C, $00
-                    dc.b    $87, $60, $78, $18, $00
-                    dc.b    $00, $FE, $FF, $01, $00
-                    dc.b    $80, $00, $7F, $7F, $00
-                    dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $98, $06, $67, $61, $00
-                    dc.b    $C0, $3C, $3F, $03, $00
-                    dc.b    $E1, $06, $1E, $18, $00
-                    dc.b    $38, $C6, $C7, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-L000069E0           dc.b    $E3, $1C, $1C, $00, $00
-                    dc.b    $C1, $3C, $3E, $02, $00
-                    dc.b    $81, $6C, $7E, $12, $00
-                    dc.b    $01, $CC, $FE, $32, $00
-                    dc.b    $01, $FE, $FE, $00, $00
-                    dc.b    $80, $0C, $7F, $73, $00
-                    dc.b    $F1, $0C, $0E, $02, $00
-                    dc.b    $F9, $00, $06, $06, $00
-                    dc.b    $00, $FE, $FF, $00, $00
-                    dc.b    $00, $C0, $FF, $3F, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $80, $06, $7F, $79, $00
-                    dc.b    $38, $C6, $C7, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-L00006A30           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $1C, $C0, $E3, $23, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $01, $FE, $FE, $00, $00
-                    dc.b    $80, $06, $7F, $79, $00
-                    dc.b    $F0, $0C, $0F, $03, $00
-                    dc.b    $E1, $18, $1E, $06, $00
-                    dc.b    $E3, $18, $1C, $04, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $E7, $00, $18, $18, $00
-L00006A80           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7E, $7F, $01, $00
-                    dc.b    $C0, $06, $3F, $39, $00
-                    dc.b    $38, $C6, $C7, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-L00006AD0           dc.b    $EF, $10, $10, $00, $00
-                    dc.b    $C7, $38, $38, $00, $00
-                    dc.b    $C3, $38, $3C, $04, $00
-                    dc.b    $83, $6C, $7C, $10, $00
-                    dc.b    $81, $7C, $7E, $02, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FC, $FF, $03, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FC, $FF, $03, $00
-                    dc.b    $81, $00, $7E, $7E, $00
-L00006B20           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $1C, $C0, $E3, $23, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $19, $C6, $E6, $20, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $07, $F8, $F8, $00, $00
-                    dc.b    $03, $CC, $FC, $30, $00
-                    dc.b    $19, $C6, $E6, $20, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $10, $CC, $EF, $23, $00
-                    dc.b    $01, $F8, $FE, $06, $00
-                    dc.b    $83, $00, $7C, $7C, $00
-L00006B70           dc.b    $01, $FE, $FE, $00, $00
-                    dc.b    $00, $C0, $FF, $3F, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $07, $F8, $F8, $00, $00
-                    dc.b    $03, $C0, $FC, $3C, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $01, $FE, $FE, $00, $00
-                    dc.b    $80, $00, $7F, $7F, $00
-                    dc.b    $01, $FE, $FE, $00, $00
-                    dc.b    $00, $C0, $FF, $3F, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $07, $F8, $F8, $00, $00
-                    dc.b    $03, $C0, $FC, $3C, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $9F, $00, $60, $60, $00
-L00006BC0           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $1C, $C0, $E3, $23, $00
-                    dc.b    $01, $DE, $FE, $20, $00
-                    dc.b    $10, $C6, $EF, $29, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7E, $7F, $01, $00
-                    dc.b    $C0, $00, $3F, $3F, $00
-                    dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FE, $FF, $01, $00
-                    dc.b    $00, $C6, $FF, $39, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-L00006C10           dc.b    $87, $78, $78, $00, $00
-                    dc.b    $C3, $30, $3C, $0C, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $87, $78, $78, $00, $00
-                    dc.b    $C3, $00, $3C, $3C, $00
-                    dc.b    $F9, $06, $06, $00, $00
-                    dc.b    $F8, $06, $07, $01, $00
-                    dc.b    $F8, $06, $07, $01, $00
-                    dc.b    $F8, $06, $07, $01, $00
-                    dc.b    $38, $C6, $C7, $01, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-L00006C60           dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $10, $CC, $EF, $23, $00
-                    dc.b    $01, $D8, $FE, $26, $00
-                    dc.b    $03, $F0, $FC, $0C, $00
-                    dc.b    $07, $D8, $F8, $20, $00
-                    dc.b    $13, $CC, $EC, $20, $00
-                    dc.b    $19, $C6, $E6, $20, $00
-                    dc.b    $9C, $00, $63, $63, $00
-                    dc.b    $3F, $C0, $C0, $00, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $19, $C6, $E6, $20, $00
-                    dc.b    $00, $FE, $FF, $01, $00
-                    dc.b    $80, $00, $7F, $7F, $00
-L00006CB0           dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $10, $EE, $EF, $01, $00
-                    dc.b    $00, $FE, $FF, $01, $00
-                    dc.b    $00, $D6, $FF, $29, $00
-                    dc.b    $10, $C6, $EF, $29, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-                    dc.b    $39, $C6, $C6, $00, $00
+                    ; adjust char index by value in d1
+.calc_src_gfx_ptr_1                                                 ; original address L00006822
+                    add.b   d0,d1                                   ; adjust initial char id (sub 51 for alph, sub 44 for numeric)
+                    and.w   #$00ff,d1
+
+                    ; muliply char index by size of char
+                    ; add to base to get src gfx ptr
+.calc_src_gfx_ptr_2                                                 ; original address L00006828
+                    mulu.w  #$0028,d1                               ; #$28 (40 decimal) (source gfx size)
+                    lea.l   large_character_gfx,a2                  ; L000068a0,a2 ; source gfx ptr
+                    lea.l   $00(a2,d1.W),a2                         ;  == $0006d7e7,a2
+
+                    ; a1 = gfx src ptr
+                    ; a3 = display dest ptr
+.draw_character                                                     ; original address L00006836
+                    moveq   #$07,d7                                 ; loop count 7+1 = 8
+                    movea.l a1,a3
+.draw_loop                                                          ; original address L0000683a
+                    ; print character line
+                    ; mask
+                    move.b  (a2)+,d1                                ; d1 = mask byte
+                    ; bpl0
+                    and.b   d1,(a3)
+                    move.b  (a2)+,d2                                ; bpl0 = char data
+                    or.b    d2,(a3)
+                    ; bpl1
+                    and.b   d1,$1c8c(a3)        
+                    move.b  (a2)+,d2
+                    or.b    d2,$1c8c(a3) 
+                    ; bpl2
+                    and.b   d1,$3918(a3)
+                    move.b  (a2)+,d2
+                    or.b    d2,$3918(a3)
+                    ; bpl3
+                    and.b   d1,$55a4(a3)
+                    move.b  (a2)+,d2
+                    or.b    d2,$55a4(a3)
+
+                    ; repeat character line
+                    ; double size of character to 16 rasters high
+                    lea.l   $002a(a3),a3                            ; increase display ptr 1 line (42 bytes)
+                    lea.l   -$0005(a2),a2                           ; reset gfx ptr to start of src gfx data
+                    
+                    ; mask
+                    move.b  (a2)+,d1
+                    ; bpl0
+                    and.b   d1,(a3)
+                    move.b  (a2)+,d2
+                    or.b    d2,(a3)
+                    ; bpl1
+                    and.b   d1,$1c8c(a3)
+                    move.b  (a2)+,d2
+                    or.b    d2,$1c8c(a3)
+                    ; bpl2
+                    and.b   d1,$3918(a3)
+                    move.b  (a2)+,d2
+                    or.b    d2,$3918(a3)
+                    ; bpl3
+                    and.b   d1,$55a4(a3)
+                    move.b  (a2)+,d2
+                    or.b    d2,$55a4(a3)
+
+                    lea.l   $002a(a3),a3                            ; increase display ptr 1 line (42 bytes)
+                    dbf.w   d7,.draw_loop 
+.increase_cursor 
+                    lea.l   $0001(a1),a1                
+                    bra.w   .plot_loop                              ; L000067e8
+.exit 
+                    rts 
+
+
+
+                    ;----------------------------- large character font --------------------------------
+                    ; Its actually an 8x8 pixel interleaved font in 4 bitplanes and a mask.
+                    ; The large_text_plotter expands the font in the Y direction to double its height.
+                    ; 
+                    ; Source gfx for font data
+                    ; Interleaved gfx 
+                    ; 5 byte sequences of data (mask, bpl0, bpl2, bpl3, bpl4)
+                    ;
+large_character_gfx                                     ; original address L000068a0
+L000068a0           ; '!'
+                    dc.b    $CF, $30, $30, $00, $00     ; 11001111 - 00110000 - 00110000 - 00000000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $E7, $00, $18, $18, $00     ; 11100111 - 00000000 - 00011000 - 00011000 - 00000000
+                    dc.b    $CF, $30, $30, $00, $00     ; 11001111 - 00110000 - 00110000 - 00000000 - 00000000
+                    dc.b    $E7, $00, $18, $18, $00     ; 11100111 - 00000000 - 00011000 - 00011000 - 00000000
+
+                    ;'('
+                    dc.b    $F3, $0C, $0C, $00, $00     ; 11110011 - 00001100 - 00001100 - 00000000 - 00000000
+                    dc.b    $E1, $18, $1E, $06, $00     ; 11100001 - 00011000 - 00011110 - 00000110 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $F3, $0C, $0C, $00, $00     ; 11110011 - 00001100 - 00001100 - 00000000 - 00000000
+                    dc.b    $F9, $00, $06, $06, $00     ; 11111001 - 00000000 - 00000110 - 00000110 - 00000000
+
+                    ;')'
+                    dc.b    $9F, $60, $60, $00, $00     ; 10011111 - 01100000 - 01100000 - 00000000 - 00000000
+                    dc.b    $CF, $30, $30, $00, $00     ; 11001111 - 00110000 - 00110000 - 00000000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $87, $60, $78, $18, $00     ; 10000111 - 01100000 - 01111000 - 00011000 - 00000000
+                    dc.b    $CF, $00, $30, $30, $00     ; 11001111 - 00000000 - 00110000 - 00110000 - 00000000
+
+                    ;'.'
+                    dc.b    $FF, $00, $00, $00, $00     ; 11111111 - 00000000 - 00000000 - 00000000 - 00000000
+                    dc.b    $FF, $00, $00, $00, $00     ; 11111111 - 00000000 - 00000000 - 00000000 - 00000000
+                    dc.b    $FF, $00, $00, $00, $00     ; 11111111 - 00000000 - 00000000 - 00000000 - 00000000
+                    dc.b    $FF, $00, $00, $00, $00     ; 11111111 - 00000000 - 00000000 - 00000000 - 00000000
+                    dc.b    $FF, $00, $00, $00, $00     ; 11111111 - 00000000 - 00000000 - 00000000 - 00000000
+                    dc.b    $9F, $60, $60, $00, $00     ; 10011111 - 01100000 - 01100000 - 00000000 - 00000000
+                    dc.b    $8F, $60, $70, $10, $00     ; 10001111 - 01100000 - 01110000 - 00010000 - 00000000
+                    dc.b    $CF, $00, $30, $30, $00     ; 11001111 - 00000000 - 00110000 - 00110000 - 00000000
+
+                    ;'0'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $10, $CE, $EF, $21, $00     ; 00010000 - 11001110 - 11101111 - 00100001 - 00000000
+                    dc.b    $00, $D6, $FF, $29, $00     ; 00000000 - 11010110 - 11111111 - 00101001 - 00000000
+                    dc.b    $08, $E6, $F7, $11, $00     ; 00001000 - 11100110 - 11110111 - 00010001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'1'
+                    dc.b    $C7, $38, $38, $00, $00     ; 11000111 - 00111000 - 00111000 - 00000000 - 00000000
+                    dc.b    $C3, $38, $3C, $04, $00     ; 11000011 - 00111000 - 00111100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $F3, $00, $0C, $0C, $00     ; 11110011 - 00000000 - 00001100 - 00001100 - 00000000
+
+                    ;'2'
+L00006990           dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $90, $0C, $6F, $63, $00     ; 10010000 - 00001100 - 01101111 - 01100011 - 00000000
+                    dc.b    $E1, $18, $1E, $06, $00     ; 11100001 - 00011000 - 00011110 - 00000110 - 00000000
+                    dc.b    $C3, $30, $3C, $0C, $00     ; 11000011 - 00110000 - 00111100 - 00001100 - 00000000
+                    dc.b    $87, $60, $78, $18, $00     ; 10000111 - 01100000 - 01111000 - 00011000 - 00000000
+                    dc.b    $00, $FE, $FF, $01, $00     ; 00000000 - 11111110 - 11111111 - 00000001 - 00000000
+                    dc.b    $80, $00, $7F, $7F, $00     ; 10000000 - 00000000 - 01111111 - 01111111 - 00000000
+
+                    ;'3'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $98, $06, $67, $61, $00     ; 10011000 - 00000110 - 01100111 - 01100001 - 00000000
+                    dc.b    $C0, $3C, $3F, $03, $00     ; 11000000 - 00111100 - 00111111 - 00000011 - 00000000
+                    dc.b    $E1, $06, $1E, $18, $00     ; 11100001 - 00000110 - 00011110 - 00011000 - 00000000
+                    dc.b    $38, $C6, $C7, $01, $00     ; 00111000 - 11000110 - 11000111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'4'
+L000069E0           dc.b    $E3, $1C, $1C, $00, $00     ; 11100011 - 00011100 - 00011100 - 00000000 - 00000000
+                    dc.b    $C1, $3C, $3E, $02, $00     ; 11000001 - 00111100 - 00111110 - 00000010 - 00000000
+                    dc.b    $81, $6C, $7E, $12, $00     ; 10000001 - 01101100 - 01111110 - 00010010 - 00000000
+                    dc.b    $01, $CC, $FE, $32, $00     ; 00000001 - 11001100 - 11111110 - 00110010 - 00000000
+                    dc.b    $01, $FE, $FE, $00, $00     ; 00000001 - 11111110 - 11111110 - 00000000 - 00000000
+                    dc.b    $80, $0C, $7F, $73, $00     ; 10000000 - 00001100 - 01111111 - 01110011 - 00000000
+                    dc.b    $F1, $0C, $0E, $02, $00     ; 11110001 - 00001100 - 00001110 - 00000010 - 00000000
+                    dc.b    $F9, $00, $06, $06, $00     ; 11111001 - 00000000 - 00000110 - 00000110 - 00000000
+
+                    ;'5'
+                    dc.b    $00, $FE, $FF, $00, $00     ; 00000000 - 11111110 - 11111111 - 00000000 - 00000000
+                    dc.b    $00, $C0, $FF, $3F, $00     ; 00000000 - 11000000 - 11111111 - 00111111 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $80, $06, $7F, $79, $00     ; 10000000 - 00000110 - 01111111 - 01111001 - 00000000
+                    dc.b    $38, $C6, $C7, $01, $00     ; 00111000 - 11000110 - 11000111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'6'
+L00006A30           dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $1C, $C0, $E3, $23, $00     ; 00011100 - 11000000 - 11100011 - 00100011 - 00000000
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'7'
+                    dc.b    $01, $FE, $FE, $00, $00     ; 00000001 - 11111110 - 11111110 - 00000000 - 00000000
+                    dc.b    $80, $06, $7F, $79, $00     ; 10000000 - 00000110 - 01111111 - 01111001 - 00000000
+                    dc.b    $F0, $0C, $0F, $03, $00     ; 11110000 - 00001100 - 00001111 - 00000011 - 00000000
+                    dc.b    $E1, $18, $1E, $06, $00     ; 11100001 - 00011000 - 00011110 - 00000110 - 00000000
+                    dc.b    $E3, $18, $1C, $04, $00     ; 11100011 - 00011000 - 00011100 - 00000100 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $E7, $00, $18, $18, $00     ; 11100111 - 00000000 - 00011000 - 00011000 - 00000000
+
+                    ;'8'
+L00006A80           dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'9'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7E, $7F, $01, $00     ; 10000000 - 01111110 - 01111111 - 00000001 - 00000000
+                    dc.b    $C0, $06, $3F, $39, $00     ; 11000000 - 00000110 - 00111111 - 00111001 - 00000000
+                    dc.b    $38, $C6, $C7, $01, $00     ; 00111000 - 11000110 - 11000111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+L00006AD0           ;'A'
+                    dc.b    $EF, $10, $10, $00, $00     ; 11101111 - 00010000 - 00010000 - 00000000 - 00000000
+                    dc.b    $C7, $38, $38, $00, $00     ; 11000111 - 00111000 - 00111000 - 00000000 - 00000000
+                    dc.b    $C3, $38, $3C, $04, $00     ; 11000011 - 00111000 - 00111100 - 00000100 - 00000000
+                    dc.b    $83, $6C, $7C, $10, $00     ; 10000011 - 01101100 - 01111100 - 00010000 - 00000000
+                    dc.b    $81, $7C, $7E, $02, $00     ; 10000001 - 01111100 - 01111110 - 00000010 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+                    ;'B'
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $00, $FC, $FF, $03, $00     ; 00000000 - 11111100 - 11111111 - 00000011 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $00, $FC, $FF, $03, $00     ; 00000000 - 11111100 - 11111111 - 00000011 - 00000000
+                    dc.b    $81, $00, $7E, $7E, $00     ; 10000001 - 00000000 - 01111110 - 01111110 - 00000000
+
+L00006B20           ;'C'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $1C, $C0, $E3, $23, $00     ; 00011100 - 11000000 - 11100011 - 00100011 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $19, $C6, $E6, $20, $00     ; 00011001 - 11000110 - 11100110 - 00100000 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'D'
+                    dc.b    $07, $F8, $F8, $00, $00     ; 00000111 - 11111000 - 11111000 - 00000000 - 00000000
+                    dc.b    $03, $CC, $FC, $30, $00     ; 00000011 - 11001100 - 11111100 - 00110000 - 00000000
+                    dc.b    $19, $C6, $E6, $20, $00     ; 00011001 - 11000110 - 11100110 - 00100000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $10, $CC, $EF, $23, $00     ; 00010000 - 11001100 - 11101111 - 00100011 - 00000000
+                    dc.b    $01, $F8, $FE, $06, $00     ; 00000001 - 11111000 - 11111110 - 00000110 - 00000000
+                    dc.b    $83, $00, $7C, $7C, $00     ; 10000011 - 00000000 - 01111100 - 01111100 - 00000000
+
+L00006B70           ;'E'
+                    dc.b    $01, $FE, $FE, $00, $00     ; 00000001 - 11111110 - 11111110 - 00000000 - 00000000
+                    dc.b    $00, $C0, $FF, $3F, $00     ; 00000000 - 11000000 - 11111111 - 00111111 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $07, $F8, $F8, $00, $00     ; 00000111 - 11111000 - 11111000 - 00000000 - 00000000
+                    dc.b    $03, $C0, $FC, $3C, $00     ; 00000011 - 11000000 - 11111100 - 00111100 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $01, $FE, $FE, $00, $00     ; 00000001 - 11111110 - 11111110 - 00000000 - 00000000
+                    dc.b    $80, $00, $7F, $7F, $00     ; 10000000 - 00000000 - 01111111 - 01111111 - 00000000
+
+                    ;'F'
+                    dc.b    $01, $FE, $FE, $00, $00     ; 00000001 - 11111110 - 11111110 - 00000000 - 00000000
+                    dc.b    $00, $C0, $FF, $3F, $00     ; 00000000 - 11000000 - 11111111 - 00111111 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $07, $F8, $F8, $00, $00     ; 00000111 - 11111000 - 11111000 - 00000000 - 00000000
+                    dc.b    $03, $C0, $FC, $3C, $00     ; 00000011 - 11000000 - 11111100 - 00111100 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $9F, $00, $60, $60, $00     ; 10011111 - 00000000 - 01100000 - 01100000 - 00000000
+
+L00006BC0           ;'G'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $1C, $C0, $E3, $23, $00     ; 00011100 - 11000000 - 11100011 - 00100011 - 00000000
+                    dc.b    $01, $DE, $FE, $20, $00     ; 00000001 - 11011110 - 11111110 - 00100000 - 00000000
+                    dc.b    $10, $C6, $EF, $29, $00     ; 00010000 - 11000110 - 11101111 - 00101001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7E, $7F, $01, $00     ; 10000000 - 01111110 - 01111111 - 00000001 - 00000000
+                    dc.b    $C0, $00, $3F, $3F, $00     ; 11000000 - 00000000 - 00111111 - 00111111 - 00000000
+
+                    ;'H'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $00, $FE, $FF, $01, $00     ; 00000000 - 11111110 - 11111111 - 00000001 - 00000000
+                    dc.b    $00, $C6, $FF, $39, $00     ; 00000000 - 11000110 - 11111111 - 00111001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+L00006C10           ;'I'
+                    dc.b    $87, $78, $78, $00, $00     ; 10000111 - 01111000 - 01111000 - 00000000 - 00000000
+                    dc.b    $C3, $30, $3C, $0C, $00     ; 11000011 - 00110000 - 00111100 - 00001100 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $87, $78, $78, $00, $00     ; 10000111 - 01111000 - 01111000 - 00000000 - 00000000   
+                    dc.b    $C3, $00, $3C, $3C, $00     ; 11000011 - 00000000 - 00111100 - 00111100 - 00000000
+
+                    ;'J'
+                    dc.b    $F9, $06, $06, $00, $00     ; 11111001 - 00000110 - 00000110 - 000000000 - 0000000
+                    dc.b    $F8, $06, $07, $01, $00     ; 11111000 - 00000110 - 00000111 - 000000010 - 0000000
+                    dc.b    $F8, $06, $07, $01, $00     ; 11111000 - 00000110 - 00000111 - 000000010 - 0000000
+                    dc.b    $F8, $06, $07, $01, $00     ; 11111000 - 00000110 - 00000111 - 000000010 - 0000000
+                    dc.b    $38, $C6, $C7, $01, $00     ; 00111000 - 11000110 - 11000111 - 00000001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+L00006C60           ;'K'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $10, $CC, $EF, $23, $00     ; 00010000 - 11001100 - 11101111 - 00100011 - 00000000
+                    dc.b    $01, $D8, $FE, $26, $00     ; 00000001 - 11011000 - 11111110 - 00100110 - 00000000
+                    dc.b    $03, $F0, $FC, $0C, $00     ; 00000011 - 11110000 - 11111100 - 00001100 - 00000000
+                    dc.b    $07, $D8, $F8, $20, $00     ; 00000111 - 11011000 - 11111000 - 00100000 - 00000000
+                    dc.b    $13, $CC, $EC, $20, $00     ; 00010011 - 11001100 - 11101100 - 00100000 - 00000000
+                    dc.b    $19, $C6, $E6, $20, $00     ; 00011001 - 11000110 - 11100110 - 00100000 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+                    ;'L'
+                    dc.b    $3F, $C0, $C0, $00, $00     ; 00111111 - 11000000 - 11000000 - 00000000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $19, $C6, $E6, $20, $00     ; 00011001 - 11000110 - 11100110 - 00100000 - 00000000
+                    dc.b    $00, $FE, $FF, $01, $00     ; 00000000 - 11111110 - 11111111 - 00000001 - 00000000
+                    dc.b    $80, $00, $7F, $7F, $00     ; 10000000 - 00000000 - 01111111 - 01111111 - 00000000
+
+L00006CB0           ;'M'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $10, $EE, $EF, $01, $00     ; 00010000 - 11101110 - 11101111 - 00000001 - 00000000
+                    dc.b    $00, $FE, $FF, $01, $00     ; 00000000 - 11111110 - 11111111 - 00000001 - 00000000
+                    dc.b    $00, $D6, $FF, $29, $00     ; 00000000 - 11010110 - 11111111 - 00101001 - 00000000
+                    dc.b    $10, $C6, $EF, $29, $00     ; 00010000 - 11000110 - 11101111 - 00101001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+                    ;'N'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
                     dc.b    $18, $E6, $E7, $01, $00
                     dc.b    $08, $F6, $F7, $01, $00
                     dc.b    $00, $DE, $FF, $21, $00
                     dc.b    $10, $CE, $EF, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-L00006D00           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FC, $FF, $03, $00
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+L00006D00           ;'O'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'P'
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $00, $FC, $FF, $03, $00     ; 00000000 - 11111100 - 11111111 - 00000011 - 00000000
                     dc.b    $01, $C0, $FE, $3E, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $9F, $00, $60, $60, $00
-L00006D50           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $9F, $00, $60, $60, $00     ; 10011111 - 00000000 - 01100000 - 01100000 - 00000000
+
+L00006D50           ;'Q'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
                     dc.b    $00, $DA, $FF, $25, $00
                     dc.b    $00, $CC, $FF, $33, $00
                     dc.b    $81, $76, $7E, $08, $00
                     dc.b    $C4, $00, $3B, $3B, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FC, $FF, $03, $00
-                    dc.b    $01, $CC, $FE, $32, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-L00006DA0           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $1C, $C0, $E3, $23, $00
-                    dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $C1, $06, $3E, $38, $00
-                    dc.b    $38, $C6, $C7, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $03, $FC, $FC, $00, $00
+
+                    ;'R'
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $00, $FC, $FF, $03, $00     ; 00000000 - 11111100 - 11111111 - 00000011 - 00000000
+                    dc.b    $01, $CC, $FE, $32, $00     ; 00000001 - 11001100 - 11111110 - 00110010 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+L00006DA0           ;'S'
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $1C, $C0, $E3, $23, $00     ; 00011100 - 11000000 - 11100011 - 00100011 - 00000000
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $C1, $06, $3E, $38, $00     ; 11000001 - 00000110 - 00111110 - 00111000 - 00000000
+                    dc.b    $38, $C6, $C7, $01, $00     ; 00111000 - 11000110 - 11000111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'T'
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
                     dc.b    $81, $30, $7E, $4E, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $E7, $00, $18, $18, $00
-L00006DF0           dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $E7, $00, $18, $18, $00     ; 11100111 - 00000000 - 00011000 - 00011000 - 00000000
+
+L00006DF0           ;'U'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    ;'V'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
                     dc.b    $80, $6C, $7F, $13, $00
                     dc.b    $81, $7C, $7E, $02, $00
                     dc.b    $C1, $38, $3E, $06, $00
                     dc.b    $E3, $10, $1C, $0C, $00
                     dc.b    $F7, $00, $08, $08, $00
-L00006E40           dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $18, $C6, $E7, $21, $00
+
+L00006E40           ;'W'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
                     dc.b    $08, $D6, $F7, $21, $00
-                    dc.b    $00, $D6, $FF, $29, $00
-                    dc.b    $00, $FE, $FF, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $81, $6C, $7E, $12, $00
+                    dc.b    $00, $D6, $FF, $29, $00     ; 00000000 - 11010110 - 11111111 - 00101001 - 00000000
+                    dc.b    $00, $FE, $FF, $01, $00     ; 00000000 - 11111110 - 11111111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $81, $6C, $7E, $12, $00     ; 10000001 - 01101100 - 01111110 - 00010010 - 00000000
                     dc.b    $C9, $00, $36, $36, $00
-                    dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $10, $EE, $EF, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
+
+                    ;'X'
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $10, $EE, $EF, $01, $00     ; 00010000 - 11101110 - 11101111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
                     dc.b    $01, $EE, $FE, $10, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-L00006E90           dc.b    $33, $CC, $CC, $00, $00
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $18, $C6, $E7, $21, $00     ; 00011000 - 11000110 - 11100111 - 00100001 - 00000000
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+L00006E90           ;'Y'
+                    dc.b    $33, $CC, $CC, $00, $00
                     dc.b    $11, $CC, $EE, $22, $00
                     dc.b    $11, $CC, $EE, $22, $00
                     dc.b    $81, $78, $7E, $06, $00
-                    dc.b    $C3, $30, $3C, $0C, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $C7, $30, $38, $08, $00
-                    dc.b    $E7, $00, $18, $18, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $CC, $FE, $32, $00
-                    dc.b    $81, $18, $7E, $66, $00
-                    dc.b    $C3, $30, $3C, $0C, $00
-                    dc.b    $87, $60, $78, $18, $00
-                    dc.b    $03, $CC, $FC, $30, $00
-                    dc.b    $01, $FC, $FE, $02, $00
-                    dc.b    $81, $00, $7E, $7E, $00
+                    dc.b    $C3, $30, $3C, $0C, $00     ; 11000011 - 00110000 - 00111100 - 00001100 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $C7, $30, $38, $08, $00     ; 11000111 - 00110000 - 00111000 - 00001000 - 00000000
+                    dc.b    $E7, $00, $18, $18, $00     ; 11100111 - 00000000 - 00011000 - 00011000 - 00000000
+
+                    ;'Z'
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $CC, $FE, $32, $00     ; 00000001 - 11001100 - 11111110 - 00110010 - 00000000
+                    dc.b    $81, $18, $7E, $66, $00     ; 10000001 - 00011000 - 01111110 - 01100110 - 00000000
+                    dc.b    $C3, $30, $3C, $0C, $00     ; 11000011 - 00110000 - 00111100 - 00001100 - 00000000
+                    dc.b    $87, $60, $78, $18, $00     ; 10000111 - 01100000 - 01111000 - 00011000 - 00000000
+                    dc.b    $03, $CC, $FC, $30, $00     ; 00000011 - 10011001 - 11111000 - 01100000 - 00000000
+                    dc.b    $01, $FC, $FE, $02, $00     ; 00000001 - 11111100 - 11111110 - 00000010 - 00000000
+                    dc.b    $81, $00, $7E, $7E, $00     ; 10000001 - 00000000 - 01111110 - 01111110 - 00000000
                     ; end of 5 byte structure
 
 
                     ; are these a continuation of the 5 byte structures above?
                     ; or coincidence that they end with $00 every 5 bytes?
-L00006EE0           dc.b    $39, $C6, $C6, $00, $00
-                    dc.b    $10, $EE, $EF, $01, $00
-                    dc.b    $00, $FE, $FF, $01, $00
-                    dc.b    $00, $D6, $FF, $29, $00
-                    dc.b    $10, $C6, $EF, $29, $00
+L00006EE0           dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
+                    dc.b    $10, $EE, $EF, $01, $00     ; 00010000 - 11101110 - 11101111 - 00000001 - 00000000
+                    dc.b    $00, $FE, $FF, $01, $00     ; 00000000 - 11111110 - 11111111 - 00000001 - 00000000
+                    dc.b    $00, $D6, $FF, $29, $00     ; 00000000 - 11010110 - 11111111 - 00101001 - 00000000
+                    dc.b    $10, $C6, $EF, $29, $00     ; 00010000 - 11000110 - 11101111 - 00101001 - 00000000
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00
-                    dc.b    $39, $C6, $C6, $00, $00
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000
+
+                    dc.b    $39, $C6, $C6, $00, $00     ; 00111001 - 11000110 - 11000110 - 00000000 - 00000000
                     dc.b    $18, $E6, $E7, $01, $00
                     dc.b    $08, $F6, $F7, $01, $00
                     dc.b    $00, $DE, $FF, $21, $00
                     dc.b    $10, $CE, $EF, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00  
-L00006F30           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000  
+
+L00006F30           dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
                     dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FC, $FF, $03, $00
+                    dc.b    $00, $FC, $FF, $03, $00     ; 00000000 - 11111100 - 11111111 - 00000011 - 00000000
                     dc.b    $01, $C0, $FE, $3E, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $1F, $C0, $E0, $20, $00
-                    dc.b    $9F, $00, $60, $60, $00  
-L00006F80           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $1F, $C0, $E0, $20, $00     ; 00011111 - 11000000 - 11100000 - 00100000 - 00000000
+                    dc.b    $9F, $00, $60, $60, $00     ; 10011111 - 00000000 - 01100000 - 01100000 - 00000000  
+
+L00006F80           dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $00, $DA, $FF, $25, $00
                     dc.b    $00, $CC, $FF, $33, $00
                     dc.b    $81, $76, $7E, $08, $00
                     dc.b    $C4, $00, $3B, $3B, $00
-                    dc.b    $03, $FC, $FC, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
+
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
                     dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $00, $FC, $FF, $03, $00
-                    dc.b    $01, $CC, $FE, $32, $00
+                    dc.b    $00, $FC, $FF, $03, $00     ; 00000000 - 11111100 - 11111111 - 00000011 - 00000000
+                    dc.b    $01, $CC, $FE, $32, $00     ; 00000001 - 11001100 - 11111110 - 00110010 - 00000000
                     dc.b    $18, $C6, $E7, $21, $00
                     dc.b    $18, $C6, $E7, $21, $00
-                    dc.b    $9C, $00, $63, $63, $00  
-L00006FD0           dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $01, $C6, $FE, $38, $00
-                    dc.b    $1C, $C0, $E3, $23, $00
-                    dc.b    $83, $7C, $7C, $00, $00
-                    dc.b    $C1, $06, $3E, $38, $00
-                    dc.b    $38, $C6, $C7, $01, $00
-                    dc.b    $80, $7C, $7F, $03, $00
-                    dc.b    $C1, $00, $3E, $3E, $00
-                    dc.b    $03, $FC, $FC, $00, $00
+                    dc.b    $9C, $00, $63, $63, $00     ; 10011100 - 00000000 - 01100011 - 01100011 - 00000000  
+
+L00006FD0           dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $01, $C6, $FE, $38, $00     ; 00000001 - 11000110 - 11111110 - 00111000 - 00000000
+                    dc.b    $1C, $C0, $E3, $23, $00     ; 00011100 - 11000000 - 11100011 - 00100011 - 00000000
+                    dc.b    $83, $7C, $7C, $00, $00     ; 10000011 - 01111100 - 01111100 - 00000000 - 00000000
+                    dc.b    $C1, $06, $3E, $38, $00     ; 11000001 - 00000110 - 00111110 - 00111000 - 00000000
+                    dc.b    $38, $C6, $C7, $01, $00     ; 00111000 - 11000110 - 11000111 - 00000001 - 00000000
+                    dc.b    $80, $7C, $7F, $03, $00     ; 10000000 - 01111100 - 01111111 - 00000011 - 00000000
+                    dc.b    $C1, $00, $3E, $3E, $00     ; 11000001 - 00000000 - 00111110 - 00111110 - 00000000
+
+                    dc.b    $03, $FC, $FC, $00, $00     ; 00000011 - 11111100 - 11111100 - 00000000 - 00000000
                     dc.b    $81, $30, $7E  
 
-
-;00007000 4E4A A4AA 5294 4525 4492 52A9 2AA9 5445  NJ..R.E%D.R.*.TE
-;00007010 5245 4552 52AA 4944 AA44 AAAA 4A49 2AA4  REERR.ID.D..JI*.
-;00007020 AAA4 544A 4552 AAAA AA44 9452 A951 1455  ..TJER...D.R.Q.U
-;00007030 24A9 5111 4945 4AAA 5129 14A5 1491 54AA  $.Q.IEJ.Q)....T.
-;00007040 4492 4494 AA54 4949 4911 4951 1549 4491  D.D..TIII.IQ.ID.
-;00007050 4455 2AA4 4A95 14AA A454 9525 2954 A911  DU*.J....T.%)T..
-;00007060 4452 5292 A911 4A94 A445 5554 9544 AA94  DRR...J..EUT.D..
-;00007070 A52A AAAA 9295 5492 A454 A549 1254 444A  .*....T..T.I.TDJ
-;00007080 9492 9112 4514 AA95 154A 9244 5255 44A5  ....E....J.DRUD.
-;00007090 514A A4AA 52A4 5529 4492 AA92 9294 AA4A  QJ..R.U)D......J
-;000070A0 A492 A449 1292 4A92 4491 52AA 4515 2452  ...I..J.D.R.E.$R
-;000070B0 9114 5544 A912 5255 1152 4524 444A 9514  ..UD..RU.RE$DJ..
-;000070C0 5154 544A 4A54 5252 524A 4A92 AAAA 5255  QTTJJTRRRJJ...RU
-;000070D0 2454 A955 14A4 9444 9554 4A92 4955 2A4A  $T.U...D.TJ.IU*J
-;000070E0 A924 492A 5125 2A49 2A55 2512 92A4 5552  .$I*Q%*I*U%...UR
-;000070F0 A54A A4A5 2A92 4445 2AAA 5125 1125 5154  .J..*.DE*.Q%.%QT
-;00007100 9452 4549 2A45 2A51 5492 94A4 9514 4952  .REI*E*QT.....IR
-;00007110 9125 4525 14A9 1152 AA92 4492 A494 5514  .%E%...R..D...U.
-;00007120 A524 5129 1525 1114 4449 2A4A AA94 4AAA  .$Q).%..DI*J..J.
-;00007130 A912 9249 1129 4929 4549 4924 9495 5555  ...I.)I)EII$..UU
-;00007140 2AA5 14A9 4524 AA95 2454 494A 4AA9 2451  *...E$..$TIJJ.$Q
-;00007150 2A44 4492 9491 2925 24AA 9255 5515 294A  *DD...)%$..UU.)J
-;00007160 5555 14A9 5515 2445 154A A4A9 1291 4AAA  UU..U.$E.J....J.
-;00007170 52AA A495 2451 292A AA45 1454 AA51 4555  R...$Q)*.E.T.QEU
-;00007180 4451 14A9 4A44 AAA9 1151 44A5 454A AA51  DQ..JD...QD.EJ.Q
-;00007190 2952 A494 AA4A AA4A A914 554A 512A 5149  )R...J.J..UJQ*QI
-;000071A0 1112 A914 AAA5 5245 452A A954 4449 5149  ......REE*.TDIQI
-;000071B0 4A55 12A4 9255 2552 AA4A A944 954A 5491  JU...U%R.J.D.JT.
-;000071C0 5115 14A9 2AA5 1549 2945 454A 9555 1515  Q...*..I)EEJ.U..
-;000071D0 2514 524A 5451 1451 4555 1145 5529 54AA  %.RJTQ.QEU.EU)T.
-;000071E0 5515 54A4 A94A A925 4525 2492 5512 A955  U.T..J.%E%$.U..U
-;000071F0 2912 4AA9 1545 12AA 494A 4A92 AA92 5495  ).J..E..IJJ...T.
-;00007200 2912 5124 A555 294A 554A 4492 5552 5255  ).Q$.U)JUJD.URRU
-;00007210 24AA 4914 A944 A924 4915 5512 5551 4552  $.I..D.$I.U.UQER
-;00007220 9155 2549 4AA5 5295 5444 5251 52AA A445  .U%IJ.R.TDRQR..E
-;00007230 5552 A449 452A 9444 9245 1529 112A 4929  UR.IE*.D.E.).*I)
-;00007240 24A9 1295 2525 5115 2449 1551 1255 1524  $...%%Q.$I.Q.U.$
-;00007250 A552 A944 44A9 1514 4514 914A 4A95 1151  .R.DD...E..JJ..Q
-;00007260 154A 4514 5295 52AA 4A54 A455 4AA9 24A9  .JE.R.R.JT.UJ.$.
-;00007270 12A9 2A4A A4AA 4929 4A49 2952 AA44 5151  ..*J..I)JI)R.DQQ
-;00007280 4452 5444 9124 524A 94A5 4515 514A 4A54  DRTD.$RJ..E.QJJT
-;00007290 92A5 52A9 2555 2AA4 9515 1554 A924 4954  ..R.%U*....T.$IT
-;000072A0 94A9 5154 9152 A554 514A A511 44A4 5129  ..QT.R.TQJ..D.Q)
-;000072B0 4554 9124 454A 9512 5252 4512 AA49 4952  ET.$EJ..RRE..IIR
-;000072C0 A4AA 9244 5555 2A49 4A49 5154 A555 5115  ...DUU*IJIQT.UQ.
-;000072D0 5145 54A9 554A 4951 4492 9514 4AA9 1555  QET.UJIQD...J..U
-;000072E0 2512 AA45 5149 5451 54AA A491 5544 9444  %..EQITQT...UD.D
-;000072F0 9545 1295 1555 2451 4A55 2455 52A5 4A95  .E...U$QJU$UR.J.
-;00007300 44AA 4A45 2A4A AA51 2551 4945 2451 1545  D.JE*J.Q%QIE$Q.E
-;00007310 5294 A924 4555 12A5 5251 2A51 54A5 4AAA  R..$EU..RQ*QT.J.
-;00007320 4491 1152 9555 4951 2524 4AA4 A452 9154  D..R.UIQ%$J..R.T
-;00007330 4912 4912 AA91 44A4 4549 2552 5252 94A5  I.I...D.EI%RRR..
-;00007340 1452 5552 5512 9529 4AAA A444 4A52 5524  .RURU..)J..DJRU$
-;00007350 5455 4455 4929 4444 A552 4445 1495 4AAA  TUDUI)DD.RDE..J.
-;00007360 AA95 2452 4AAA 5294 AA51 5155 44A9 2954  ..$RJ.R..QQUD.)T
-;00007370 5455 1292 5512 912A 4454 A955 1294 492A  TU..U..*DT.U..I*
-;00007380 A929 552A A515 4514 AAAA 492A 44AA 4A92  .)U*..E...I*D.J.
-;00007390 AAA5 554A 5145 52A9 1152 A452 AA52 9154  ..UJQER..R.R.R.T
-;000073A0 9124 4A55 4551 4912 AA95 24A5 54A5 2A49  .$JUEQI...$.T.*I
-;000073B0 1511 2952 A4AA A4AA A952 A515 4915 1449  ..)R.....R..I..I
-;000073C0 5451 2AAA AAAA 4489 4489 5514 A92A 552A  TQ*...D.D.U..*U*
-;000073D0 AAA5 2AAA AAAA AAAA AAAA AAAA AAAA AAAA  ..*.............
-;000073E0 AAAA AAAA AAAA AAAA AAAA AAAA AAAA AAAA  ................
-;000073F0 AAAA AAAA AAAA AA94 A925 2AAA AAAA 4954  .........%*...IT
-;00007400 A452 AA51 1495 2925 454A 4A4A A4AA A525  .R.Q..)%EJJJ...%
-;00007410 14AA 4A49 1291 4955 52A9 4495 4A44 A52A  ..JI..IUR.D.JD.*
-;00007420 5154 9254 9114 952A A452 9125 4512 5252  QT.T...*.R.%E.RR
-;00007430 A524 4452 A912 5112 9129 2952 9249 54A5  .$DR..Q..))R.IT.
-;00007440 2552 5252 9291 114A 94A9 24A5 5252 5252  %RRR...J..$.RRRR
-;00007450 4954 A52A 4949 4AA4 A495 1154 AA4A 4A44  IT.*IIJ....T.JJD
-;00007460 5514 544A 5514 5514 952A AAA4 4951 152A  U.TJU.U..*..IQ.*
-;00007470 A495 2915 554A 4954 5455 1455 4952 9512  ..).UJITTU.UIR..
-;00007480 94AA 5255 2954 AA95 5551 5491 2515 52AA  ..RU)T..UQT.%.R.
-;00007490 92A5 5451 24AA A951 5544 5251 2AA4 4545  ..TQ$..QUDRQ*.EE
-;000074A0 5524 A44A A949 54A9 5129 5544 9255 2949  U$.J.IT.Q)UD.U)I
-;000074B0 2955 4492 5529 2929 5545 1544 9554 A4A9  )UD.U)))UE.D.T..
-;000074C0 2949 2A94 9152 A524 5149 4912 9451 2524  )I*..R.$QII..Q%$
-;000074D0 9445 254A 9554 4AA9 1544 AA49 2A49 4954  .E%J.TJ..D.I*IIT
-;000074E0 A4A9 4525 5292 A552 5244 9449 1149 54A4  ..E%R..RRD.I.IT.
-;000074F0 A945 2524 9292 AAA5 2952 5129 2545 5445  .E%$....)RQ)%ETE
-;00007500 4A52 A912 A952 94A4 A529 12AA 4A52 9294  JR...R...)..JR..
-;00007510 A449 4529 4A4A 5291 2A91 5452 514A 9155  .IE)JJR.*.TRQJ.U
-;00007520 5555 5555 5555 5555 5555 5555 5555 5555  UUUUUUUUUUUUUUUU
-;00007530 5555 5555 5555 5555 52A5 512A 4544 9145  UUUUUUUUR.Q*ED.E
-;00007540 1511 294A 4A94 4AA9 1514 4525 494A A955  ..)JJ.J...E%IJ.U
-;00007550 494A A494 5251 4445 2AAA 52AA 52AA 4955  IJ..RQDE*.R.R.IU
-;00007560 2445 2AA5 1525 5549 2954 4952 5452 524A  $E*..%UI)TIRTRRJ
-;00007570 9129 5494 5524 AA45 52A5 52A5 2A4A A524  .)T.U$.ER.R.*J.$
-;00007580 4A44 5445 5549 4515 4515 292A 5154 4955  JDTEUIE.E.)*QTIU
-;00007590 1451 1495 2525 4555 252A 9251 4945 1114  .Q..%%EU%*.QIE..
-;000075A0 AAA9 4AA9 4A55 2AA4 4529 254A 44AA 9254  ..J.JU*.E)%JD..T
-;000075B0 A554 9449 554A 924A 9244 9125 4944 5244  .T.IUJ.J.D.%IDRD
-;000075C0 4AA4 94A9 52A5 52A5 5451 4529 2514 9454  J...R.R.TQE)%..T
-;000075D0 A492 A511 54AA 9145 554A 5115 5529 14A5  ....T..EUJQ.U)..
-;000075E0 54A5 14A5 5112 AA92 A4A5 14AA 454A 52AA  T...Q.......EJR.
-;000075F0 5114 5245 2944 A914 9555 24A4 9554 5252  Q.RE)D...U$..TRR
-;00007600 A491 2A91 5454 52AA A492 A914 9549 24A4  ..*.TTR......I$.
-;00007610 9125 5494 5115 454A 92A5 1549 1514 52AA  .%T.Q.EJ...I..R.
-;00007620 5125 5144 9492 4925 1449 54A5 2A4A 494A  Q%QD..I%.IT.*JIJ
-;00007630 5529 12A4 AAAA 492A 5525 2529 294A 4495  U)....I*U%%))JD.
-;00007640 292A 4949 54A4 4A92 A525 1129 2A4A 5511  )*IIT.J..%.)*JU.
-;00007650 4A44 9551 2929 5144 9524 A924 A94A 9245  JD.Q))QD.$.$.J.E
-;00007660 1249 12A5 1249 12AA 4929 5544 452A AA51  .I...I..I)UDE*.Q
-;00007670 14AA 9451 24A5 4AA9 4AA9 5292 9295 2A52  ...Q$.J.J.R...*R
-;00007680 5145 1292 AAA4 9252 92AA A525 14A9 1549  QE.....R...%...I
-;00007690 5129 5545 44A5 514A A492 A912 92A4 AAAA  Q)UED.QJ........
-;000076A0 9254 94A5 54A9 12A5 2551 2529 4A44 A545  .T..T...%Q%)JD.E
-;000076B0 5125 294A 44A4 A551 2512 9254 912A 5525  Q%)JD..Q%..T.*U%
-;000076C0 14AA AA92 5295 2495 4949 254A 92A5 1494  ....R.$.II%J....
-;000076D0 912A 5124 A925 E9E8 EDF6 FD01 0101 050B  .*Q$.%..........
-;000076E0 1317 1511 0D0C 0E10 0E06 FBF3 EFF1 F4F6  ................
-;000076F0 F2EC E9E9 EFF8 FDFF FEFF 030A 1113 0F0A  ................
-;00007700 0606 090A 07FD F2EC EAEE F2F4 EFEA E7EB  ................
-;00007710 F3FD 0303 0306 0B14 1A1C 1812 0E0E 100F  ................
-;00007720 07FC F2EE F0F5 F7F3 EEEB ECF2 FC02 0505  ................
-;00007730 070B 1118 1A17 110D 0B0D 0E0B 02F8 EEEA  ................
-;00007740 EBF0 F4F2 ECE7 E8EF FB01 0301 0207 0F17  ................
-;00007750 1814 0F0B 0B0E 0F09 FEF3 EBEB F0F4 F6F1  ................
-;00007760 EBE9 EDF8 0308 0808 0B11 1A1F 1F1B 1612  ................
-;00007770 1213 120D 02F8 F1EF F3F7 F8F4 EDEB EEF9  ................
-;00007780 030A 0B0A 0B10 161B 1C19 140E 0D0E 0D06  ................
-;00007790 FCF2 ECEA EDF2 F4F0 ECEB EFF8 030A 0C0D  ................
-;000077A0 0F14 191D 1E1B 1610 0E0C 0902 F7EE E8E6  ................
-;000077B0 EAED EEEB E8E7 EBF5 FF05 0809 0C10 161B  ................
-;000077C0 1C19 140F 0C0B 0800 F4EB E5E3 E7EB ECEB  ................
-;000077D0 E7E6 EAF5 0008 0C0D 0F16 1C20 201B 1510  ...........  ...
-;000077E0 0D0B 04FA EFE6 E1E1 E3E6 E5E2 E1E2 E9F3  ................
-;000077F0 FD03 070A 0D12 1819 1813 0D09 0604 FEF4  ................
-;00007800 E9E0 DCDE E3E6 E4E0 DFE4 F0FC 060C 1012  ................
-;00007810 171C 2021 1D17 110C 0904 FBF0 E7E1 DEE2  .. !............
-;00007820 E4E8 E7E6 E6EB F702 0B0F 1114 181D 211F  ..............!.
-;00007830 1B16 0F0C 0904 F9EC E3DE DFE4 E8E8 E6E4  ................
-;00007840 E7EF FC08 1013 1517 1C21 2524 211A 1511  .........!%$!...
-;00007850 0F0A 01F4 EAE3 E1E5 EBEE EEEB EAF0 FA09  ................
-;00007860 1317 1919 1C21 2423 1F19 140F 0A02 F6EB  .....!$#........
-;00007870 E3E0 E1E5 E9E8 E7E6 EAF3 FF0B 1216 191B  ................
-;00007880 1E20 211F 1A13 0D08 03FA EEE5 DDDA DBDF  . !.............
-;00007890 E2E4 E3E4 E9F2 FD0A 1116 181A 1E21 221F  .............!".
-;000078A0 1811 0C07 01F6 E9DE D8D7 DAE0 E3E4 E4E6  ................
-;000078B0 EBF5 020F 181E 2123 2526 2724 1D15 0E07  ......!#%&'$....
-;000078C0 01F7 EBE2 DBD9 DCDF E2E4 E4E6 EBF5 010B  ................
-;000078D0 1318 1C1F 2224 2421 1D15 0E09 00F6 E9DE  ...."$$!........
-;000078E0 D7D5 D9DF E4E6 E7E7 ECF8 0513 1D23 2527  .............#%'
-;000078F0 282A 2A28 221A 130B 03F9 EDE4 DDDB DEE2  (**("...........
-;00007900 E7EA EBEE F5FE 0914 1B20 2223 2424 221E  ......... "#$$".
-;00007910 1811 0B03 FCF1 E5DB D5D5 D8DE E1E3 E3E4  ................
-;00007920 EDF8 0714 1D23 2427 2726 241F 160C 03FA  .....#$''&$.....
-;00007930 F2E9 DED5 CFCF D4DD E3E7 EAED F2FC 0712  ................
-;00007940 1A20 2223 2323 211C 160E 06FE F7EB E0D7  . "###!.........
-;00007950 D1D0 D3DA E2E7 ECEF F4FC 0918 2228 2B2A  ............"(+*
-;00007960 2826 2522 1D15 0D04 F9EE E4DC D7D5 D7DB  (&%"............
-;00007970 E0E6 EBF0 F4FC 0610 1920 2527 2927 2520  ......... %')'%
-;00007980 1B15 0E07 FEF4 E9DF D9D6 D9DF E6EE F2F6  ................
-;00007990 FA00 0915 1E27 2B2C 2C2A 2723 1D16 0E05  .....'+,,*'#....
-;000079A0 FDF3 E9DE D7D4 D5DA E0E8 EDF0 F2F7 FE08  ................
-;000079B0 121A 2021 221F 1D19 130D 05FD F5EE E4DB  .. !"...........
-;000079C0 D3CD CCCF D7DF E7EC F0F3 F903 0F1A 2126  ..............!&
-;000079D0 2726 221C 1813 0D07 01F8 F0E4 DAD4 D2D4  '&".............
-;000079E0 D9E2 EAEF F3F5 F800 0913 1C22 2525 2420  ..........."%%$
-;000079F0 1A16 100A 03FD F6ED E4DB D5D4 D8DF E8F0  ................
-;00007A00 F5F8 FD03 0C17 2229 2E2F 2C28 221C 1812  ......")./,("...
-;00007A10 0B04 FCF2 E9E0 DAD7 D8DE E7EF F8FD 0003  ................
-;00007A20 070F 1720 272B 2C2A 241E 1711 0B05 FFF9  ... '+,*$.......
-;00007A30 F1E7 E0DB DADE E6F1 FB01 0406 090E 1722  ..............."
-;00007A40 2B31 3431 2C22 1912 0A03 FFF8 F2E9 DFD7  +141,"..........
-;00007A50 D3D4 DAE4 EDF4 FAFC FE01 080F 1A22 2628  ............."&(
-;00007A60 231B 1008 01FC F9F6 F1EA E1D7 D1D0 D5E0  #...............
-;00007A70 ECF8 FF03 0203 060F 1922 2A2D 2B23 180D  ........."*-+#..
-;00007A80 04FE FAF8 F7F3 ECE5 DCD6 D5DB E6F1 FB02  ................
-;00007A90 0507 080B 111A 2228 2B27 1F14 08FD F6F1  ......"(+'......
-;00007AA0 F0EF EEE9 E1DA D4D3 D8E2 EFFB 0409 0A08  ................
-;00007AB0 080B 111A 2125 241E 1408 FEF6 F1F0 F1F2  ....!%$.........
-;00007AC0 F0EB E4DD DADD E6F3 000B 1012 100E 0F14  ................
-;00007AD0 1B22 2827 2114 06F7 ECE6 E6EA EFF0 EDE6  ."('!...........
-;00007AE0 DDD8 D8E1 EEFD 0912 1411 0D09 0A0F 181F  ................
-;00007AF0 2320 1808 F9EC E3E2 E6EC F1F1 EDE5 DEDA  # ..............
-;00007B00 DDE7 F605 1219 1915 0F0D 0E14 1B21 221C  .............!".
-;00007B10 10FE EEE3 DEE0 E8F0 F5F5 F1EB E6E7 EEFB  ................
-;00007B20 0A16 1F22 1F17 100C 0C12 191C 1C15 0BFD  ..."............
-;00007B30 EFE8 E4E7 EEF4 F7F6 F2ED EAEC F4FF 0D18  ................
-;00007B40 2022 1F1A 140F 0E10 1314 130C 04F8 EEE8   "..............
-;00007B50 E7EA F0F7 FBFD FCFA F9FA FF07 111A 1F21  ...............!
-;00007B60 1E1A 1511 0F0F 1011 0E0A 03FC F5EE EBED  ................
-;00007B70 F1F6 FAFD FEFE FFFF 0104 0A0F 1316 1715  ................
-;00007B80 1210 0D0B 0A08 0500 FCF6 F1EE ECED EFF1  ................
-;00007B90 F4F6 F7F8 F9FB FE01 0508 0A09 0703 0100  ................
-;00007BA0 0102 0304 02FF FBF5 F0EE ECED EFF1 F3F4  ................
-;00007BB0 F4F4 F4F6 FAFD 0205 0708 0606 0402 0202  ................
-;00007BC0 0304 0301 FEFA F5F1 EFEE EFF1 F2F2 F2F3  ................
-;00007BD0 F4F7 FBFF 0204 0404 0302 0202 0405 0709  ................
-;00007BE0 0806 02FE FAF6 F3F3 F2F4 F6F8 FAFB FCFD  ................
-;00007BF0 FF02 0508 0B0D 0E0E 0E0E 0E0D 0D0D 0D0C  ................
-;00007C00 0A07 0300 FDFB F9F8 F9F9 FAFC FEFF 0002  ................
-;00007C10 0405 0607 0707 0607 0708 0909 0806 03FF  ................
-;00007C20 FBF7 F3F0 EFEE EEF0 F0F2 F3F5 F8FB FE00  ................
-;00007C30 0203 0403 0404 0506 0707 0604 01FE FCF9  ................
-;00007C40 F7F5 F3F2 F2F3 F4F6 F8FA FDFF 0103 0506  ................
-;00007C50 0809 0A0B 0C0D 0E0E 0C0B 0907 0401 FEFB  ................
-;00007C60 F8F5 F3F2 F2F4 F5F7 F9FC FE01 0407 0A0C  ................
-;00007C70 0D0D 0D0D 0D0D 0C0C 0C0C 0C0B 0905 01FC  ................
-;00007C80 F9F7 F7F7 F9FD 0003 0608 090B 0C0C 0D0E  ................
-;00007C90 0E0E 0E0D 0C0B 0B0B 0908 0504 0200 FDFC  ................
-;00007CA0 FAF9 F9F9 FBFC FEFF 0203 0506 0606 0505  ................
-;00007CB0 0403 0302 0101 0101 0100 01FF FDFA F8F6  ................
-;00007CC0 F5F4 F5F6 F7F9 FBFB FCFD FDFD FDFD FDFD  ................
-;00007CD0 FDFD FDFD FEFF 0001 0101 00FE FCFB F8F7  ................
-;00007CE0 F5F5 F7F9 FAFD FE00 0000 0101 0100 0000  ................
-;00007CF0 0102 0404 0505 0504 0402 0100 FFFE FEFD  ................
-;00007D00 FCFA F9F7 F8F8 F9F9 FAFB FAFB FBFC FDFE  ................
-;00007D10 FF00 0001 0203 0506 0707 0604 01FF FCF8  ................
-;00007D20 F5F4 F3F3 F5F7 FAFC FF00 0203 0303 0303  ................
-;00007D30 0404 0607 0809 0B0B 0B0A 0806 0300 FEFC  ................
-;00007D40 FAF9 F8F8 FAFA FBFC FE00 0102 0302 0304  ................
-;00007D50 0506 0609 090A 0A09 0806 0503 01FF FDFB  ................
-;00007D60 F9F7 F6F5 F6F7 F8FA FCFD FF00 0203 0407  ................
-;00007D70 0708 0807 0606 0504 0403 0403 0200 FDFB  ................
-;00007D80 FAF9 F8F9 FAFB FCFD FF01 0204 0506 0607  ................
-;00007D90 0606 0505 0504 0506 0505 0403 0200 FEFC  ................
-;00007DA0 FBFA F8F8 F8F8 FAFB FDFE 0001 0101 0000  ................
-;00007DB0 0000 0102 0306 0708 0808 0807 0605 0403  ................
-;00007DC0 0201 00FF FEFF FFFF 0001 0103 0305 0607  ................
-;00007DD0 0708 0809 0808 0707 0606 0607 0708 0808  ................
-;00007DE0 0707 0504 0201 00FF FEFD FDFD FDFF FF00  ................
-;00007DF0 0101 0100 FFFF FFFF 0001 0102 0303 0303  ................
-;00007E00 0302 0100 FEFC FBF9 F7F5 F4F4 F5F6 F9FA  ................
-;00007E10 FBFC FDFD FDFE FDFD FCFD FDFD FEFE FEFF  ................
-;00007E20 FEFE FEFD FDFC FBFA FAF9 F9F9 F9F9 F8F7  ................
-;00007E30 F7F6 F6F6 F7F7 F8F9 FAFB FCFD FDFE FEFF  ................
-;00007E40 FFFF FEFE FEFE FFFF FFFF FEFF FEFD FDFC  ................
-;00007E50 FBFA FAFA FBFC FDFE FF00 0204 0506 0708  ................
-;00007E60 0807 0707 0606 0605 0505 0505 0504 0404  ................
-;00007E70 0301 0100 00FF 0000 0001 0002 0204 0505  ................
-;00007E80 0606 0606 0504 0403 0303 0303 0404 0505  ................
-;00007E90 0505 0604 0302 00FF FFFE FDFD FDFD FEFE  ................
-;00007EA0 FEFF 0101 0203 0203 0303 0201 0101 0101  ................
-;00007EB0 0101 0101 0101 0101 0100 FFFF FEFD FCFC  ................
-;00007EC0 FCFC FCFC FCFD FDFD FEFE FF00 0001 0101  ................
-;00007ED0 0000 0000 0000 0101 0101 0101 0000 FFFE  ................
-;00007EE0 FEFD FCFC FBFB FBFB FDFD FF01 0203 0405  ................
-;00007EF0 0404 0404 0504 0404 0303 0303 0505 0606  ................
-;00007F00 0606 0404 0302 0101 0001 00FF FEFE FEFE  ................
-;00007F10 FF00 0000 0101 0202 0203 0303 0303 0202  ................
-;00007F20 0101 0102 0303 0303 0301 0100 00FE FDFC  ................
-;00007F30 FBFB FBFC FDFE FF01 0204 0404 0404 0303  ................
-;00007F40 0302 0201 0100 0001 0201 0100 00FF FDFD  ................
-;00007F50 FBFA F8F8 F8F8 F9F9 FAFB FCFD FEFE FF00  ................
-;00007F60 0100 0000 0000 0000 0000 0000 00FF FFFF  ................
-;00007F70 FEFD FDFD FCFA FAFA F9FA FAFA FAFB FAFB  ................
-;00007F80 FCFE FEFF FF00 FF00 0001 0102 0202 0102  ................
-;00007F90 0102 0202 0304 0404 0403 0303 0201 0100  ................
-;00007FA0 0001 0001 0102 0203 0304 0404 0405 0505  ................
-;00007FB0 0505 0505 0505 0505 0405 0303 0201 0000  ................
-;00007FC0 FFFE FEFD FCFC FCFC FCFC FCFC FDFE FF00  ................
-;00007FD0 0001 0102 0202 0202 0100 0000 0000 FFFF  ................
-;00007FE0 FEFE FDFD FDFC FCFB FAFA F9F9 F9FA FAFA  ................
-;00007FF0 FBFC FDFE FFFF 0001 0101 0100 0000 8000  ................
-;00008000 0029 00C0 0029 0000 0000 0014 0000 0000  .)...)..........
-;00008010 0000 0000 0000 0000 0000 0000 0000 0000  ................
-;00008020 0000 0000 0000 0000 0000 0000 0000 0000  ................
-;00008030 0000 0000 0000 0000 0000 0000 0000 0000  ................
-;00008040 0000 0000 0000 0000 0000 0000 0000 0000  ................
-;00008050 0000 0000 0000 0000 0000 0000 0000 0000  ................
-;
-;
-;
-;
-;
