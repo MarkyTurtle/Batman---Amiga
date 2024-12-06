@@ -45,70 +45,70 @@
 
 ; Loader Constants
 ;------------------
-LOADER_TITLE_SCREEN         EQU $00000820                           ; Load Title Screen 
-LOADER_LEVEL_1              EQU $00000824                           ; Load Level 1
-LOADER_LEVEL_2              EQU $00000828                           ; Load Level 2
-LOADER_LEVEL_3              EQU $0000082c                           ; Load Level 3
-LOADER_LEVEL_4              EQU $00000830                           ; Load Level 4
-LOADER_LEVEL_5              EQU $00000834                           ; Load Level 5
+LOADER_TITLE_SCREEN             EQU $00000820                       ; Load Title Screen 
+LOADER_LEVEL_1                  EQU $00000824                       ; Load Level 1
+LOADER_LEVEL_2                  EQU $00000828                       ; Load Level 2
+LOADER_LEVEL_3                  EQU $0000082c                       ; Load Level 3
+LOADER_LEVEL_4                  EQU $00000830                       ; Load Level 4
+LOADER_LEVEL_5                  EQU $00000834                       ; Load Level 5
 
 
 
 ; Music Player Constants
-PLAYER_INIT                 EQU $00048000                           ; initialise music/sfx player
-PLAYER_SILENCE              EQU $00048004                           ; Silence all audio
-PLAYER_INIT_SFX_1           EQU $00048008                           ; Initialise SFX Audio Channnel
-PLAYER_INIT_SFX_2           EQU $0004800c                           ; same as init_sfx_1 above
-PLAYER_INIT_SONG            EQU $00048010                           ; initialise song to play - D0.l = song/sound 1 to 13
-PLAYER_INIT_SFX             EQU $00048014                           ; initialise sfx to play - d0.l = sfx 5 to 13
-PLAYER_UPDATE               EQU $00048018                           ; regular update (vblank to keep sounds/music playing)
+AUDIO_PLAYER_INIT               EQU $00048000                       ; initialise music/sfx player
+AUDIO_PLAYER_SILENCE            EQU $00048004                       ; Silence all audio
+AUDIO_PLAYER_INIT_SFX_1         EQU $00048008                       ; Initialise SFX Audio Channnel
+AUDIO_PLAYER_INIT_SFX_2         EQU $0004800c                       ; same as init_sfx_1 above
+AUDIO_PLAYER_INIT_SONG          EQU $00048010                       ; initialise song to play - D0.l = song/sound 1 to 13
+AUDIO_PLAYER_INIT_SFX           EQU $00048014                       ; initialise sfx to play - d0.l = sfx 5 to 13
+AUDIO_PLAYER_UPDATE             EQU $00048018                       ; regular update (vblank to keep sounds/music playing)
 
 
 
 ; Panel Constants - original function addresses
-PANEL_UPDATE                EQU $0007c800                           ; called on VBL to update panel display
-PANEL_INIT_TIMER            EQU $0007c80e                           ; initialise level timer (D0.w = BCD encoded MIN:SEC)
-PANEL_INIT_SCORE            EQU $0007c81c                           ; initialise player score
-PANEL_ADD_SCORE             EQU $0007c82a                           ; add value to player score (D0.l = BCD encoded value)
-PANEL_INIT_LIVES            EQU $0007c838                           ; initialise player lives
-PANEL_ADD_LIFE              EQU $0007c846                           ; add 1 to player lives
-PANEL_INIT_ENERGY           EQU $0007c854                           ; initialise player energy to full value
-PANEL_LOSE_LIFE             EQU $0007c862                           ; sub 1 from player lives, check end game, set status bytes
-PANEL_LOSE_ENERGY           EQU $0007c870                           ; reduce player energy (increase hit damage) D0.w = amount to lose
+PANEL_UPDATE                    EQU $0007c800                       ; called on VBL to update panel display
+PANEL_INIT_TIMER                EQU $0007c80e                       ; initialise level timer (D0.w = BCD encoded MIN:SEC)
+PANEL_INIT_SCORE                EQU $0007c81c                       ; initialise player score
+PANEL_ADD_SCORE                 EQU $0007c82a                       ; add value to player score (D0.l = BCD encoded value)
+PANEL_INIT_LIVES                EQU $0007c838                       ; initialise player lives
+PANEL_ADD_LIFE                  EQU $0007c846                       ; add 1 to player lives
+PANEL_INIT_ENERGY               EQU $0007c854                       ; initialise player energy to full value
+PANEL_LOSE_LIFE                 EQU $0007c862                       ; sub 1 from player lives, check end game, set status bytes
+PANEL_LOSE_ENERGY               EQU $0007c870                       ; reduce player energy (increase hit damage) D0.w = amount to lose
 ; Panel Constants - original data value addresses
-PANEL_STATUS_1              EQU $0007c874                           ; Game Status Bits
-PANEL_STATUS_2              EQU $0007c875                           ; Game Status Bits
-PANEL_LIVES_COUNT           EQU $0007c876                           ; player lives left
-PANEL_HISCORE               EQU $0007c878                           ; hi-score BCD value
-PANEL_SCORE                 EQU $0007c87c                           ; player score BCD value
-PANEL_FRAMETICK             EQU $0007c880                           ; counts down from 50 to 0 on each update
-PANEL_TIMER_UPDATE_VALUE    EQU $0007c882                           ; Timer BCD update value
-PANEL_TIMER_VALUE           EQU $0007c884                           ; Timer BCD value Min:Sec (word)
-PANEL_TIMER_SECONDS         EQU $0007c885                           ; Timer BCD seconds value
-PANEL_SCORE_UPDATE_VALUE    EQU $0007c886                           ; player score update value
-PANEL_SCORE_DISPLAY_VALUE   EQU $0007c88a                           ; player score copy BCD value used for display
-PANEL_ENERGY_VALUE          EQU $0007c88e                           ; player energy value (40 max value)
-PANEL_HIT_DAMAGE            EQU $0007c890                           ; player hit damge (subtracted from player energy on each panel update)
+PANEL_STATUS_1                  EQU $0007c874                       ; Game Status Bits
+PANEL_STATUS_2                  EQU $0007c875                       ; Game Status Bits
+PANEL_LIVES_COUNT               EQU $0007c876                       ; player lives left
+PANEL_HISCORE                   EQU $0007c878                       ; hi-score BCD value
+PANEL_SCORE                     EQU $0007c87c                       ; player score BCD value
+PANEL_FRAMETICK                 EQU $0007c880                       ; counts down from 50 to 0 on each update
+PANEL_TIMER_UPDATE_VALUE        EQU $0007c882                       ; Timer BCD update value
+PANEL_TIMER_VALUE               EQU $0007c884                       ; Timer BCD value Min:Sec (word)
+PANEL_TIMER_SECONDS             EQU $0007c885                       ; Timer BCD seconds value
+PANEL_SCORE_UPDATE_VALUE        EQU $0007c886                       ; player score update value
+PANEL_SCORE_DISPLAY_VALUE       EQU $0007c88a                       ; player score copy BCD value used for display
+PANEL_ENERGY_VALUE              EQU $0007c88e                       ; player energy value (40 max value)
+PANEL_HIT_DAMAGE                EQU $0007c890                       ; player hit damge (subtracted from player energy on each panel update)
 ; Panel Constants - resources
-PANEL_GFX                   EQU $0007c89a                           ; main bottom display panel gfx
-PANEL_BATMAN_GFX            EQU $0007e69a                           ; batman energy image
-PANEL_JOKER_GFX             EQU $0007ebba                           ; joker energy image
-PANEL_SCORE_GFX             EQU $0007f30a                           ; score digits gfx
-PANEL_LIVES_ON_GFX          EQU $0007f374                           ; batman symbol - lives icon 'on'
-PANEL_LIVES_OFF_GFX         EQU $0007f838                           ; batman symbol - lives icon 'off'
+PANEL_GFX                       EQU $0007c89a                       ; main bottom display panel gfx
+PANEL_BATMAN_GFX                EQU $0007e69a                       ; batman energy image
+PANEL_JOKER_GFX                 EQU $0007ebba                       ; joker energy image
+PANEL_SCORE_GFX                 EQU $0007f30a                       ; score digits gfx
+PANEL_LIVES_ON_GFX              EQU $0007f374                       ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX             EQU $0007f838                       ; batman symbol - lives icon 'off'
 ; Panel Status1 Bit Numbers
-PANELST1_TIMER_EXPIRED      EQU $0
-PANELST1_NO_LIVES_LEFT      EQU $1
-PANELST1_LIFE_LOST          EQU $2
+PANEL_ST1_TIMER_EXPIRED         EQU $0                              ; panel status 1 - bit 0 - Timer Expired
+PANEL_ST1_NO_LIVES_LEFT         EQU $1                              ; panel status 1 - bit 1 - No Lives Remaining
+PANEL_ST1_LIFE_LOST             EQU $2                              ; panel status 1 - bit 2 - Player Life Lost
 ; Panel Status1 Bit Values
-PANELST1_VAL_TIMER_EXPIRED  EQU $1
-PANELST2_VAL_NO_LIVES_LEFT  EQU $2
-PANELST2_VAL_LIFE_LOST      EQU $4
+PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED       ; panel status 1 - bit 0 - Value of Timer Expired
+PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT       ; panel status 1 - bit 0 - Value of 
+PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST           ; panel status 1 - bit 0 - Value of 
 ; Panel_Status2 Bit Numbers
-PANELST2_MUSIC_SFX          EQU $0
-PANELST2_GAME_OVER          EQU $5
-PANELST2_GAME_COMPLETE      EQU $6
-PANELST2_CHEAT_ACTIVE       EQU $7
+PANELST2_MUSIC_SFX             EQU $0
+PANELST2_GAME_OVER             EQU $5
+PANELST2_GAME_COMPLETE         EQU $6
+PANELST2_CHEAT_ACTIVE          EQU $7
 
 
 
@@ -836,7 +836,7 @@ L00003522           dc.l    lvl_3_sfx_exit      ; L00003542 ; unused ptr to 'rts
 lvl_3_update_sound_player                                    ; original address $00003526
                     movem.l d1-d7/a0-a6,-(a7)
                     addq.w  #$01,frame_counter              ; increment frame counter - $000036ee 
-                    jsr     PLAYER_UPDATE                   ; External Address - CHEM.IFF (music player) - $00048018 
+                    jsr     AUDIO_PLAYER_UPDATE                   ; External Address - CHEM.IFF (music player) - $00048018 
                     move.b  #$00,$00bfee01
                     movem.l (a7)+,d1-d7/a0-a6
 lvl_3_sfx_exit                                              ; original address L00003542
@@ -1385,7 +1385,7 @@ L00003aea           bsr.w   double_buffer_playfield ; L000036fa
 
 L00003aee           bsr.w   L000058e2               ; Important Level Init Function
 
-L00003af2           jsr     PLAYER_INIT             ;  $00048000 - Initialise Music Player ; External Address $48000- CHEM.IFF
+L00003af2           jsr     AUDIO_PLAYER_INIT             ;  $00048000 - Initialise Music Player ; External Address $48000- CHEM.IFF
 L00003af8           clr.w   L000062fc
 L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
 
@@ -1463,8 +1463,7 @@ L00003b98           clr.w   L000062ee
                     ; copy 7 words init data
                     ; L000062fc has to be 0, or the routine will overwrite code.
                                                                     ; original address L00003ba4
-L00003ba4           move.l  #player_move_commands,L00003c90         ; Set Self Modifying code - GameLoop JSR - L00003c92                                                      
-;L00003ba4           move.w  #$4c3e,L00003c92                        ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00003ba4           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92                                                      
                     lea.l   default_level_parameters,a0             ; L000067a0,a0
                     move.w  L000062fc,d6                            ; cleared above on line number L00003af8
 .outer_loop                                                         ; original address L00003bb2
@@ -1493,7 +1492,7 @@ L00003bdc           bsr.w   wait_for_frame_count                    ; L00005e8c
 L00003be0           btst.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2      ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003be8           bne.b   sfx_only                                ; L00003bf2
 L00003bea           moveq   #$01,d0                                 ; song number - 01 = level music
-L00003bec           jsr     PLAYER_INIT_SONG                        ; chem.iff - music/sfx - initialise song (d0 = song number) $00048010 ; External Address $48010 - CHEM.IFF
+L00003bec           jsr     AUDIO_PLAYER_INIT_SONG                        ; chem.iff - music/sfx - initialise song (d0 = song number) $00048010 ; External Address $48010 - CHEM.IFF
 
 sfx_only                                                            ; original address L00003bf2
                     bsr.w   screen_wipe_to_backbuffer               ; L00003cc0 ; Wipe 'Axis Chemical' -> Show Playfield
@@ -1502,67 +1501,93 @@ sfx_only                                                            ; original a
 L00003bf6           clr.l   frame_counter                           ; NB: Long Clear - clears next word also -L000036ee
 
 
+KEY_F1      EQU     $0081
+KEY_F2      EQU     $0082
+KEY_F10     EQU     $008a
+KEY_ESC     EQU     $001b
+SFX_LEVEL_MUSIC     EQU $01
 
-                    ; --------------------------------------------------------------------------
-                    ; --------------------------------- Game Loop ------------------------------
-                    ; --------------------------------------------------------------------------
+
+                    ; -----------------------------------------------------------------------------------------------------------
                     ;
-game_loop                                                           ; original address $00003bfa
-                    ; --------- Start Key press checks ---------
-L00003bfa           bsr.w   getkey                                  ; d0 = ascii code (z = 1 if no key)- L0000365a
-L00003bfe           beq.b   gl_continue_03                          ; no key pressed, skip key checks - continue $00003c5a
+                    ; Game Loop
+                    ;
+                    ; -----------------------------------------------------------------------------------------------------------
+game_loop                                                               ; original address $00003bfa
 
-                    ; Check 'F1' pressed (Pause Game)
-L00003c00           cmp.w   #$0081,d0                               ; Key = 'F1'
-L00003c04           bne.b   gl_continue_01                          ; 'F1' is not pressed - L00003c22
 
-gl_pause_game_loop
-L00003c06           bsr.w   getkey                                  ; d0 = ascii code (z = 1 if no key) - L0000365a
-L00003c0a           beq.b   gl_pause_game_loop                      ; L00003c06 ; no key pressed, loop $00003c06
+                    ; ---------- Start Key press checks -----------
+                    ;
+                    ; 'F1'  -  Pause Game
+                    ;           1) when paused 'ESC' = exit game
+                    ;           2) any other key resumes the game
+                    ; 'F2'  - Toggle Music/SFX
+                    ; 'F10' - Skip Level (if cheat mode is active)
+                    ;
+start_of_key_checks
+                    bsr.w   getkey                                      ; d0 = ascii code (0 =  no key pressed)
+                    beq.b   end_of_key_checks
+.test_pause_game_f1
+                        cmp.w   #KEY_F1,d0                              ; Test for Key = 'F1'
+                        bne.b   .test_toggle_music_f2                    
+.gl_pause_game_loop
+                            bsr.w   getkey                  
+                            beq.b   .gl_pause_game_loop 
 
-                    ; Check 'ESC' - exit game, when on title screen
-                    ; can only exit the game when paused
-L00003c0c           cmp.w   #$001b,d0                               ; Key = 'ESC'
-L00003c10           bne.b   gl_continue_01                          ; 'ESC' is not pressed - L00003c22
+                            cmp.w   #KEY_ESC,d0                         ; Test for Key = 'ESC'
+                            bne.b   .test_toggle_music_f2
+.exit_game
+                                bsr.w   screen_wipe_to_black
+                                bset.b  #PANELST2_GAME_OVER,PANEL_STATUS_2
+                                bra.w   return_to_title_screen 
+                                ; ***************************                 
+                                ; ****** NEVER RETURNS ******
+                                ; **** LOAD TITLE SCREEN ****
+                                ; ***************************
 
-                    ; 'ESC' is pressed
-L00003c12           bsr.w   screen_wipe_to_black                    ; L00003cbc ; wipe screen to black
-L00003c16           bset.b  #PANELST2_GAME_OVER,PANEL_STATUS_2      ; SET GAME OVER - Panel - Status 2 Bytes - bit #$0005 of $0007c875 
-L00003c1e           bra.w   L00004e00
+.test_toggle_music_f2
+                        cmp.w   #KEY_F2,d0                              ; Test for Key = 'F2'
+                        bne.b   .test_level_skip_f10
+.toggle_music_sfx
+                            bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2
+                            bne.b   .init_music
+.init_sfx
+                                jsr     AUDIO_PLAYER_INIT_SFX_1
+                                bra.w   end_of_key_checks
+.init_music
+                                moveq   #SFX_LEVEL_MUSIC,d0
+                                jsr     AUDIO_PLAYER_INIT_SONG
+                                bra.w   end_of_key_checks
 
-gl_continue_01
-                    ; Check 'F2' - Toggle music/sfx
-L00003c22           cmp.w   #$0082,d0                               ; Key = 'F2'
-L00003c26           bne.b   gl_continue_02                          ; 'F2' is not pressed - L00003c48
-toggle_music_sfx
-L00003c28           bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2      ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
-L00003c30           bne.b   init_music                              ; bit = 1, init music - L00003c3c
-init_sfx
-L00003c32           jsr     PLAYER_INIT_SFX_1                       ; chem.iff - Music/SFX player - Init SFX audio channel - $00048008  ; External Address $48008 - CHEM.IFF
-L00003c38           bra.w   gl_continue_03                          ; skip to end of key checks - L00003c5a
-init_music
-L00003c3c           moveq   #$01,d0                                 ; song number - 01 = level music
-L00003c3e           jsr     PLAYER_INIT_SONG                        ; chem.iff - music/sfx - init song - d0.l = song number - $00048010  ; External Address $48010- CHEM.IFF
-L00003c44           bra.w   gl_continue_03                          ; skip to end oof key checks - L00003c5a
-
-gl_continue_02
-                    ; Check 'F10' - Skip level if cheat is active
-L00003c48           cmp.w   #$008a,d0                               ; 'F10' - pressed
-L00003c4c           bne.b   gl_continue_03                          ; 'f10' is not pressed - skip to end of key checks - L00003c5a
-L00003c4e           btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2   ; Panel - Status 2 Bytes - bit #$0007 of $0007c875 
-L00003c56           bne.w   L00005e3a                               ; - SKIP LEVEL IF 'JAMMMM' CHEAT IS ACTIVE AND F10 is Pressed
+.test_level_skip_f10
+                        cmp.w   #KEY_F10,d0                              ; Test for key = 'F10'
+                        bne.b   end_of_key_checks
+.skip_level
+                            btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2
+                            bne.w   Load_level_2
+                            ; ***************************                 
+                            ; ****** NEVER RETURNS ******
+                            ; ****** LOAD LEVEL 02 ******
+                            ; ***************************
 
                     ; --------- End of Key Press Checks ---------
+end_of_key_checks
 
-gl_continue_03
-L00003c5a           btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874 
-L00003c62           bne.b   L00003c80
-L00003c64           jsr     PANEL_UPDATE                            ; Panel Update - $0007c800
-L00003c6a           jsr     PANEL_UPDATE                            ; Panel Update - $0007c800
-L00003c70           btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874 
-L00003c78           beq.b   L00003c80
-L00003c7a           moveq   #$01,d6
-L00003c7c           bsr.w   L00004ce4
+
+
+gl_update_state_machine
+                    btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1         ; Test Timer has expired
+                    bne.b   L00003c80
+.timer_not_expired
+                        jsr     PANEL_UPDATE
+                        jsr     PANEL_UPDATE
+                        btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Test Timer has expired 
+                        beq.b   L00003c80
+.timer_still_not_expired
+                            moveq   #$01,d6
+                            bsr.w   update_self_modified_code_ptr           ; update state machine?
+
+
 L00003c80           clr.l   d0
 L00003c82           clr.l   d1
 L00003c84           bsr.w   L00005854
@@ -1570,12 +1595,11 @@ L00003c88           movem.w L000067c2,d0-d1
 
 
                     ; ----- SELF MODIFYING CODE -----
-                    ; default jsr address $4c3e = Command Loop (set at addresses $3ba4, $4d66, $504e, $51d2, $52fe, $53ce, $542a)
-                    ; updated address $555a = unknown (set in routine L000054e8)
-;L00003c8e           jsr     L00004c3e                              ; 4eb9 0000 4c3e (self modifying code $3c92)
-L00003c8e           dc.w    $4eb9                                   ; jsr
-L00003c90           dc.w    $0000                                   ; high word of jsr address
-L00003c92           dc.w    $4c3e                                   ; low word of jsr address       ($4c3e - Run Commands) - Default Value = $4c3e (run command loop)
+                    ; updated all over the place to run an alternative routine.
+                    ; a bit of a state machine kinda update routine.
+L00003c8e           dc.w    $4eb9                           ; jsr - opcode (jsr     L00004c3e)
+gl_jsr_address                                              ; original address L00003c90
+L00003c90           dc.l    $00004c3e                       ; Self Modified Address  
                     ; ----- END OF SELF MODIFYING CODE -----
 
 L00003c94           bsr.w   update_view_window                      ; L00004936 ; Scroll Background Window (not draw that's later)
@@ -1589,7 +1613,6 @@ L00003cb0           bsr.w   draw_projectiles                        ; L000045fe 
 L00003cb4           bsr.w   double_buffer_playfield                 ; L000036fa
 
 L00003cb8           bra.w   game_loop                               ; L00003bfa ; jump back to main loop
-
 
                     ;-----------------------------------------------------
                     ;------------------ End of Game Loop -----------------
@@ -1921,7 +1944,7 @@ L00003f78           subq.w  #$02,d0
 L00003f7a           bmi.b   L00003fa6
 L00003f7c           move.w  #$0001,(a6)
 L00003f80           moveq   #$0a,d0                 ; sfx number - $0a = Bad Guy Hit
-L00003f82           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address $48014 - CHEM.IFF
+L00003f82           jsr     AUDIO_PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address $48014 - CHEM.IFF
 L00003f88           move.w  #$fffe,$000a(a6)
 L00003f8e           tst.w   L000062fa
 L00003f92           bmi.b   L00003fa6
@@ -1929,8 +1952,8 @@ L00003f94           tst.w   L00006318
 L00003f98           beq.b   L00003fa0
 L00003f9a           tst.w   L000062f4
 L00003f9e           bne.b   L00003fa6
-L00003fa0           moveq   #$05,d6
-L00003fa2           bsr.w   L00004ccc
+L00003fa0           moveq   #$05,d6                         ; Value of Energy to Lose (5 of 48)
+L00003fa2           bsr.w   batman_lose_energy              ; L00004ccc
 L00003fa6           move.w  (a7)+,d7
 L00003fa8           lea.l   $0016(a6),a6
 L00003fac           dbf.w   d7,L00003eec
@@ -1964,7 +1987,7 @@ L00003ff4           cmp.w   #$0073,d1
 L00003ff8           bpl.b   L0000400a
 L00003ffa           movem.w d0-d1,-(a7)
 L00003ffe           moveq   #$09,d0                 ; sfx number = 09 = Grenade Throw
-L00004000           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0.l = sound number - $00048014 ; External Address $48014 - CHEM.IFF
+L00004000           jsr     AUDIO_PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0.l = sound number - $00048014 ; External Address $48014 - CHEM.IFF
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
 
@@ -2359,7 +2382,7 @@ L000044bc           cmp.w   #$0059,d1
 L000044c0           bcc.b   L000044b4
 L000044c2           movem.w d0-d1,-(a7)
 L000044c6           move.w  d2,d0                       ; d0 = sfx number to play
-L000044c8           jsr     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
+L000044c8           jsr     AUDIO_PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
 L000044ce           movem.w (a7)+,d0-d1
 L000044d2           rts
 
@@ -2545,25 +2568,29 @@ L00004656           rts
                     ; update projectiles on the level, including the player's projectiles
                     ; it does not draw them..
                     ;
-update_projectiles                              ; original address L00004658
-L00004658           lea.l   L00004866,a5
-L0000465c           lea.l   L00004894,a6
-L00004660           moveq   #$13,d7
-L00004662           move.w  (a6)+,d6
-L00004664           beq.b   L0000467e
-L00004666           movem.w (a6),d0-d1
-L0000466a           sub.w   L0000630e,d0
-L0000466e           sub.w   L00006310,d1
-L00004672           asl.w   #$01,d6
-L00004674           clr.l   d2
-L00004676           movea.l d2,a0
-L00004678           movea.w -$2(a5,d6.W),a0         ; $fe(a5,d6.W),a0
-L0000467c           jsr     (a0)
-L0000467e           addq.w  #$06,a6                 ; addaq.w
-L00004680           dbf.w d7,L00004662
-L00004684           rts
+update_projectiles                                  ; original address L00004658
+                    lea.l   L00004866,a5
+                    lea.l   L00004894,a6
+                    moveq   #$13,d7                 ; 19 + 1 - loop counter
+.update_loop
+                    move.w  (a6)+,d6                ; d6 = 1 based index into address jmp table L00004866
+                    beq.b   .L0000467e
+                    movem.w (a6),d0-d1
+                    sub.w   L0000630e,d0
+                    sub.w   L00006310,d1
+                    ;asl.w   #$01,d6                ; multiply d6 * 2
+                    asl.w   #$02,d6                 ; multiply d6 * 4 (modified address table to 32 bit addresses)
+                    clr.l   d2                      ; clear d2
+                    movea.l d2,a0                   ; clear a0
+                    ;movea.w -$2(a5,d6.W),a0        ; $fe(a5,d6.W),a0
+                    movea.l -$4(a5,d6.W),a0         ; $fe(a5,d6.W),a0 (modified address table to 32 bit addresses)
+                    jsr     (a0)
+.L0000467e          addq.w  #$06,a6                 ; addaq.w
+                    dbf.w   d7,.update_loop         ; L00004662
+                    rts
 
 
+badguy_shooting
 L00004686           movem.w d0-d1,(a6)
 L0000468a           bsr.w   L000055a0
 L0000468e           cmp.b   #$17,d2
@@ -2571,17 +2598,20 @@ L00004692           bcs.b   L000046ba
 L00004694           sub.w   L000067c2,d0
 L00004698           addq.w  #$04,d0
 L0000469a           cmp.w   #$0009,d0
-L0000469e           bcc.b   L000046c0
+L0000469e           bcc.b   exit_badguy_shooting            ; L000046c0
 L000046a0           cmp.w   L000067c4,d1
-L000046a4           bpl.b   L000046c0
+L000046a4           bpl.b   exit_badguy_shooting            ; L000046c0
 L000046a6           cmp.w   L000062f0,d1
-L000046aa           bmi.b   L000046c0
-L000046ac           moveq   #$01,d6
-L000046ae           bsr.w   L00004ccc
-L000046b2           moveq   #$0a,d0                 ; sfx number - $0a = Bad guy hit
-L000046b4           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014           ; External Address - CHEM.IFF
-L000046ba           move.w  #$0004,-$0002(a6)   
+L000046aa           bmi.b   exit_badguy_shooting            ; L000046c0
+batman_shot
+L000046ac           moveq   #$01,d6                         ; Value of Energy to Lose (1 of 48)
+L000046ae           bsr.w   batman_lose_energy              ; L00004ccc
+L000046b2           moveq   #$0a,d0                         ; sfx number - $0a = Bad guy/Batman hit
+L000046b4           jsr     AUDIO_PLAYER_INIT_SFX           ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014           ; External Address - CHEM.IFF
+L000046ba           move.w  #$0004,-$0002(a6)
+exit_badguy_shooting   
 L000046c0           rts
+
 
 
 L000046c2           subq.w  #$03,d0
@@ -2589,41 +2619,46 @@ L000046c4           cmp.w   #$fff6,d0
 L000046c8           bmi.b   L00004722
 L000046ca           subq.w  #$03,d1
 L000046cc           cmp.w   #$0058,d1
-L000046d0           bcs.b   L00004686
+L000046d0           bcs.b   badguy_shooting                 ; L00004686
 L000046d2           bra.b   L00004722
+
 L000046d4           addq.w  #$03,d0
 L000046d6           cmp.w   #$00a8,d0
 L000046da           bpl.b   L00004722
 L000046dc           subq.w  #$03,d1
 L000046de           cmp.w   #$0058,d1
-L000046e2           bcs.b   L00004686
+L000046e2           bcs.b   badguy_shooting                 ; L00004686
 L000046e4           bra.b   L00004722
+
 L000046e6           subq.w  #$03,d0
 L000046e8           cmp.w   #$fff6,d0
 L000046ec           bmi.b   L00004722
 L000046ee           addq.w  #$03,d1
 L000046f0           cmp.w   #$0058,d1
-L000046f4           bcs.b   L00004686
+L000046f4           bcs.b   badguy_shooting                 ; L00004686
 L000046f6           bra.b   L00004722
+
 L000046f8           addq.w  #$03,d0
 L000046fa           cmp.w   #$00a8,d0
 L000046fe           bpl.b   L00004722
 L00004700           addq.w  #$03,d1
 L00004702           cmp.w   #$0058,d1
-L00004706           bcs.w   L00004686
+L00004706           bcs.w   badguy_shooting                 ; L00004686
 L0000470a           bra.b   L00004722
+
 L0000470c           subq.w  #$05,d0
 L0000470e           cmp.w   #$fff6,d0
-L00004712           bpl.w   L00004686
+L00004712           bpl.w   badguy_shooting                 ; L00004686
 L00004716           bra.b   L00004722
+
 L00004718           addq.w  #$05,d0
 L0000471a           cmp.w   #$00a8,d0
-L0000471e           bmi.w   L00004686
+L0000471e           bmi.w   badguy_shooting                 ; L00004686
 L00004722           clr.w   -$0002(a6)
 L00004726           rts
 
 
-L00004728           addq.w  #$04,d0
+L00004728           addq.w  #$04,d0                     ; batman fire right
 L0000472a           cmp.w   #$00a8,d0
 L0000472e           bpl.b   L00004722
 L00004730           bsr.w   L000055a0
@@ -2631,7 +2666,8 @@ L00004734           cmp.b   #$17,d2
 L00004738           movem.w d0-d1,(a6)
 L0000473c           bcc.b   L0000477e
 L0000473e           bcs.b   L00004722
-L00004740           subq.w  #$04,d0
+
+L00004740           subq.w  #$04,d0                     ; batman fire left
 L00004742           cmp.w   #$fff6,d0
 L00004746           bmi.b   L00004722
 L00004748           bsr.w   L000055a0
@@ -2639,7 +2675,8 @@ L0000474c           cmp.b   #$17,d2
 L00004750           movem.w d0-d1,(a6)
 L00004754           bcc.b   L0000477e
 L00004756           bra.b   L00004722
-L00004758           move.w  L00006318,d0
+
+L00004758           move.w  L00006318,d0                ; batman grappling hook
 L0000475c           beq.b   L00004722
 L0000475e           movem.w L000067c2,d0-d1
 L00004764           add.w   L0000631a,d0
@@ -2668,14 +2705,15 @@ L000047a4           lea.l   -$0016(a4),a4
 L000047a8           dbf.w   d6,L00004784
 L000047ac           rts
 
-
-
 L000047ae           move.w  #$0001,(a4)
 L000047b2           move.w  #$fffc,$000a(a4)
 L000047b8           bsr.w   L00004722
-L000047bc           moveq   #$0a,d0                     ; sfx number - $0a = bad guy hit
-L000047be           jmp     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address -CHEM.IFF
-L000047c4           addq.w  #$02,d0
+L000047bc           moveq   #$0a,d0                             ; sfx number - $0a = bad guy hit
+L000047be           jmp     AUDIO_PLAYER_INIT_SFX               ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address -CHEM.IFF
+                    ; use rts in audio player to return
+
+
+L000047c4           addq.w  #$02,d0                     ; badguy - grenade right
 L000047c6           move.w  $0004(a6),d2
 L000047ca           cmp.w   #$0028,d2
 L000047ce           bpl.b   L000047d4
@@ -2708,7 +2746,7 @@ L00004820           rts
 
 
 
-L00004822           subq.w  #$02,d0
+L00004822           subq.w  #$02,d0                 ; bad guy - grenade left
 L00004824           move.w  $0004(a6),d2
 L00004828           cmp.w   #$0028,d2
 L0000482c           bpl.b   L00004832
@@ -2720,124 +2758,158 @@ L00004838           add.w   d2,d1
 L0000483a           cmp.w   #$0060,d1
 L0000483e           bpl.w   L00004722
 L00004842           bra.b   L000047e4
+
+
 L00004844           movem.w d0-d1,(a6)
 L00004848           btst.b  #$0000,L0000632d                ; test even/odd playfield buffer swap value
 L0000484e           bne.b   L00004864
-L00004850           move.w  -$0002(a6),d2
-L00004854           addq.w  #$01,d2
-L00004856           cmp.w   #$0018,d2
+L00004850           move.w  -$0002(a6),d2                   ; get projectile handler index
+L00004854           addq.w  #$01,d2                         ; increment projectile handler index
+L00004856           cmp.w   #$0018,d2                       ; compare 24 with projectile handler index
 L0000485a           bne.w   L00004860
-L0000485e           clr.w   d2
-L00004860           move.w  d2,-$0002(a6)
+L0000485e           clr.w   d2                              ; clear projectile handler index
+L00004860           move.w  d2,-$0002(a6)                   ; store handler index
 L00004864           rts
 
 
-; referenced by draw_projectiles
-L00004866           dc.w    $4758                       ; illegal
-L00004868           dc.w    $4728, $4740                ; [ chk.l (a0,$4740) == $00005140,d3 ]
-L0000486a           dc.w    $4740                       ; illegal
-L0000486c           dc.w    $4722                       ; [ chk.l -(a2),d3 ]
-L0000486e           dc.w    $4722                       ; [ chk.l -(a2),d3 ]
-L00004870           dc.w    $4718                       ; [ chk.l (a0)+,d3 ]
-L00004872           dc.w    $470c                       ; illegal
-L00004874           dc.w    $46f8, $46e6                ; move.w $46e6,sr
-L00004878           dc.w    $46d4                       ; move.w (a4),sr
-L0000487a           dc.w    $46c2                       ; move.w d2,sr
-L0000487c           dc.w    $47c4                       ; illegal
-L0000487e           dc.w    $4822                       ; nbcd.b -(a2)
-L00004880           dc.w    $4844                       ; swap.w d4
-L00004882           dc.w    $4844                       ; swap.w d4
-L00004884           dc.w    $4844                       ; swap.w d4
-L00004886           dc.w    $4844                       ; swap.w d4
-L00004888           dc.w    $4844                       ; swap.w d4
-L0000488a           dc.w    $4844                       ; swap.w d4
-L0000488c           dc.w    $4844                       ; swap.w d4
-L0000488e           dc.w    $4844                       ; swap.w d4
-L00004890           dc.w    $4844                       ; swap.w d4
-L00004892           dc.w    $4844                       ; swap.w d4
+
+                    ; addresses for Projectile processing JMP Table
+                    ; referenced by draw_projectiles
+                    ; modified for 32 bit addresses -  24 entries
+L00004866           dc.l    L00004758               ; batman grappling hook
+                    dc.l    L00004728               ; batman fire right
+                    dc.l    L00004740               ; batman fire left
+                    dc.l    L00004740               ; batman fire left
+                    dc.l    L00004722               ; clr.w   -$0002(a6), RTS
+                    dc.l    L00004722               ; clr.w   -$0002(a6), RTS
+                    dc.l    L00004718               ; Bad Guy Shooting
+                    dc.l    L0000470c               ; Bad Guy Shooting
+                    dc.l    L000046f8               ; Bad Guy Shooting
+                    dc.l    L000046e6               ; Bad Guy Shooting
+                    dc.l    L000046d4               ; Bad Guy Shooting
+                    dc.l    L000046c2               ; Bad Guy Shooting
+                    dc.l    L000047c4               ; Grenade Right
+                    dc.l    L00004822               ; Grenade Left
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+                    dc.l    L00004844               ; runs while grenade explosion is displayed?
+
+                    ; original data (16 bit address pointers) - 24 entries
+;L00004866           dc.w    $4758, $4728, $4740, $4740, $4722, $4722, $4718, $470c
+;                    dc.w    $46f8, $46e6, $46d4, $46c2, $47c4, $4822, $4844, $4844
+;                    dc.w    $4844, $4844, $4844, $4844, $4844, $4844, $4844, $4844
 
 
                     ; referenced by L0000463e
                     ; referenced by update_projectiles
                     ; referenced by draw_projectiles
                     ; referenced & (40 longs cleared) during game_start / level initialisation 
-L00004894           dc.w    $0000
+                    ; 4 word structure.
+                    ;
+L00004894           
+.entry_01           dc.w    $0000           ; Jmp Table Index (1-24)
+                    dc.w    $0000           ; D0 - Parameter 1
+                    dc.w    $0000           ; D1 - Parameter 2
+                    dc.w    $0000           ; Unused
+
+.entry_02           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_03           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_04           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_05           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_06           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_07           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_08           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_09           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_10           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_11           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_12           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_13           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_14           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_15           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_16           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_17           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_18           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+
+.entry_19           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+
+.entry_20           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
@@ -3220,53 +3292,68 @@ L00004cc8           dc.l    cmd_nop                     ; CMD31 - NOP
 
 
 
-
-L00004ccc           tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
-L00004cd2           bne.b   L00004d36
+                    ; ------------------------- batman lose energy ---------------------------
+                    ; IN: 
+                    ;   d6.w - amount of energy to lose.
+                    ;
+batman_lose_energy                                                  ; original address L00004ccc
+L00004ccc           tst.b   PANEL_STATUS_1                          ; Test if Time UP, Life Lost, No Lives
+L00004cd2           bne.b   exit_rts                                ; exit if 'Timer Expired', 'Life Lost', 'No Lives Remaining'
 
 L00004cd4           movem.l d0-d7/a5-a6,-(a7)
 L00004cd8           move.w  d6,d0
 L00004cda           jsr     PANEL_LOSE_ENERGY                       ; Panel - Lose Energy (D0.w) - $0007c870
 L00004ce0           movem.l (a7)+,d0-d7/a5-a6
+                    ; falls though to updating state below
 
-L00004ce4           move.l  L00003c90,d2                            ; Self Modified Code JSR - game_loop - JSR address
-;L00004ce4           move.w  L00003c92,d2                           ; game_loop JSR address
-L00004ce8           cmp.l   #L00005482,d2                           ; Address
-;L00004ce8           cmp.w   #$5482,d2                              ; Address
-L00004cec           beq.b   L00004d36
-L00004cee           move.l  #L00004e3a,d3                           ; Address
-;L00004cee           move.w  #$4e3a,d3                              ; Address
-L00004cf2           cmp.l   d3,d2
-;L00004cf2           cmp.w   d3,d2
-L00004cf4           beq.b   L00004d1c
-L00004cf6           cmp.l   #L00004e64,d2                           ; Address
-;L00004cf6           cmp.w   #$4e64,d2                              ; Address
-L00004cfa           beq.b   L00004d1c
-L00004cfc           cmp.l   #L00005058,d2                           ; Address
-;L00004cfc           cmp.w   #$5058,d2                              ; Address
-L00004d00           beq.b   L00004d38
-L00004d02           move.l  #L00004d48,d3                           ; Address
-;L00004d02           move.w  #$4d48,d3                              ; Address
-L00004d06           cmp.l   #L00005308,d2                           ; Address
-;L00004d06           cmp.w   #$5308,d2                              ; Address
-L00004d0a           beq.b   L00004d1c
-L00004d0c           cmp.l   d2,d3
-;L00004d0c           cmp.w   d2,d3
-L00004d0e           beq.b   L00004d1c
-L00004d10           lea.l   L00005457,a0
-L00004d14           bsr.w   L00005438
-L00004d18           move.l  #L00004d56,d3                           ; Address
-;L00004d18           move.w  #$4d56,d3                              ; Address
-L00004d1c           move.l  d3,L00003c90                            ; UPDATE game_loop JSR address
-;L00004d1c           move.w  d3,L00003c92                           ; UPDATE game_loop JSR address
-L00004d20           move.w  L00006306,d2
-L00004d24           add.w   d6,d6
-L00004d26           add.w   d6,d6
-L00004d28           add.w   d6,d2
-L00004d2a           cmp.w   #$000c,d2
-L00004d2e           bcs.b   L00004d32
-L00004d30           moveq   #$0c,d2
-L00004d32           move.w  d2,L00006306
+
+                    ; --------------- update 'self modified code pointer' --------------------
+                    ; appears to be a kind-of state machine, updated in the game loop
+                    ; updates occur as long as the level timer has not expired.
+                    ; IN;
+                    ;   D6.w = #$01 (from main loop) - new state?
+update_self_modified_code_ptr
+L00004ce4           move.l  gl_jsr_address,d2                       ; L00003c90,d2 ; Self Modified Code JSR - game_loop - JSR address
+
+L00004ce8               cmp.l   #L00005482,d2                           ; compare state with #$5482
+L00004cec               beq.b   exit_rts                                ; exit if already in state #$5482
+
+L00004cee               move.l  #L00004e3a,d3                           ; get new state
+L00004cf2               cmp.l   d3,d2                                   ; compate state with #$4e3a
+L00004cf4               beq.b   L00004d1c                               ; set state to (d3)
+
+L00004cf6                   cmp.l   #L00004e64,d2                           ; Address
+L00004cfa                   beq.b   L00004d1c
+
+L00004cfc                       cmp.l   #L00005058,d2                           ; Address
+L00004d00                       beq.b   L00004d38
+
+L00004d02                           move.l  #L00004d48,d3                           ; Address
+L00004d06                           cmp.l   #L00005308,d2                           ; Address
+L00004d0a                           beq.b   L00004d1c
+
+L00004d0c                               cmp.l   d2,d3
+L00004d0e                               beq.b   L00004d1c
+
+L00004d10                                   lea.l   L00005457,a0
+L00004d14                                   bsr.w   L00005438
+L00004d18                                   move.l  #L00004d56,d3                           ; Address
+
+L00004d1c               move.l  d3,gl_jsr_address                       ; L00003c90  ; UPDATE game_loop JSR address
+
+                        ; update value held in L00006306
+                        ; by value passed in d6
+                        ; clamp value in range (0 - 12)
+L00004d20               move.w  L00006306,d2                            ; d2 = current state?
+L00004d24               add.w   d6,d6                                   ; multiple d6 by 4
+L00004d26               add.w   d6,d6                                   
+L00004d28               add.w   d6,d2                   
+L00004d2a               cmp.w   #$000c,d2                               ; compare d2 with 12
+L00004d2e               bcs.b   L00004d32
+.clamp_d2
+L00004d30               moveq   #$0c,d2                                 ; clamp d2 to max of 12
+L00004d32               move.w  d2,L00006306
+exit_rts    
 L00004d36           rts 
 
 
@@ -3279,29 +3366,27 @@ L00004d46           rts
 
 
 L00004d48           subq.w  #$01,L00006306
-L00004d4c           bne.b   L00004d36
-L00004d4e           move.l  #L00005308,L00003c90        ; Set Self Modifying Code JSR in game_loop
-;L00004d4e           move.w  #$5308,L00003c92
+L00004d4c           bne.b   exit_rts                        ; L00004d36
+L00004d4e           move.l  #L00005308,gl_jsr_address       ;L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00004d54           bra.b   L00004d7a
+
 L00004d56           tst.w   L00006318
 L00004d5a           beq.b   L00004d60
 L00004d5c           bsr.w   L000051b0
 L00004d60           subq.w  #$01,L00006306
-L00004d64           bne.b   L00004d36
-L00004d66           move.l  #player_move_commands,L00003c90 
-;L00004d66           move.w  #$4c3e,L00003c92           ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00004d64           bne.b   exit_rts                                ; L00004d36
+L00004d66           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00004d6c           tst.w   L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
 L00004d7a           tst.b   PANEL_STATUS_1              ; Panel - Status Byte 1 - $0007c874
-L00004d80           beq.b   L00004d36
-L00004d82           jsr     PLAYER_SILENCE              ; Chem1.iff - Silence all Audio - $00048004
+L00004d80           beq.b   exit_rts                                ; L00004d36
+L00004d82           jsr     AUDIO_PLAYER_SILENCE              ; Chem1.iff - Silence all Audio - $00048004
 L00004d88           clr.w   L00006318
 L00004d8c           moveq   #$03,d0                     ; song/sound number - 03 = player life lost
-L00004d8e           jsr     PLAYER_INIT_SONG            ; chem.iff - music/sfx - init song - d0.l = song number - $00048010           ; External Address - CHEM.IFF
-L00004d94           move.l  #L00004da2,L00003c90        ; Set Self Modifying Code JSR in game_loop
-;L00004d94           move.w  #$4da2,L00003c92
+L00004d8e           jsr     AUDIO_PLAYER_INIT_SONG            ; chem.iff - music/sfx - init song - d0.l = song number - $00048010           ; External Address - CHEM.IFF
+L00004d94           move.l  #L00004da2,gl_jsr_address       ; L00003c90        ; Set Self Modifying Code JSR in game_loop
 L00004d9a           move.w  #$63dc,L00006326
 L00004da0           rts 
 
@@ -3311,19 +3396,19 @@ L00004da2            movea.w L00006326,a0
 L00004da6            bsr.w   L00005438
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
-L00004db0            bne     L00004d36                                  ; Exit (JMP to RTS)
+L00004db0            bne     exit_rts                                   ;  L00004d36  ; Exit (JMP to RTS)
 
-L00004db2            jsr     PLAYER_INIT_SFX_2                          ; chem.iff - music/sfx - init sfx audio channel - $0004800c  ; External Address - CHEM.IFF
+L00004db2            jsr     AUDIO_PLAYER_INIT_SFX_2                          ; chem.iff - music/sfx - init sfx audio channel - $0004800c  ; External Address - CHEM.IFF
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   wait_for_frame_count                       ; L00005e8c
 L00004dc0            bsr.w   clear_backbuffer_playfield                 ; L00004e28
-L00004dc4            btst.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Panel - Status Byte 1 bit #$0000 of $0007c874
+L00004dc4            btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Panel - Status Byte 1 bit #$0000 of $0007c874
 L00004dcc            beq.b   L00004dd6
 
 L00004dce            lea.l   text_time_up,a0                            ; L00004e1c,a0
 L00004dd2            bsr.w   large_text_plotter                         ; L000067ca
 
-L00004dd6            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
+L00004dd6            btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
 L00004dde            beq.b   L00004de8
 L00004de0            lea.l   text_game_over,a0                          ; L00004e0e,a0
 L00004de4            bsr.w   large_text_plotter                         ; L000067ca
@@ -3331,10 +3416,14 @@ L00004de4            bsr.w   large_text_plotter                         ; L00006
 L00004de8            bsr.w   screen_wipe_to_backbuffer                  ; L00003cc0
 L00004dec            move.w  #$001e,d0
 L00004df0            bsr.w   wait_for_frame_count                       ; L00005e8c
-L00004df4            btst.b  #PANELST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
+L00004df4            btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
 L00004dfc            beq.w   restart_level                              ; L00003b02
 
-L00004e00            jsr     PLAYER_SILENCE                             ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
+
+                    ; ------------------- return to title screen ------------------------
+
+return_to_title_screen                                                  ; original address L00004e00
+L00004e00            jsr     AUDIO_PLAYER_SILENCE                             ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
 L00004e06            bsr.w   panel_fade_out                             ; L00003d8c
 L00004e0a            bra.w   LOADER_TITLE_SCREEN                        ; $00000820 ; **** LOADER ****
 
@@ -3380,8 +3469,8 @@ L00004e50            addq.w  #$01,(a0)
 L00004e52            clr.w   d3                         ; Player Movement Command 00 - NOP
 L00004e54            subq.w  #$01,L00006306
 L00004e58            bne.b   L00004e60
-L00004e5a            move.l  #L00004e64,L00003c90        ; Set Self MOdified Code JSR in game_loop
-;L00004e5a            move.w  #$4e64,L00003c92           ; Update Main Loop JSR (Command Loop to )
+L00004e5a            move.l  #L00004e64,gl_jsr_address  ; L00003c90        ; Set Self MOdified Code JSR in game_loop
+
 
                     ; one of the following has occurred
                     ; Panel Status 1
@@ -3405,8 +3494,7 @@ L00004e74            move.w  #$0048,L000067c6
 L00004e7a            subq.w  #$01,d5
 L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
-L00004e80            move.l  #L00005058,L00003c90        ; Self modified code JSR game_loop
-;L00004e80            move.w  #$5058,L00003c92           ; Self modified code JSR game_loop
+L00004e80            move.l  #L00005058,gl_jsr_address  ; L00003c90 ; Self modified code JSR game_loop
 L00004e86            move.w  #$0005,L000062f2
 L00004e8c            move.w  #$6426,L00006326
 L00004e92            move.w  d1,d2
@@ -3500,8 +3588,8 @@ L00004f92           subq.w  #$02,L00006318
 L00004f96           bra.w   L00004f1a
 
 L00004f9a           movem.w d0-d7,-(a7)
-L00004f9e           moveq   #$02,d6
-L00004fa0           bsr.w   L00004ccc
+L00004f9e           moveq   #$02,d6                                 ; Value of Energy to Lose
+L00004fa0           bsr.w   batman_lose_energy                      ; L00004ccc
 L00004fa4           movem.w (a7)+,d0-d7
 L00004fa8           clr.w   d4
 L00004faa           clr.w   d5
@@ -3526,19 +3614,17 @@ L00004fdc           bra.w   L00005464
 
 
 input_fire
-L00004fe0           move.w  #$6419,L00003626        ; Jump Table CMD9
-L00004fe8           move.l  #L00004ff6,L00003c90    ; Self Modified Code JSR - game_loop
-;L00004fe8           move.w  #$4ff6,L00003c92
+L00004fe0           move.w  #$6419,L00003626            ; Jump Table CMD9
+L00004fe8           move.l  #L00004ff6,gl_jsr_address   ; L00003c90    ; Self Modified Code JSR - game_loop
 L00004fee           moveq   #$08,d0                 ; sfx number - 08 = Bat Rope
-L00004ff0           jsr     PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00004ff6           movea.w L00006326,a0
 L00004ffa           bsr.w   L00005438
 L00004ffe           move.w  a0,L00006326
 L00005002           tst.b   (a0)
 L00005004           bne.b   L00005034
 L00005006           move.w  #$0008,L000062f2
-L0000500c           move.l  #L00005036,L00003c90    ; Self Modified Code JSR - game_loop
-;L0000500c           move.w  #$5036,L00003c92
+L0000500c           move.l  #L00005036,gl_jsr_address   ; L00003c90 ; Self Modified Code JSR - game_loop
 L00005012           bsr.w   L0000463e
 L00005016           sub.w   #$0007,d0
 L0000501a           move.w  L000062ee,d2
@@ -3560,8 +3646,7 @@ L00005044           bne.b   L00005034
 L00005046           lea.l   L000063d3,a0
 L0000504a           bra.w   L00004538
 
-L0000504e           move.l  #player_move_commands,L00003c90
-;L0000504e           move.w  #$4c3e,L00003c92                   ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L0000504e           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005054           bra.w   player_move_commands                ; L00004c3e
 
 
@@ -3592,8 +3677,7 @@ L00005096           bsr.w   L00005438
 L0000509a           move.w  a0,L00006326
 L0000509e           move.b  (a0),d7
 L000050a0           bne.b   L000050a8
-L000050a2           move.l  #$00005414,L00003c90            ; update self modified code JSR game_loop
-;L000050a2           move.w  #$5414,L00003c92            ; original code - update self modified code JSR game_loop
+L000050a2           move.l  #$00005414,gl_jsr_address   ; L00003c90  ; update self modified code JSR game_loop
 L000050a8           rts 
 
 
@@ -3640,12 +3724,11 @@ L00005104           move.w  d0,(a0)+
 L00005106           clr.l   (a0)+
 L00005108           bsr.w   L0000463e
 L0000510c           move.w  #$0001,(a0)
-L00005110           move.l  #L00005132,L00003c90        ; Self Modified Code JSR - game_loop
-;L00005110           move.w  #$5132,L00003c92
+L00005110           move.l  #L00005132,gl_jsr_address   ; L00003c90 ; Self Modified Code JSR - game_loop
 L00005116           lea.l   L000063d0,a0
 L0000511a           bsr.w   L00005438
 L0000511e           moveq   #$07,d0                     ; sfx number - 07 = Batarang
-L00005120           jsr     PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+L00005120           jsr     AUDIO_PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 L00005126           movem.w L000067c2,d0-d1
 L0000512c           bclr.b  #$0004,player_input_command             ; L00006308
 L00005132           lea.l   L00006314,a0
@@ -3680,13 +3763,11 @@ L00005188           cmp.b   #$85,d2
 L0000518c           bcc.b   L000051a8
 L0000518e           cmp.b   #$79,d2
 L00005192           bcs.b   L000051ae
-L00005194           move.l  #L00004e64,L00003c90                    ; Self Modified Code JSR - game_loop
-;L00005194           move.w  #$4e64,L00003c92
+L00005194           move.l  #L00004e64,gl_jsr_address           ; L00003c90 ; Self Modified Code JSR - game_loop
 L0000519a           move.l  L0000631a,L00006328
 L000051a0           lea.l   L00006416,a0
 L000051a4           bra.w   L00005438
-L000051a8           move.l  #L000051b0,L00003c90                    ; Self Modified Code JSR - game_loop
-;L000051a8           move.w  #$51b0,L00003c92
+L000051a8           move.l  #L000051b0,gl_jsr_address           ; L00003c90 ; Self Modified Code JSR - game_loop
 L000051ae           rts
 
 
@@ -3698,8 +3779,7 @@ L000051c4           subq.w  #$03,$0004(a0)
 L000051c8           bls.b   L000051ce
 L000051ca           bra.w   L000050aa
 L000051ce           clr.w   $0004(a0)
-L000051d2           move.l  #player_move_commands,L00003c90
-;L000051d2           move.w  #$4c3e,L00003c92            ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L000051d2           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000051d8           lea.l   L000063d3,a0
 L000051dc           bra.w   L00005438
 L000051e0           rts 
@@ -3733,8 +3813,7 @@ L00005228           cmp.b   #$85,d2
 L0000522c           bcs.b   L000051e0
 L0000522e           addq.w  #$04,a7                                 ; addaq.w
 L00005230           and.b   #$0c,player_input_command               ; L00006308
-L00005236           move.l  #L00005308,L00003c90                     ; Self Modified Code JSR - game_loop
-;L00005236           move.w  #$5308,L00003c92
+L00005236           move.l  #L00005308,gl_jsr_address               ; L00003c90 ; Self Modified Code JSR - game_loop
 L0000523c           bra.w   L00005308
 
 
@@ -3819,8 +3898,7 @@ L000052f0           move.b  $00(a0,d3.W),d2                         ; $00000d13 
 L000052f4           sub.b   #$79,d2
 L000052f8           cmp.b   #$0d,d2
 L000052fc           bcc.w   L00005368                               ; bcc.b
-L000052fe           move.l  #player_move_commands,L00003c90
-;L000052fe           move.w  #$4c3e,L00003c92                       ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L000052fe           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005304           bra.w   player_move_commands                    ; L00004c3e
 
 L00005308           btst.b  #$0004,player_input_command             ; L00006308
@@ -3886,8 +3964,7 @@ L000053c8           clr.l   (a0)+
 L000053ca           move.w  d2,(a0)
 L000053cc           rts 
 
-L000053ce           move.l  #player_move_commands,L00003c90
-;L000053ce           move.w  #$4c3e,L00003c92                       ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L000053ce           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000053d4           rts
 
 
@@ -3905,8 +3982,7 @@ input_down
 L000053f4           bsr.w   L000051e2                               ; Jump table CMD3
 L000053f8           lea.l   L000063d6,a0
 L000053fc           bsr.b   L00005438
-L000053fe           move.l  #L00005406,L00003c90                    ; Set Self Modifying Code - game_loop JSR
-;L000053fe           move.w  #$5406,L00003c92                       ; Set Self Modifying Code - game_loop JSR
+L000053fe           move.l  #L00005406,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code - game_loop JSR
 L00005404           rts
 
 
@@ -3922,8 +3998,7 @@ L00005412           bne.b   L00005420
 
                     ; address moved into self modified JSR
                     ; by code line L000050a2
-L00005414           move.l  #set_default_gl_jsr,L00003c90           ; Set game_loop JSR self modified code
-;L00005414           move.w  #$542a,L00003c92
+L00005414           move.l  #set_default_gl_jsr,gl_jsr_address      ; L00003c90 ; Set game_loop JSR self modified code
 L0000541a           lea.l   L000063d6,a0
 L0000541e           bra.b   L00005438
 L00005420           btst.b  #$0004,player_input_command             ; L00006308
@@ -3936,8 +4011,7 @@ L00005428           rts
                     ; by line L00005414
                     ; reset self modified code JSR to default routine.
 set_default_gl_jsr
-L0000542a           move.l  #player_move_commands,L00003c90
-;L0000542a           move.w  #$4c3e,L00003c92                       ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L0000542a           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005430           lea.l   L000063d3,a0
 L00005434           bra.w   L00005438
 
@@ -3972,10 +4046,14 @@ L00005460           clr.l   L000062f4
 L00005464           move.w  L000067c4,L000067c6
 L0000546a           lea.l   L00005454(pc),a0                ; $00005454 -$ffe8(pc),a0 
 L0000546e           bsr.w   L00005438
-L00005472           move.l  #L00005482,L00003c90            ; Set Self Modifying Code JSR in game_loop 
-;L00005472           move.w  #$5482,L00003c92               ; Self Modifying Code? 
+L00005472           move.l  #L00005482,gl_jsr_address       ; L00003c90 ; Set Self Modifying Code JSR in game_loop 
 L00005478           move.w  #$ffff,L000062fa
 L0000547e           clr.w   L000062f8
+
+                    ; ----------- default game loop state? -------------
+                    ; appears to be the default routine called by the
+                    ; game loop's self modified code.
+default_gl_state
 L00005482           movem.w L000062f4,d4-d5
 L00005488           move.w d4,L0000630e
 L0000548c           beq.b   L000054cc
@@ -4032,7 +4110,7 @@ L00005520           bcc.b   L000054e6
 L00005522           move.w  #$0028,L000067c6
 L00005528           lea.l   L00005457,a0
 L0000552c           bsr.w   L00005438
-L00005530           move.l  #$0000555a,L00003c90                    ; Update Main Game Loop Command JSR
+L00005530           move.l  #$0000555a,gl_jsr_address           ; L00003c90 ; Update Main Game Loop Command JSR
 L00005538           clr.w   L000062f6
 L0000553c           move.w  #$0001,L000062fa
 L00005542           move.w  #$0002,L000062f2
@@ -4048,17 +4126,17 @@ L00005558           rts
 
                     ; Called from GameLoop - Self Modifying code.
 L0000555a           subq.w  #$01,L000062f2
-L0000555e           bne.b   L00005558
+L0000555e           bne.b   L0000559e
 L00005560           tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
 L00005566           bne.w   L00004d82
-L0000556a           move.l  #player_move_commands,L00003c90         ; #$00004c3e,L00003c90                    ; Update Game Loop Command Loop JSR
+L0000556a           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Update Game Loop Command Loop JSR
 L00005572           lea.l   L000063d3,a0
 L00005576           cmp.w   #$0050,L000062f8
 L0000557c           bmi.w   L00005438
-L00005580           moveq   #$5a,d6
-L00005582           bsr.w   L00004ccc
-L00005586           move.b  #2^PANELST1_LIFE_LOST,PANEL_STATUS_1    ; Panel - Status Byte 1 - #$04 -> $0007c874
-L0000558e           btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2   ; Panel - Status 2 Bytes - bit #$0007 of $0007c875
+L00005580           moveq   #$5a,d6                                     ; Value of Energy to Lose (90) - DEAD! (max is 48?)
+L00005582           bsr.w   batman_lose_energy                          ; L00004ccc
+L00005586           move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1     ; Set - LIFE LOST
+L0000558e           btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2       ; Check - CHEAT ACTIVE
 L00005596           bne.b   L0000559e
 L00005598           jmp     PANEL_LOSE_LIFE                         ; Panel - Lose a Life - $0007c862
 L0000559e           rts
@@ -4792,10 +4870,9 @@ L00005b8a           rts
                     ; jack falls & hits the vat?
 L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a
-L00005b90           jsr     PLAYER_INIT_SFX_1                       ; chem.iff - Music/SFX player - init fsx audio channel - $00048008                               ; External Address - CHEM.IFF
-L00005b96           bset.b  #PANELST1_TIMER_EXPIRED,PANEL_STATUS_1  ; Panel - Status Byte 1 - bit #$0000 of $0007c874
-L00005b9e           move.l  #L00005290,L00003c90                    ; Set Self Modifying Code JSR in game_loop
-;L00005b9e           move.w  #$5290,L00003c92
+L00005b90           jsr     AUDIO_PLAYER_INIT_SFX_1
+L00005b96           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ; Panel - Status Byte 1 - bit #$0000 of $0007c874
+L00005b9e           move.l  #L00005290,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005ba4           clr.w   L000062fa
 L00005ba8           clr.w   L00006318
 L00005bac           move.w  $0004(a5),d0                            ; $00bfd104,d0
@@ -4806,7 +4883,7 @@ L00005bbc           move.l  #$00005b28,$0008(a5)                    ; $00bfd108
 L00005bc4           move.w  #$0019,(a5)
 L00005bc8           clr.w   (a6)
 L00005bca           moveq   #$0b,d0                                 ; sfx number = $0b = Splash (jack in the vat)
-L00005bcc           jmp     PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+L00005bcc           jmp     AUDIO_PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
 
 
 L00005bd2           subq.w  #$01,L000067c8
@@ -4862,8 +4939,9 @@ L00005c5e           cmp.w   d1,d4
 L00005c60           bmi.b   L00005c40
 L00005c62           cmp.w   L000062f0,d1
 L00005c66           bmi.b   L00005c40
-L00005c68           moveq   #$03,d6
-L00005c6a           bra.w   L00004ccc
+L00005c68           moveq   #$03,d6                         ; Value of Energy to Lose (3 of 48)
+L00005c6a           bra.w   batman_lose_energy              ; L00004ccc
+
 L00005c6e           move.w  $000c(a6),d3            ; $00dff00c,d3
 L00005c72           addq.b  #$06,d3
 L00005c74           move.w  d3,$000c(a6)            ; $00dff00c
@@ -4907,8 +4985,8 @@ L00005cea           cmp.w   L000062f0,d1
 L00005cee           bmi.w   L000045bc
 L00005cf2           cmp.w   L000067c4,d1
 L00005cf6           bpl.w   L000045bc
-L00005cfa           moveq   #$02,d6
-L00005cfc           bsr.w   L00004ccc
+L00005cfa           moveq   #$02,d6                     ; Value of Energy to Lose (2 of 48)
+L00005cfc           bsr.w   batman_lose_energy          ;L00004ccc
 L00005d00           bra.b   L00005cbe
 L00005d02           rts 
 
@@ -4938,7 +5016,7 @@ L00005d3c           btst.b  #$0000,L0000632d                        ; test even/
 L00005d42           beq.b   L00005d54
 L00005d44           movem.l d0-d1/a6,-(a7)
 L00005d48           moveq   #$0b,d0                                 ; song number - $0b = Splash (jack in the vat)
-L00005d4a           jsr     PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
+L00005d4a           jsr     AUDIO_PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
 L00005d50           movem.l (a7)+,d0-d1/a6
 L00005d54           move.w  playfield_swap_count,d2                 ; L0000632c,d2
 L00005d58           lsr.w   #$02,d2
@@ -4954,18 +5032,18 @@ L00005d74           cmp.w   $0006(a5),d2                            ; $00bfd106,
 L00005d78           beq.b   L00005d88
 L00005d7a           lea.l   $0016(a5),a5
 L00005d7e           dbf.w   d7,L00005d74
-L00005d82           moveq   #$5a,d6
-L00005d84           bra.w   L00004ccc
+L00005d82           moveq   #$5a,d6                                 ; Value of Energy to Lose (90 of 48) - DEAD!
+L00005d84           bra.w   batman_lose_energy                      ; L00004ccc
+
 L00005d88           move.w  (a5),d2
 L00005d8a           beq.b   L00005d82
 L00005d8c           subq.w  #$01,d2
 L00005d8e           bne.w   L00005d02
-L00005d92           move.l  #L00005290,L00003c90                    ; Set Self Modifying Code JSR in game_loop
-;L00005d92           move.w  #$5290,L00003c92
+L00005d92           move.l  #L00005290,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005d98           move.w  #$0021,(a5)
 L00005d9c           clr.w   L00006318
 L00005da0           move.w  #$ffff,L000062fa
-L00005da6           move.b  #2^PANELST1_TIMER_EXPIRED,PANEL_STATUS_1    ; Panel - Status Byte 1 - #$01 -> $0007c874
+L00005da6           move.b  #PANEL_ST1_VAL_TIMER_EXPIRED,PANEL_STATUS_1    ; Set TIMER EXPIRED 
 L00005dae           rts
 
 
@@ -5004,7 +5082,7 @@ L00005e0a           bne.b   L00005e0e                   ; frame swaps 4-7 - jmp 
 L00005e0c           moveq   #$02,d2                     ; frame swaps 0-3 - do this
 L00005e0e           addq.w  #$07,d2
 L00005e10           bsr.w   L000045bc
-L00005e14           jsr     PLAYER_SILENCE              ; Chem.iff - Music/SFX player - silence all audio - $00048004 ; External Address - CHEM.IFF
+L00005e14           jsr     AUDIO_PLAYER_SILENCE              ; Chem.iff - Music/SFX player - silence all audio - $00048004 ; External Address - CHEM.IFF
 L00005e1a           move.l  #$00000210,d0
 L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
@@ -5015,9 +5093,11 @@ L00005e28           moveq   #$0b,d2
 L00005e2a           bsr.w   L000045bc
 L00005e2e           bsr.w   double_buffer_playfield     ; L000036fa
 L00005e32           bset.b  #PANELST2_GAME_COMPLETE,PANEL_STATUS_2  ; Panel - Status 2 Bytes - bit #$0006 of $0007c875
-L00005e3a           jsr     PLAYER_SILENCE              ; Chem.iff - Music/SFX player - Silence all audio - $00048004
+                    ; ------ load level 2 ------
+Load_level_2                                            ; original address L00005e3a
+L00005e3a           jsr     AUDIO_PLAYER_SILENCE              ; Chem.iff - Music/SFX player - Silence all audio - $00048004
 L00005e40           moveq   #$02,d0                     ; song number - 02 = Level completed
-L00005e42           jsr     PLAYER_INIT_SONG            ; chem.iff - music/sfx - init sonng - d0.l = song number - $00048010 ; External Address - CHEM.IFF
+L00005e42           jsr     AUDIO_PLAYER_INIT_SONG            ; chem.iff - music/sfx - init sonng - d0.l = song number - $00048010 ; External Address - CHEM.IFF
 L00005e48           move.w  #$00fa,d0
 L00005e4c           bsr.b   wait_for_frame_count        ; L00005e8c
 L00005e4e           moveq   #$64,d0
@@ -5101,8 +5181,7 @@ L00005f26           move.b  #$4f,$02(a0,d3.W)
 L00005f2c           move.b  #$4f,$03(a0,d3.W)
 L00005f32           bsr.w   L00005e98
 L00005f36           bcc.b   L00005f42
-L00005f38           move.l  #L000053d6,L00003c90                    ; Set Self Modifying Code JSR in game_loop
-;L00005f38           move.w  #$53d6,L00003c92
+L00005f38           move.l  #L000053d6,gl_jsr_address           ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005f3e           clr.w   L00006318
 L00005f42           moveq   #$05,d2
 L00005f44           bsr.w   L000045bc
@@ -5167,8 +5246,8 @@ L00005ffe           sub.w   d1,d3
 L00006000           cmp.w   #$0013,d3
 L00006004           bcc.b   L00006016
 L00006006           move.w  #$0019,$0008(a6)
-L0000600c           moveq   #$02,d6
-L0000600e           bsr.w   L00004ccc
+L0000600c           moveq   #$02,d6                                 ; Value of Energy to Lose (2 of 48)
+L0000600e           bsr.w   batman_lose_energy                      ; L00004ccc
 L00006012           move.w  #$001e,(a6)
 L00006016           move.w  d4,d2
 L00006018           lsr.w   #$01,d2
@@ -5194,8 +5273,8 @@ L00006056           sub.w   d1,d3
 L00006058           cmp.w   #$0013,d3
 L0000605c           bcc.b   L0000606e
 L0000605e           move.w  #$0019,$0008(a6)
-L00006064           moveq   #$02,d6
-L00006066           bsr.w   L00004ccc
+L00006064           moveq   #$02,d6                             ; Value of Enegy to Lose (2 of 48)
+L00006066           bsr.w   batman_lose_energy                  ; L00004ccc
 L0000606a           move.w  #$001d,(a6)
 L0000606e           move.w  #$e003,d2
 L00006072           lsr.w   #$01,d4
