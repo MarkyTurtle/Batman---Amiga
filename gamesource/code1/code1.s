@@ -120,14 +120,26 @@ MAPGR_INIT                  EQU $0000807c
 
 ; Code1 - Constants
 ;-------------------
-STACK_ADDRESS               EQU $0005a36c
-CHIPMEM_BUFFER              EQU $0005a36c   ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
-DISPLAY_BUFFER              EQU $00061b9c   ; - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
+STACK_ADDRESS                   EQU $0005a36c
 
 
+CODE1_INITIAL_TIMER_BCD         EQU $0800                                                       ; BCD Vaue for 08:00 minutes
+CODE1_DISPLAY_PIXELSWIDE        EQU $150                                                        ; 336 pixels wide
+CODE1_DISPLAY_BYTESWIDE         EQU (CODE1_DISPLAY_PIXELSWIDE/8)                                ; 42 bytes wide
+CODE1_DISPLAY_LINESHIGH         EQU $ae                                                         ; 174 raster lines high
+CODE1_DISPLAY_BITPLANEBYTES     EQU (CODE1_DISPLAY_BYTESWIDE*CODE1_DISPLAY_LINESHIGH)           ; 7308 bytes per bitplane
+CODE1_DISPLAY_BITPLANEDEPTH     EQU $4                                                          ; 4 bitplanes (16 colour display)
 
+                                ; screen display double buffer
+CODE1_DOUBLE_BUFFER_ADDRESS     EQU $00061b9c                                                   ; original address - start of double buffer display in memory
+CODE1_DISPLAY_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BITPLANEBYTES*CODE1_DISPLAY_BITPLANEDEPTH;    ; size of each display buffer in bytes
+CODE1_DOUBLE_BUFFER_BYTESIZE    EQU CODE1_DISPLAY_BUFFER_BYTESIZE*2                             ; size of double buffer display in bytes
+CODE1_DISPLAY_BUFFER1_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS                                 ; Address $61b9c
+CODE1_DISPLAY_BUFFER2_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS+CODE1_DISPLAY_BUFFER_BYTESIZE   ; Address $68dcc
 
-
+                                ; off-screen display buffer (maybe used for composing the back buffer display)
+CODE1_CHIPMEM_BUFFER            EQU $0005a36c                                                   ; original address  $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE           
 
                 section code1,code_c
                 ;org     $0                                          ; original load address
@@ -250,8 +262,10 @@ init_system
                     jsr     PANEL_INIT_LIVES                ; Panel - Initialise Player Lives - $0007c838
                     jsr     PANEL_INIT_SCORE                ; Panel - Initialise Player Score to 0 - $0007c81c
                     jsr     PANEL_INIT_ENERGY               ; Panel - Initialise Player Energy - $0007c854
-                    move.w  #$0800,d0                       ; BCD Encoding of Level Timer MM:SS
-                    jsr     PANEL_INIT_TIMER                ; Panel - Initalise the Level Timer - $0007c80e 
+                    ; set initial level timer value
+                    move.w  #CODE1_INITIAL_TIMER_BCD,d0
+                    jsr     PANEL_INIT_TIMER
+                    
                     bsr.w   clear_memory                    ; Clear display buffers - $00003746
                     lea.l   copper_list,a0                  ; L000031c8,a0
                     bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
@@ -1073,81 +1087,81 @@ reset_display                                               ; original address $
                     rts 
 
 
-frame_counter                                           ; original address $000036ee
-                    dc.w    $0000                       ; incremeted every VERTB interrupt
+frame_counter                                                       ; original address $000036ee
+                    dc.w    $0000                                   ; incremeted every VERTB interrupt (level 3 interrupt handler)
 
-target_frame_count                                      ; original address $000036f0
-                    dc.w    $0000                       ; target frame count - (used to delay and wait for frame counter value)     
+target_frame_count                                                  ; original address $000036f0
+                    dc.w    $0000                                   ; target frame count - (can be used to delay and wait for specific frame counter value)     
 
-playfield_buffer_ptrs                                   ; original address $000036f2
-playfield_buffer_1                                      ; original address $000036f2
-                    dc.l    $00068dce                   ; double buffered playfield ptr 1
-playfield_buffer_2                                      ; original address $000036f6
-                    dc.l    $00061b9c                   ; double buffered playfield ptr 2            
-
-
+playfield_buffer_ptrs                                               ; original address $000036f2
+playfield_buffer_1                                                  ; original address $000036f2
+                    dc.l    CODE1_DISPLAY_BUFFER2_ADDRESS           ; double buffered playfield ptr 1 (current display by copper)
+playfield_buffer_2                                                  ; original address $000036f6
+                    dc.l    CODE1_DISPLAY_BUFFER1_ADDRESS           ; double buffered playfield ptr 2 (back buffer)
 
 
-                    ; ---------------- double buffer playfield --------------------
-                    ; swap buffered playfield ptrs in copper list.
-                    ;  - waits for VERTB (updated frame count - next frame)
-                    ;  - checks if waited long enough (target_frame_count)
-                    ;  - sets frame number of next frame to wait for
-                    ;  - swaps buffer ptrs
-                    ;  - sets copper list bitplane addresses
+
+
+                    ; ----------------------- double buffer display playfield --------------------------
+                    ; swap display buffer pointers and update the copper list display.
+                    ; can wait for future frame count, typically waits for top of next frame.
                     ;
-double_buffer_playfield                                         ; original addr: $000036fa
-.wait_again
-                    move.w  frame_counter,d0                    ; L000036ee,d0
-.vbwait                                                         ; original addr: $000036fe
-                    cmp.w   frame_counter,d0                    ; L000036ee,d0
-                    beq.b   .vbwait                             ; L000036fe
-.chk_wait_again                                                 ; original addr: $00003704
-                    move.w  target_frame_count,d1               ; L000036f0,d1
+double_buffer_playfield                                             ; original addr: $000036fa
+.wait_target_frame
+                    move.w  frame_counter,d0
+.wait_raster_tof   
+                        cmp.w   frame_counter,d0
+                        beq.b   .wait_raster_tof                    ; wait for top of next display frame
+.chk_target_frame   
+                    move.w  target_frame_count,d1
                     cmp.w   d0,d1
-                    bpl.b   .wait_again                         ; jmp $000036fa
+                    bpl.b   .wait_target_frame                      ; wait for target frame count (normally the next frame)
 
-                    add.w   #$0001,d0                           ; d0 = next frame to wait for
-                    move.w  d0,target_frame_count               ; store next frame counter to wait for
+                    ; set target frame to current + 1
+                    add.w   #$0001,d0
+                    move.w  d0,target_frame_count
 
-                    ; double buffer screen display
-.swap_buffer_ptrs                                               ; original addr: $00003714
-                    movem.l playfield_buffer_ptrs,d0-d1         ; d0 - d1 = double buffer bitplane ptrs?
-                    exg.l   d0,d1                               ; swap buffer ptrs
-                    movem.l d0-d1,playfield_buffer_ptrs         ; store swapped buffer ptrs
+                    ; swap display buffer pointers                  ; original addr: $00003714
+                    movem.l playfield_buffer_ptrs,d0-d1
+                    exg.l   d0,d1
+                    movem.l d0-d1,playfield_buffer_ptrs
 
-                    ; set bitplane ptrs
-.update_copper_list                                             ; original address L00003722
-                    lea.l   copper_playfield_planes+2,a0        ; L000031d6,a0
-                    move.l  #$00001c8c,d1                       ; d1 = #$1c8c (7308) (7308 / 42 = 174 rasters per plane)
-                    moveq   #$03,d7                             ; d7 = 3 + 1 (4 bitplanes)
+                    ; set copper bitplane ptrs                      ; original address L00003722
+                    lea.l   copper_playfield_planes+2,a0
+                    move.l  #CODE1_DISPLAY_BITPLANEBYTES,d1 
+                    moveq   #CODE1_DISPLAY_BITPLANEDEPTH-1,d7 
 .next_bitplane
-                    move.w  d0,(a0)                             ; set bitplane low word
-                    addq.w #$04,a0                              ; increment ptr to high word (in copper list)
-                    swap.w  d0                                  ; d0.w = high word
-                    move.w  d0,(a0)                             ; set bitplane high word
-                    addq.w #$04,a0                              ; increment ptr to low word of next bitplane (in copper list)
-                    swap.w  d0                                  ; correct address in d0.l
-                    add.l   d1,d0                               ; add bitplane size ($1c8c = 7308 bytes)
-                    dbf.w   d7,.next_bitplane                   ; L0000372e ; loop for next bitplane
-                    addq.w  #$01,playfield_swap_count           ; L0000632c ; add 1 to buffer swap count (maybe used to test which buffer is back buffer?)
+                    move.w  d0,(a0)                                 ; set copper bpl(x)ptl low word
+                    addq.w  #$04,a0                                 ; increment copper ptr to bpl(x)pt high word
+                    swap.w  d0
+                    move.w  d0,(a0)                                 ; set copprt bpl(x)pth high word
+                    addq.w  #$04,a0                                 ; increment copper ptr to next bpl(x)pt low word
+                    swap.w  d0
+                    add.l   d1,d0                                   ; calc next bitplane start address
+                    dbf.w   d7,.next_bitplane
+
+                    ; increment swap count
+                    addq.w  #$01,playfield_swap_count
                     rts
 
 
 
-                    ; -------------- clear display memory ----------------
-                    ; clear buffers located at:-
-                    ;   - $61b9c - $6fffc - (size = $e460 - 58,464 bytes)
-                    ;   - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+
+                    ; ----------------------- clear display memory ---------------------------
+                    ; Clear DOuble Buffer Display (back & front)
+                    ; Clear Off-Screen Displaty Buffer
                     ;
-clear_memory                                            ; original address L00003746
-                    lea.l   DISPLAY_BUFFER,a0           ; $00061b9c,a0  ; External Address (screen ram?)
-                    move.w  #$3917,d7
+clear_memory                                                        ; original address L00003746
+                    ; clear double buffer display memory
+                    lea.l   CODE1_DOUBLE_BUFFER_ADDRESS,a0
+                    move.w  #(CODE1_DOUBLE_BUFFER_BYTESIZE/4)-1,d7       
 .clr_loop_1
-                    clr.l   (a0)+
-                    dbf.w   d7,.clr_loop_1              ; L00003750
-                    lea.l   CHIPMEM_BUFFER,a0           ; $0005a36c,a0  ; External Address (screen ram?)
-                    move.w  #$1c8b,d7
+                    clr.l   (a0)+                                   ; clear 4 bytes
+                    dbf.w   d7,.clr_loop_1
+
+                    ; clear off-screen display buffer
+                    lea.l   CODE1_CHIPMEM_BUFFER,a0
+                    move.w  #CODE1_DISPLAY_BUFFER_BYTESIZE/4,d7
 .clr_loop_2
                     clr.l   (a0)+
                     dbf.w   d7,.clr_loop_2              ; L00003760
@@ -3167,7 +3181,7 @@ draw_level_and_actors                                       ; original address L
 L00004b62           move.w  #$8400,$00dff096
 L00004b6a           movea.l playfield_buffer_2,a6           ; L000036f6,a6            ; playfield buffer 2
 L00004b6e           subq.w #$02,a6                          ; subaq.w
-L00004b70           movea.l L0000631e,a5                    ; [0005a36c] CHIPMEM_BUFFER
+L00004b70           movea.l L0000631e,a5                    ; [0005a36c] CODE1_CHIPMEM_BUFFER
 L00004b74           move.w  L00006312,d1
 L00004b78           clr.l   d6
 L00004b7a           subq.w  #$01,d6
@@ -4591,7 +4605,7 @@ L000058aa           clr.l   d0
 L000058ac           move.w  L000067bc,d0                ; Pixel Offset Value? (updated_batman_distance_walked)
 L000058b0           lsr.w   #$03,d0                     ; D0.w divide by 8 (d0 = byte offset)
 L000058b2           add.w   d0,d0                       ; D0.w multiply by 2 (word offset)
-L000058b4           movea.l #CHIPMEM_BUFFER,a4          ; #$0005a36c,a4 ; External Address 
+L000058b4           movea.l #CODE1_CHIPMEM_BUFFER,a4          ; #$0005a36c,a4 ; External Address 
 L000058ba           adda.l  d0,a4                       ; a4 = location in chip mem buffer (gfx base address?)
 L000058bc           move.l  a4,L0000631e                ; SRC or DEST address
 
@@ -4717,7 +4731,7 @@ L000059d8           add.w   d4,d2
 L000059da           move.l  d2,d1
 L000059dc           add.w   d4,d1
 L000059de           subq.w  #$01,d5
-L000059e0           movea.l #DISPLAY_BUFFER,a2        ; #$00061b9c,a2  ; External Address - (Screen Ram?)
+L000059e0           movea.l #CODE1_DOUBLE_BUFFER_ADDRESS,a2
 L000059e6           move.w  (a0)+,(a2)
 L000059e8           not.w   (a2)
 L000059ea           move.w  (a0)+,$00(a2,d4.W)
@@ -5341,14 +5355,13 @@ L000062dc           dc.w $1503
 L000062de           dc.w $0001, $0002, $0003, $0004, $0005, $0007
 
 
-                    ; used by routine L00005438:  -4(a1)
+
 batman_sprite3_id                                       ; original address L000062ea
 L000062ea           dc.w $0005                          ; batman sprite id 3 (0 = do not display 3)
 batman_sprite2_id                                       ; original address L000062ec
 L000062ec           dc.w $0002                          ; batman sprite id 2 (0 = do not display 2,3)
 batman_sprite1_id                                       ; original address L000062ee
 L000062ee           dc.w $0001                          ; batman sprite id 1 (0 = do not display 1,2,3)
-
 
 L000062f0           dc.w $0000                          ; batman (some kind of updated Y co-ordinate? set in draw_batman_and_rope routine)
                     
