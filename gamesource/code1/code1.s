@@ -101,14 +101,14 @@ PANEL_ST1_TIMER_EXPIRED         EQU $0                              ; panel stat
 PANEL_ST1_NO_LIVES_LEFT         EQU $1                              ; panel status 1 - bit 1 - No Lives Remaining
 PANEL_ST1_LIFE_LOST             EQU $2                              ; panel status 1 - bit 2 - Player Life Lost
 ; Panel Status1 Bit Values
-PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED       ; panel status 1 - bit 0 - Value of Timer Expired
-PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT       ; panel status 1 - bit 0 - Value of 
-PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST           ; panel status 1 - bit 0 - Value of 
+PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED       ; panel status 1 - bit value/mask for Timer Expired
+PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT       ; panel status 1 - bit value/mask for No Lives Left 
+PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST           ; panel status 1 - bit value/mask for Life Lost 
 ; Panel_Status2 Bit Numbers
-PANELST2_MUSIC_SFX             EQU $0
-PANELST2_GAME_OVER             EQU $5
-PANELST2_GAME_COMPLETE         EQU $6
-PANELST2_CHEAT_ACTIVE          EQU $7
+PANEL_ST2_MUSIC_SFX             EQU $0                              ; panel status 2 - bit 0 - Music/SFX selector bit
+PANEL_ST2_GAME_OVER             EQU $5                              ; panel status 2 - bit 5 - Is Game Over
+PANEL_ST2_LEVEL_COMPLETE        EQU $6                              ; panel status 2 - bit 6 - Is Level Complete
+PANEL_ST2_CHEAT_ACTIVE          EQU $7                              ; panel status 2 - bit 7 - Is Cheat Active
 
 
 
@@ -1455,7 +1455,7 @@ L00003b8c           lea.l   L000039c8,a0
 
                     ; unsure what this is doing atm.
                                                         ; original address L00003b98
-L00003b98           clr.w   L000062ee
+L00003b98           clr.w   batman_sprite1_id           ; L000062ee
                     lea.l   L000063d3,a0
                     bsr.w   L00005438
 
@@ -1489,7 +1489,7 @@ L00003bd6           bsr.w   draw_batman_and_rope                    ; L000055c4
 L00003bda           moveq   #$32,d0
 L00003bdc           bsr.w   wait_for_frame_count                    ; L00005e8c
 
-L00003be0           btst.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2      ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
+L00003be0           btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
 L00003be8           bne.b   sfx_only                                ; L00003bf2
 L00003bea           moveq   #$01,d0                                 ; song number - 01 = level music
 L00003bec           jsr     AUDIO_PLAYER_INIT_SONG                        ; chem.iff - music/sfx - initialise song (d0 = song number) $00048010 ; External Address $48010 - CHEM.IFF
@@ -1538,7 +1538,7 @@ start_of_key_checks
                             bne.b   .test_toggle_music_f2
 .exit_game
                                 bsr.w   screen_wipe_to_black
-                                bset.b  #PANELST2_GAME_OVER,PANEL_STATUS_2
+                                bset.b  #PANEL_ST2_GAME_OVER,PANEL_STATUS_2
                                 bra.w   return_to_title_screen 
                                 ; ***************************                 
                                 ; ****** NEVER RETURNS ******
@@ -1549,7 +1549,7 @@ start_of_key_checks
                         cmp.w   #KEY_F2,d0                              ; Test for Key = 'F2'
                         bne.b   .test_level_skip_f10
 .toggle_music_sfx
-                            bchg.b  #PANELST2_MUSIC_SFX,PANEL_STATUS_2
+                            bchg.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2
                             bne.b   .init_music
 .init_sfx
                                 jsr     AUDIO_PLAYER_INIT_SFX_1
@@ -1563,7 +1563,7 @@ start_of_key_checks
                         cmp.w   #KEY_F10,d0                              ; Test for key = 'F10'
                         bne.b   end_of_key_checks
 .skip_level
-                            btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2
+                            btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2
                             bne.w   Load_level_2
                             ; ***************************                 
                             ; ****** NEVER RETURNS ******
@@ -2448,10 +2448,11 @@ L00004568           dc.w    $0012, $000c                ; or.b #$0c,(a2) [12]
 L0000456c           dc.w    $0005, $8008                ; or.b #$08,d5
 
 
-
+; core to game object updates
+; when not executed, the game does not run.
 L00004570           move.w  $000a(a6),d2        ; $00dff00a
 L00004574           mulu.w  #$000c,d2
-L00004578           lea.l   L00004578(pc,d2.W),a5        ; $00004510     (warning 2069: encoding absolute displacement directly)
+L00004578           lea.l   L00004510(pc,d2.W),a5        ; $00004510     (warning 2069: encoding absolute displacement directly)
 L0000457c           move.w  (a5)+,d2
 L0000457e           bsr.b   L0000458a
 L00004580           move.w  (a5)+,d2
@@ -2482,10 +2483,7 @@ L000045ba           rts
 
 L000045bc           add.w   $0006(a6),d2        ; $00dff006
 L000045c0           movem.w d0-d1/a5-a6,-(a7)
-L000045c4           bsr.w   draw_sprite         ; draw body & legs of bad guy ; L000056f4
-                                                ; draw acid drips
-                                                ; pipe leaks
-                                                ; draw bottom part of bad guy die/fall
+L000045c4           bsr.w   draw_sprite
 L000045c8           movem.w (a7)+,d0-d1/a5-a6
 L000045cc           rts 
 
@@ -2683,7 +2681,7 @@ L00004764           add.w   L0000631a,d0
 L00004768           sub.w   L0000631c,d1
 L0000476c           sub.w   #$000c,d1
 L00004770           addq.w  #$05,d0
-L00004772           tst.w   L000062ee
+L00004772           tst.w   batman_sprite1_id           ; L000062ee
 L00004776           bpl.b   L0000477a
 L00004778           subq.w  #$07,d0
 L0000477a           movem.w d0-d1,(a6)
@@ -3382,23 +3380,30 @@ L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
 L00004d7a           tst.b   PANEL_STATUS_1              ; Panel - Status Byte 1 - $0007c874
 L00004d80           beq.b   exit_rts                                ; L00004d36
-L00004d82           jsr     AUDIO_PLAYER_SILENCE              ; Chem1.iff - Silence all Audio - $00048004
+
+                    ; lose a life - audio & animation?
+L00004d82           jsr     AUDIO_PLAYER_SILENCE              
 L00004d88           clr.w   L00006318
-L00004d8c           moveq   #$03,d0                     ; song/sound number - 03 = player life lost
-L00004d8e           jsr     AUDIO_PLAYER_INIT_SONG            ; chem.iff - music/sfx - init song - d0.l = song number - $00048010           ; External Address - CHEM.IFF
-L00004d94           move.l  #L00004da2,gl_jsr_address       ; L00003c90        ; Set Self Modifying Code JSR in game_loop
+L00004d8c           moveq   #$03,d0                             ; song/sound number - 03 = player life lost
+L00004d8e           jsr     AUDIO_PLAYER_INIT_SONG            
+L00004d94           move.l  #L00004da2,gl_jsr_address           
 L00004d9a           move.w  #$63dc,L00006326
 L00004da0           rts 
 
 
-                        ; player dead processing?
-L00004da2            movea.w L00006326,a0
+                    ; ----------------- PLAYER STATE: player dead ------------------
+                    ; routine inserted into game_loop self modified code routine.
+                    ;  - installed be rouine L00004d82 above.
+                    ;
+player_state_dead                                                       ; original address L00004da2
+                    ; player dead animation
+L00004da2            movea.w L00006326,a0                               
 L00004da6            bsr.w   L00005438
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
 L00004db0            bne     exit_rts                                   ;  L00004d36  ; Exit (JMP to RTS)
 
-L00004db2            jsr     AUDIO_PLAYER_INIT_SFX_2                          ; chem.iff - music/sfx - init sfx audio channel - $0004800c  ; External Address - CHEM.IFF
+L00004db2            jsr     AUDIO_PLAYER_INIT_SFX_2                    ; stop audio
 L00004db8            move.w  #$0032,d0
 L00004dbc            bsr.w   wait_for_frame_count                       ; L00005e8c
 L00004dc0            bsr.w   clear_backbuffer_playfield                 ; L00004e28
@@ -3627,7 +3632,7 @@ L00005006           move.w  #$0008,L000062f2
 L0000500c           move.l  #L00005036,gl_jsr_address   ; L00003c90 ; Self Modified Code JSR - game_loop
 L00005012           bsr.w   L0000463e
 L00005016           sub.w   #$0007,d0
-L0000501a           move.w  L000062ee,d2
+L0000501a           move.w  batman_sprite1_id,d2            ; L000062ee,d2
 L0000501e           spl.b   d2
 L00005020           ext.w   d2
 L00005022           bpl.b   L00005028
@@ -3659,7 +3664,7 @@ L0000505c           bne.b   L00005034
 L0000505e           move.w  #$0006,L000062f2
 L00005064           subq.w  #$05,L000067c4
 L00005068           subq.w  #$04,d1
-L0000506a           move.w  L000062ee,d2
+L0000506a           move.w  batman_sprite1_id,d2                     ; L000062ee,d2
 L0000506e           bmi.b   L00005082
 L00005070           addq.w  #$07,d0
 L00005072           bsr.w   L000055a0
@@ -3706,12 +3711,12 @@ L000050e4           rts
 
 
 input_fire_up_right
-L000050e6           clr.w   L000062ee               ; Jump Table CMD12
+L000050e6           clr.w   batman_sprite1_id       ; L000062ee               ; Jump Table CMD12
 L000050ea           moveq   #$7f,d0
 L000050ec           bra.b   L000050fa
 
 input_fire_up_left
-L000050ee           move.w  #$e000,L000062ee        ; Jump Table CMD13
+L000050ee           move.w  #$e000,batman_sprite1_id    ; L000062ee        ; Jump Table CMD13
 L000050f4           MOVE.L  #$ffffff81,D0
 L000050f6           bra.b   L000050fa
 
@@ -3745,7 +3750,7 @@ L00005154           addq.w  #$01,d2
 L00005156           move.w  d2,$0004(a0)
 L0000515a           bsr.w   L000050aa
 L0000515e           addq.w  #$03,d3
-L00005160           move.w  L000062ee,d7
+L00005160           move.w  batman_sprite1_id,d7            ;L000062ee,d7
 L00005164           bpl.b   L00005168
 L00005166           subq.w  #$07,d3
 L00005168           add.w   #$000a,d4
@@ -3837,7 +3842,7 @@ L0000525c           bsr.w   L000055a0
 L00005260           sub.b   #$79,d2
 L00005264           cmp.b   #$0d,d2
 L00005268           bcc.w   L0000545a
-L0000526c           lea.l   L000062ea,a0
+L0000526c           lea.l   batman_sprite3_id,a0            ; L000062ea,a0
 L00005270           add.w   L000067bc,d0                    ; updated_batman_distance_walked
 L00005274           lsr.w   #$01,d0
 L00005276           and.w   #$0007,d0
@@ -3876,7 +3881,7 @@ L000052b2           bsr.w   L000055a0
 L000052b6           sub.b   #$79,d2
 L000052ba           cmp.b   #$0d,d2
 L000052be           bcc.w   L0000545a
-L000052c2           lea.l   L000062ea,a0
+L000052c2           lea.l   batman_sprite3_id,a0        ; L000062ea,a0
 L000052c6           add.w   L000067bc,d0                ; updated_batman_distance_walked
 L000052ca           not.w   d0
 L000052cc           lsr.w   #$01,d0
@@ -3959,7 +3964,7 @@ L000053b6           bclr.l  #$0002,d2
 L000053ba           beq.b   L000053c0
 L000053bc           add.w   #$e000,d2
 L000053c0           add.w   #$0020,d2
-L000053c4           lea.l   L000062ea,a0
+L000053c4           lea.l   batman_sprite3_id,a0     ; L000062ea,a0
 L000053c8           clr.l   (a0)+
 L000053ca           move.w  d2,(a0)
 L000053cc           rts 
@@ -4021,9 +4026,9 @@ L00005434           bra.w   L00005438
                     ; called from many routines
                     ; called from game_start
 L00005438           move.w  d7,-(a7)                        ; save d7
-L0000543a           lea.l   L000062ee,a1
+L0000543a           lea.l   batman_sprite1_id,a1            ; L000062ee,a1
 L0000543e           move.w  (a1),d7                         ; d7.w = contents of L000062ee
-L00005440           and.w   #$e000,d7                       ; preserve top 3 bits
+L00005440           and.w   #$e000,d7                       ; preserve top 3 bits (left/right facing sprite)
 L00005444           add.b   (a0)+,d7                        ; d7.w = top 3 bits + low 8 byte from 0(a0)
 L00005446           move.w  d7,(a1)                         ; (a1).w = d7.w
 L00005448           add.b   (a0)+,d7                        ; d7.w = d7.w + low byte from 1(a0)
@@ -4126,19 +4131,23 @@ L00005558           rts
 
                     ; Called from GameLoop - Self Modifying code.
 L0000555a           subq.w  #$01,L000062f2
-L0000555e           bne.b   L0000559e
-L00005560           tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
+L0000555e           bne.b   exit_routine                                ; L0000559e
+
+L00005560           tst.b   PANEL_STATUS_1                              ; Panel - Status Byte 1 - $0007c874
 L00005566           bne.w   L00004d82
-L0000556a           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Update Game Loop Command Loop JSR
+
+L0000556a           move.l  #player_move_commands,gl_jsr_address            ; L00003c90 ; Update Game Loop Command Loop JSR
 L00005572           lea.l   L000063d3,a0
 L00005576           cmp.w   #$0050,L000062f8
 L0000557c           bmi.w   L00005438
-L00005580           moveq   #$5a,d6                                     ; Value of Energy to Lose (90) - DEAD! (max is 48?)
-L00005582           bsr.w   batman_lose_energy                          ; L00004ccc
-L00005586           move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1     ; Set - LIFE LOST
-L0000558e           btst.b  #PANELST2_CHEAT_ACTIVE,PANEL_STATUS_2       ; Check - CHEAT ACTIVE
+L00005580           moveq   #$5a,d6                                         ; Value of Energy to Lose (90) - DEAD! (max is 48?)
+L00005582           bsr.w   batman_lose_energy                              ; L00004ccc
+L00005586           move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1         ; Set - LIFE LOST
+L0000558e           btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2          ; Check - CHEAT ACTIVE
 L00005596           bne.b   L0000559e
-L00005598           jmp     PANEL_LOSE_LIFE                         ; Panel - Lose a Life - $0007c862
+L00005598           jmp     PANEL_LOSE_LIFE                                 ; Panel - Lose a Life - $0007c862
+                    ; never return (use panel rts)
+exit_routine
 L0000559e           rts
 
 
@@ -4169,7 +4178,7 @@ L000055c8           beq.w   L000056a6
 L000055cc           movem.w L000067c2,d0-d1
 L000055d2           sub.w   #$000c,d1
 L000055d6           addq.w  #$03,d0
-L000055d8           move.w  L000062ee,d2
+L000055d8           move.w  batman_sprite1_id,d2        ; L000062ee,d2
 L000055dc           bpl.b   L000055e0
 L000055de           subq.w  #$07,d0
 L000055e0           add.w   d1,d1
@@ -4238,44 +4247,36 @@ L0000569a           add.l   #$00001c8c,d1           ; next bitplane dest offset
 L000056a0           not.w   d6                      ; invert mask/line pattern?
 L000056a2           dbf.w   d7,L00005678            ; loop next bitplane
 
-                    ; draw batman sprite
-L000056a6           movem.w L000067c2,d0-d1         ; Batman Display Co-Ords?
-L000056ac           move.w  L000062ee,d2            ; d2 = sprite details
-L000056b0           clr.w   d4
-L000056b2           move.b  d2,d4                   ; d4 = sprite id
-L000056b4           beq.w   L000056f2               ; if (sprite id) == 0 then exit
-L000056b8           move.w  d1,d3
-L000056ba           lea.l   L0000607c,a0            ; animation table? 
-L000056be           add.w   d4,d4                   ; d4 = d4 * 2
-L000056c0           add.w   d3,d3                   ; d3 = d4 * 2
-L000056c2           sub.b   -2(a0,d4.W),d3          ; $fe(a0,d4.W),d3
-L000056c6           asr.w   #$01,d3
-L000056c8           move.w  d3,L000062f0
                     ; draw first Batman Sprite
+L000056a6           movem.w L000067c2,d0-d1         ; batman object X & Y co-ords
+L000056ac           move.w  batman_sprite1_id,d2    ; sprite id
+L000056b0           clr.w   d4
+L000056b2           move.b  d2,d4
+L000056b4           beq.w   exit_draw_batman        ; if (sprite id) == 0 then exit
+L000056b8           move.w  d1,d3                   ; d1 = Y co-ord
+L000056ba           lea.l   L0000607c,a0            ; unknown table 
+L000056be           add.w   d4,d4                   ; sprite id * 2
+L000056c0           add.w   d3,d3                   ; Y co-ord * 2
+L000056c2           sub.b   -2(a0,d4.W),d3          ; modify Y co-ord
+L000056c6           asr.w   #$01,d3                 ; divide y by 2 (X & Y stored as halved values)
+L000056c8           move.w  d3,L000062f0            ; store update Y co-ord
 L000056cc           bsr.b   draw_sprite             ; Draw Batman Part - L000056f4
-                                                    ;  - Batman walking Head (left/right)
-                                                    ;  - All of ladder climbing sprite
-                                                    ;  - swinging head
-                                                    ;  - throwing head & torso
-                                                    ;  - batman dead
+
                     ; draw second Batman Sprite
-L000056ce           movem.w L000067c2,d0-d1
-L000056d4           move.w  L000062ec,d2
-L000056d8           move.b  d2,d2                   ; d2.b = $(62ed).b byte (sprite id?) 
-L000056da           beq.w   L000056f2               ; if (sprite id) == 0 then exit
-L000056de           bsr.b   draw_sprite             ; Draw Batman Walking Body - L000056f4
-                                                    ;  - not ladder climbing
-                                                    ;  - not swinging
-                                                    ;  - not throwing
+L000056ce           movem.w L000067c2,d0-d1         ; batman object X & Y co-ords
+L000056d4           move.w  batman_sprite2_id,d2    ; sprite id            
+L000056d8           move.b  d2,d2
+L000056da           beq.w   exit_draw_batman        ; if (sprite id) == 0 then exit
+L000056de           bsr.b   draw_sprite
+
                     ; draw third Batman Sprite
-L000056e0           movem.w L000067c2,d0-d1
-L000056e6           move.w  L000062ea,d2
-L000056ea           move.b  d2,d2                   ; d2.b = $(52eb) (sprite id?)
-L000056ec           beq.w   L000056f2               ; if (sprite id == 0) then exit
-L000056f0           bsr.b   draw_sprite             ; Draw Batman walking legs - L000056f4
-                                                    ;  - not ladder climbing
-                                                    ;  - not swinging
-                                                    ;  - not throwing
+L000056e0           movem.w L000067c2,d0-d1         ; batman object X & Y co-ords
+L000056e6           move.w  batman_sprite3_id,d2    ; sprite id
+L000056ea           move.b  d2,d2
+L000056ec           beq.w   exit_draw_batman        ; if (sprite id == 0) then exit
+L000056f0           bsr.b   draw_sprite
+
+exit_draw_batman
 L000056f2           rts 
 
 
@@ -4303,7 +4304,7 @@ L000056f2           rts
                     ; in:
                     ;   d0.w - Sprite X Position 
                     ;   d1.w - Sprite Y Position
-                    ;   d2.w - index into table $63fe (Sprite id - 1 based array index)
+                    ;   d2.w - Sprite id (1 based array index) - index into table $63fe (8 byte structure)
                     ;
 draw_sprite                                         ; original address $L000056f4
 L000056f4           movea.l sprite_array_ptr,a1     ; L000062fe,a1        ; Sprite Structure Data Pointer
@@ -5050,15 +5051,18 @@ L00005dae           rts
 L00005db0           move.w  L000067bc,d2                                    ; updated_batman_distance_walked
 L00005db4           cmp.w   #$0540,d2
 L00005db8           beq.b   L00005dce
-L00005dba           addq.w  #$02,$0002(a6)          ; $00dff002
-L00005dbe           moveq   #$70,d2
-L00005dc0           sub.w   d0,d2
-L00005dc2           cmp.w   #$fffd,d2
-L00005dc6           bcc.b   L00005dca
-L00005dc8           MOVE.L #$fffffffe,D2
-L00005dca           add.w   d2,L000067c8
+L00005dba               addq.w  #$02,$0002(a6)          ; $00dff002
+L00005dbe               moveq   #$70,d2
+L00005dc0               sub.w   d0,d2
+L00005dc2               cmp.w   #$fffd,d2
+L00005dc6               bcc.b   L00005dca
+L00005dc8                   move.l  #$fffffffe,D2
+L00005dca               add.w   d2,L000067c8
+
+                    ; check level complete
 L00005dce           cmp.w   #$0048,d1
-L00005dd2           bcc.b   L00005e26
+L00005dd2           bcc.b   level_completed                                 ; d1 <= #$48 (72 dec) then Level Is Completed - L00005e26 
+
 L00005dd4           move.w  $000a(a6),d3            ; $00dff00a,d3
 L00005dd8           cmp.w   #$000e,d3
 L00005ddc           bpl.b   L00005de4
@@ -5087,12 +5091,14 @@ L00005e1a           move.l  #$00000210,d0
 L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
 
 
-                    ; level completed ?
+
+                    ; ------------------------ level completed ------------------------
+level_completed                                                     ; Original Address L00005e26
 L00005e26           moveq   #$50,d1
 L00005e28           moveq   #$0b,d2
 L00005e2a           bsr.w   L000045bc
 L00005e2e           bsr.w   double_buffer_playfield     ; L000036fa
-L00005e32           bset.b  #PANELST2_GAME_COMPLETE,PANEL_STATUS_2  ; Panel - Status 2 Bytes - bit #$0006 of $0007c875
+L00005e32           bset.b  #PANEL_ST2_LEVEL_COMPLETE,PANEL_STATUS_2  ; Panel - Status 2 Bytes - bit #$0006 of $0007c875
                     ; ------ load level 2 ------
 Load_level_2                                            ; original address L00005e3a
 L00005e3a           jsr     AUDIO_PLAYER_SILENCE              ; Chem.iff - Music/SFX player - Silence all audio - $00048004
@@ -5134,7 +5140,7 @@ L00005ea4           bcc.b   L00005eca
 L00005ea6           sub.w   d0,d2
 L00005ea8           cmp.w   #$0020,d2
 L00005eac           bcc.b   L00005eca
-L00005eae           move.b  L000062ef,d2
+L00005eae           move.b  batman_sprite1_id+1,d2      ; L000062ee+1,d2
 L00005eb2           cmp.b   #$24,d2
 L00005eb6           rts
 
@@ -5336,17 +5342,17 @@ L000062de           dc.w $0001, $0002, $0003, $0004, $0005, $0007
 
 
                     ; used by routine L00005438:  -4(a1)
-L000062ea           dc.b $00
-                    dc.b $05
-                    ; used by routine L00005438:  -2(a1)
-L000062ec           dc.b $00
-                    dc.b $02
-                    ; used by routine L00005438:   0(a1)
-L000062ee           dc.b $00
-L000062ef           dc.b $01
+batman_sprite3_id                                       ; original address L000062ea
+L000062ea           dc.w $0005                          ; batman sprite id 3 (0 = do not display 3)
+batman_sprite2_id                                       ; original address L000062ec
+L000062ec           dc.w $0002                          ; batman sprite id 2 (0 = do not display 2,3)
+batman_sprite1_id                                       ; original address L000062ee
+L000062ee           dc.w $0001                          ; batman sprite id 1 (0 = do not display 1,2,3)
 
 
-L000062f0           dc.w $0000
+L000062f0           dc.w $0000                          ; batman (some kind of updated Y co-ordinate? set in draw_batman_and_rope routine)
+                    
+
 L000062f2           dc.w $0000
 L000062f4           dc.w $0000
 L000062f6           dc.w $0000
