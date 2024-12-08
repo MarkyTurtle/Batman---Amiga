@@ -1163,76 +1163,86 @@ clear_memory                                                        ; original a
                     lea.l   CODE1_CHIPMEM_BUFFER,a0
                     move.w  #CODE1_DISPLAY_BUFFER_BYTESIZE/4,d7
 .clr_loop_2
-                    clr.l   (a0)+
-                    dbf.w   d7,.clr_loop_2              ; L00003760
+                    clr.l   (a0)+                                   ; clear 4 bytes
+                    dbf.w   d7,.clr_loop_2
                     rts 
 
 
-                    ; data for routine below $00003770
-L00003768           dc.w $0a0a                          ; location y,x (bytes)                 
-L0000376a           dc.w $3030                          ; 2 ascii characters
-                    dc.w $3030                          ; 2 ascii characters
-L0000376e           dc.w $00ff                          ; terminate debug display.                
 
 
 
-                    ; routine doesn't appear to be called directly
+                    ; ----------------------- debug print word value ------------------------
+                    ; Debug print routine that converts an 16bit value into an ASCII string
+                    ; and displays is in the 'Panel' area at the bottom of the screen.
+                    ; Doesn't appear to be in use by the code.
+                    ;
                     ; IN:
-                    ;   d0 - 16bit value converted to chars to display
-                    ;   d1 - 16bit value inserted into start of data buffer above
-debug_display_word_value                                ; original address L00003770
-                    lea.l   L00003768,a0
-                    move.w  d1,(a0)
-                    moveq   #$03,d2                     ; loop counter 3 + 1
-.nibble_to_ascii
-                    clr.w   d1
-                    move.w  d0,d1
-                    and.w   #$000f,d1                   ; mask low 4 bits ($0 - $f)
-                    cmp.w   #$000a,d1                   ; compare value to 10
-                    bcs.b   .add_0_offset               ; L0000378a ; value < 10
-.add_alpha_offset
-                    addq.w  #$07,d1                     ; add ascii offset from ':' to char 'A' for digits $a-$f
-.add_0_offset
-                    add.b   #$30,d1                     ; add ascii offset to char '0' for all digits $0-$f
-                    move.b  d1,$02(a0,d2.W)             ; store ascii character for hhex digit
-                    lsr.w   #$04,d0                     ; shift to get next nibble
+                    ;   d0 - 16bit value to be converted to ASCII characters for display
+                    ;   d1 - Y,X co-ords for the display, 1 byte each.
+                    ;
+debug_display_params                                                        ; original address L00003768
+dp_xy_coords                                                                
+                    dc.w $0a0a                                      ; location y,x (bytes) 
+dp_ascii_string        
+                    dc.b '0000',$00,$ff                             ; decoded ASCII string to display             
+
+debug_print_word_value                                                      ; original address L00003770
+                    lea.l   debug_display_params,a0
+                    move.w  d1,(a0)                                 ; store display Y,X location.
+                    moveq   #$03,d2                                 ; loop counter 3 + 1 (4 hex characters to decode for 16bit value)
+
+.nibble_to_ascii    ; decode 4 nibbles to ASCII chars
+                        clr.w   d1
+                        move.w  d0,d1
+                        and.w   #$000f,d1                           ; mask 4 bit value to decode (0-15)
+                        cmp.w   #$000a,d1                           ; check d1 value
+                        bcs.b   .digit0_9                           ; value < 10
+.digit_a_f
+                            addq.w  #$07,d1                         ; add ascii offset to char 'A' for value in range $a-$f
+.digit0_9
+                        add.b   #$30,d1                             ; add ascii offset to char '0' for all digits $0-$f
+                        move.b  d1,$02(a0,d2.W)                     ; store ascii character for decoded hex digit
+                        lsr.w   #$04,d0                             ; shift in next nibble to decode.
                     dbf.w   d2,.nibble_to_ascii
+         
+.calc_print_location ; calc destination display ptr                 ; original address - $00003798
+                    move.b  (a0)+,d0                                ; get y co-ord value.
+                    cmp.b   #$ff,d0                                 ; $ff = terminator value for exit.
+                    beq.b   .exit                       
 
-.display_string                                         ; original address - $00003798
-                    move.b  (a0)+,d0
-                    cmp.b   #$ff,d0
-                    beq.b   .exit                       ; L000037ee
-                    and.w   #$00ff,d0                   ; mask byte value
-                    mulu.w  #$0028,d0                   ; d0 = multiple by 40 bytes ( y value )
+                    and.w   #$00ff,d0                               ; mask low byte value.
+                    mulu.w  #$0028,d0                               ; multiply y co-ord by width of 'panel' screen area (40 bytes)
                     moveq   #$00,d1 
-                    move.b  (a0)+,d1                    ; d1 = x value (bytes x)
-                    add.w   d1,d0                       ; d0 = x + y (byte offset)
-                    movea.l #PANEL_GFX,a1               ; Panel GFX Address - $0007c89a
-                    lea.l   $02(a1,d0.w),a1             ; a1 = location inside PANEL GFX
+                    move.b  (a0)+,d1                                ; get x co-ord value (byte value)
 
-.display_char                                           ; original address L000037b8
+                    add.w   d1,d0                                   ; d0 = x + y (print offset)
+                    movea.l #PANEL_GFX,a1                           ; Panel GFX Address - $0007c89a.
+                    lea.l   $02(a1,d0.w),a1                         ; a1 = display location.
+
+.display_char       ; calc source gfx ptr                           ; original address L000037b8
                     moveq   #$00,d0
-                    move.b  (a0)+,d0
-                    beq.b   .display_string             ; L00003798
+                    move.b  (a0)+,d0                                ; get ASCII char to display.
+                    beq.b   .calc_print_location                    ; null terminator, could have exited here.
 
-                    sub.w   #$0020,d0                   ; #$20 = 32 (space character?)
-                    lsl.w   #$03,d0                     ; d0 = d0 * 8
-                    lea.l   font8x8,a2                  ; L000037f0,a2        
-                    lea.l   $00(a2,d0.w),a2             ; a2 = source gfx, d0 = offset to the start
-                    moveq   #$07,d7                     ; loop counter 7 + 1 - raster lines
-                    movea.l a1,a3                       ; destination location inside PANEL GFX (calculated above and held in a1)
-.char_loop
-                    move.b  (a2),(a3)                   ; set value in bitplane 0 (48 lines high PANEL bitplane (1920 bytes)
-                    move.b  (a2),$0780(a3)              ; set value in bitplane 1 (48 lines high PANEL bitplane (1920 bytes)
-                    move.b  (a2),$0f00(a3)              ; set value in bitplane 2 (48 lines high PANEL bitplane (1920 bytes)
-                    move.b  (a2)+,$1680(a3)             ; set value in bitplane 3 (48 lines high PANEL bitplane (1920 bytes)
-                    lea.l   $0028(a3),a3                ; increment 40 bytes - next raster line
-                    dbf.w   d7,.char_loop               ; L000037d2 - draw next line of character data loop 8 times.
+                    sub.w   #$0020,d0                               ; #$20 = 32 (space character?)
+                    lsl.w   #$03,d0                                 ; Character GFX Offset
+                    lea.l   font8x8,a2                              ; 8x8 Character Font start address
+                    lea.l   $00(a2,d0.w),a2                         ; Calculate source GFX ptr
+                    moveq   #$07,d7                                 ; loop counter 7 + 1 - 8 raster lines per character
+                    movea.l a1,a3                                   ; destination location inside PANEL GFX (calculated above and held in a1)
 
-.next_char                                              ; original address L000037e8
-                    lea.l   $0001(a1),a1                ; increment destination Location to next char for display
-                    bra.b   .display_char               ; display next char - L000037b8
-.exit                                                   ; original address L000037ee
+.print_char_loop    ; write gfx char to display - one raster line at a time
+                    move.b  (a2),(a3)                               ; set value in bitplane 0
+                    move.b  (a2),$0780(a3)                          ; set value in bitplane 1
+                    move.b  (a2),$0f00(a3)                          ; set value in bitplane 2
+                    move.b  (a2)+,$1680(a3)                         ; set value in bitplane 3
+                    lea.l   $0028(a3),a3                            ; increment destination ptr by 40 bytes - next raster line
+                    dbf.w   d7,.print_char_loop                     ; draw next line of character data loop 8 times.
+
+.next_char          ; set up next char for display                  ; original address L000037e8
+                    lea.l   $0001(a1),a1                            ; increment destination ptr for display of next character
+                    bra.b   .display_char                           ; display next char - L000037b8
+.exit                                                               ; original address L000037ee
                     rts
 
 
