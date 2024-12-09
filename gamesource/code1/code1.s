@@ -17,7 +17,7 @@
                 ; CODE1             $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
                 ; MAPGR             $7FFC
                 ; BATSPR1           $10FFC
-                ; CHEM              $47FE4
+                ; CHEM              $47FE4              - Level Music Player, Music & SFX
                 ; STACK             $5a36c              - Address of program stack - not a file load.
                 ;
                 ; CHIP MEM BUFFER   $5a36c  ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
@@ -90,33 +90,41 @@ PANEL_SCORE_DISPLAY_VALUE       EQU $0007c88a                       ; player sco
 PANEL_ENERGY_VALUE              EQU $0007c88e                       ; player energy value (40 max value)
 PANEL_HIT_DAMAGE                EQU $0007c890                       ; player hit damge (subtracted from player energy on each panel update)
 ; Panel Constants - resources
-PANEL_GFX                       EQU $0007c89a                       ; main bottom display panel gfx
-PANEL_BATMAN_GFX                EQU $0007e69a                       ; batman energy image
-PANEL_JOKER_GFX                 EQU $0007ebba                       ; joker energy image
-PANEL_SCORE_GFX                 EQU $0007f30a                       ; score digits gfx
-PANEL_LIVES_ON_GFX              EQU $0007f374                       ; batman symbol - lives icon 'on'
-PANEL_LIVES_OFF_GFX             EQU $0007f838                       ; batman symbol - lives icon 'off'
+PANEL_GFX                       EQU $0007c89a                                                   ; main bottom display panel gfx
+PANEL_BATMAN_GFX                EQU $0007e69a                                                   ; batman energy image
+PANEL_JOKER_GFX                 EQU $0007ebba                                                   ; joker energy image
+PANEL_SCORE_GFX                 EQU $0007f30a                                                   ; score digits gfx
+PANEL_LIVES_ON_GFX              EQU $0007f374                                                   ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX             EQU $0007f838                                                   ; batman symbol - lives icon 'off'
+PANEL_DISPLAY_PIXELWIDTH        EQU $140                                                        ; 320 pixels wide
+PANEL_DISPLAY_BYTEWIDTH         EQU PANEL_DISPLAY_PIXELWIDTH/8;                                 ; 40 bytes wide
+PANEL_DISPLAY_LINEHEIGHT        EQU $30                                                         ; 48 Raster Lines High
+PANEL_DISPLAY_BITPLANEBYTES     EQU PANEL_DISPLAY_BYTEWIDTH*PANEL_DISPLAY_LINEHEIGHT            ; 1920 bytes per bitplane
+PANEL_DISPLAY_BITPLANEDEPTH     EQU $4                                                          ; 4 bitplanes - 16 colours
+PANEL_DISPLAY_BYTESIZE          EQU PANEL_DISPLAY_BITPLANEBYTES*PANEL_DISPLAY_BITPLANEDEPTH
 ; Panel Status1 Bit Numbers
-PANEL_ST1_TIMER_EXPIRED         EQU $0                              ; panel status 1 - bit 0 - Timer Expired
-PANEL_ST1_NO_LIVES_LEFT         EQU $1                              ; panel status 1 - bit 1 - No Lives Remaining
-PANEL_ST1_LIFE_LOST             EQU $2                              ; panel status 1 - bit 2 - Player Life Lost
+PANEL_ST1_TIMER_EXPIRED         EQU $0                                                          ; panel status 1 - bit 0 - Timer Expired
+PANEL_ST1_NO_LIVES_LEFT         EQU $1                                                          ; panel status 1 - bit 1 - No Lives Remaining
+PANEL_ST1_LIFE_LOST             EQU $2                                                          ; panel status 1 - bit 2 - Player Life Lost
 ; Panel Status1 Bit Values
-PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED       ; panel status 1 - bit value/mask for Timer Expired
-PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT       ; panel status 1 - bit value/mask for No Lives Left 
-PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST           ; panel status 1 - bit value/mask for Life Lost 
+PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED                                   ; panel status 1 - bit value/mask for Timer Expired
+PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT                                   ; panel status 1 - bit value/mask for No Lives Left 
+PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST                                       ; panel status 1 - bit value/mask for Life Lost 
 ; Panel_Status2 Bit Numbers
-PANEL_ST2_MUSIC_SFX             EQU $0                              ; panel status 2 - bit 0 - Music/SFX selector bit
-PANEL_ST2_GAME_OVER             EQU $5                              ; panel status 2 - bit 5 - Is Game Over
-PANEL_ST2_LEVEL_COMPLETE        EQU $6                              ; panel status 2 - bit 6 - Is Level Complete
-PANEL_ST2_CHEAT_ACTIVE          EQU $7                              ; panel status 2 - bit 7 - Is Cheat Active
+PANEL_ST2_MUSIC_SFX             EQU $0                                                          ; panel status 2 - bit 0 - Music/SFX selector bit
+PANEL_ST2_GAME_OVER             EQU $5                                                          ; panel status 2 - bit 5 - Is Game Over
+PANEL_ST2_LEVEL_COMPLETE        EQU $6                                                          ; panel status 2 - bit 6 - Is Level Complete
+PANEL_ST2_CHEAT_ACTIVE          EQU $7                                                          ; panel status 2 - bit 7 - Is Cheat Active
 
 
 
 ; MAPPGR.IFF
-MAPGR_ADDRESS               EQU $7FFC
-MAPGR_START                 EQU $8000
-MAPGR_BASE                  EQU $8002
-MAPGR_INIT                  EQU $0000807c
+MAPGR_ADDRESS                   EQU $7FFC
+MAPGR_START                     EQU $8000
+MAPGR_BASE                      EQU $8002
+MAPGR_INIT                      EQU $0000807c
+
+
 
 ; Code1 - Constants
 ;-------------------
@@ -141,6 +149,34 @@ CODE1_DISPLAY_BUFFER2_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS+CODE1_DISPLAY_BU
 CODE1_CHIPMEM_BUFFER            EQU $0005a36c                                                   ; original address  $5a36c - $6159c - (size = $7230 - 29,232 bytes)
 CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE           
 
+; Code1 - debug_print_word_value constants
+FONT_8x8_HEIGHT     EQU         $8
+ASCII_SPACE         EQU         $20
+
+KEY_F1              EQU         $0081
+KEY_F2              EQU         $0082
+KEY_F10             EQU         $008a
+KEY_ESC             EQU         $001b
+
+
+;Chem.iff - Level Music - Constants
+;----------------------------------
+SFX_LEVEL_MUSIC     EQU         $01
+SFX_LEVEL_COMPLETE  EQU         $02
+SFX_LIFE_LOST       EQU         $03
+SFX_TIMER_EXPIRED   EQU         $04
+SFX_DRIP            EQU         $05
+SFX_GASLEAK         EQU         $06
+SFX_BATROPE         EQU         $07
+SFX_BATARANG        EQU         $08
+SFX_GRENADE         EQU         $09
+SFX_GUYHIT          EQU         $0a
+SFX_SPLASH          EQU         $0b
+SFX_Ricochet        EQU         $0c
+SFX_EXPLOSION       EQU         $0d
+
+
+
                 section code1,code_c
                 ;org     $0                                          ; original load address
 
@@ -151,7 +187,7 @@ CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE
                 opt         o-
 
 
-start
+start               ; added for testing (doesn't run yet!!!)
                     jmp game_start     
            
 
@@ -266,7 +302,7 @@ init_system
                     move.w  #CODE1_INITIAL_TIMER_BCD,d0
                     jsr     PANEL_INIT_TIMER
                     
-                    bsr.w   clear_memory                    ; Clear display buffers - $00003746
+                    bsr.w   clear_display_memory
                     lea.l   copper_list,a0                  ; L000031c8,a0
                     bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
                     bsr.w   double_buffer_playfield         ; L000036fa
@@ -303,7 +339,7 @@ L000031c4           dc.l level6_interrupt_handler   ; $00003396 - enabled  - unu
                     ; ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)
                     ; 
 copper_list                                         ; original address $000031c8
-                    ; playfield display
+                    ; ---- playfield display (scroll area) ---
                     dc.w $2c01,$fffe                ; $da - $2c = $ae (174 + 32 = 206) - aaauming 32 pixels for vertical scroll off-screen
                     dc.w BPL2MOD,$0002              ; BPL2MOD (extra 16 bits bitplane width)
                     dc.w BPL1MOD,$0002              ; BPL1MOD (extra 16 bits bitplane width)
@@ -339,7 +375,8 @@ copper_playfield_planes                             ; original address $000031d4
                     dc.w COLOR13,$0262
                     dc.w COLOR14,$0668
                     dc.w COLOR15,$06ae
-                    ; panel display
+
+                    ; ---- panel display (bottom score/energy etc) ----
                     dc.w $da01,$fffe
                     dc.w BPL2MOD,$0000              ; Modulo = 0
                     dc.w BPL1MOD,$0000              ; Modulo = 0
@@ -752,71 +789,34 @@ acsii_lookup_table                          ; original address $00003450
                     ; 32 byte keyboard buffer queue.
                     ;
 keyboard_buffer                         ; original address L000034d0
-L000034d0           dc.b    $00
-                    dc.b    $00                
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
-                    dc.b    $00
+L000034d0           dc.b    $00, $00, $00, $00, $00, $00, $00, $00
+                    dc.b    $00, $00, $00, $00, $00, $00, $00, $00
+                    dc.b    $00, $00, $00, $00, $00, $00, $00, $00
+                    dc.b    $00, $00, $00, $00, $00, $00, $00, $00
 
                     even
-                    ; Keyboard buffer offset (where new keys are queued into)
+
+                    ; Keyboard buffer index (where new keycodes are queued into)
 keyboard_queue_head                     ; original address L000034f0
                     dc.w    $0000
-                    ; Keyboard buffer offset (where keycodes are dequeued from)
+                    ; Keyboard buffer index (where keycodes are dequeued from)
 keyboard_queue_tail                     ; original address L000034f0                 
                     dc.w    $0000
 
 
-                    ; Table contained a bitmap of the keys currently pressed on the keyboard
+                    ; A bitmap of the keys currently pressed on the keyboard
                     ; each bit records the key press or release status of the key.
                     ; range = $00 - $7f (16 bytes of bitmap data)
 keyboard_bitmap                         ; original address $000034f4
-L000034f4           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    dc.w    $0000, $0000, $0000, $0000
+                    dc.w    $0000, $0000, $0000, $0000
 
                     ; extended bitmap for control keys (Function keys etc)
                     ; ascii codes $80-$ff
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    dc.w    $0000, $0000, $0000, $0000
+                    dc.w    $0000, $0000, $0000, $0000
+
+
 
 
 
@@ -847,7 +847,7 @@ L00003522           dc.l    lvl_3_sfx_exit      ; L00003542 ; unused ptr to 'rts
                     ;   - writes '$00' to CIAA CRA (this does nothing due to bit 7 being set/clr)
                     ;       - so it doesn't actuall clear any bits?
                     ;
-lvl_3_update_sound_player                                    ; original address $00003526
+lvl_3_update_sound_player                                   ; original address $00003526
                     movem.l d1-d7/a0-a6,-(a7)
                     addq.w  #$01,frame_counter              ; increment frame counter - $000036ee 
                     jsr     AUDIO_PLAYER_UPDATE                   ; External Address - CHEM.IFF (music player) - $00048018 
@@ -867,7 +867,7 @@ lvl_3_sfx_exit                                              ; original address L
                     ;       - default this is rts.
                     ;
 lvl2_CIAB_TimerB_Handler                                    ; original address $00003544
-L00003544           movem.l d0-d7/a0-a6,-(a7)
+                    movem.l d0-d7/a0-a6,-(a7)
                     bsr.w   ciab_timerb_function
                     addq.w  #$01,ciab_timerb_ticker
                     movea.l ciab_timerb_function_ptr,a0
@@ -1148,10 +1148,10 @@ double_buffer_playfield                                             ; original a
 
 
                     ; ----------------------- clear display memory ---------------------------
-                    ; Clear DOuble Buffer Display (back & front)
+                    ; Clear Double Buffer Display (back & front)
                     ; Clear Off-Screen Displaty Buffer
                     ;
-clear_memory                                                        ; original address L00003746
+clear_display_memory                                                        ; original address L00003746
                     ; clear double buffer display memory
                     lea.l   CODE1_DOUBLE_BUFFER_ADDRESS,a0
                     move.w  #(CODE1_DOUBLE_BUFFER_BYTESIZE/4)-1,d7       
@@ -1174,7 +1174,9 @@ clear_memory                                                        ; original a
                     ; ----------------------- debug print word value ------------------------
                     ; Debug print routine that converts an 16bit value into an ASCII string
                     ; and displays is in the 'Panel' area at the bottom of the screen.
+                    ;
                     ; Doesn't appear to be in use by the code.
+                    ; This code would be better suited as part of the Panel.s code.
                     ;
                     ; IN:
                     ;   d0 - 16bit value to be converted to ASCII characters for display
@@ -1211,7 +1213,7 @@ debug_print_word_value                                                      ; or
                     beq.b   .exit                       
 
                     and.w   #$00ff,d0                               ; mask low byte value.
-                    mulu.w  #$0028,d0                               ; multiply y co-ord by width of 'panel' screen area (40 bytes)
+                    mulu.w  #PANEL_DISPLAY_BYTEWIDTH,d0
                     moveq   #$00,d1 
                     move.b  (a0)+,d1                                ; get x co-ord value (byte value)
 
@@ -1219,25 +1221,28 @@ debug_print_word_value                                                      ; or
                     movea.l #PANEL_GFX,a1                           ; Panel GFX Address - $0007c89a.
                     lea.l   $02(a1,d0.w),a1                         ; a1 = display location.
 
-.display_char       ; calc source gfx ptr                           ; original address L000037b8
+.display_char       ; get char for display                          ; original address L000037b8
                     moveq   #$00,d0
-                    move.b  (a0)+,d0                                ; get ASCII char to display.
+                    move.b  (a0)+,d0
                     beq.b   .calc_print_location                    ; null terminator, could have exited here.
-
-                    sub.w   #$0020,d0                               ; #$20 = 32 (space character?)
-                    lsl.w   #$03,d0                                 ; Character GFX Offset
+                    
+                    ; calc source gfx ptr 
+                    sub.w   #ASCII_SPACE,d0
+                    lsl.w   #$03,d0                                 ; calc character GFX offset
                     lea.l   font8x8,a2                              ; 8x8 Character Font start address
-                    lea.l   $00(a2,d0.w),a2                         ; Calculate source GFX ptr
-                    moveq   #$07,d7                                 ; loop counter 7 + 1 - 8 raster lines per character
-                    movea.l a1,a3                                   ; destination location inside PANEL GFX (calculated above and held in a1)
+                    lea.l   $00(a2,d0.w),a2                         ; source character GFX ptr
+
+                    ; initialise print char loop
+                    moveq   #FONT_8x8_HEIGHT-1,d7                   ; print_char_loop counter
+                    movea.l a1,a3                                   ; gfx dest ptr copy
 
 .print_char_loop    ; write gfx char to display - one raster line at a time
-                    move.b  (a2),(a3)                               ; set value in bitplane 0
-                    move.b  (a2),$0780(a3)                          ; set value in bitplane 1
-                    move.b  (a2),$0f00(a3)                          ; set value in bitplane 2
-                    move.b  (a2)+,$1680(a3)                         ; set value in bitplane 3
-                    lea.l   $0028(a3),a3                            ; increment destination ptr by 40 bytes - next raster line
-                    dbf.w   d7,.print_char_loop                     ; draw next line of character data loop 8 times.
+                    move.b  (a2),(a3)
+                    move.b  (a2),PANEL_DISPLAY_BITPLANEBYTES(a3)
+                    move.b  (a2),2*PANEL_DISPLAY_BITPLANEBYTES(a3)
+                    move.b  (a2)+,3*PANEL_DISPLAY_BITPLANEBYTES(a3)
+                    lea.l   PANEL_DISPLAY_BYTEWIDTH(a3),a3
+                    dbf.w   d7,.print_char_loop
 
 .next_char          ; set up next char for display                  ; original address L000037e8
                     lea.l   $0001(a1),a1                            ; increment destination ptr for display of next character
@@ -1252,6 +1257,12 @@ debug_print_word_value                                                      ; or
                     incdir  ./gfx/
                     include font8x8.s
                     
+
+
+
+
+
+
 
                     ; 110 words, 220 bytes structure - cleared at game_start
                     ; there are values in here which are clears at game_start
@@ -1371,7 +1382,7 @@ L00003a8e           dc.w    $0000
 text_axis_chemicals
 L00003aa4           dc.b    $50, $09                                    ; raster line (Y), byte offset (X)
                     dc.b    'AXIS '                                     ; $41, $58, $49, $53, $20
-                    dc.b    'CHEMICALS '                                ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
+                    dc.b    'CHEMICAL '                                 ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
                     dc.b    'FACTORY'                                   ; $46, $41, $43, $54, $4f, $52, $59
                     dc.b    $00,$ff                                     ; Message Terminator
 
@@ -1403,83 +1414,82 @@ L00003acd           dc.b    $60, $0b                                    ; raster
                     ; Called after the system is initialised, initialise the
                     ; game level & play the game loop
                     ;
-start_game                                          ; original address $00003ae4
-L00003ae4           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
-L00003aea           bsr.w   double_buffer_playfield ; L000036fa
+start_game                                                          ; original address $00003ae4
+                    clr.l   frame_counter                           ; clear target_frame_count also
+                    bsr.w   double_buffer_playfield 
 
-L00003aee           bsr.w   L000058e2               ; Important Level Init Function
+                    bsr.w   L000058e2                               ; Important Level Init Function
 
-L00003af2           jsr     AUDIO_PLAYER_INIT             ;  $00048000 - Initialise Music Player ; External Address $48000- CHEM.IFF
-L00003af8           clr.w   L000062fc
-L00003afc           jsr     PANEL_INIT_LIVES        ; Panel - Initialise Player Lives - $0007c838
+                    jsr     AUDIO_PLAYER_INIT
+                    clr.w   L000062fc
+                    jsr     PANEL_INIT_LIVES
 
                     ; restart point after batman dies
-restart_level                                       ; original address L00003b02
-L00003b02           clr.w   L00006318
-L00003b06           clr.l   frame_counter           ; Long Clear - clears target_frame_count also - L000036ee
-L00003b0c           bsr.w   clear_memory            ; L00003746
-L00003b10           move.w  #$0800,d0               ; Level Time as BCD mm:ss
-L00003b14           jsr     PANEL_INIT_TIMER        ; Panel - Initialise Level Timer - $0007c80e
-L00003b1a           jsr     PANEL_INIT_ENERGY       ; Panel - Initialise Player Energy - $0007c854
+restart_level                                                       ; original address L00003b02
+                    clr.w   L00006318
+                    clr.l   frame_counter                           ; clear target_frame_count also
+                    bsr.w   clear_display_memory
+                    move.w  #CODE1_INITIAL_TIMER_BCD,d0
+                    jsr     PANEL_INIT_TIMER 
+                    jsr     PANEL_INIT_ENERGY
 
-L00003b20           bsr.w   panel_fade_in           ; L00003d40
+                    bsr.w   panel_fade_in
 
-                    ; Some sort of map initialisaiton?
-L00003b24           lea.l   MAPGR_INIT,a0           ; $0000807c,a0            ; External Address $807c - MAPGR.IFF
-L00003b2a           movea.l L00005f64,a5
-L00003b30           movem.w (a5)+,d2-d4             ; d2, d3 d4 (6 bytes), d3 = word index to $807c
-L00003b34           tst.w   d3
-L00003b36           beq.b   L00003b4e               ; if d3 == 0 then exist loop
-L00003b38           move.b  d2,$01(a0,d3.W)
-L00003b3c           lsr.w   #$08,d2
-L00003b3e           move.b  d2,$00(a0,d3.W)
-L00003b42           move.b  d4,$03(a0,d3.W)
-L00003b46           lsr.w   #$08,d4
-L00003b48           move.b  d4,$02(a0,d3.W)
-L00003b4c           bra.b   L00003b30
-
+                    ; Some sort of map initialisaiton               ; original address L00003b24
+                    lea.l   MAPGR_INIT,a0                           ; $0000807c,a0 - MAPGR.IFF
+                    movea.l L00005f64,a5
+L00003b30           movem.w (a5)+,d2-d4                             ; d2, d3 d4 (6 bytes), d3 = word index to $807c
+                    tst.w   d3
+                    beq.b   L00003b4e                               ; if d3 == 0 then exit loop
+                    move.b  d2,$01(a0,d3.W)
+                    lsr.w   #$08,d2
+                    move.b  d2,$00(a0,d3.W)
+                    move.b  d4,$03(a0,d3.W)
+                    lsr.w   #$08,d4
+                    move.b  d4,$02(a0,d3.W)
+                    bra.b   L00003b30                               ; loop again
 
                     ; clear 40 longs (160 bytes)
                     ; data referenced by projectiles
-                                                        ; original address L00003b4e
+                                                                    ; original address L00003b4e
 L00003b4e           move.l  #$00005fc4,L00005f64
                     lea.l   L00004894,a0
-                    moveq   #$27,d7                     ; loop counter = #$27 + 1 = #$28 (40 in decimal)
+                    moveq   #$27,d7                                 ; loop counter = #$27 + 1 = #$28 (40 in decimal)
 .loop               clr.l   (a0)+                   
-                    dbf.w   d7,.loop                    ; L00003b5e
+                    dbf.w   d7,.loop
 
 
                     ; clear MSB flag of each data structure
-                                                        ; original address L00003b64
-L00003b64           lea.l   L0000642e,a0                
-.loop               bclr.b  #$0007,(a0)                 ; clear MSB
-                    move.w  $0004(a0),d0                ; word at 4(a0) offset to next structure
-                    mulu.w  #$0006,d0                   ; 
+                                                                    ; original address L00003b64
+clear_msb           lea.l   L0000642e,a0                
+.loop               bclr.b  #$0007,(a0)                             ; clear MSB
+                    move.w  $0004(a0),d0                            ; word at 4(a0) offset to next structure
+                    mulu.w  #$0006,d0 
                     lea.l   $06(a0,d0.W),a0
-                    cmpa.w  L00006722,a0                ; cmpa.w  #$6722,a0
-                    bcs.b   .loop                       ; L00003b68
+                    cmpa.l  L00006722,a0
+                    bcs.b   .loop
 
 
                     ; clear MSB flag of each data structure
 L00003b7e                                                           ; original address                    
 .loop               bclr.b  #$0007,$0004(a0)
                     addq.w  #$06,a0                                 ; start of next data structure
-                    cmpa.l  default_level_parameters,a0             ; L000067a0,a0                ; cmpa.w  #$67a0,a0
-                    bcs.b   .loop                                   ; L00003b7e
+                    cmpa.l  default_level_parameters,a0
+                    bcs.b   .loop
 
 
                     ; clear 110 words (220 bytes) starting @ L000039c8
-                                                        ; original address L00003b8c
+                                                                    ; original address L00003b8c
 L00003b8c           lea.l   L000039c8,a0
-                    moveq   #$6d,d7                     ; counter = #$6d + 1 = #$6e (110 decimal) (220 bytes)
+                    moveq   #$6d,d7                                 ; counter = #$6d + 1 = #$6e (110 decimal) (220 bytes)
 .loop
                     clr.w   (a0)+
-                    dbf.w   d7,.loop                    ; L00003b92
+                    dbf.w   d7,.loop
 
 
                     ; unsure what this is doing atm.
-                                                        ; original address L00003b98
-L00003b98           clr.w   batman_sprite1_id           ; L000062ee
+                                                                    ; original address L00003b98
+L00003b98           clr.w   batman_sprite1_id
                     lea.l   L000063d3,a0
                     bsr.w   L00005438
 
@@ -1498,11 +1508,10 @@ L00003ba4           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 
                     dbf.w   d7,.inner_loop                          ; loop 7 times
                     dbf.w   d6,.outer_loop                          ; loop 0 times (d6 has to be 0, or code is overwritten) 
 
-
-L00003bc2           lea.l   text_axis_chemicals,a0                  ; L00003aa4,a0 ; Axis Chemical Factory - Text
-L00003bc6           bsr.w   large_text_plotter                      ; L000067ca
-
-L00003bca           bsr.w   double_buffer_playfield                 ; L000036fa   
+                    ; display level title 'Axis Chemical Factory'
+L00003bc2           lea.l   text_axis_chemicals,a0
+L00003bc6           bsr.w   large_text_plotter
+L00003bca           bsr.w   double_buffer_playfield   
 
 L00003bce           bsr.w   L000058aa                               ; display 'Axis Chemicals'
 
@@ -1525,11 +1534,7 @@ sfx_only                                                            ; original a
 L00003bf6           clr.l   frame_counter                           ; NB: Long Clear - clears next word also -L000036ee
 
 
-KEY_F1      EQU     $0081
-KEY_F2      EQU     $0082
-KEY_F10     EQU     $008a
-KEY_ESC     EQU     $001b
-SFX_LEVEL_MUSIC     EQU $01
+
 
 
                     ; -----------------------------------------------------------------------------------------------------------
@@ -1967,8 +1972,8 @@ L00003f76           move.w  (a6),d0
 L00003f78           subq.w  #$02,d0
 L00003f7a           bmi.b   L00003fa6
 L00003f7c           move.w  #$0001,(a6)
-L00003f80           moveq   #$0a,d0                 ; sfx number - $0a = Bad Guy Hit
-L00003f82           jsr     AUDIO_PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address $48014 - CHEM.IFF
+L00003f80           moveq   #SFX_GUYHIT,d0
+L00003f82           jsr     AUDIO_PLAYER_INIT_SFX
 L00003f88           move.w  #$fffe,$000a(a6)
 L00003f8e           tst.w   L000062fa
 L00003f92           bmi.b   L00003fa6
@@ -1977,7 +1982,7 @@ L00003f98           beq.b   L00003fa0
 L00003f9a           tst.w   L000062f4
 L00003f9e           bne.b   L00003fa6
 L00003fa0           moveq   #$05,d6                         ; Value of Energy to Lose (5 of 48)
-L00003fa2           bsr.w   batman_lose_energy              ; L00004ccc
+L00003fa2           bsr.w   batman_lose_energy
 L00003fa6           move.w  (a7)+,d7
 L00003fa8           lea.l   $0016(a6),a6
 L00003fac           dbf.w   d7,L00003eec
@@ -2010,8 +2015,8 @@ L00003ff0           move.w  d3,$0006(a0)
 L00003ff4           cmp.w   #$0073,d1
 L00003ff8           bpl.b   L0000400a
 L00003ffa           movem.w d0-d1,-(a7)
-L00003ffe           moveq   #$09,d0                 ; sfx number = 09 = Grenade Throw
-L00004000           jsr     AUDIO_PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0.l = sound number - $00048014 ; External Address $48014 - CHEM.IFF
+L00003ffe           moveq   #SFX_GRENADE,d0
+L00004000           jsr     AUDIO_PLAYER_INIT_SFX
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
 
@@ -2298,7 +2303,7 @@ L0000437a           adda.w  d6,a0
 L0000437c           movea.w (a0),a0
 L0000437e           jmp     (a0)
 L00004380           move.w  $0004(a6),d4
-L00004384           btst.b  #$0000,L0000632d                    ; test even/odd playfield buffer swap value
+L00004384           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L0000438a           bne.b   L000043ce
 L0000438c           addq.w  #$01,d4
 L0000438e           move.w  d4,$0004(a6)
@@ -2308,7 +2313,7 @@ L00004398           bne.b   L000043ce
 L0000439a           bsr.w   L000055a0
 L0000439e           bra.b   L000043c6
 L000043a0           move.w  $0004(a6),d4
-L000043a4           btst.b  #$0000,L0000632d                    ; test even/odd playfield buffer swap value
+L000043a4           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L000043aa           bne.b   L000043ce
 L000043ac           subq.w  #$01,d4
 L000043ae           move.w  d4,$0004(a6)
@@ -2364,7 +2369,7 @@ L0000443c           move.w  #$0003,$0008(a6)
 L00004442           rts
 
 L00004444           bsr.w   L00004570
-L00004448           btst.b  #$0000,L0000632d                    ; test even/odd playfield buffer swap value
+L00004448           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00004450           bne.b   L00004442
 L00004452           bsr.w   L0000463e
 L00004456           sub.w   (a5)+,d1
@@ -2373,8 +2378,8 @@ L0000445c           add.w   (a5)+,d0
 L0000445e           add.w   L0000630e,d0
 L00004462           move.w  (a5),(a0)+
 L00004464           movem.w d0-d1,(a0)
-L00004468           moveq   #$0c,d2
-L0000446a           bsr.w   L000044b6
+L00004468           moveq   #SFX_Ricochet,d2
+L0000446a           bsr.w   play_proximity_sfx                      ; play sfx if d0 < 160 & d1 < 89
 L0000446e           subq.w  #$01,$0008(a6)
 L00004472           bne.b   L00004442
 L00004474           move.w  #$0006,$0008(a6)
@@ -2399,16 +2404,23 @@ L000044b0           move.w $0002(a6),d4
 L000044b4           rts
 
 
-                    ; play sfx - d0 = sfx number to play 5 - 13
-L000044b6           cmp.w   #$00a0,d0
-L000044ba           bcc.b   L000044b4
-L000044bc           cmp.w   #$0059,d1
-L000044c0           bcc.b   L000044b4
-L000044c2           movem.w d0-d1,-(a7)
-L000044c6           move.w  d2,d0                       ; d0 = sfx number to play
-L000044c8           jsr     AUDIO_PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
-L000044ce           movem.w (a7)+,d0-d1
-L000044d2           rts
+                    ; ------------------- play proximity sfx ---------------------
+                    ; Play SFX if X & Y co-ordinates within range
+                    ; IN:-
+                    ;   d0.w = probably X distance
+                    ;   d1.w = probably Y distance
+                    ;   d2 = sfx number to play 5 - 13
+play_proximity_sfx                                                  ; original address L000044b6
+                    cmp.w   #$00a0,d0
+                    bcc.b   .exit
+                    cmp.w   #$0059,d1
+                    bcc.b   .exit
+                    movem.w d0-d1,-(a7)
+                    move.w  d2,d0                                   ; d0 = sfx number to play
+                    jsr     AUDIO_PLAYER_INIT_SFX       
+                    movem.w (a7)+,d0-d1
+.exit           
+                    rts
 
 
 L000044d4           dc.w    $e004                       ; asr.b #$08,d4
@@ -2627,9 +2639,9 @@ L000046a6           cmp.w   L000062f0,d1
 L000046aa           bmi.b   exit_badguy_shooting            ; L000046c0
 batman_shot
 L000046ac           moveq   #$01,d6                         ; Value of Energy to Lose (1 of 48)
-L000046ae           bsr.w   batman_lose_energy              ; L00004ccc
-L000046b2           moveq   #$0a,d0                         ; sfx number - $0a = Bad guy/Batman hit
-L000046b4           jsr     AUDIO_PLAYER_INIT_SFX           ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014           ; External Address - CHEM.IFF
+L000046ae           bsr.w   batman_lose_energy
+L000046b2           moveq   #SFX_GUYHIT,d0
+L000046b4           jsr     AUDIO_PLAYER_INIT_SFX
 L000046ba           move.w  #$0004,-$0002(a6)
 exit_badguy_shooting   
 L000046c0           rts
@@ -2730,8 +2742,8 @@ L000047ac           rts
 L000047ae           move.w  #$0001,(a4)
 L000047b2           move.w  #$fffc,$000a(a4)
 L000047b8           bsr.w   L00004722
-L000047bc           moveq   #$0a,d0                             ; sfx number - $0a = bad guy hit
-L000047be           jmp     AUDIO_PLAYER_INIT_SFX               ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address -CHEM.IFF
+L000047bc           moveq   #SFX_GUYHIT,d0
+L000047be           jmp     AUDIO_PLAYER_INIT_SFX
                     ; use rts in audio player to return
 
 
@@ -2762,13 +2774,13 @@ L0000480a           moveq   #$06,d6
 L0000480c           bsr.w   L00004ccc
 L00004810           movem.w (a6),d0-d1
 L00004814           move.w  #$000e,-$0002(a6)
-L0000481a           moveq   #$0d,d2
-L0000481c           bra.w   L000044b6
+L0000481a           moveq   #SFX_EXPLOSION,d2
+L0000481c           bra.w   play_proximity_sfx              ; play sfx if d0 > 160 & d1 >89 
 L00004820           rts
 
 
 
-L00004822           subq.w  #$02,d0                 ; bad guy - grenade left
+L00004822           subq.w  #$02,d0                         ; bad guy - grenade left
 L00004824           move.w  $0004(a6),d2
 L00004828           cmp.w   #$0028,d2
 L0000482c           bpl.b   L00004832
@@ -2783,7 +2795,7 @@ L00004842           bra.b   L000047e4
 
 
 L00004844           movem.w d0-d1,(a6)
-L00004848           btst.b  #$0000,L0000632d                ; test even/odd playfield buffer swap value
+L00004848           btst.b  #$0000,playfield_swap_count+1   ; test even/odd playfield buffer swap value
 L0000484e           bne.b   L00004864
 L00004850           move.w  -$0002(a6),d2                   ; get projectile handler index
 L00004854           addq.w  #$01,d2                         ; increment projectile handler index
@@ -3553,7 +3565,7 @@ L00004ed2            moveq   #$03,d6
 L00004ed4            cmp.w   #$0014,d6
 L00004ed8            bcc.b   L00004edc
 L00004eda            moveq   #$01,d6
-L00004edc            and.w   playfield_swap_count,d6            ;  d6 = 1 or 0, even/odd playfield swap value - L0000632c,d6
+L00004edc            and.w   playfield_swap_count,d6            ;  d6 = 1 or 0, even/odd playfield swap value
 L00004ee0            bne.b   L00004eec
 L00004ee2            and.w   #$0003,d4
 L00004ee6            asr.w   #$01,d4
@@ -3642,21 +3654,24 @@ L00004fdc           bra.w   L00005464
 
 
 
-input_fire
-L00004fe0           move.w  #$6419,L00003626            ; Jump Table CMD9
-L00004fe8           move.l  #L00004ff6,gl_jsr_address   ; L00003c90    ; Self Modified Code JSR - game_loop
-L00004fee           moveq   #$08,d0                 ; sfx number - 08 = Bat Rope
-L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+
+                    ; -------- input fire - Jump Table CMD9 ---------
+input_fire                                              ; original address L00004fe0
+L00004fe0           move.w  #$6419,L00003626            
+L00004fe8           move.l  #L00004ff6,gl_jsr_address   ; Set game_loop Self Modified Code JSR 
+L00004fee           moveq   #SFX_BATARANG,d0
+L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX
+
 L00004ff6           movea.w L00006326,a0
 L00004ffa           bsr.w   L00005438
 L00004ffe           move.w  a0,L00006326
 L00005002           tst.b   (a0)
 L00005004           bne.b   L00005034
 L00005006           move.w  #$0008,L000062f2
-L0000500c           move.l  #L00005036,gl_jsr_address   ; L00003c90 ; Self Modified Code JSR - game_loop
+L0000500c           move.l  #L00005036,gl_jsr_address   ; Set game_loop Self Modified Code JSR
 L00005012           bsr.w   L0000463e
 L00005016           sub.w   #$0007,d0
-L0000501a           move.w  batman_sprite1_id,d2            ; L000062ee,d2
+L0000501a           move.w  batman_sprite1_id,d2
 L0000501e           spl.b   d2
 L00005020           ext.w   d2
 L00005022           bpl.b   L00005028
@@ -3734,35 +3749,41 @@ L000050e0           move.w  d4,$0008(a0)            ; $00000a08 [0000]
 L000050e4           rts 
 
 
-input_fire_up_right
-L000050e6           clr.w   batman_sprite1_id       ; L000062ee               ; Jump Table CMD12
-L000050ea           moveq   #$7f,d0
+
+
+                    ; ------- batrope up-right - Jump Table CMD12 --------
+input_fire_up_right                                                 ; original address L000050e6
+L000050e6           clr.w   batman_sprite1_id                       ; set right facing sprite
+L000050ea           moveq   #$7f,d0                                 ; d0 = +127
 L000050ec           bra.b   L000050fa
 
-input_fire_up_left
-L000050ee           move.w  #$e000,batman_sprite1_id    ; L000062ee        ; Jump Table CMD13
-L000050f4           MOVE.L  #$ffffff81,D0
+
+                    ; -------- batrope up-left - Jump Table CMD13 --------
+input_fire_up_left                                                  ; original address L000050ee
+L000050ee           move.w  #$e000,batman_sprite1_id                ; set left facing sprite
+L000050f4           MOVE.L  #$ffffff81,D0                           ; d0 = -127
 L000050f6           bra.b   L000050fa
 
 
-input_fire_up                                           ; batrope up
-L000050f8           clr.w   d0                          ; Jump Table CMD11
+                    ; ---------- batrope up - Jump Table CMD11 -----------
+input_fire_up                                                       ; original address L000050f8
+L000050f8           clr.w   d0                                      ; d0 = 0
 L000050fa           move.w  #$0048,L000067c6
 L00005100           lea.l   $6314,a0
 L00005104           move.w  d0,(a0)+
 L00005106           clr.l   (a0)+
 L00005108           bsr.w   L0000463e
 L0000510c           move.w  #$0001,(a0)
-L00005110           move.l  #L00005132,gl_jsr_address   ; L00003c90 ; Self Modified Code JSR - game_loop
+L00005110           move.l  #L00005132,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L00005116           lea.l   L000063d0,a0
 L0000511a           bsr.w   L00005438
-L0000511e           moveq   #$07,d0                     ; sfx number - 07 = Batarang
-L00005120           jsr     AUDIO_PLAYER_INIT_SFX             ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+L0000511e           moveq   #SFX_BATROPE,d0
+L00005120           jsr     AUDIO_PLAYER_INIT_SFX
 L00005126           movem.w L000067c2,d0-d1
-L0000512c           bclr.b  #$0004,player_input_command             ; L00006308
+L0000512c           bclr.b  #$0004,player_input_command
 L00005132           lea.l   L00006314,a0
-L00005136           btst.b  #$0004,player_input_command             ; L00006308
-L0000513e           bne     L000051be                   ; bne.b 
+L00005136           btst.b  #$0004,player_input_command
+L0000513e           bne     L000051be
 L00005140           move.w  $0004(a0),d2
 L00005144           addq.w  #$02,d2
 L00005146           cmp.w   #$0028,d2
@@ -3774,7 +3795,7 @@ L00005154           addq.w  #$01,d2
 L00005156           move.w  d2,$0004(a0)
 L0000515a           bsr.w   L000050aa
 L0000515e           addq.w  #$03,d3
-L00005160           move.w  batman_sprite1_id,d7            ;L000062ee,d7
+L00005160           move.w  batman_sprite1_id,d7
 L00005164           bpl.b   L00005168
 L00005166           subq.w  #$07,d3
 L00005168           add.w   #$000a,d4
@@ -3792,11 +3813,11 @@ L00005188           cmp.b   #$85,d2
 L0000518c           bcc.b   L000051a8
 L0000518e           cmp.b   #$79,d2
 L00005192           bcs.b   L000051ae
-L00005194           move.l  #L00004e64,gl_jsr_address           ; L00003c90 ; Self Modified Code JSR - game_loop
+L00005194           move.l  #L00004e64,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L0000519a           move.l  L0000631a,L00006328
 L000051a0           lea.l   L00006416,a0
 L000051a4           bra.w   L00005438
-L000051a8           move.l  #L000051b0,gl_jsr_address           ; L00003c90 ; Self Modified Code JSR - game_loop
+L000051a8           move.l  #L000051b0,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L000051ae           rts
 
 
@@ -3932,7 +3953,7 @@ L00005304           bra.w   player_move_commands                    ; L00004c3e
 
 L00005308           btst.b  #$0004,player_input_command             ; L00006308
 L0000530e           bne.w   L0000545a
-L00005312           btst.b  #$0000,L0000632d                        ; test even/odd playfield buffer swap value
+L00005312           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00005318           bne.b   L000052ec
 L0000531a           clr.w   d4
 L0000531c           move.b  player_input_command,d4                 ; L00006308,d4
@@ -4894,10 +4915,10 @@ L00005b8a           rts
 
                     ; jack falls & hits the vat?
 L00005b8c           subq.w  #$01,d2
-L00005b8e           bne.b   L00005b8a
+L00005b8e           bne.b   L00005b8a                               ; jmp to rts above
 L00005b90           jsr     AUDIO_PLAYER_INIT_SFX_1
-L00005b96           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ; Panel - Status Byte 1 - bit #$0000 of $0007c874
-L00005b9e           move.l  #L00005290,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
+L00005b96           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 
+L00005b9e           move.l  #L00005290,gl_jsr_address               ; Set game_loop Self Modifying Code JSR 
 L00005ba4           clr.w   L000062fa
 L00005ba8           clr.w   L00006318
 L00005bac           move.w  $0004(a5),d0                            ; $00bfd104,d0
@@ -4907,8 +4928,9 @@ L00005bb6           move.w  #$0081,$0006(a5)                        ; $00bfd106
 L00005bbc           move.l  #$00005b28,$0008(a5)                    ; $00bfd108
 L00005bc4           move.w  #$0019,(a5)
 L00005bc8           clr.w   (a6)
-L00005bca           moveq   #$0b,d0                                 ; sfx number = $0b = Splash (jack in the vat)
-L00005bcc           jmp     AUDIO_PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number - $00048014 ; External Address - CHEM.IFF
+L00005bca           moveq   #SFX_SPLASH,d0
+L00005bcc           jmp     AUDIO_PLAYER_INIT_SFX
+                    ; uses rts in audio player
 
 
 L00005bd2           subq.w  #$01,L000067c8
@@ -4938,13 +4960,13 @@ L00005c16           bsr.b   L00005c42
 L00005c18           move.w  #$e004,d2
 L00005c1c           bra.w   L000045bc
 L00005c20           clr.w   d2
-L00005c22           move.w  $0008(a6),d2            ; $00dff008,d2
+L00005c22           move.w  $0008(a6),d2
 L00005c26           addq.b  #$04,d2
 L00005c28           bcc.b   L00005c32
-L00005c2a           moveq   #$06,d2
-L00005c2c           bsr.w   L000044b6
+L00005c2a           moveq   #SFX_GASLEAK,d2
+L00005c2c           bsr.w   play_proximity_sfx                      ; play sfx if d0 < 160 & d1 < 89
 L00005c30           clr.w   d2
-L00005c32           move.w  d2,$0008(a6)            ; $00dff008
+L00005c32           move.w  d2,$0008(a6)
 L00005c36           cmp.w   #$0037,d2
 L00005c3a           bcc.b   L00005c40
 L00005c3c           lsr.w   #$03,d2
@@ -4975,14 +4997,14 @@ L00005c7c           bcs.b   L00005c40
 L00005c7e           moveq   #$01,d2
 L00005c80           cmp.b   #$40,d3
 L00005c84           bcs.w   L000045bc
-L00005c88           move.w  $000a(a6),d5            ; $00dff00a,d5
+L00005c88           move.w  $000a(a6),d5
 L00005c8c           cmp.w   #$0010,d5
 L00005c90           bcc.w   L00005c96
 L00005c94           addq.w  #$01,d5
-L00005c96           move.w  d5,$000a(a6)            ; $00dff00a
+L00005c96           move.w  d5,$000a(a6)
 L00005c9a           lsr.w   #$01,d5
-L00005c9c           add.w   $0008(a6),d5            ; $00dff008,d5
-L00005ca0           move.w  d5,$0008(a6)            ; $00dff008
+L00005c9c           add.w   $0008(a6),d5
+L00005ca0           move.w  d5,$0008(a6)
 L00005ca4           add.w   d5,d1
 L00005ca6           bsr.w   L000055a0
 L00005caa           cmp.b   #$79,d2
@@ -4993,11 +5015,11 @@ L00005cb6           and.w   #$0007,d3
 L00005cba           not.w   d3
 L00005cbc           add.w   d3,d1
 L00005cbe           moveq   #$04,d2
-L00005cc0           eor.w   d2,$0002(a6)            ; $00dff002
-L00005cc4           clr.l   $0008(a6)               ; $00dff008
-L00005cc8           clr.w   $000c(a6)               ; $00dff00c
-L00005ccc           moveq   #$05,d2
-L00005cce           bsr.w   L000044b6
+L00005cc0           eor.w   d2,$0002(a6)
+L00005cc4           clr.l   $0008(a6)
+L00005cc8           clr.w   $000c(a6)
+L00005ccc           moveq   #SFX_DRIP,d2
+L00005cce           bsr.w   play_proximity_sfx                      ; play sfx if d0 < 160 & d1 < 89
 L00005cd2           moveq   #$02,d2
 L00005cd4           bra.w   L000045bc
 L00005cd8           moveq   #$01,d2
@@ -5010,13 +5032,13 @@ L00005cea           cmp.w   L000062f0,d1
 L00005cee           bmi.w   L000045bc
 L00005cf2           cmp.w   L000067c4,d1
 L00005cf6           bpl.w   L000045bc
-L00005cfa           moveq   #$02,d6                     ; Value of Energy to Lose (2 of 48)
-L00005cfc           bsr.w   batman_lose_energy          ;L00004ccc
+L00005cfa           moveq   #$02,d6                                 ; Value of Energy to Lose (2 of 48)
+L00005cfc           bsr.w   batman_lose_energy
 L00005d00           bra.b   L00005cbe
 L00005d02           rts 
 
 
-L00005d04           move.w  $0004(a6),d2            ; $00dff004,d2
+L00005d04           move.w  $0004(a6),d2
 L00005d08           not.w   d2
 L00005d0a           and.w   #$0007,d2
 L00005d0e           bclr.l  #$0002,d2
@@ -5029,21 +5051,21 @@ L00005d20           move.w  (a7)+,d2
 L00005d22           and.w   #$e000,d2
 L00005d26           addq.w  #$01,d2
 L00005d28           bsr.w   L0000458a
-L00005d2c           btst.b  #$0000,L0000632d        ; test even/odd playfield buffer swap value
+L00005d2c           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00005d32           beq.b   L00005d02
-L00005d34           subq.w  #$01,$0004(a6)          ;$00dff004
+L00005d34           subq.w  #$01,$0004(a6)
 L00005d38           bmi.b   L00005d82
 L00005d3a           rts 
 
 
                     ; jack falls hits the vat?
-L00005d3c           btst.b  #$0000,L0000632d                        ; test even/odd playfield buffer swap value
+L00005d3c           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00005d42           beq.b   L00005d54
 L00005d44           movem.l d0-d1/a6,-(a7)
-L00005d48           moveq   #$0b,d0                                 ; song number - $0b = Splash (jack in the vat)
-L00005d4a           jsr     AUDIO_PLAYER_INIT_SFX                         ; chem.iff - music/sfx - init sfx to play - d0 = sfx number $00048014 ; External Address - CHEM.IFF
+L00005d48           moveq   #SFX_SPLASH,d0
+L00005d4a           jsr     AUDIO_PLAYER_INIT_SFX
 L00005d50           movem.l (a7)+,d0-d1/a6
-L00005d54           move.w  playfield_swap_count,d2                 ; L0000632c,d2
+L00005d54           move.w  playfield_swap_count,d2
 L00005d58           lsr.w   #$02,d2
 L00005d5a           and.w   #$0003,d2
 L00005d5e           addq.w  #$01,d2
@@ -5053,12 +5075,13 @@ L00005d68           bpl.b   L00005d54
 L00005d6a           lea.l   L000039c8,a5
 L00005d6e           move.w  #$0103,d2
 L00005d72           moveq   #$09,d7
-L00005d74           cmp.w   $0006(a5),d2                            ; $00bfd106,d2
+L00005d74           cmp.w   $0006(a5),d2
 L00005d78           beq.b   L00005d88
 L00005d7a           lea.l   $0016(a5),a5
 L00005d7e           dbf.w   d7,L00005d74
 L00005d82           moveq   #$5a,d6                                 ; Value of Energy to Lose (90 of 48) - DEAD!
-L00005d84           bra.w   batman_lose_energy                      ; L00004ccc
+L00005d84           bra.w   batman_lose_energy
+
 
 L00005d88           move.w  (a5),d2
 L00005d8a           beq.b   L00005d82
@@ -5104,7 +5127,7 @@ L00005dfa           moveq   #$07,d2
 L00005dfc           cmp.w   #$0007,d2
 L00005e00           bmi.b   L00005e10
 L00005e02           moveq   #$0c,d2
-L00005e04           and.w   playfield_swap_count,d2     ; L0000632c,d2
+L00005e04           and.w   playfield_swap_count,d2
 L00005e08           lsr.w   #$02,d2                     ; divide swap count by 4
 L00005e0a           bne.b   L00005e0e                   ; frame swaps 4-7 - jmp $5e0e
 L00005e0c           moveq   #$02,d2                     ; frame swaps 0-3 - do this
@@ -5426,9 +5449,9 @@ L00006326           dc.w $0000
 L00006328           dc.w $0000
 L0000632a           dc.w $0000   
 
-playfield_swap_count
-L0000632c           dc.b $00                    ; word value incremented when playfield buffers are swapped
-L0000632d           dc.b $00
+playfield_swap_count                                                ; original address L0000632c
+                    dc.w $0000                                      ; word value incremented when playfield buffers are swapped
+
 
 L0000632e           dc.w $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615         ;.."! ...........
 L0000633C           dc.w $1413, $1211, $100F, $0E0D, $0C0B, $0A09, $0807, $0605         ;................
