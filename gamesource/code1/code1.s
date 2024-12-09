@@ -1487,11 +1487,11 @@ L00003b8c           lea.l   L000039c8,a0
                     dbf.w   d7,.loop
 
 
-                    ; unsure what this is doing atm.
+                    ; Set initial batman sprite ids
                                                                     ; original address L00003b98
 L00003b98           clr.w   batman_sprite1_id
                     lea.l   L000063d3,a0
-                    bsr.w   L00005438
+                    bsr.w   set_batman_sprites
 
 
                     ; copy 7 words init data
@@ -3370,7 +3370,7 @@ L00004d0c                               cmp.l   d2,d3
 L00004d0e                               beq.b   L00004d1c
 
 L00004d10                                   lea.l   L00005457,a0
-L00004d14                                   bsr.w   L00005438
+L00004d14                                   bsr.w   set_batman_sprites
 L00004d18                                   move.l  #L00004d56,d3                           ; Address
 
 L00004d1c               move.l  d3,gl_jsr_address                       ; L00003c90  ; UPDATE game_loop JSR address
@@ -3434,7 +3434,7 @@ L00004da0           rts
 player_state_dead                                                       ; original address L00004da2
                     ; player dead animation
 L00004da2            movea.w L00006326,a0                               
-L00004da6            bsr.w   L00005438
+L00004da6            bsr.w   set_batman_sprites
 L00004daa            move.w  a0,L00006326
 L00004dae            tst.b   (a0)
 L00004db0            bne     exit_rts                                   ;  L00004d36  ; Exit (JMP to RTS)
@@ -3663,7 +3663,7 @@ L00004fee           moveq   #SFX_BATARANG,d0
 L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX
 
 L00004ff6           movea.w L00006326,a0
-L00004ffa           bsr.w   L00005438
+L00004ffa           bsr.w   set_batman_sprites
 L00004ffe           move.w  a0,L00006326
 L00005002           tst.b   (a0)
 L00005004           bne.b   L00005034
@@ -3688,7 +3688,7 @@ L0000503c           bne.w   L0000504e
 L00005040           subq.w  #$01,L000062f2
 L00005044           bne.b   L00005034
 L00005046           lea.l   L000063d3,a0
-L0000504a           bra.w   L00004538
+L0000504a           bra.w   set_batman_sprites                      ; L00004538
 
 L0000504e           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005054           bra.w   player_move_commands                ; L00004c3e
@@ -3717,7 +3717,7 @@ L00005088           cmp.b   #$17,d2
 L0000508c           bcs.b   L00005092
 L0000508e           subq.w  #$01,L000067c2
 L00005092           movea.w L00006326,a0
-L00005096           bsr.w   L00005438
+L00005096           bsr.w   set_batman_sprites
 L0000509a           move.w  a0,L00006326
 L0000509e           move.b  (a0),d7
 L000050a0           bne.b   L000050a8
@@ -3776,7 +3776,7 @@ L00005108           bsr.w   L0000463e
 L0000510c           move.w  #$0001,(a0)
 L00005110           move.l  #L00005132,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L00005116           lea.l   L000063d0,a0
-L0000511a           bsr.w   L00005438
+L0000511a           bsr.w   set_batman_sprites
 L0000511e           moveq   #SFX_BATROPE,d0
 L00005120           jsr     AUDIO_PLAYER_INIT_SFX
 L00005126           movem.w L000067c2,d0-d1
@@ -3816,7 +3816,7 @@ L00005192           bcs.b   L000051ae
 L00005194           move.l  #L00004e64,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L0000519a           move.l  L0000631a,L00006328
 L000051a0           lea.l   L00006416,a0
-L000051a4           bra.w   L00005438
+L000051a4           bra.w   set_batman_sprites
 L000051a8           move.l  #L000051b0,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L000051ae           rts
 
@@ -3831,7 +3831,7 @@ L000051ca           bra.w   L000050aa
 L000051ce           clr.w   $0004(a0)
 L000051d2           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000051d8           lea.l   L000063d3,a0
-L000051dc           bra.w   L00005438
+L000051dc           bra.w   set_batman_sprites
 L000051e0           rts 
 
 
@@ -4031,7 +4031,7 @@ L000053f0            bra.w   L0000545a
 input_down
 L000053f4           bsr.w   L000051e2                               ; Jump table CMD3
 L000053f8           lea.l   L000063d6,a0
-L000053fc           bsr.b   L00005438
+L000053fc           bsr.b   set_batman_sprites
 L000053fe           move.l  #L00005406,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code - game_loop JSR
 L00005404           rts
 
@@ -4040,7 +4040,7 @@ L00005404           rts
                     ; address moved into self modified JSR
                     ; by code line L000053fe
 L00005406           lea.l   L000063d9,a0
-L0000540a           bsr.b   L00005438
+L0000540a           bsr.b   set_batman_sprites
 L0000540c           btst.b  #$0002,player_input_command             ; L00006308
 L00005412           bne.b   L00005420
 
@@ -4050,7 +4050,7 @@ L00005412           bne.b   L00005420
                     ; by code line L000050a2
 L00005414           move.l  #set_default_gl_jsr,gl_jsr_address      ; L00003c90 ; Set game_loop JSR self modified code
 L0000541a           lea.l   L000063d6,a0
-L0000541e           bra.b   L00005438
+L0000541e           bra.b   set_batman_sprites
 L00005420           btst.b  #$0004,player_input_command             ; L00006308
 L00005426           bne.b   input_fire_down                         ; L000053d6
 L00005428           rts 
@@ -4063,40 +4063,48 @@ L00005428           rts
 set_default_gl_jsr
 L0000542a           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005430           lea.l   L000063d3,a0
-L00005434           bra.w   L00005438
+L00005434           bra.w   set_batman_sprites
 
 
+                    ; ----------------- set batman sprites --------------------
+                    ; Sets batman sprites 1, 2 & 3 from the vales passed in 
+                    ; the 3 byte array.
+                    ;
                     ; IN: 
-                    ;   A0.l = ptr to byte value, address incremented
-                    ; called from many routines
-                    ; called from game_start
-L00005438           move.w  d7,-(a7)                        ; save d7
-L0000543a           lea.l   batman_sprite1_id,a1            ; L000062ee,a1
-L0000543e           move.w  (a1),d7                         ; d7.w = contents of L000062ee
-L00005440           and.w   #$e000,d7                       ; preserve top 3 bits (left/right facing sprite)
-L00005444           add.b   (a0)+,d7                        ; d7.w = top 3 bits + low 8 byte from 0(a0)
-L00005446           move.w  d7,(a1)                         ; (a1).w = d7.w
-L00005448           add.b   (a0)+,d7                        ; d7.w = d7.w + low byte from 1(a0)
-L0000544a           move.w  d7,-(a1)                        ; -2(a1).w = d7.w
-L0000544c           add.b   (a0)+,d7                        ; d7.w = d7.w + low byte from 2(a0)
-L0000544e           move.w  d7,-(a1)                        ; -4(a1).w = d7.w
-L00005450           move.w  (a7)+,d7                        ; restore d7
-L00005452           rts 
+                    ;   A0.l = ptr to 3 byte array of sprite id's
+                    ; 
+set_batman_sprites                                                  ; original address L00005438
+                    move.w  d7,-(a7)                        ; save d7
+                    lea.l   batman_sprite1_id,a1
+                    ; preserve left/right facing directions
+                    move.w  (a1),d7
+                    and.w   #$e000,d7
+                    ; set first sprite id
+                    add.b   (a0)+,d7
+                    move.w  d7,(a1)
+                    ; add second sprite id offset
+                    add.b   (a0)+,d7
+                    move.w  d7,-(a1)
+                    ; add thrid sprite id offset
+                    add.b   (a0)+,d7
+                    move.w  d7,-(a1)
+                    ; restore registers & exit
+                    move.w  (a7)+,d7                        ; restore d7
+                    rts 
 
 
-
-L00005454           dc.w    $0d01                           ; btst.l d6,d1
-L00005456           dc.b    $01
-L00005457           dc.b    $11                             ; btst.b d0,(a1) [04]
-L00005458           dc.w    $ff02                           ; illegal
+batman_sprite_anim_06
+L00005454           dc.b    $0d,$01,$01                     ; 13, 14, 15
+batman_sprite_anim_05
+L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
 
 
 L0000545a           movem.w L000067c2,d0-d1
 L00005460           clr.l   L000062f4
 L00005464           move.w  L000067c4,L000067c6
-L0000546a           lea.l   L00005454(pc),a0                ; $00005454 -$ffe8(pc),a0 
-L0000546e           bsr.w   L00005438
-L00005472           move.l  #L00005482,gl_jsr_address       ; L00003c90 ; Set Self Modifying Code JSR in game_loop 
+L0000546a           lea.l   L00005454(pc),a0                        ; 3 sprite id array
+L0000546e           bsr.w   set_batman_sprites
+L00005472           move.l  #L00005482,gl_jsr_address               ; Set game_loop Self Modifying Code JSR 
 L00005478           move.w  #$ffff,L000062fa
 L0000547e           clr.w   L000062f8
 
@@ -4159,8 +4167,8 @@ L0000551e           move.w  d6,sr
 L00005520           bcc.b   L000054e6
 L00005522           move.w  #$0028,L000067c6
 L00005528           lea.l   L00005457,a0
-L0000552c           bsr.w   L00005438
-L00005530           move.l  #$0000555a,gl_jsr_address           ; L00003c90 ; Update Main Game Loop Command JSR
+L0000552c           bsr.w   set_batman_sprites                  
+L00005530           move.l  #$0000555a,gl_jsr_address           ; Set game_loop Self Modified Command JSR
 L00005538           clr.w   L000062f6
 L0000553c           move.w  #$0001,L000062fa
 L00005542           move.w  #$0002,L000062f2
@@ -4176,17 +4184,17 @@ L00005558           rts
 
                     ; Called from GameLoop - Self Modifying code.
 L0000555a           subq.w  #$01,L000062f2
-L0000555e           bne.b   exit_routine                                ; L0000559e
+L0000555e           bne.b   exit_routine
 
-L00005560           tst.b   PANEL_STATUS_1                              ; Panel - Status Byte 1 - $0007c874
+L00005560           tst.b   PANEL_STATUS_1                                  ; Panel - Status Byte 1 - $0007c874
 L00005566           bne.w   L00004d82
 
-L0000556a           move.l  #player_move_commands,gl_jsr_address            ; L00003c90 ; Update Game Loop Command Loop JSR
+L0000556a           move.l  #player_move_commands,gl_jsr_address            ; Set game_loop Self Modified Code JSR
 L00005572           lea.l   L000063d3,a0
 L00005576           cmp.w   #$0050,L000062f8
-L0000557c           bmi.w   L00005438
+L0000557c           bmi.w   set_batman_sprites                              ; a0 = 3 sprite array
 L00005580           moveq   #$5a,d6                                         ; Value of Energy to Lose (90) - DEAD! (max is 48?)
-L00005582           bsr.w   batman_lose_energy                              ; L00004ccc
+L00005582           bsr.w   batman_lose_energy
 L00005586           move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1         ; Set - LIFE LOST
 L0000558e           btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2          ; Check - CHEAT ACTIVE
 L00005596           bne.b   L0000559e
@@ -5445,6 +5453,7 @@ L0000631e           dc.w $0005
 L00006320           dc.w $A36C
 L00006322           dc.w $0000
 L00006324           dc.w $3DFE
+batman_sprite_anim_00                                               ; a 3 byte batman sprite array
 L00006326           dc.w $0000
 L00006328           dc.w $0000
 L0000632a           dc.w $0000   
@@ -5464,22 +5473,32 @@ L0000639C           dc.w $CDCF, $D0D2, $D4D6, $D7D9, $DBDC, $DEDF, $E1E2, $E4E5 
 L000063AC           dc.w $E7E8, $E9EA, $ECED, $EEEF, $F0F1, $F2F3, $F4F5, $F6F7         ;................
 L000063BC           dc.w $F7F8, $F9F9, $FAFB, $FBFC, $FCFD, $FDFD, $FEFE, $FEFF         ;................
 L000063CC           dc.w $FFFF, $FFFF
-L000063d0           dc.w $30D2
-L000063d2           dc.b $04
 
-L000063d3           dc.b $01
-L000063d4           dc.w $0207
-L000063d6           dc.w $1901
-L000063d8           dc.b $E6
-L000063d9           dc.b $1E
-L000063da           dc.w $01E1 
+                    ; sprite 3 array structure
+                    ; byte 0 = initial sprite id
+                    ; byte 1 = second sprite offset
+                    ; byte 2 = third sprite offset
+batman_sprite_anim_01
+L000063d0           dc.b $30,$D2,$04                        ; 48, 02, 06
+batman_sprite_anim_02
+L000063d3           dc.b $01,$02,$07                        ; 01, 03, 10
+batman_sprite_anim_03
+L000063d6           dc.b $19,$01,$E6                        ; 25, 26, 00
+batman_sprite_anim_04
+L000063d9           dc.b $1E,$01,$E1                        ; 30, 31, 00
+
 L000063DC           dc.w $1901
 L000063de           dc.w $E619, $01E6, $1901, $E61B, $01E4, $1B01 ,$E41B         ;................
 L000063EC           dc.w $01E4, $1B01, $E41B, $01E4, $1B01, $E41B, $01E4 ,$1B01         ;................
 L000063FC           dc.w $E41D, $E300, $1DE3, $001D, $E300, $1DE3, $001D ,$E300         ;................
 L0000640C           dc.w $1DE3, $001D
 L00006410           dc.w $E300, $1DE3, $0000
-L00006416           dc.w $2401, $0127 ,$0101  
+
+batman_sprite_anim_07
+L00006416           dc.b $24, $01, $01                      ; 36, 37, 38
+batman_sprite_anim_08
+                    dc.b $27, $01, $01                      ; 39, 40, 41
+                    
 L0000641C           dc.w $2A01, $FE2C, $FDD7, $2D01, $0100, $1301, $0116 ,$0101         ;*..,..-.........
 L0000642C           dc.w $001B
 
