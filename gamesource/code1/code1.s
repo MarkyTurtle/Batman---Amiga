@@ -16,7 +16,22 @@
                 ; BATMAN            $800                - Game Loader (always resident across loads)
                 ; CODE1             $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
                 ; MAPGR             $7FFC
-                ; BATSPR1           $10FFC
+                ;
+                ;                   $10000              - Display Object List
+                ;                                           - 305 - game display objects
+                ;                                                   initialised from data in BATSPR1.IFF file.
+                ;
+                ; BATSPR1           $10FFC              - Display Objects & Graphics
+                ;                                       - $11002 = 16 bit - number of display object
+                ;                                       - $11004 = start of display object data
+                ;                                                   - 8 byte structure per object
+                ;                                                       - 1 word (unused $800f)
+                ;                                                       - 1 byte pixel width
+                ;                                                       - 1 byte pixel height
+                ;                                                       - 4 bytes gfx start offset
+                ;                                                           gfx base starts at end of list of objects
+                ;                                                           (No of objects * 8) + $11004 = $1198C
+                ;
                 ; CHEM              $47FE4              - Level Music Player, Music & SFX
                 ; STACK             $5a36c              - Address of program stack - not a file load.
                 ;
@@ -118,14 +133,6 @@ PANEL_ST2_CHEAT_ACTIVE          EQU $7                                          
 
 
 
-; MAPPGR.IFF
-MAPGR_ADDRESS                   EQU $7FFC
-MAPGR_START                     EQU $8000
-MAPGR_BASE                      EQU $8002
-MAPGR_INIT                      EQU $0000807c
-
-
-
 ; Code1 - Constants
 ;-------------------
 STACK_ADDRESS                   EQU $0005a36c
@@ -175,6 +182,21 @@ SFX_SPLASH          EQU         $0b
 SFX_Ricochet        EQU         $0c
 SFX_EXPLOSION       EQU         $0d
 
+
+; MAPPGR.IFF
+MAPGR_ADDRESS                   EQU $7FFC                                                       ; $7ffc - physical load address of MAPGR.IFF
+MAPGR_START                     EQU MAPGR_ADDRESS+4                                             ; $8000 - data start address                                      
+MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
+MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
+MAPGR_INIT                      EQU $0000807c
+
+MAPGR_PREPROC_BLOCK_OFFSET      EQU $76                                                         ; 1st data block offset (data preprocessing step)
+
+
+; BATSPR1.IFF
+BATSPR1_ADDRESS                 EQU $10FFC                                                      ; $10FFC - physical load address of BATSPR1.IFF
+BATSPR1_START                   EQU BATSPR1_ADDRESS+4                                           ; $11000 - data start address
+BATSPR1_BASE                    EQU BATSPR1_ADDRESS+6                                           ; $11002 - 
 
 
                 section code1,code_c
@@ -1418,7 +1440,7 @@ start_game                                                          ; original a
                     clr.l   frame_counter                           ; clear target_frame_count also
                     bsr.w   double_buffer_playfield 
 
-                    bsr.w   L000058e2                               ; Important Level Init Function
+                    bsr.w   preprocess_data                         ; preprocess level data
 
                     jsr     AUDIO_PLAYER_INIT
                     clr.w   L000062fc
@@ -4662,100 +4684,192 @@ L000058e0           rts
 
 
 
+                    rsreset
+char884_mask        rs.b    1
+char884_bpl0        rs.b    1
+char884_bpl1        rs.b    1
+char884_bpl2        rs.b    1
+char884_bpl3        rs.b    1
 
 
-L000058e2           move.w  #$013f,d7                   ; $13f + 1 = $140 (320)  [$140*5 = $640 (1600)]
-L000058e6           lea.l   large_character_gfx,a0      ; L000068a0,a0                ; $6a80 + $640 = $6ee0
-L000058ea           move.b  $0004(a0),d0
-L000058ee           and.b   $0001(a0),d0
-L000058f2           not.b   d0
-L000058f4           and.b   $0002(a0),d0
-L000058f8           and.b   $0003(a0),d0
-L000058fc           eor.b   d0,$0001(a0)
-L00005900           addq.w  #$05,a0                     ; 5 byte structure.
-L00005902           dbf.w   d7,L000058ea
+                    ; ----------------------- preprocess data ------------------------
+                    ; various data preprocessing routines.
+                    ;
+preprocess_data                                         ; original address L000058e2
+                    
+                    ; --------------- preprocess font gfx ---------------
+                    ; when this routine is skipped it doesn't make any
+                    ; difference to the display of the 'AXIS CHEMICAL FACTORY'
+                    ; display which this font is used to display.
+preproc_font                                            ; original address L000058e2
+                    move.w  #$013f,d7                   ; $140 (320 decimal) - total number of font raster lines
+                    lea.l   large_character_gfx,a0
+.loop
+                    move.b  char884_bpl3(a0),d0
+                    and.b   char884_bpl0(a0),d0
+                    not.b   d0
+                    and.b   char884_bpl1(a0),d0
+                    and.b   char884_bpl3(a0),d0
+                    eor.b   d0,char884_bpl0(a0)
+                    addq.w  #$05,a0                     ; 5 byte structure.
+                    dbf.w   d7,.loop                    ; 
 
-                    ; init map data?
-L00005906           lea.l   MAPGR_BASE,a0               ; MAPGR.IFF (addr $8002)
-L0000590c           move.w  (a0)+,d5                    ; a0 = 8004
-L0000590e           move.w  (a0)+,d6                    ; a0 = 8006
-L00005910           lea.l   $0076(a0),a0                ; a0 = 807c
-L00005914           move.b  $0028(a0),d0                ; d0 = (80a4)
-L00005918           cmp.b   #$17,d0
-L0000591c           bcc.b   L00005942
-L0000591e           move.w  d6,d0
-L00005920           subq.w  #$01,d0
-L00005922           mulu.w  d5,d0
-L00005924           lea.l   $00(a0,d0.L),a1
-L00005928           lsr.w   #$01,d6
-L0000592a           subq.w  #$01,d6
-L0000592c           move.w  d5,d4
-L0000592e           subq.w  #$01,d4
-L00005930           move.b  (a0),d0
-L00005932           move.b  (a1),(a0)+
-L00005934           move.b  d0,(a1)+
-L00005936           dbf.w   d4,L00005930
+                    ; ------ init map data ------
+                    ; swaps 20 blocks of level data (192 bytes)
+                    ; outermost to inner most blocks are swapped (41 blocks in total)
+                    ; effewctively the blocks are reversed in order in memory.
+                    ; e.g.
+                    ;       A  -----> E
+                    ;       B  -----> D
+                    ;       C  -----> C (middle block not swapped)
+                    ;       D  -----> B
+                    ;       E  -----> A
+                    ;
+                    ; if there is an odd number of blocks (which there are here)
+                    ; then the last block is not swapped (its the middle block)
+                    ;
+                    ; Block No  | Block A       | Block B
+                    ;   1       | 807c - 813c   | 9e7c - 9f3c
+                    ;   2       | 813c - 81fc   | 9dbc - 9e7c
+                    ;   3       | 81fc - 82bc   | 9cfc - 9dbc
+                    ;   4       | 82bc - 837c   | 9c3c - 9cfc
+                    ;   5       | 837c - 843c   | 9b7c - 9c3c
+                    ;   6       | 843c - 84fc   | 9abc - 9b7c
+                    ;   7       | 84fc - 85bc   | 99fc - 9abc
+                    ;   8       | 85bc - 867c   | 993c - 99fc
+                    ;   9       | 867c - 873c   | 987c - 993c
+                    ;   10      | 873c - 87fc   | 97bc - 987c
+                    ;   11      | 87fc - 88bc   | 96fc - 97bc
+                    ;   12      | 88bc - 897c   | 963c - 96fc
+                    ;   13      | 897c - 8a3c   | 957c - 963c
+                    ;   14      | 8a3c - 8afc   | 94bc - 957c
+                    ;   15      | 8afc - 8bbc   | 93fc - 94bc
+                    ;   16      | 8bbc - 8c7c   | 933c - 9efc
+                    ;   17      | 8c7c - 8d3c   | 927c - 933c
+                    ;   18      | 8d3c - 8dfc   | 91bc - 927c
+                    ;   19      | 8dfc - 8ebc   | 90fc - 91bc
+                    ;   20      | 8ebc - 8f7c   | 903c - 90fc
+                    ;
+                    ;middle data block
+                    ;   21      | 8f7c - 903d - NOT SWAPPED (Middle Data Block)
+                    ;
+                    ; These blocks of data are level map blocks,
+                    ; If this code does not run then the level map data is
+                    ; foobar. Maybe the data is in a format suitable
+                    ; for a different platform (atari st maybe?)
+                    ;
+preproc_mapdata                                                         ; original address L00005906
+                    lea.l   MAPGR_BLOCK_PARAMS,a0                       ; $8002 - physical address inside MAPGR.IFF
+                    move.w  (a0)+,d5                                    ; Data Block Size
+                    move.w  (a0)+,d6                                    ; Total Number of Data Blocks
+                    lea.l   MAPGR_PREPROC_BLOCK_OFFSET(a0),a0           ; $807c - physical address of data block params
+                    move.b  $0028(a0),d0                                ; d0 = (80a4)
+                    cmp.b   #$17,d0                                     ; test byte value (in data block)
+                    bcc.b   preproc_display_object_data                 ; Has data already been swapped? - skip swap if d0 > #$17 (23)
 
-L0000593a           suba.w  d5,a1
-L0000593c           suba.w  d5,a1
-L0000593e           dbf.w   d6,L0000592c
+                    move.w  d6,d0                                       ; d0 = Total Number of Level Data Blocks
+                    subq.w  #$01,d0
+                    mulu.w  d5,d0                                       ; Offset to last Data Block in file
+                    lea.l   $00(a0,d0.L),a1                             ; a1 = $9e7c
+                    lsr.w   #$01,d6                                     ; d6 = Number of Data Blocks / 2
+                    subq.w  #$01,d6                                     ; d6 = loop counter (20)
+.swap_data_block
+                        move.w  d5,d4                                   ; d4 = Data Block Size
+                        subq.w  #$01,d4                                 ; d4 = loop counter (192)
+.swap_data_loop 
+                            move.b  (a0),d0                             ; 
+                            move.b  (a1),(a0)+                          ; Swap Bytes between Low Block & High Block
+                            move.b  d0,(a1)+                            ; 
+                        dbf.w   d4,.swap_data_loop 
 
-                    ; init some bat sprite data?
-L00005942           movea.l sprite_array_ptr,a1         ; L000062fe,a1
-L00005946           movea.l #$00011002,a0           ; External Address - BATSPR1.IFF
-L0000594c           lea.l   L0000607c,a2
-L00005952           move.w  (a0)+,d7
-L00005954           clr.l   d0
-L00005956           move.w  d7,d0
-L00005958           subq.w  #$01,d7
-L0000595a           move.w  d7,d6
-L0000595c           asl.w   #$03,d0
-L0000595e           add.l   a0,d0
-L00005960           movea.l d0,a5
-L00005962           lea.l   $0002(a0),a0
-L00005966           move.w  (a2)+,(a1)+
-L00005968           move.b  (a0)+,d0
-L0000596a           lsr.b   #$04,d0
-L0000596c           addq.w  #$01,d0
-L0000596e           move.b  d0,(a1)+
-L00005970           move.b  (a0)+,d0
-L00005972           addq.w  #$01,d0
-L00005974           move.b  d0,(a1)+
-L00005976           move.l  (a0)+,d0
-L00005978           add.l   a5,d0
-L0000597a           move.l  d0,(a1)+
-L0000597c           dbf.w   d7,L00005962
+                        suba.w  d5,a1                                   ; next block ptr
+                        suba.w  d5,a1
+                    dbf.w   d6,.swap_data_block                         ; swap next data block
 
-L00005980           move.w  d6,d7
-L00005982           movea.l sprite_array_ptr,a2         ; L000062fe,a2
+
+                    ; Initialise list of 305 display objects
+                    ; Create list at $10000 in physical memory
+preproc_display_object_data                                             ; original address L00005942
+                    movea.l sprite_array_ptr,a1                         ; a1 = $10000
+                    movea.l #BATSPR1_BASE,a0                            ; a0 = $11002 - physical address in BATSPR1.IFF 
+                    lea.l   display_object_coords,a2                    ; a2 = L0000607c
+
+                    move.w  (a0)+,d7                                    ; d7 = $0131 (305), a0 = $11004
+                    clr.l   d0
+                    move.w  d7,d0                                       ; d0 = $0131 (305)
+                    subq.w  #$01,d7                                     ; adjust loop counter ($130)
+                    move.w  d7,d6                                       ; store loop counter for 2nd preprocess below ($130)
+
+                    ; calc start of sprite gfx
+                    asl.w   #$03,d0                                     ; d0 = $0131 * 8 = $988 (2440)
+                    add.l   a0,d0                                       ; d0 = $11004 + $988 = $1198C
+                    movea.l d0,a5                                       ; A5 = $1198C - start of gfx offset
+
+                    ; loop through 10 byte struct
+                    ; first 2 bytes ignored ($800f)
+                    ; next 2 bytes X & Y co-ords
+                    ; next 2 bytes width (words) & height (lines)
+                    ; next 4 bytes gfx start offset from $1198c ($98c in file)
+                    ;
+.sprite_list_loop                                               ; original address $00005962
+                        ; skip first 2 bytes ($800f)
+                        lea.l   $0002(a0),a0                                ; skip first 2 bytes (#$800f) A0 = $11004 + $2 = $11006
+                        ; store inital X 7 Y co-ords
+                        move.w  (a2)+,(a1)+                                 ; store X & Y co-ords - copy words from $607c -> $10000 (byte 0-1) 
+                        ; calc sprite width
+                        move.b  (a0)+,d0                                    ; ($11006)+   d0 = $09
+                        lsr.b   #$04,d0                                     ; d0 = d0 / 16
+                        addq.w  #$01,d0                                     ; d0 = d0 + 1
+                        move.b  d0,(a1)+                                    ; sprite width - store d0.b -> $10000 (byte 2)
+                        ; calc sprite height
+                        move.b  (a0)+,d0                                    ; ($11007)+  d0 = $09
+                        addq.w  #$01,d0                                     ; d0 = d0 + 1
+                        move.b  d0,(a1)+                                    ; sprite height - store d0.b -> $10000 (byte 3)
+                        ; calc sprite gfx ptr
+                        move.l  (a0)+,d0                                    ; ($11008)+  d0 = $00000000
+                        add.l   a5,d0                                       ; $0001198c + $00000000
+                        move.l  d0,(a1)+
+                        ; do next display object
+                    dbf.w   d7,.sprite_list_loop 
+
+
+                    ; ------- another display object preprocessor loop --------
+                    ; calculate the size of the sprite gfx data.
+preproc_display_object_data_2
+L00005980           move.w  d6,d7                       ; loop counter
+L00005982           movea.l sprite_array_ptr,a2         ; a2 = display object array list
 L00005986           clr.l   d2
-L00005988           addq.w  #$02,a2                 ; Addaq.w
+L00005988           addq.w  #$02,a2                     ; skip X & Y co-ords
 L0000598a           clr.w   d0
-L0000598c           move.b  (a2)+,d0
+L0000598c           move.b  (a2)+,d0                    ; d0 = object width
 L0000598e           clr.w   d1
-L00005990           move.b  (a2)+,d1
-L00005992           mulu.w  d1,d0
-L00005994           add.w   d0,d2
-L00005996           addq.w  #$06,a2                  ; addaq.w
+L00005990           move.b  (a2)+,d1                    ; d1 = object height
+L00005992           mulu.w  d1,d0                       ; d0 = number of words for bitplane?
+L00005994           add.w   d0,d2                       ; d2 = accumulator of bitplane size?
+L00005996           addq.w  #$06,a2                     ; next display object               
 L00005998           dbf.w   d7,L0000598a
-L0000599c           mulu.w  #$000a,d2
-L000059a0           move.l  d2,sprite_gfx_offset    ; L00006302 - byte offset to be added to base sprite gfx ptr (for left facing sprites?)
-L000059a4           movea.l sprite_array_ptr,a1         ; L000062fe,a1
-L000059a8           movea.l $0004(a1),a1
-L000059ac           addq.w  #$01,a1                 ; addaq.w
-L000059ae           btst.b  #$0000,(a1)
-L000059b2           bne.w   L000059b8
+
+                    ; calc start of left facing sprite sheet
+L0000599c           mulu.w  #$000a,d2                   ; d2 = size of display object gfx - Multiply by 10 (5 bitplanes, 2 bytes per word)
+L000059a0           move.l  d2,sprite_gfx_offset        ; byte offset to be added to base sprite gfx ptr (for right facing sprites?)
+
+L000059a4           movea.l sprite_array_ptr,a1         ; a1 = display object array list
+L000059a8           movea.l $0004(a1),a1                ; get sprite gfx ptr of fisrt display object.
+L000059ac           addq.w  #$01,a1     
+L000059ae           btst.b  #$0000,(a1)                 ; test lsb of mask 1st word.
+L000059b2           bne.w   L000059b8                   ; create right facing sprite sheet?
 L000059b6           rts
 
 
 
 
-
+                    ; create right facing sprite sheet?
 L000059b8           move.w  d6,d7
 L000059ba           movea.l sprite_array_ptr,a1     ; L000062fe,a1
 L000059be           addq.w  #$02,a1                 ; addaq.w
 L000059c0           movea.l a0,a5
 L000059c2           movea.l a0,a3
+
 L000059c4           clr.l   d5
 L000059c6           clr.l   d0
 L000059c8           move.b  (a1)+,d0
@@ -4777,7 +4891,7 @@ L000059ea           move.w  (a0)+,$00(a2,d4.W)
 L000059ee           move.w  (a0)+,$00(a2,d3.W)
 L000059f2           move.w  (a0)+,$00(a2,d2.W)
 L000059f6           move.w  (a0)+,$00(a2,d1.W)
-L000059fa           addq.w  #$02,a2                     ; addaq.w
+L000059fa           addq.w  #$02,a2                                 ; addaq.w
 L000059fc           dbf.w   d5,L000059e6
 L00005a00           move.w  #$0004,d4
 L00005a04           clr.w   d5
@@ -4796,9 +4910,11 @@ L00005a20           adda.l d3,a2
 L00005a22           dbf.w   d4,L00005a04
 L00005a26           lea.l   $0007(a1),a1
 L00005a2a           dbf.w   d7,L000059c4
+
 L00005a2e           movea.l a3,a4
-L00005a30           movea.l sprite_array_ptr,a1             ; L000062fe,a1
+L00005a30           movea.l sprite_array_ptr,a1                     ; L000062fe,a1
 L00005a34           move.w  d6,d7
+
 L00005a36           moveq   #$04,d6
 L00005a38           movea.l $0004(a1),a0
 L00005a3c           clr.l   d5
@@ -5346,52 +5462,48 @@ L00006078           bra.w   L000045bc
                     even
 
 
-; animation table/sprite anim table?
-L0000607c           dc.w $2A02, $2005, $2005, $2004, $1505, $1506, $1506, $1507         ;*. . . .........
-L0000608C           dc.w $1507, $1506, $1507, $1507, $2C10, $2C08, $1402, $210D         ;........,.,...!.
-L0000609C           dc.w $2B05, $1905, $2504, $1706, $1702, $2005, $0F06, $0006         ;+...%..... .....
-L000060AC           dc.w $2405, $1507, $1C05, $1007, $1207, $1B03, $1308, $2C07         ;$.............,.
-L000060BC           dc.w $2C07, $2C07, $2C07, $2904, $1A06, $03FE, $2902, $2008         ;,.,.,.).....). .
-L000060CC           dc.w $1306, $2A08, $2007, $2A04, $2A02, $24FA, $1405, $2A03         ;..*. .*.*.$...*.
-L000060DC           dc.w $2A08, $0F05, $0F05, $0F05, $0F05, $2A07, $1507, $1508         ;*.........*.....
-L000060EC           dc.w $1507, $1508, $0200, $0201, $0202, $0000, $0100, $0100         ;................
-L000060FC           dc.w $0101, $0604, $0B07, $0F07, $0C07, $0B06, $2005, $1208         ;............ ...
-L0000610C           dc.w $1200, $2903, $2206, $2205, $2204, $1506, $1507, $1508         ;..).".".".......
-L0000611C           dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1305         ;..........).%...
-L0000612C           dc.w $2904, $2CFD, $2904, $1BFD, $2004, $1CFD, $0C07, $2805         ;).,.)... .....(.
-L0000613C           dc.w $1503, $1503, $1503, $1503, $0301, $0301, $0601, $0401         ;................
-L0000614C           dc.w $0400, $04FD, $04FA, $1D05, $1108, $0809, $2903, $2006         ;............). .
-L0000615C           dc.w $2005, $2004, $1506, $1507, $1508, $1504, $1504, $1506         ; . .............
-L0000616C           dc.w $1507, $1504, $2906, $1306, $2A07, $2904, $2EFC, $2904         ;....)...*.)...).
-L0000617C           dc.w $25FB, $0C0F, $2211, $3416, $2C16, $2009, $1208, $0B08         ;%...".4.,. .....
-L0000618C           dc.w $2903, $2005, $2004, $2004, $1505, $1506, $1507, $1503         ;). . . .........
-L0000619C           dc.w $1504, $1505, $1506, $1503, $2903, $25FC, $1405, $0800         ;........).%.....
-L000061AC           dc.w $0303, $2904, $1BFD, $2004, $1CFD, $0C07, $2004, $1207         ;..)... ..... ...
-L000061BC           dc.w $0B07, $2904, $2006, $2005, $2004, $1506, $1507, $1508         ;..). . . .......
-L000061CC           dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1405         ;..........).%...
-L000061DC           dc.w $2B04, $2FFD, $2904, $18FC, $2004, $1CFD, $0C07, $2806         ;+./.)... .....(.
-L000061EC           dc.w $1803, $1803, $1803, $1803, $0000, $0000, $0000, $0000         ;................
-L000061FC           dc.w $0000, $0908, $0908, $0908, $0808, $1D05, $1308, $0809         ;................
-L0000620C           dc.w $2904, $2006, $2005, $2004, $1506, $1507, $1508, $1504         ;). . . .........
-L0000621C           dc.w $1504, $1506, $1507, $1503, $2904, $25FD, $1505, $2B04         ;........).%...+.
-L0000622C           dc.w $2FFE, $2904, $19FD, $2202, $1EFC, $1005, $2805, $1504         ;/.)...".....(...
-L0000623C           dc.w $1504, $1504, $1504, $2906, $1503, $1503, $1503, $1503         ;......).........
-L0000624C           dc.w $1505, $0A08, $0009, $2903, $2005, $2004, $2004, $1405         ;......). . . ...
-L0000625C           dc.w $1406, $1407, $1404, $1404, $1405, $1406, $1402, $2906         ;..............).
-L0000626C           dc.w $1506, $2906, $2A07, $2903, $2EFC, $2903, $24FC, $2004         ;..).*.)...).$. .
-L0000627C           dc.w $2004, $2004, $2004, $2706, $1304, $1304, $1304, $1303         ; . . .'.........
-L0000628C           dc.w $190B, $0F09, $120D, $130D, $1309, $0B0F, $1D05, $1208         ;................
-L0000629C           dc.w $0808, $2903, $2005, $2004, $2004, $1405, $1406, $1407         ;..). . . .......
-L000062AC           dc.w $1404, $1404, $1405, $1406, $1402, $2903, $25FD, $1306         ;..........).%...
-L000062BC           dc.w $2B04, $2FFD, $2903, $18FC, $2202, $1EFC, $1005, $2805         ;+./.)...".....(.
-L000062CC           dc.w $1504, $1504
-L000062d0           dc.w $1504
-L000062d2           dc.w $1504
-L000062d4           dc.w $2906
-L000062d6           dc.w $1503
-L000062d8           dc.w $1503
-L000062da           dc.w $1503 
+; Start of 305 (sprite x & y positions - initialisation data)
+display_object_coords                                                               ; original address L0000607c
+L0000607c           dc.w $2A02, $2005, $2005, $2004, $1505, $1506, $1506, $1507
+L0000608C           dc.w $1507, $1506, $1507, $1507, $2C10, $2C08, $1402, $210D
+L0000609C           dc.w $2B05, $1905, $2504, $1706, $1702, $2005, $0F06, $0006
+L000060AC           dc.w $2405, $1507, $1C05, $1007, $1207, $1B03, $1308, $2C07
+L000060BC           dc.w $2C07, $2C07, $2C07, $2904, $1A06, $03FE, $2902, $2008
+L000060CC           dc.w $1306, $2A08, $2007, $2A04, $2A02, $24FA, $1405, $2A03
+L000060DC           dc.w $2A08, $0F05, $0F05, $0F05, $0F05, $2A07, $1507, $1508
+L000060EC           dc.w $1507, $1508, $0200, $0201, $0202, $0000, $0100, $0100
+L000060FC           dc.w $0101, $0604, $0B07, $0F07, $0C07, $0B06, $2005, $1208
+L0000610C           dc.w $1200, $2903, $2206, $2205, $2204, $1506, $1507, $1508
+L0000611C           dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1305
+L0000612C           dc.w $2904, $2CFD, $2904, $1BFD, $2004, $1CFD, $0C07, $2805
+L0000613C           dc.w $1503, $1503, $1503, $1503, $0301, $0301, $0601, $0401
+L0000614C           dc.w $0400, $04FD, $04FA, $1D05, $1108, $0809, $2903, $2006
+L0000615C           dc.w $2005, $2004, $1506, $1507, $1508, $1504, $1504, $1506
+L0000616C           dc.w $1507, $1504, $2906, $1306, $2A07, $2904, $2EFC, $2904
+L0000617C           dc.w $25FB, $0C0F, $2211, $3416, $2C16, $2009, $1208, $0B08
+L0000618C           dc.w $2903, $2005, $2004, $2004, $1505, $1506, $1507, $1503
+L0000619C           dc.w $1504, $1505, $1506, $1503, $2903, $25FC, $1405, $0800
+L000061AC           dc.w $0303, $2904, $1BFD, $2004, $1CFD, $0C07, $2004, $1207
+L000061BC           dc.w $0B07, $2904, $2006, $2005, $2004, $1506, $1507, $1508
+L000061CC           dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1405
+L000061DC           dc.w $2B04, $2FFD, $2904, $18FC, $2004, $1CFD, $0C07, $2806
+L000061EC           dc.w $1803, $1803, $1803, $1803, $0000, $0000, $0000, $0000
+L000061FC           dc.w $0000, $0908, $0908, $0908, $0808, $1D05, $1308, $0809
+L0000620C           dc.w $2904, $2006, $2005, $2004, $1506, $1507, $1508, $1504
+L0000621C           dc.w $1504, $1506, $1507, $1503, $2904, $25FD, $1505, $2B04
+L0000622C           dc.w $2FFE, $2904, $19FD, $2202, $1EFC, $1005, $2805, $1504
+L0000623C           dc.w $1504, $1504, $1504, $2906, $1503, $1503, $1503, $1503
+L0000624C           dc.w $1505, $0A08, $0009, $2903, $2005, $2004, $2004, $1405
+L0000625C           dc.w $1406, $1407, $1404, $1404, $1405, $1406, $1402, $2906
+L0000626C           dc.w $1506, $2906, $2A07, $2903, $2EFC, $2903, $24FC, $2004
+L0000627C           dc.w $2004, $2004, $2004, $2706, $1304, $1304, $1304, $1303
+L0000628C           dc.w $190B, $0F09, $120D, $130D, $1309, $0B0F, $1D05, $1208
+L0000629C           dc.w $0808, $2903, $2005, $2004, $2004, $1405, $1406, $1407
+L000062AC           dc.w $1404, $1404, $1405, $1406, $1402, $2903, $25FD, $1306
+L000062BC           dc.w $2B04, $2FFD, $2903, $18FC, $2202, $1EFC, $1005, $2805
+L000062CC           dc.w $1504, $1504, $1504, $1504, $2906, $1503, $1503, $1503 
 L000062dc           dc.w $1503
+; End of 305 (sprite x & y positions - initialisation data)
 
 L000062de           dc.w $0001, $0002, $0003, $0004, $0005, $0007
 

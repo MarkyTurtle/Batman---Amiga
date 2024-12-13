@@ -6,6 +6,11 @@
                     ; Interleaved gfx 
                     ; 5 byte sequences of data (mask, bpl0, bpl2, bpl3, bpl4)
                     ;
+                    ; 40 characters
+                    ; 4 bitplanes + mask = 5 bytes per line
+                    ; 8 lines tall = 5 * 8 = 40 bytes per character
+                    ; total bytes = 40 * 40 = 1600
+                    ;
 _large_character_gfx                                    ; original address L000068a0            
 L000068a0           ; '!'
                     dc.b    $CF, $30, $30, $00, $00     ; 11001111 - 00110000 - 00110000 - 00000000 - 00000000
