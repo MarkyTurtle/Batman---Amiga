@@ -31,6 +31,8 @@
                 ;                                                       - 4 bytes gfx start offset
                 ;                                                           gfx base starts at end of list of objects
                 ;                                                           (No of objects * 8) + $11004 = $1198C
+                ;                                       - Total size with mirrored sprites $2e966
+                ;                                       - $3f962 - end of sprite data (including precalced mirrored sprites)
                 ;
                 ; CHEM              $47FE4              - Level Music Player, Music & SFX
                 ; STACK             $5a36c              - Address of program stack - not a file load.
@@ -2525,7 +2527,7 @@ L0000458a           add.w   $0006(a6),d2        ; $00dff006
 L0000458e           move.w  d2,d3
 L00004590           and.w   #$1fff,d3           ; clamp value to max $1fff
 L00004594           lsl.w   #$01,d3
-L00004596           lea.l   L0000607c,a0
+L00004596           lea.l   display_object_coords,a0        ; L0000607c,a0
 L0000459a           move.w  d1,d4
 L0000459c           add.w   d4,d4
 L0000459e           move.b  -$2(a0,d3.W),d5     ; $00000d11
@@ -4329,7 +4331,7 @@ L000056b0           clr.w   d4
 L000056b2           move.b  d2,d4
 L000056b4           beq.w   exit_draw_batman        ; if (sprite id) == 0 then exit
 L000056b8           move.w  d1,d3                   ; d1 = Y co-ord
-L000056ba           lea.l   L0000607c,a0            ; unknown table 
+L000056ba           lea.l   display_object_coords,a0            ; L0000607c,a0            ; unknown table 
 L000056be           add.w   d4,d4                   ; sprite id * 2
 L000056c0           add.w   d3,d3                   ; Y co-ord * 2
 L000056c2           sub.b   -2(a0,d4.W),d3          ; modify Y co-ord
@@ -4408,7 +4410,7 @@ left_facing_sprite                                  ; original address L00005702
                     clr.w   d3
                     move.b  (a1)+,d3                ; get sprite height in lines
                     movea.l (a1)+,a0                ; get sprite gfx ptr (mask,bpl0,bpl1,bpl2,bpl3) ; a0 = start of gfx mask data
-                    adda.l  sprite_gfx_offset,a0    ; L00006302,a0            ; additional code for left facing sprite
+                    adda.l  sprite_gfx_left_offset,a0    ; L00006302,a0            ; additional code for left facing sprite
                     bra.b   calc_sprite_size        ; L0000573a
 
                     ; Right Facing Sprite
@@ -4812,7 +4814,7 @@ preproc_display_object_data                                             ; origin
                     ; next 4 bytes gfx start offset from $1198c ($98c in file)
                     ;
 .sprite_list_loop                                               ; original address $00005962
-                        ; skip first 2 bytes ($800f)
+                    ; skip first 2 bytes ($800f)
                         lea.l   $0002(a0),a0                                ; skip first 2 bytes (#$800f) A0 = $11004 + $2 = $11006
                         ; store inital X 7 Y co-ords
                         move.w  (a2)+,(a1)+                                 ; store X & Y co-ords - copy words from $607c -> $10000 (byte 0-1) 
@@ -4834,111 +4836,147 @@ preproc_display_object_data                                             ; origin
 
 
                     ; ------- another display object preprocessor loop --------
-                    ; calculate the size of the sprite gfx data.
-preproc_display_object_data_2
-L00005980           move.w  d6,d7                       ; loop counter
-L00005982           movea.l sprite_array_ptr,a2         ; a2 = display object array list
-L00005986           clr.l   d2
-L00005988           addq.w  #$02,a2                     ; skip X & Y co-ords
-L0000598a           clr.w   d0
-L0000598c           move.b  (a2)+,d0                    ; d0 = object width
-L0000598e           clr.w   d1
-L00005990           move.b  (a2)+,d1                    ; d1 = object height
-L00005992           mulu.w  d1,d0                       ; d0 = number of words for bitplane?
-L00005994           add.w   d0,d2                       ; d2 = accumulator of bitplane size?
-L00005996           addq.w  #$06,a2                     ; next display object               
-L00005998           dbf.w   d7,L0000598a
+                    ; 1) calculate the size of the sprite gfx data.
+                    ; 2) calculate the offset to sprite sheet for left facing sprites (mirror image)
+                    ; 3) make the mirror image sprite sheet?
+                    ;
+preproc_display_object_data_2                           ; original address L00005980
+                    move.w  d6,d7                       ; loop counter
+                    movea.l sprite_array_ptr,a2         ; a2 = display object array list
+                    clr.l   d2
+                    addq.w  #$02,a2                     ; skip X & Y co-ords
+.calc_size_loop     ; accumulate the size of all display objects/sprites
+                        clr.w   d0
+                        move.b  (a2)+,d0                    ; d0 = object width
+                        clr.w   d1
+                        move.b  (a2)+,d1                    ; d1 = object height
+                        mulu.w  d1,d0                       ; d0 = number of words for bitplane?
+                        add.w   d0,d2                       ; d2 = accumulator of bitplane size?
+                        addq.w  #$06,a2                     ; next display object               
+                    dbf.w   d7,.calc_size_loop
 
-                    ; calc start of left facing sprite sheet
-L0000599c           mulu.w  #$000a,d2                   ; d2 = size of display object gfx - Multiply by 10 (5 bitplanes, 2 bytes per word)
-L000059a0           move.l  d2,sprite_gfx_offset        ; byte offset to be added to base sprite gfx ptr (for right facing sprites?)
+                    ; calc start offset for left facing sprite sheet
+.calc_left_offset                                       ; original address L0000599c
+                    mulu.w  #$000a,d2                   ; d2 = size of display object gfx - Multiply by 10 (5 bitplanes, 2 bytes per word)
+                    move.l  d2,sprite_gfx_left_offset        ; byte offset to be added to base sprite gfx ptr (for right facing sprites?)
 
-L000059a4           movea.l sprite_array_ptr,a1         ; a1 = display object array list
-L000059a8           movea.l $0004(a1),a1                ; get sprite gfx ptr of fisrt display object.
-L000059ac           addq.w  #$01,a1     
-L000059ae           btst.b  #$0000,(a1)                 ; test lsb of mask 1st word.
-L000059b2           bne.w   L000059b8                   ; create right facing sprite sheet?
-L000059b6           rts
+                    ; prepare mirror image of sprites (left facing)
+.prep_mirror_image                                      ; original address L000059a4
+                    movea.l sprite_array_ptr,a1         ; a1 = display object array list
+                    movea.l $0004(a1),a1                ; get sprite gfx ptr of first display object.
+                    addq.w  #$01,a1     
+                    btst.b  #$0000,(a1)                 ; test lsb of mask 1st word.
+                    bne.w   preprocess_sprite_gfx       ; create left facing sprite sheet?
+                    rts
 
 
 
 
-                    ; create right facing sprite sheet?
-L000059b8           move.w  d6,d7
-L000059ba           movea.l sprite_array_ptr,a1     ; L000062fe,a1
-L000059be           addq.w  #$02,a1                 ; addaq.w
-L000059c0           movea.l a0,a5
-L000059c2           movea.l a0,a3
+                    ; ---------------- pre-process sprite gfx ----------------
+                    ; IN:-
+                    ;   d6.w = number of display objects (305)
+                    ;   a0.l = start of sprite gfx
+                    ;
+                    ; 1) inverts the sprites (upside down?)
+                    ; 2) create mirror image of sprites
+                    ;
+preprocess_sprite_gfx                               ; original address L000059b8
+invert_sprites                                      ; original address L000059b8
+                    move.w  d6,d7
+                    movea.l sprite_array_ptr,a1     ; L000062fe,a1
+                    addq.w  #$02,a1                 ; a1 = sprite 'width' ptr
+                    movea.l a0,a5                   ; a5 = start of sprite gfx ptr
+                    movea.l a0,a3                   ; a3 = start of sprite gfx ptr
 
-L000059c4           clr.l   d5
-L000059c6           clr.l   d0
-L000059c8           move.b  (a1)+,d0
-L000059ca           move.b  (a1),d5
-L000059cc           mulu.w  d0,d5
-L000059ce           move.l  d5,d4
-L000059d0           add.w   d4,d4
-L000059d2           move.l  d4,d3
-L000059d4           add.w   d4,d3
-L000059d6           move.l  d3,d2
-L000059d8           add.w   d4,d2
-L000059da           move.l  d2,d1
-L000059dc           add.w   d4,d1
-L000059de           subq.w  #$01,d5
-L000059e0           movea.l #CODE1_DOUBLE_BUFFER_ADDRESS,a2
-L000059e6           move.w  (a0)+,(a2)
-L000059e8           not.w   (a2)
-L000059ea           move.w  (a0)+,$00(a2,d4.W)
-L000059ee           move.w  (a0)+,$00(a2,d3.W)
-L000059f2           move.w  (a0)+,$00(a2,d2.W)
-L000059f6           move.w  (a0)+,$00(a2,d1.W)
-L000059fa           addq.w  #$02,a2                                 ; addaq.w
-L000059fc           dbf.w   d5,L000059e6
-L00005a00           move.w  #$0004,d4
-L00005a04           clr.w   d5
-L00005a06           move.b  (a1),d5
-L00005a08           subq.w  #$01,d5
-L00005a0a           move.w  d0,d2
-L00005a0c           subq.w  #$01,d2
-L00005a0e           suba.l  d0,a2
-L00005a10           suba.l  d0,a2
-L00005a12           move.w  (a2)+,(a3)+
-L00005a14           dbf.w   d2,L00005a12
-L00005a18           suba.l  d0,a2
-L00005a1a           suba.l  d0,a2
-L00005a1c           dbf.w   d5,L00005a0a
-L00005a20           adda.l d3,a2
-L00005a22           dbf.w   d4,L00005a04
-L00005a26           lea.l   $0007(a1),a1
-L00005a2a           dbf.w   d7,L000059c4
+.invert_next_sprite                                 ; original address L000059c4
+                    clr.l   d5
+                    clr.l   d0
+                    move.b  (a1)+,d0                ; d0 = sprite width
+                    move.b  (a1),d5                 ; d5 = sprite height
+                    mulu.w  d0,d5                   ; d5 = sprite size in words (one bitplane)
+                    move.l  d5,d4                   ; d4 = sprite size in words (one bitplane)
+                    add.w   d4,d4                   ; d4 = sprite offset to bpl1
+                    move.l  d4,d3                   ; 
+                    add.w   d4,d3                   ; d3 = sprite offset to bpl2
+                    move.l  d3,d2
+                    add.w   d4,d2                   ; d2 = sprite offset to bpl3
+                    move.l  d2,d1
+                    add.w   d4,d1                   ; d1 = sprite offset to bpl4
+                    subq.w  #$01,d5
+                    movea.l #CODE1_DOUBLE_BUFFER_ADDRESS,a2 ; $61b9c
+.copy_sprite_loop                                   ; original address L000059e6
+                    move.w  (a0)+,(a2)              ; copy sprite mask
+                    not.w   (a2)                    ; invert the mask bits
+                    move.w  (a0)+,$00(a2,d4.W)      ; copy bpl1
+                    move.w  (a0)+,$00(a2,d3.W)      ; copy bpl2
+                    move.w  (a0)+,$00(a2,d2.W)      ; copy bpl3
+                    move.w  (a0)+,$00(a2,d1.W)      ; copy bpl4
+                    addq.w  #$02,a2                 ; increment dest address
+                    dbf.w   d5,.copy_sprite_loop
 
-L00005a2e           movea.l a3,a4
-L00005a30           movea.l sprite_array_ptr,a1                     ; L000062fe,a1
-L00005a34           move.w  d6,d7
+                    move.w  #$0004,d4
+.invert_sprite_bitplane                             ; original address L00005a04
+                    clr.w   d5
+                    move.b  (a1),d5                 ; d5 = sprite height
+                    subq.w  #$01,d5                 ; d5 = loop counter
+.invert_sprite_loop                                 ; original address L00005a0a
+                    move.w  d0,d2                   ; d0,d2 = sprite width
+                    subq.w  #$01,d2                 ; d2 = loop counter
+                    suba.l  d0,a2
+                    suba.l  d0,a2                   ; source ptr to start of line gfx
+.invert_sprite_inner_loop                           ; copy sprites back to src gfx upside down (inverted)
+                    move.w  (a2)+,(a3)+             ; copy sprite data from $61b9c to source gfx
+                    dbf.w   d2,.invert_sprite_inner_loop  ; L00005a12
+                    ; do for sprite height
+                    suba.l  d0,a2
+                    suba.l  d0,a2
+                    dbf.w   d5,.invert_sprite_loop ;L00005a0a
+                    ; do next bitplane
+                    adda.l d3,a2                    ; do next bitplane
+                    dbf.w   d4,.invert_sprite_bitplane ; L00005a04
+                    ; do next sprite
+                    lea.l   $0007(a1),a1
+                    dbf.w   d7,.invert_next_sprite   ; L000059c4
 
-L00005a36           moveq   #$04,d6
-L00005a38           movea.l $0004(a1),a0
-L00005a3c           clr.l   d5
-L00005a3e           clr.l   d4
-L00005a40           move.b  $0002(a1),d4
-L00005a44           move.b  $0003(a1),d5
-L00005a48           subq.w  #$01,d5
-L00005a4a           move.w  d4,d3
-L00005a4c           add.w   d3,d3
-L00005a4e           subq.w  #$01,d3
-L00005a50           move.b  $00(a0,d3.W),d0
-L00005a54           moveq   #$07,d2
-L00005a56           roxr.b  #$01,d0
-L00005a58           roxl.b  #$01,d1
-L00005a5a           dbf.w   d2,L00005a56
-L00005a5e           move.b  d1,(a3)+
-L00005a60           dbf.w   d3,L00005a50
-L00005a64           adda.l  d4,a0
-L00005a66           adda.l  d4,a0
-L00005a68           dbf.w   d5,L00005a4a
-L00005a6c           dbf.w   d6,L00005a3c
-L00005a70           lea.l   $0008(a1),a1
-L00005a74           dbf.w   d7,L00005a36
-L00005a78           rts
+
+                    ; mirror sprites - left facing sprite sheet
+mirror_sprites
+                    movea.l a3,a4                   ; sprite dest gfx ptr
+                    movea.l sprite_array_ptr,a1     
+                    move.w  d6,d7                   ; number of sprites
+.mirror_next_sprite
+                    moveq   #$04,d6                 ; d6 = number of bitplanes + mask
+                    movea.l $0004(a1),a0            ; a0 = sprite gfx ptr
+.mirror_sprite
+                    clr.l   d5
+                    clr.l   d4
+                    move.b  $0002(a1),d4            ; d4 = width
+                    move.b  $0003(a1),d5            ; d5 = height
+                    subq.w  #$01,d5                 ; d5 = loop counter
+.mirror_bitplane
+                    move.w  d4,d3
+                    add.w   d3,d3                   ; d3 = width in bytes
+                    subq.w  #$01,d3                 ; d3 = loop counter
+.mirror_line
+                    move.b  $00(a0,d3.W),d0         ; get gfx byte
+                    moveq   #$07,d2
+.mirror_byte        ; mirror sprite byte
+                    roxr.b  #$01,d0                 ; rotate bit LSB -> into Extend bit
+                    roxl.b  #$01,d1                 ; rotate extennd bit <- into LSB
+                    dbf.w   d2,.mirror_byte         ; L00005a56
+                    ; mirror sprite line
+                    move.b  d1,(a3)+
+                    dbf.w   d3,.mirror_line         ; L00005a50
+                    ; mirror bitplane
+                    adda.l  d4,a0
+                    adda.l  d4,a0
+                    dbf.w   d5,.mirror_bitplane     ;L00005a4a
+                    ; mirror sprite
+                    dbf.w   d6,.mirror_sprite       ; L00005a3c
+                    ; mirror all sprites
+                    lea.l   $0008(a1),a1
+                    dbf.w   d7,.mirror_next_sprite  ;L00005a36
+                    rts
 
 
 
@@ -5462,47 +5500,49 @@ L00006078           bra.w   L000045bc
                     even
 
 
-; Start of 305 (sprite x & y positions - initialisation data)
+
+                    ; ---------------- display object co-ordinates ---------------
+                    ; Start of 305 (sprite x & y positions - initialisation data)
 display_object_coords                                                               ; original address L0000607c
-L0000607c           dc.w $2A02, $2005, $2005, $2004, $1505, $1506, $1506, $1507
-L0000608C           dc.w $1507, $1506, $1507, $1507, $2C10, $2C08, $1402, $210D
-L0000609C           dc.w $2B05, $1905, $2504, $1706, $1702, $2005, $0F06, $0006
-L000060AC           dc.w $2405, $1507, $1C05, $1007, $1207, $1B03, $1308, $2C07
-L000060BC           dc.w $2C07, $2C07, $2C07, $2904, $1A06, $03FE, $2902, $2008
-L000060CC           dc.w $1306, $2A08, $2007, $2A04, $2A02, $24FA, $1405, $2A03
-L000060DC           dc.w $2A08, $0F05, $0F05, $0F05, $0F05, $2A07, $1507, $1508
-L000060EC           dc.w $1507, $1508, $0200, $0201, $0202, $0000, $0100, $0100
-L000060FC           dc.w $0101, $0604, $0B07, $0F07, $0C07, $0B06, $2005, $1208
-L0000610C           dc.w $1200, $2903, $2206, $2205, $2204, $1506, $1507, $1508
-L0000611C           dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1305
-L0000612C           dc.w $2904, $2CFD, $2904, $1BFD, $2004, $1CFD, $0C07, $2805
-L0000613C           dc.w $1503, $1503, $1503, $1503, $0301, $0301, $0601, $0401
-L0000614C           dc.w $0400, $04FD, $04FA, $1D05, $1108, $0809, $2903, $2006
-L0000615C           dc.w $2005, $2004, $1506, $1507, $1508, $1504, $1504, $1506
-L0000616C           dc.w $1507, $1504, $2906, $1306, $2A07, $2904, $2EFC, $2904
-L0000617C           dc.w $25FB, $0C0F, $2211, $3416, $2C16, $2009, $1208, $0B08
-L0000618C           dc.w $2903, $2005, $2004, $2004, $1505, $1506, $1507, $1503
-L0000619C           dc.w $1504, $1505, $1506, $1503, $2903, $25FC, $1405, $0800
-L000061AC           dc.w $0303, $2904, $1BFD, $2004, $1CFD, $0C07, $2004, $1207
-L000061BC           dc.w $0B07, $2904, $2006, $2005, $2004, $1506, $1507, $1508
-L000061CC           dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1405
-L000061DC           dc.w $2B04, $2FFD, $2904, $18FC, $2004, $1CFD, $0C07, $2806
-L000061EC           dc.w $1803, $1803, $1803, $1803, $0000, $0000, $0000, $0000
-L000061FC           dc.w $0000, $0908, $0908, $0908, $0808, $1D05, $1308, $0809
-L0000620C           dc.w $2904, $2006, $2005, $2004, $1506, $1507, $1508, $1504
-L0000621C           dc.w $1504, $1506, $1507, $1503, $2904, $25FD, $1505, $2B04
-L0000622C           dc.w $2FFE, $2904, $19FD, $2202, $1EFC, $1005, $2805, $1504
-L0000623C           dc.w $1504, $1504, $1504, $2906, $1503, $1503, $1503, $1503
-L0000624C           dc.w $1505, $0A08, $0009, $2903, $2005, $2004, $2004, $1405
-L0000625C           dc.w $1406, $1407, $1404, $1404, $1405, $1406, $1402, $2906
-L0000626C           dc.w $1506, $2906, $2A07, $2903, $2EFC, $2903, $24FC, $2004
-L0000627C           dc.w $2004, $2004, $2004, $2706, $1304, $1304, $1304, $1303
-L0000628C           dc.w $190B, $0F09, $120D, $130D, $1309, $0B0F, $1D05, $1208
-L0000629C           dc.w $0808, $2903, $2005, $2004, $2004, $1405, $1406, $1407
-L000062AC           dc.w $1404, $1404, $1405, $1406, $1402, $2903, $25FD, $1306
-L000062BC           dc.w $2B04, $2FFD, $2903, $18FC, $2202, $1EFC, $1005, $2805
-L000062CC           dc.w $1504, $1504, $1504, $1504, $2906, $1503, $1503, $1503 
-L000062dc           dc.w $1503
+                    dc.w $2A02, $2005, $2005, $2004, $1505, $1506, $1506, $1507
+                    dc.w $1507, $1506, $1507, $1507, $2C10, $2C08, $1402, $210D
+                    dc.w $2B05, $1905, $2504, $1706, $1702, $2005, $0F06, $0006
+                    dc.w $2405, $1507, $1C05, $1007, $1207, $1B03, $1308, $2C07
+                    dc.w $2C07, $2C07, $2C07, $2904, $1A06, $03FE, $2902, $2008
+                    dc.w $1306, $2A08, $2007, $2A04, $2A02, $24FA, $1405, $2A03
+                    dc.w $2A08, $0F05, $0F05, $0F05, $0F05, $2A07, $1507, $1508
+                    dc.w $1507, $1508, $0200, $0201, $0202, $0000, $0100, $0100
+                    dc.w $0101, $0604, $0B07, $0F07, $0C07, $0B06, $2005, $1208
+                    dc.w $1200, $2903, $2206, $2205, $2204, $1506, $1507, $1508
+                    dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1305
+                    dc.w $2904, $2CFD, $2904, $1BFD, $2004, $1CFD, $0C07, $2805
+                    dc.w $1503, $1503, $1503, $1503, $0301, $0301, $0601, $0401
+                    dc.w $0400, $04FD, $04FA, $1D05, $1108, $0809, $2903, $2006
+                    dc.w $2005, $2004, $1506, $1507, $1508, $1504, $1504, $1506
+                    dc.w $1507, $1504, $2906, $1306, $2A07, $2904, $2EFC, $2904
+                    dc.w $25FB, $0C0F, $2211, $3416, $2C16, $2009, $1208, $0B08
+                    dc.w $2903, $2005, $2004, $2004, $1505, $1506, $1507, $1503
+                    dc.w $1504, $1505, $1506, $1503, $2903, $25FC, $1405, $0800
+                    dc.w $0303, $2904, $1BFD, $2004, $1CFD, $0C07, $2004, $1207
+                    dc.w $0B07, $2904, $2006, $2005, $2004, $1506, $1507, $1508
+                    dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1405
+                    dc.w $2B04, $2FFD, $2904, $18FC, $2004, $1CFD, $0C07, $2806
+                    dc.w $1803, $1803, $1803, $1803, $0000, $0000, $0000, $0000
+                    dc.w $0000, $0908, $0908, $0908, $0808, $1D05, $1308, $0809
+                    dc.w $2904, $2006, $2005, $2004, $1506, $1507, $1508, $1504
+                    dc.w $1504, $1506, $1507, $1503, $2904, $25FD, $1505, $2B04
+                    dc.w $2FFE, $2904, $19FD, $2202, $1EFC, $1005, $2805, $1504
+                    dc.w $1504, $1504, $1504, $2906, $1503, $1503, $1503, $1503
+                    dc.w $1505, $0A08, $0009, $2903, $2005, $2004, $2004, $1405
+                    dc.w $1406, $1407, $1404, $1404, $1405, $1406, $1402, $2906
+                    dc.w $1506, $2906, $2A07, $2903, $2EFC, $2903, $24FC, $2004
+                    dc.w $2004, $2004, $2004, $2706, $1304, $1304, $1304, $1303
+                    dc.w $190B, $0F09, $120D, $130D, $1309, $0B0F, $1D05, $1208
+                    dc.w $0808, $2903, $2005, $2004, $2004, $1405, $1406, $1407
+                    dc.w $1404, $1404, $1405, $1406, $1402, $2903, $25FD, $1306
+                    dc.w $2B04, $2FFD, $2903, $18FC, $2202, $1EFC, $1005, $2805
+                    dc.w $1504, $1504, $1504, $1504, $2906, $1503, $1503, $1503 
+                    dc.w $1503
 ; End of 305 (sprite x & y positions - initialisation data)
 
 L000062de           dc.w $0001, $0002, $0003, $0004, $0005, $0007
@@ -5539,8 +5579,8 @@ L000062fe           dc.l $00010000      ; ptr to an array of sprite definition d
                                         ;           3  | Height in Lines
                                         ;         4-7  | Long Pointer to GFX Data (Mask, BPL0, BPL1, BPL2, BPL3)
 
-sprite_gfx_offset                       ; original address
-L00006302           dc.l $00000000      ; appears to be an address offset value added to the base sprite data for left had facing sprites
+sprite_gfx_left_offset                  ; original address L00006302
+                    dc.l $00000000      ; appears to be an address offset value added to the base sprite data for left had facing sprites
                                         ; used in draw_sprite
 L00006304           dc.w $0000
 L00006306           dc.w $0000
