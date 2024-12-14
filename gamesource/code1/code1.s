@@ -1453,34 +1453,52 @@ restart_level                                                       ; original a
                     clr.w   L00006318
                     clr.l   frame_counter_and_target_counter
                     bsr.w   clear_display_memory
+
                     move.w  #CODE1_INITIAL_TIMER_BCD,d0
                     jsr     PANEL_INIT_TIMER 
                     jsr     PANEL_INIT_ENERGY
 
                     bsr.w   panel_fade_in
 
-                    ; Some sort of map initialisaiton               ; original address L00003b24
-                    lea.l   MAPGR_DATA_ADDRESS,a0                           ; $0000807c,a0 - MAPGR.IFF
-                    movea.l L00005f64,a5
-L00003b30           movem.w (a5)+,d2-d4                             ; d2, d3 d4 (6 bytes), d3 = word index to $807c
+
+
+                    ; make data driven changes to level data blocks
+                    ; doesn't appear to run on level 1
+                    ; reads 3 words of data from address ptr L00005f64
+                    ; d3 = index into level data
+                    ; d2 = first value to write into level data
+                    ; d4 = second value to write into level data
+update_level_data
+                    lea.l   MAPGR_DATA_ADDRESS,a0
+                    movea.l L00005f64,a5                            ; a5 = 00005fc4 (default do nothing data address ptr)
+.do_update_loop                                                     ; original address L00003b30             
+                    movem.w (a5)+,d2-d4                             ; d2, d3 d4 (6 bytes), initially all = $0000.w
                     tst.w   d3
-                    beq.b   L00003b4e                               ; if d3 == 0 then exit loop
+                    beq.b   .exit_update_level_data
+                    ; update level data indexed by d3, with values held in d2 & d4
+                    ; move d2 value into level data indexed by D3
                     move.b  d2,$01(a0,d3.W)
                     lsr.w   #$08,d2
                     move.b  d2,$00(a0,d3.W)
+                    ; move d4 value into level data indexed by D3 + 2
                     move.b  d4,$03(a0,d3.W)
                     lsr.w   #$08,d4
                     move.b  d4,$02(a0,d3.W)
-                    bra.b   L00003b30                               ; loop again
+                    bra.b   .do_update_loop                         ; loop again
+
+.exit_update_level_data                                             ; original address L00003b4e
+                    move.l  #$00005fc4,L00005f64                    ; reset ptr to default (no update data - all 0 values)
+
+
 
                     ; clear 40 longs (160 bytes)
                     ; data referenced by projectiles
-                                                                    ; original address L00003b4e
-L00003b4e           move.l  #$00005fc4,L00005f64
+clear_projectile_data
                     lea.l   L00004894,a0
                     moveq   #$27,d7                                 ; loop counter = #$27 + 1 = #$28 (40 in decimal)
 .loop               clr.l   (a0)+                   
                     dbf.w   d7,.loop
+
 
 
                     ; clear MSB flag of each data structure
@@ -1531,6 +1549,8 @@ L00003ba4           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 
                     move.w  (a0)+,(a1)+
                     dbf.w   d7,.inner_loop                          ; loop 7 times
                     dbf.w   d6,.outer_loop                          ; loop 0 times (d6 has to be 0, or code is overwritten) 
+
+
 
                     ; display level title 'Axis Chemical Factory'
 L00003bc2           lea.l   text_axis_chemicals,a0
@@ -1674,64 +1694,84 @@ L00003cb8           bra.w   game_loop                               ; L00003bfa 
 
 
 
-                    ; Wipe Screen to Black
+                    ; -------------- Wipe Screen to Black ----------------
+                    ; Perform screen wipe to black.
+                    ;   - Clears back buffer
+                    ;   - falls through to screen_wipe_to_backbuffer
+                    ;
 screen_wipe_to_black                                        ; original address L00003cbc
-L00003cbc           bsr.w   clear_backbuffer_playfield      ; L00004e28
-                    ; Wipe Screen to Back buffer?
+                    bsr.w   clear_backbuffer_playfield      ; L00004e28
+
+
+                    ; ---------------- Wipe Screen to Back buffer ---------------------
+                    ; Gradually replace the current display buffer with the gfx from
+                    ; the back buffer. Used to fade from display text to level gfx
+                    ; at the start of the level. 'Axis Chemical Factory' screen on
+                    ; start-up etc.
+                    ; Probably works a bit like the CD randomise play, a psuedo random
+                    ; generator which doesn't pick the same two numbers twice until
+                    ; the entire sequence has been selected.
+                    ;   - that particular routine would use the modulo of a prime
+                    ;       number (much larger than the dataset) to loop through
+                    ;       the data (wrapping around back to the start)
+                    ;   - not sure if this does that, may take a look in the future.
+                    ;   
+                    ;   for now, knowing what the routine does it good enough.
+                    ; 
 screen_wipe_to_backbuffer                                   ; original address L00003cc0
-L00003cc0           move.w  #$002a,d0
-L00003cc4           move.w  #$00ae,d1
-L00003cc8           movem.l playfield_buffer_ptrs,a0-a1     ; L000036f2,a0-a1
-L00003cce           clr.w   d2
-wipe_outer_loop
-L00003cd0           moveq   #$7f,d3
-L00003cd2           and.w   d2,d3
-L00003cd4           moveq   #$0f,d5
-L00003cd6           lsr.w   #$01,d3
-L00003cd8           bcc.b   L00003cdc
-L00003cda           MOVE.L  #$fffffff0,D5                    
-L00003cdc           cmp.w   d0,d3
-L00003cde           bcc.b   L00003d32
-L00003ce0           move.w  d2,d4
-L00003ce2           lsr.w   #$05,d4
-L00003ce4           and.w   #$00fc,d4
-L00003ce8           cmp.w   d1,d4
-L00003cea           bcc.b   L00003d32
-L00003cec           mulu.w  d0,d4
-L00003cee           add.w   d3,d4
-L00003cf0           move.w  d2,-(a7)
-L00003cf2           move.w  d0,d3
-L00003cf4           mulu.w  d1,d3
-L00003cf6           moveq   #$03,d7
-wipe_middle_loop                                                 ; original address L00003cf8
-L00003cf8           move.w  d4,-(a7)
-L00003cfa           moveq   #$03,d2
-L00003cfc           move.w  $0002(a7),d6
-L00003d00           cmp.w   #$1580,d6
-L00003d04           bcs.b   L00003d08
-L00003d06           moveq   #$01,d2
-wipe_inner_loop                                                 ; original address L00003d08
-L00003d08           move.b  d5,d6
-L00003d0a           not.w   d6
-L00003d0c           and.b   $00(a0,d4.W),d6
-L00003d10           move.b  d6,$00(a0,d4.W)
-L00003d14           move.b  d5,d6
-L00003d16           and.b   $00(a1,d4.W),d6
-L00003d1a           or.b    $00(a0,d4.W),d6
-L00003d1e           move.b  d6,$00(a0,d4.W)
-L00003d22           add.w   d0,d4
-L00003d24           dbf.w   d2,wipe_inner_loop                  ; L00003d08
+                    move.w  #$002a,d0
+                    move.w  #$00ae,d1
+                    movem.l playfield_buffer_ptrs,a0-a1     ; L000036f2,a0-a1
+                    clr.w   d2
+.wipe_outer_loop    ; outer loop
+                        moveq   #$7f,d3
+                        and.w   d2,d3
+                        moveq   #$0f,d5
+                        lsr.w   #$01,d3
+                        bcc.b   .exit_check
+                        MOVE.L  #$fffffff0,D5                    
+                        cmp.w   d0,d3
+                        bcc.b   .skip_inner_loops                    ; L00003d32
+                        move.w  d2,d4
+                        lsr.w   #$05,d4
+                        and.w   #$00fc,d4
+                        cmp.w   d1,d4
+                        bcc.b   .skip_inner_loops                    ; L00003d32
+                        mulu.w  d0,d4
+                        add.w   d3,d4
+                        move.w  d2,-(a7)
+                        move.w  d0,d3
+                        mulu.w  d1,d3
+                        moveq   #$03,d7
+.wipe_middle_loop   ; middle loop                                                 ; original address L00003cf8
+                            move.w  d4,-(a7)
+                            moveq   #$03,d2
+                            move.w  $0002(a7),d6
+                            cmp.w   #$1580,d6
+                            bcs.b   .wipe_inner_loop                     ; L00003d08
+                            moveq   #$01,d2                             ; inner loop count
+.wipe_inner_loop         ; inner loop                                ; original address L00003d08
+                                move.b  d5,d6
+                                not.w   d6
+                                and.b   $00(a0,d4.W),d6
+                                move.b  d6,$00(a0,d4.W)
+                                move.b  d5,d6
+                                and.b   $00(a1,d4.W),d6
+                                or.b    $00(a0,d4.W),d6
+                                move.b  d6,$00(a0,d4.W)
+                                add.w   d0,d4
+                            dbf.w   d2,.wipe_inner_loop                  ; L00003d08
 
-L00003d28           move.w  (a7)+,d4
-L00003d2a           add.w   d3,d4
-L00003d2c           dbf.w   d7,wipe_middle_loop                  ; L00003cf8
+                            move.w  (a7)+,d4
+                            add.w   d3,d4
+                        dbf.w   d7,.wipe_middle_loop                  ; L00003cf8
 
-L00003d30           move.w  (a7)+,d2
-L00003d32           mulu.w  #$5555,d2
-L00003d36           addq.w  #$01,d2
-L00003d38           and.w   #$1fff,d2
-L00003d3c           bne.b   wipe_outer_loop                     ; L00003cd0
-L00003d3e           rts
+                        move.w  (a7)+,d2
+.skip_inner_loops       mulu.w  #$5555,d2
+                        addq.w  #$01,d2
+                        and.w   #$1fff,d2
+.exit_check         bne.b   .wipe_outer_loop                     ; L00003cd0
+                    rts
 
 
 
@@ -1824,7 +1864,7 @@ panel_fade_out                                                          ; origin
                         bne.b   .frame_delay_loop                       ; loop until equal (NB frame_counter incremented by level 3interrupt)
 
                     dbf.w   d7,.fade_all_colours_loop       ; fade all colours to black (16 iterations)
-L00003dd2           rts
+                    rts
 
 
 
@@ -5397,7 +5437,8 @@ L00005ef0           addq.w  #$08,d0
 L00005ef2           move.w  (a7)+,d2
 L00005ef4           bra.w   L000045bc
 
-
+                    ; IN:-
+                    ;   a0.l = level data index?
 L00005ef8           clr.w   (a6)
 L00005efa           bsr.w   L000055a0
 L00005efe           lsl.w   #$08,d2
@@ -5405,10 +5446,10 @@ L00005f00           move.b  $01(a0,d3.W),d2
 L00005f04           move.b  $02(a0,d3.W),d4
 L00005f08           lsl.w   #$08,d4
 L00005f0a           move.b  $03(a0,d3.W),d4
-L00005f0e           movea.l L00005f64,a5
-L00005f12           movem.w d2-d4,-(a5)
-L00005f16           move.l  a5,L00005f64
-L00005f1a           move.b  #$4f,$00(a0,d3.W)
+L00005f0e           movea.l L00005f64,a5                ; get address ptr to level block update data
+L00005f12           movem.w d2-d4,-(a5)                 ; modify level data (3 words - 2nd word = index into level data)
+L00005f16           move.l  a5,L00005f64                ; store updated ptr to level block update ptr
+L00005f1a           move.b  #$4f,$00(a0,d3.W)           ; write data #$4f into level data blocks?
 L00005f20           move.b  #$4f,$01(a0,d3.W)
 L00005f26           move.b  #$4f,$02(a0,d3.W)
 L00005f2c           move.b  #$4f,$03(a0,d3.W)
@@ -5430,7 +5471,8 @@ L00005f5c           bsr.w   L000045bc
 L00005f60           bra.w   L000058aa
 
 
-L00005f64            dc.w $0000, $5fc4                   ; or.b #$c4,d0
+L00005f64            dc.l $00005fc4                     ; a ptr used with map data - to location down below
+
 L00005f68            dc.w $0000, $0000                   ; or.b #$00,d0
 L00005f6c            dc.w $0000, $0000                   ; or.b #$00,d0
 L00005f70            dc.w $0000, $0000                   ; or.b #$00,d0
@@ -5454,8 +5496,12 @@ L00005fb4            dc.w $0000, $0000                   ; or.b #$00,d0
 L00005fb8            dc.w $0000, $0000                   ; or.b #$00,d0
 L00005fbc            dc.w $0000, $0000                   ; or.b #$00,d0
 L00005fc0            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fc4            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fc8            dc.w $0000, $0000                   ; or.b #$00,d0
+
+L00005fc4           dc.w $0000                          ; data location initially pointed to by ptr above L00005f64
+                    dc.w $0000                          ; 3 words used by level data initialisaiotn
+L00005fc8           dc.w $0000
+
+                    dc.w $0000
 
 
 
