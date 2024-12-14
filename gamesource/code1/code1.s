@@ -190,7 +190,8 @@ MAPGR_ADDRESS                   EQU $7FFC                                       
 MAPGR_START                     EQU MAPGR_ADDRESS+4                                             ; $8000 - data start address                                      
 MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
 MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
-MAPGR_INIT                      EQU $0000807c
+MAPGR_DATA_ADDRESS              EQU MAPGR_ADDRESS+$80                                           ; $807c - Address offset of the first level data block.
+
 
 MAPGR_PREPROC_BLOCK_OFFSET      EQU $76                                                         ; 1st data block offset (data preprocessing step)
 
@@ -1110,10 +1111,9 @@ reset_display                                               ; original address $
                     move.w  #$8180,$00dff096              ; Enable - Copper DMA
                     rts 
 
-
+frame_counter_and_target_counter
 frame_counter                                                       ; original address $000036ee
                     dc.w    $0000                                   ; incremeted every VERTB interrupt (level 3 interrupt handler)
-
 target_frame_count                                                  ; original address $000036f0
                     dc.w    $0000                                   ; target frame count - (can be used to delay and wait for specific frame counter value)     
 
@@ -1439,10 +1439,10 @@ L00003acd           dc.b    $60, $0b                                    ; raster
                     ; game level & play the game loop
                     ;
 start_game                                                          ; original address $00003ae4
-                    clr.l   frame_counter                           ; clear target_frame_count also
+                    clr.l   frame_counter_and_target_counter
                     bsr.w   double_buffer_playfield 
 
-                    bsr.w   preprocess_data                         ; preprocess level data
+                    bsr.w   preprocess_data
 
                     jsr     AUDIO_PLAYER_INIT
                     clr.w   L000062fc
@@ -1451,7 +1451,7 @@ start_game                                                          ; original a
                     ; restart point after batman dies
 restart_level                                                       ; original address L00003b02
                     clr.w   L00006318
-                    clr.l   frame_counter                           ; clear target_frame_count also
+                    clr.l   frame_counter_and_target_counter
                     bsr.w   clear_display_memory
                     move.w  #CODE1_INITIAL_TIMER_BCD,d0
                     jsr     PANEL_INIT_TIMER 
@@ -1460,7 +1460,7 @@ restart_level                                                       ; original a
                     bsr.w   panel_fade_in
 
                     ; Some sort of map initialisaiton               ; original address L00003b24
-                    lea.l   MAPGR_INIT,a0                           ; $0000807c,a0 - MAPGR.IFF
+                    lea.l   MAPGR_DATA_ADDRESS,a0                           ; $0000807c,a0 - MAPGR.IFF
                     movea.l L00005f64,a5
 L00003b30           movem.w (a5)+,d2-d4                             ; d2, d3 d4 (6 bytes), d3 = word index to $807c
                     tst.w   d3
@@ -1555,7 +1555,7 @@ sfx_only                                                            ; original a
                     bsr.w   screen_wipe_to_backbuffer               ; L00003cc0 ; Wipe 'Axis Chemical' -> Show Playfield
 
 
-L00003bf6           clr.l   frame_counter                           ; NB: Long Clear - clears next word also -L000036ee
+L00003bf6           clr.l   frame_counter_and_target_counter                           ; NB: Long Clear - clears next word also -L000036ee
 
 
 
@@ -1736,7 +1736,7 @@ L00003d3e           rts
 
 
                     ;---------------------- panel fade in -----------------------
-                    ; fades the panel colours from blank to expected colours.
+                    ; fades the panel colours from black to expected colours.
                     ; waits 4 frames between each fade loop.
                     ; loops 16 times, 64 frames fade in. approx 1 seconds.
                     ;
@@ -1781,34 +1781,49 @@ panel_fade_in                                               ; original address $
 
 
 
+                    ;---------------------- panel fade out -----------------------
+                    ; fades the panel colours to black.
+                    ; waits 4 frames between each fade loop.
+                    ; loops 16 times, 64 frames fade in. approx 1 seconds.
+                    ;
+panel_fade_out                                                          ; original address L00003d8c
+                    moveq   #$0f,d7                                     ; Outer loop count (fade 16 colour registers, 16 shades of RGB in the copper)
 
-panel_fade_out                                              ; original address L00003d8c
-L00003d8c           moveq   #$0f,d7
-L00003d8e           lea.l   copper_panel_colors+2,a0    ; L0000325e,a0
-L00003d92           moveq   #$0f,d6
-L00003d94           move.w  (a0),d0
-L00003d96           moveq   #$0f,d1
-L00003d98           and.w   d0,d1
-L00003d9a           beq.b   L00003d9e
-L00003d9c           subq.w  #$01,d0
-L00003d9e           move.w  #$00f0,d1
-L00003da2           and.w   d0,d1
-L00003da4           beq.b   L00003daa
-L00003da6           sub.w   #$0010,d0
-L00003daa           move.w  #$0f00,d1
-L00003dae           and.w   d0,d1
-L00003db0           beq.b   L00003db6
-L00003db2           sub.w   #$0100,d0
-L00003db6           move.w  d0,(a0)
-L00003db8           addq.w  #$04,a0              ; addaq.w
-L00003dba           dbf.w   d6,L00003d94
+                    ; outer loop fade 16 colour registers
+.fade_all_colours_loop  
+                        lea.l   copper_panel_colors+2,a0
+                        moveq   #$0f,d6                                 ; Number of colours to fade (16 iterations)
 
-                    ; wait for 4 frame counts
-L00003dbe           move.w  frame_counter,d0        ; L000036ee,d0
-L00003dc4           addq.w  #$04,d0
-L00003dc6           cmp.w   frame_counter,d0        ; L000036ee,d0
-L00003dcc           bne.b   L00003dc6
-L00003dce           dbf.w   d7,L00003d8e
+.fade_next_colour       ; inner loop (fade individual colour)
+                            move.w  (a0),d0                             ; d0 = colour value
+.fade_blue
+                            moveq   #$0f,d1                             ; blue bits mask        
+                            and.w   d0,d1                               ; current blue value
+                            beq.b   .fade_green
+                            subq.w  #$01,d0                             ; decrement blue value if > 0
+.fade_green
+                            move.w  #$00f0,d1                           ; green bits mask
+                            and.w   d0,d1                               ; current green value
+                            beq.b   .fade_red
+                            sub.w   #$0010,d0                           ; decrement green value if > 0
+.fade_red
+                            move.w  #$0f00,d1                           ; red bits mask
+                            and.w   d0,d1                               ; current red value
+                            beq.b   .store_fade
+                            sub.w   #$0100,d0                           ; decrement red value if > 0
+.store_fade
+                            move.w  d0,(a0)                             ; store faded colour back to copper
+                            addq.w  #$04,a0                             ; increment copper ptr to next colour value
+                        dbf.w   d6,.fade_next_colour                    ; fade next colour loop (16 colours
+     
+.frame_delay            ; wait for 4 frame counts
+                        move.w  frame_counter,d0                        ; get current vbl counter
+                        addq.w  #$04,d0                                 ; wait for 4 vbl counts
+.frame_delay_loop
+                        cmp.w   frame_counter,d0                        ; compare current frame count with furture frame count
+                        bne.b   .frame_delay_loop                       ; loop until equal (NB frame_counter incremented by level 3interrupt)
+
+                    dbf.w   d7,.fade_all_colours_loop       ; fade all colours to black (16 iterations)
 L00003dd2           rts
 
 
@@ -4237,7 +4252,7 @@ L000055aa           lsr.w   #$03,d2
 L000055ac           lsr.w   #$03,d3
 L000055ae           mulu.w  MAPGR_BASE,d3           ; MAPGR.IFF (value = $00c0)
 L000055b4           add.w   d2,d3
-L000055b6           lea.l   MAPGR_INIT,a0           ; $0000807c,a0            ; External Address - MAPGR.IFF
+L000055b6           lea.l   MAPGR_DATA_ADDRESS,a0           ; $0000807c,a0            ; External Address - MAPGR.IFF
 L000055bc           clr.w   d2
 L000055be           move.b  $00(a0,d3.W),d2
 L000055c2           rts
@@ -4695,7 +4710,10 @@ char884_bpl3        rs.b    1
 
 
                     ; ----------------------- preprocess data ------------------------
-                    ; various data preprocessing routines.
+                    ; Preprocess data ready to start the level.
+                    ; 1) preprocess large font for display.
+                    ; 2) preprocess map data (swap/invert level data blocks)
+                    ; 3) preprocess sprites (set up display object lists, format gfx data, create mirrored sprite sheet)
                     ;
 preprocess_data                                         ; original address L000058e2
                     
