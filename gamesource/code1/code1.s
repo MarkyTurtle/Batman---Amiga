@@ -1493,8 +1493,8 @@ update_level_data
 
                     ; clear 40 longs (160 bytes)
                     ; data referenced by projectiles
-clear_projectile_data
-                    lea.l   L00004894,a0
+clear_projectile_data                                               ; original address 00003b58
+                    lea.l   projectile_list,a0                      
                     moveq   #$27,d7                                 ; loop counter = #$27 + 1 = #$28 (40 in decimal)
 .loop               clr.l   (a0)+                   
                     dbf.w   d7,.loop
@@ -2081,7 +2081,7 @@ L00003fd0           beq.b   L00003fd4
 L00003fd2           divs.w  d2,d3
 L00003fd4           asr.w   #$02,d2
 L00003fd6           sub.w   d2,d3
-L00003fd8           bsr.w   L0000463e
+L00003fd8           bsr.w   get_empty_projectile            ; a0 = empty projectile list entry or end of the list - L0000463e
 L00003fdc           cmp.w   #$0008,d3
 L00003fe0           bcs.b   L00003ff0
 L00003fe2           bmi.b   L00003fe8
@@ -2450,7 +2450,7 @@ L00004442           rts
 L00004444           bsr.w   L00004570
 L00004448           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00004450           bne.b   L00004442
-L00004452           bsr.w   L0000463e
+L00004452           bsr.w   get_empty_projectile                    ; a0 = empty projectile entry or the end of the list - L0000463e
 L00004456           sub.w   (a5)+,d1
 L00004458           add.w   L00006310,d1
 L0000445c           add.w   (a5)+,d0
@@ -2633,7 +2633,7 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
                     ;
 draw_projectiles                                    ; original address L000045fe
 L000045fe           lea.l   L00004866,a5
-                    lea.l   L00004894,a6            ; list cleared at game_start
+                    lea.l   projectile_list,a6
                     moveq   #$13,d7                 ; d7 = 19 + 1 - counter
 .loop                                               ;                   original address L00004608
                     move.w  (a6)+,d2                ; get 2 bytes - active projectile?
@@ -2664,13 +2664,26 @@ L000045fe           lea.l   L00004866,a5
                     rts
 
 
-L0000463e           lea.l   L00004894,a0
-L00004642           moveq   #$13,d7
-L00004644           tst.w   (a0)
-L00004646           beq.b   L00004656
-L00004648           lea.l   $0008(a0),a0        ; $00000a08
-L0000464c           dbf.w   d7,L00004644
-L00004650           movea.l #$fffffff8,a0
+                    ; ---------------- find empty projectile entry ------------------
+                    ; skips through the list of projectiles, returns the address of
+                    ; the first empty entry in a0.
+                    ; if there are no empty entries then a0 = the address of the
+                    ; end of the list.
+                    ;
+                    ; OUT:
+                    ;   a0.l = address of first empty entry in the list
+                    ;           or the address of the end of the list if the list is full.
+                    ;
+get_empty_projectile
+L0000463e           lea.l   projectile_list,a0      
+L00004642           moveq   #$13,d7                 ; loop counter (20 times)
+next_projectile
+L00004644           tst.w   (a0)                    ; test projectile entry
+L00004646           beq.b   L00004656               ; if end of list then exit
+L00004648           lea.l   $0008(a0),a0            ; skip to next projectile entry in the list
+L0000464c           dbf.w   d7,next_projectile      ; L00004644
+
+L00004650           movea.l #$fffffff8,a0           ; a0 = ptr to last list entry.
 L00004656           rts
 
 
@@ -2683,7 +2696,7 @@ L00004656           rts
                     ;
 update_projectiles                                  ; original address L00004658
                     lea.l   L00004866,a5
-                    lea.l   L00004894,a6
+                    lea.l   projectile_list,a6      ; L00004894,a6
                     moveq   #$13,d7                 ; 19 + 1 - loop counter
 .update_loop
                     move.w  (a6)+,d6                ; d6 = 1 based index into address jmp table L00004866
@@ -2926,6 +2939,7 @@ L00004866           dc.l    L00004758               ; batman grappling hook
                     ; referenced & (40 longs cleared) during game_start / level initialisation 
                     ; 4 word structure.
                     ;
+projectile_list                             ; original address L00004894
 L00004894           
 .entry_01           dc.w    $0000           ; Jmp Table Index (1-24)
                     dc.w    $0000           ; D0 - Parameter 1
@@ -3748,7 +3762,7 @@ L00005002           tst.b   (a0)
 L00005004           bne.b   L00005034
 L00005006           move.w  #$0008,L000062f2
 L0000500c           move.l  #L00005036,gl_jsr_address   ; Set game_loop Self Modified Code JSR
-L00005012           bsr.w   L0000463e
+L00005012           bsr.w   get_empty_projectile            ; out: a0 = emptyprojectile entry (or end of list) - L0000463e
 L00005016           sub.w   #$0007,d0
 L0000501a           move.w  batman_sprite1_id,d2
 L0000501e           spl.b   d2
@@ -3851,7 +3865,7 @@ L000050fa           move.w  #$0048,L000067c6
 L00005100           lea.l   $6314,a0
 L00005104           move.w  d0,(a0)+
 L00005106           clr.l   (a0)+
-L00005108           bsr.w   L0000463e
+L00005108           bsr.w   get_empty_projectile                    ; a0 = address of empty projectile or the end of the list - L0000463e
 L0000510c           move.w  #$0001,(a0)
 L00005110           move.l  #L00005132,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L00005116           lea.l   L000063d0,a0
