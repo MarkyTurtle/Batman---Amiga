@@ -191,7 +191,7 @@ MAPGR_START                     EQU MAPGR_ADDRESS+4                             
 MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
 MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
 MAPGR_DATA_ADDRESS              EQU MAPGR_ADDRESS+$80                                           ; $807c - Address offset of the first level data block.
-
+MAPGR_GFX_ADDRESS               EQU MAPGR_DATA_ADDRESS+$2000                                    ; $a07c - Address offset of level GFX.
 
 MAPGR_PREPROC_BLOCK_OFFSET      EQU $76                                                         ; 1st data block offset (data preprocessing step)
 
@@ -223,7 +223,7 @@ original_start:                                             ; original address $
 
 
 game_start                                                  ; original address $00003000
-init_system
+initialise_system
                     ; kill the system & initialise h/w
                     moveq   #$00,d0
                     move.w  #$1fff,$00dff09a                ; DMACON - Disable DMA (All DMA Channels)
@@ -331,7 +331,7 @@ init_system
                     lea.l   copper_list,a0                  ; L000031c8,a0
                     bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
                     bsr.w   double_buffer_playfield         ; L000036fa
-                    bra.w   start_game                      ; L00003ae4
+                    bra.w   initialise_game                      ; L00003ae4
 
 
                     ; maybe intended as a second copper list
@@ -1438,7 +1438,7 @@ L00003acd           dc.b    $60, $0b                                    ; raster
                     ; Called after the system is initialised, initialise the
                     ; game level & play the game loop
                     ;
-start_game                                                          ; original address $00003ae4
+initialise_game                                                     ; original address $00003ae4
                     clr.l   frame_counter_and_target_counter
                     bsr.w   double_buffer_playfield 
 
@@ -3109,7 +3109,7 @@ L000049be           cmp.w   #$0057,d4
 L000049c2           bcs.b   L000049c8
 L000049c4           sub.w   #$0057,d4
 L000049c8           move.w  d4,L00006312
-L000049cc           bsr.w   draw_background_screen_vertical         ; L00004a5e
+L000049cc           bsr.w   draw_background_vertical_scroll         ; L00004a5e
 L000049d0           bra.w   L000049ec
 L000049d4           move.w  L00006312,d2
 L000049d8           add.w   d1,d2
@@ -3118,7 +3118,7 @@ L000049dc           add.w   #$0057,d2
 L000049e0           move.w  d2,L00006312
 L000049e4           add.w   d1,d3
 L000049e6           neg.w   d1
-L000049e8           bsr.w   draw_background_screen_vertical         ; L00004a5e
+L000049e8           bsr.w   draw_background_vertical_scroll         ; L00004a5e
 
 L000049ec           move.w  L000067c2,d0
 L000049f0           sub.w   L000067c8,d0
@@ -3161,51 +3161,86 @@ L00004a58           bsr.w   draw_background_screen_horizontal   ; L00004ad6
 L00004a5c           rts  
 
 
-; draw background screen blocks for Vertical Scroll
-draw_background_screen_vertical
-L00004a5e           subq.w  #$01,d1
-L00004a60           move.w  d3,d4
-L00004a62           and.w   #$0007,d4
-L00004a66           asl.w   #$04,d4
-L00004a68           move.b  d4,L00004aa1
-L00004a6e           move.w  d3,d4
-L00004a70           lsr.w   #$03,d4
-L00004a72           lea.l   MAPGR_BASE,a0            ;  MAPGR.IFF (addr $8002)
-L00004a78           mulu.w  (a0),d4
-L00004a7a           move.w  L000067bc,d0                        ; updated_batman_distance_walked
-L00004a7e           lsr.w   #$03,d0
-L00004a80           add.w   d0,d4
-L00004a82           lea.l   $7a(a0,d4.W),a0
-L00004a86           move.w  d2,d4
-L00004a88           mulu.w  #$0054,d4
-L00004a8c           add.l   L0000631e,d4
-L00004a90           movea.l d4,a1
-L00004a92           moveq   #$14,d7
-L00004a94           movea.l L0000630a,a2            ; [0000a07c]
-L00004a98           clr.w   d0
-L00004a9a           move.b  (a0)+,d0
-L00004a9c           asl.w   #$07,d0
 
+
+                    ; -------------------- draw background vertical scroll --------------------
+                    ; The vertical scroll window moves 2 rasters at a time.
+                    ; This routine draws 2 raster lines of graphics that are being scrolled 
+                    ; into the new window when the screen scrolls vertically.
+                    ;
+                    ; The way the scroll window works is that it moves to keep batman in
+                    ; the frame.  The vertical scroll moves when the joystick movement
+                    ; is made up/down and allows the player to see more background
+                    ; displayed above or below batman on thhe platforms.
+                    ;
+                    ; it also scrolls when batman is hanging on his batrope.
+                    ; it also scrolls when batman is falling between platforms.
+                    ; it also scrolls when batman is climbing a ladder.
+                    ;
+                    ; IN:
+                    ;   d1.w - unknown
+                    ;   d2.w - unknown
+                    ;   d3.w - possible X,Y value
+                    ;   a3.l - source base gfx ptr
+                    ;
+draw_background_vertical_scroll                     ; original address L00004a5e
+L00004a5e           subq.w  #$01,d1
+L00004a60           move.w  d3,d4                   ; d3,d4 = possible X or Y value
+L00004a62           and.w   #$0007,d4               ; mask d4 into 0-7 range (preshifted graphics?)
+L00004a66           asl.w   #$04,d4                 ; d4 = d4 * 16
+L00004a68           move.b  d4,L00004aa1            ; Self modified code - update $XX byte - lea $XX(a2,d0.W),a3
+
+L00004a6e           move.w  d3,d4                   ; d3,d4 possible X or Y value
+L00004a70           lsr.w   #$03,d4                 ; d3 = d3 / 8
+L00004a72           lea.l   MAPGR_BASE,a0           ; a0 = MAPGR.IFF (addr $8002)
+L00004a78           mulu.w  (a0),d4                 ; multiply d4 by #$c0 (size of level data block - maybe width of level map)
+
+L00004a7a           move.w  L000067bc,d0            ; d0 = something to do with batman walking (updated_batman_distance_walked)
+L00004a7e           lsr.w   #$03,d0                 ; d0 = d0 / 8
+L00004a80           add.w   d0,d4                   ; add batman possible X value to offset into map data
+
+L00004a82           lea.l   $7a(a0,d4.W),a0         ; a0 = index to level data to display? - $8002 + $7a = $807c (start of level data)
+
+                    ; calc gfx destination address
+L00004a86           move.w  d2,d4                   ; d2 = parameter passed in
+L00004a88           mulu.w  #$0054,d4               ; d4 = d4 * 84 (84 = two rasters height?) (possible X or Y value)
+L00004a8c           add.l   L0000631e,d4            ; add constant to X or Y value
+L00004a90           movea.l d4,a1                   ; store in a1 - destination GFX Display Address
+
+                    ; calc source gfx tile block offset
+L00004a92           moveq   #$14,d7                 ; loop counter = #$14 (loop 21 times (42 bytes wide screen))
+L00004a94           movea.l background_gfx_base,a2
+
+                    ; draw tile gfx (2 rasters worth)
+                    ; across the screen width
+draw_next_block                                     ; original address L00004a98
+L00004a98           clr.w   d0
+L00004a9a           move.b  (a0)+,d0                ; read level tile map byte
+L00004a9c           asl.w   #$07,d0                 ; multiply tile map byte by 128
+
+                    ; calc gfx source address ptr
 ;L00004a9e           lea.l   $00(a2,d0.W),a3         ; $0006b778,a3 - Self Modified Code
 L00004a9e           dc.w    $47f2
 L00004aa0           dc.b    $00
-L00004aa1           dc.b    $00
+L00004aa1           dc.b    $00                     ; byte offset value (written to by code above)
 
-L00004aa2           move.w  (a3)+,(a1)+
-L00004aa4           move.w  (a3)+,$1c8a(a1)         ; $00041be4 [8012]
-L00004aa8           move.w  (a3)+,$3916(a1)         ; $00043870 [1080]
-L00004aac           move.w  (a3)+,$55a2(a1)         ; $000454fc [7868]
-L00004ab0           move.w  (a3)+,$0028(a1)         ; $0003ff82 [0000]
-L00004ab4           move.w  (a3)+,$1cb4(a1)         ; $00041c0e [02c0]
-L00004ab8           move.w  (a3)+,$3940(a1)         ; $0004389a [0001]
-L00004abc           move.w  (a3)+,$55cc(a1)         ; $00045526 [00e0]
-L00004ac0           dbf.w   d7,L00004a98
-L00004ac4           addq.w  #$01,d3
-L00004ac6           addq.w  #$01,d2
-L00004ac8           cmp.w   #$0057,d2
-L00004acc           bcs.b   L00004ad0
-L00004ace           clr.w   d2
-L00004ad0           dbf.w   d1,L00004a60
+                    ; draw gfx block 
+L00004aa2           move.w  (a3)+,(a1)+             ; Line 1 - BPL 0
+L00004aa4           move.w  (a3)+,$1c8a(a1)         ; Line 1 - BPL 1
+L00004aa8           move.w  (a3)+,$3916(a1)         ; Line 1 - BPL 2
+L00004aac           move.w  (a3)+,$55a2(a1)         ; Line 1 - BPL 3
+L00004ab0           move.w  (a3)+,$0028(a1)         ; Line 2 - BPL 0
+L00004ab4           move.w  (a3)+,$1cb4(a1)         ; Line 2 - BPL 1
+L00004ab8           move.w  (a3)+,$3940(a1)         ; Line 2 - BPL 2
+L00004abc           move.w  (a3)+,$55cc(a1)         ; Line 2 - BPL 3
+L00004ac0           dbf.w   d7,draw_next_block      ; L00004a98
+
+L00004ac4           addq.w  #$01,d3                 ; increase X or Y value
+L00004ac6           addq.w  #$01,d2                 ; d2 is passed in to routine
+L00004ac8           cmp.w   #$0057,d2               ; #$57 (87 decimal)
+L00004acc           bcs.b   L00004ad0               ; branch when d2 >= 88
+L00004ace           clr.w   d2                      ; else clear d2
+L00004ad0           dbf.w   d1,L00004a60            ;      
 L00004ad4           rts 
 
 
@@ -3215,7 +3250,7 @@ L00004ad4           rts
 ; d1 = source pixel offset, d7 = counter
 ; L0000630a = base gfx ptr $0000A07C 
 draw_background_screen_horizontal
-L00004ad6           movea.l L0000630a,a2        ; a2 = src gfx address (sprite sheet?)
+L00004ad6           movea.l background_gfx_base,a2                  ; L0000630a,a2        ; a2 = src gfx address (sprite sheet?)
 
                     ; d1 = source gfx offset value
 L00004ada           move.w  d1,d2               ; d1, d2 = source gfx offset value 
@@ -5669,7 +5704,8 @@ L00006308           dc.b $00                        ; value range 0 - 31 used by
 
 L00006309           dc.b $00
 
-L0000630a           dc.l $0000A07C                  ; base level gfx ptr?
+background_gfx_base                                 ; original address L0000630a
+L0000630a           dc.l MAPGR_GFX_ADDRESS          ; base level gfx ptr? $0000A07C
 
 L0000630e           dc.w $0000
 L00006310           dc.w $0000
