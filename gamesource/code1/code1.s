@@ -3189,6 +3189,7 @@ L00004a5c           rts
                     ;
 draw_background_vertical_scroll                     ; original address L00004a5e
 L00004a5e           subq.w  #$01,d1
+
 L00004a60           move.w  d3,d4                   ; d3,d4 = possible X or Y value
 L00004a62           and.w   #$0007,d4               ; mask d4 into 0-7 range (preshifted graphics?)
 L00004a66           asl.w   #$04,d4                 ; d4 = d4 * 16
@@ -3244,7 +3245,8 @@ L00004ac6           addq.w  #$01,d2                 ; d2 is passed in to routine
 L00004ac8           cmp.w   #$0057,d2               ; #$57 (87 decimal)
 L00004acc           bcs.b   L00004ad0               ; branch when d2 >= 88
 L00004ace           clr.w   d2                      ; else clear d2
-L00004ad0           dbf.w   d1,L00004a60            ;      
+L00004ad0           dbf.w   d1,L00004a60            ;   
+   
 L00004ad4           rts 
 
 
