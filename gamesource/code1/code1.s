@@ -15,8 +15,12 @@
                 ;---------------------------------------------------------------------------------------------
                 ; BATMAN            $800                - Game Loader (always resident across loads)
                 ; CODE1             $2FFC   $6FFE       - $3000 = entry point for level code. (16Kb)
-                ; MAPGR             $7FFC
                 ;
+                ; MAPGR             $7FFC               - Game Tile map data and background GFX blocks
+                ;                                       - $8002 - tile map width
+                ;                                       - $807c - start of tilemap data
+                ;                                       - $a07c - start of gfx block data
+                ;       
                 ;                   $10000              - Display Object List
                 ;                                           - 305 - game display objects
                 ;                                                   initialised from data in BATSPR1.IFF file.
