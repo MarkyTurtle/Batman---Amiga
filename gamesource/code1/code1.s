@@ -3182,7 +3182,7 @@ L00004a5c           rts
                     ; it also scrolls when batman is climbing a ladder.
                     ;
                     ; IN:
-                    ;   d1.w - Num ber of 'scroll' counts (two lines per scroll)
+                    ;   d1.w - Number of 'scroll' counts (two lines per scroll)
                     ;   d2.w - 
                     ;   d3.w - Y value of map data location to scroll in to the display
                     ;   a3.l - source base gfx ptr
@@ -3190,6 +3190,8 @@ L00004a5c           rts
 draw_background_vertical_scroll                     ; original address L00004a5e
 L00004a5e           subq.w  #$01,d1
 
+                    ; calc gfx start offset
+                    ; start of 2 rasters of gfx for display.
 L00004a60           move.w  d3,d4                   ; d3,d4 = possible X or Y value
 L00004a62           and.w   #$0007,d4               ; mask d4 into 0-7 range (preshifted graphics?)
 L00004a66           asl.w   #$04,d4                 ; d4 = d4 * 16
