@@ -1888,12 +1888,12 @@ panel_fade_out                                                          ; origin
                     ;
 update_score_by_distance_walked                                     ; original address $00003dd4
                     clr.l   d0                                      ; clear score update value
-                    move.w  updated_batman_distance_walked,d1
+                    move.w  scroll_window_x_coord,d1                ; updated_batman_distance_walked,d1
                     sub.w   batman_distance_walked,d1               ; L000067c0,d1
                     bls.b   .exit                                   ; if ($67c0 > $67bc) then exit
 
 .do_update_score                                                    ; original address L00003de0
-                    move.w  updated_batman_distance_walked,batman_distance_walked        ; else ($67c0 <= $67bc) so, copy $67bc into $67c0
+                    move.w  scroll_window_x_coord,batman_distance_walked        ; else ($67c0 <= $67bc) so, copy $67bc into $67c0
                     lsl.w   #$04,d1                                 ; d1 = d1 * 16 (multiple difference in distance by 16)
                     move.b  d1,d0                                   ; copy d1 into d0 (low byte) - set initial score update value
                     bra.b   .do_increase_score                       
@@ -1916,7 +1916,7 @@ update_score_by_distance_walked                                     ; original a
                     ; If this routine is not executed then the level has not active actors displayed on it.
                     ;---------------------------------------------------------------------------------------
 update_level_actors_01                                              ; original address L00003dfe
-L00003dfe           movem.w level_parameters,d0-d1                  ;  L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
+L00003dfe           movem.w level_parameters,d0-d1                  ; scroll window X, Y? - L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
 L00003e04           lea.l   L0000642e,a0
 L00003e08           movem.w (a0)+,d2-d3
 L00003e0c           sub.w   d0,d2
@@ -2010,7 +2010,7 @@ L00003eec           move.w  (a6),d6
 L00003eee           beq.w   L00003fa8
 L00003ef2           movem.w $0002(a6),d0-d1
 L00003ef8           move.w  d0,d4
-L00003efa           movem.w level_parameters,d2-d3          ; L000067bc,d2-d3 (updated_batman_distance_walked,unknown)
+L00003efa           movem.w level_parameters,d2-d3          ; Scroll Window X & Y? - L000067bc,d2-d3 (updated_batman_distance_walked,unknown)
 L00003f00           sub.w   d2,d0
 L00003f02           sub.w   d3,d1
 L00003f04           cmp.w   #$0140,d0
@@ -3128,7 +3128,7 @@ L000049ec           move.w  L000067c2,d0
 L000049f0           sub.w   L000067c8,d0
 L000049f4           move.w  d0,L0000630e
 L000049f8           beq.w   L00004a5c
-L000049fc           move.w  L000067bc,d1                            ; updated_batman_distance_walked
+L000049fc           move.w  scroll_window_x_coord,d1                ; L000067bc,d1
 L00004a00           move.w  d1,d2
 L00004a02           add.w   d0,d1
 L00004a04           bpl.b   L00004a0c
@@ -3143,7 +3143,7 @@ L00004a18           sub.w   d0,d1
 L00004a1a           exg.l   d1,d0
 L00004a1c           add.w   L000067c8,d0
 L00004a20           move.w  d0,L000067c2 
-L00004a24           move.w  d1,L000067bc                        ; updated_batman_distance_walked
+L00004a24           move.w  d1,scroll_window_x_coord                ; L000067bc
 L00004a28           move.w  d1,d3
 L00004a2a           sub.w   d2,d3
 L00004a2c           move.w  d3,L0000630e
@@ -3151,17 +3151,17 @@ L00004a30           beq.b   L00004a5c
 L00004a32           eor.w   d1,d2
 L00004a34           btst.l  #$0003,d2
 L00004a38           beq.b   L00004a5c
-L00004a3a           movea.l L0000631e,a4
+L00004a3a           movea.l offscreen_display_buffer_ptr,a4         ; L0000631e,a4
 L00004a3e           tst.w   d3
 L00004a40           bmi.b   L00004a52
 L00004a42           add.w   #$00a0,d1
 L00004a46           addq.w  #$02,a4             ; addaq.w
-L00004a48           move.l  a4,L0000631e
+L00004a48           move.l  a4,offscreen_display_buffer_ptr         ; L0000631e
 L00004a4c           lea.l   $0028(a4),a4
 L00004a50           bra.b   L00004a58
 L00004a52           subq.w  #$02,a4             ; subaq.w
-L00004a54           move.l  a4,L0000631e
-L00004a58           bsr.w   draw_background_screen_horizontal   ; L00004ad6
+L00004a54           move.l  a4,offscreen_display_buffer_ptr         ; L0000631e
+L00004a58           bsr.w   draw_background_screen_horizontal       ; L00004ad6
 L00004a5c           rts  
 
 
@@ -3182,72 +3182,76 @@ L00004a5c           rts
                     ; it also scrolls when batman is climbing a ladder.
                     ;
                     ; IN:
-                    ;   d1.w - Number of 'scroll' counts (two lines per scroll)
-                    ;   d2.w - 
-                    ;   d3.w - Y value of map data location to scroll in to the display
+                    ;   d1.w - Number of 'scroll' counts (two raster lines per scroll)
+                    ;   d2.w - Destination GFX Buffer Y Value to add scroll GFX into. - Y value is divided by 2
+                    ;   d3.w - Y value of map data location to scroll in to the display - Y value is divided by 2
                     ;   a3.l - source base gfx ptr
                     ;
-draw_background_vertical_scroll                     ; original address L00004a5e
-L00004a5e           subq.w  #$01,d1
+draw_background_vertical_scroll                                         ; original address L00004a5e
+L00004a5e           subq.w  #$01,d1                                     ; adjust loop counter (number of 'scrolls' of 2 rasters per 'scroll')
 
-                    ; calc gfx start offset
-                    ; start of 2 rasters of gfx for display.
-L00004a60           move.w  d3,d4                   ; d3,d4 = possible X or Y value
-L00004a62           and.w   #$0007,d4               ; mask d4 into 0-7 range (preshifted graphics?)
-L00004a66           asl.w   #$04,d4                 ; d4 = d4 * 16
-L00004a68           move.b  d4,L00004aa1            ; Self modified code - update $XX byte - lea $XX(a2,d0.W),a3
+                    ; calc source gfx start offset (depends on soft scroll value)
+                    ; self modified code, updates LEA offset value below.
+draw_next_scroll_line ; draw new line (2 rasters) of scroll gfx
+L00004a60               move.w  d3,d4                                       ; d3,d4 = Y value
+L00004a62               and.w   #$0007,d4                                   ; d4 = soft scroll value 0-7
+L00004a66               asl.w   #$04,d4                                     ; multiply by 16 (width of gfx block - 4 bitplanes interleaved, 2 bytes wides, 2 rasters per scroll value)
+L00004a68               move.b  d4,gfx_lea_offset                           ; Self modified code - update $XX byte - lea $XX(a2,d0.W),a3
 
-L00004a6e           move.w  d3,d4                   ; d3,d4 possible X or Y value
-L00004a70           lsr.w   #$03,d4                 ; d3 = d3 / 8
-L00004a72           lea.l   MAPGR_BASE,a0           ; a0 = MAPGR.IFF (addr $8002)
-L00004a78           mulu.w  (a0),d4                 ; multiply d4 by #$c0 (size of level data block - maybe width of level map)
+                        ; calc Y offset into map tile map data 
+L00004a6e               move.w  d3,d4                                       ; d3,d4 = Y value
+L00004a70               lsr.w   #$03,d4                                     ; d3 = byte offset into map data table
+L00004a72               lea.l   MAPGR_BASE,a0                               ; a0 = MAPGR.IFF (addr $8002)
+L00004a78               mulu.w  (a0),d4                                     ; multiply d4 by #$c0 (size of level data block - maybe width of level map)
+                                                                        ; d4 = offset into map data (y)
+                        ; calc X offset into map tile map data
+L00004a7a               move.w  scroll_window_x_coord,d0                    ; L000067bc,d0            ; d0 = Scroll Window X?
+L00004a7e               lsr.w   #$03,d0                                     ; d0 = X byte offset into tile map
 
-L00004a7a           move.w  L000067bc,d0            ; d0 = something to do with batman walking (updated_batman_distance_walked)
-L00004a7e           lsr.w   #$03,d0                 ; d0 = d0 / 8
-L00004a80           add.w   d0,d4                   ; add batman possible X value to offset into map data
+                        ; calc total offset into tile map data
+L00004a80               add.w   d0,d4                                       ; add X value to offset into map data
+L00004a82               lea.l   $7a(a0,d4.W),a0                             ; a0 = index to level data to display - $8002 + $7a = $807c (start of level data)
 
-L00004a82           lea.l   $7a(a0,d4.W),a0         ; a0 = index to level data to display? - $8002 + $7a = $807c (start of level data)
+                        ; calc gfx destination address
+L00004a86               move.w  d2,d4                                       ; d2 = dest buffer Y value / 2
+L00004a88               mulu.w  #$0054,d4                                   ; d4 = d4 * 84 (84 = two rasters height?)
+L00004a8c               add.l   offscreen_display_buffer_ptr,d4
+L00004a90               movea.l d4,a1                                       ; store in a1 - destination GFX Display Address
 
-                    ; calc gfx destination address
-L00004a86           move.w  d2,d4                   ; d2 = parameter passed in
-L00004a88           mulu.w  #$0054,d4               ; d4 = d4 * 84 (84 = two rasters height?) (possible X or Y value)
-L00004a8c           add.l   L0000631e,d4            ; add constant to X or Y value
-L00004a90           movea.l d4,a1                   ; store in a1 - destination GFX Display Address
+                        ; Initialise Draw Loop 
+                        ; width of display buffer - #$14 (21) words
+L00004a92               moveq   #$14,d7                                     ; loop counter
+L00004a94               movea.l background_gfx_base,a2
 
-                    ; calc source gfx tile block offset
-L00004a92           moveq   #$14,d7                 ; loop counter = #$14 (loop 21 times (42 bytes wide screen))
-L00004a94           movea.l background_gfx_base,a2
+draw_next_block         ; draw tile gfx (2 rasters worth)                   ; original address L00004a98
+L00004a98                   clr.w   d0
+L00004a9a                   move.b  (a0)+,d0                                ; read level tile map byte
+L00004a9c                   asl.w   #$07,d0                                 ; multiply tile map byte by 128
 
-                    ; draw tile gfx (2 rasters worth)
-                    ; across the screen width
-draw_next_block                                     ; original address L00004a98
-L00004a98           clr.w   d0
-L00004a9a           move.b  (a0)+,d0                ; read level tile map byte
-L00004a9c           asl.w   #$07,d0                 ; multiply tile map byte by 128
+                            ; calc gfx source address ptr                   ; original address L00004a9e
+L00004a9e                   dc.w    $47f2                                   ; lea.l   $XX(a2,d0.W),a3 - Self Modified Code                          
+L00004aa0                   dc.b    $00
+gfx_lea_offset              dc.b    $00                                     ; $XX - byte offset value - original address L00004aa1
 
-                    ; calc gfx source address ptr
-;L00004a9e           lea.l   $00(a2,d0.W),a3         ; $0006b778,a3 - Self Modified Code
-L00004a9e           dc.w    $47f2
-L00004aa0           dc.b    $00
-L00004aa1           dc.b    $00                     ; byte offset value (written to by code above)
+                            ; draw gfx block 
+L00004aa2                   move.w  (a3)+,(a1)+                             ; Line 1 - BPL 0
+L00004aa4                   move.w  (a3)+,$1c8a(a1)                         ; Line 1 - BPL 1
+L00004aa8                   move.w  (a3)+,$3916(a1)                         ; Line 1 - BPL 2
+L00004aac                   move.w  (a3)+,$55a2(a1)                         ; Line 1 - BPL 3
+L00004ab0                   move.w  (a3)+,$0028(a1)                         ; Line 2 - BPL 0
+L00004ab4                   move.w  (a3)+,$1cb4(a1)                         ; Line 2 - BPL 1
+L00004ab8                   move.w  (a3)+,$3940(a1)                         ; Line 2 - BPL 2
+L00004abc                   move.w  (a3)+,$55cc(a1)                         ; Line 2 - BPL 3
+L00004ac0               dbf.w   d7,draw_next_block     
 
-                    ; draw gfx block 
-L00004aa2           move.w  (a3)+,(a1)+             ; Line 1 - BPL 0
-L00004aa4           move.w  (a3)+,$1c8a(a1)         ; Line 1 - BPL 1
-L00004aa8           move.w  (a3)+,$3916(a1)         ; Line 1 - BPL 2
-L00004aac           move.w  (a3)+,$55a2(a1)         ; Line 1 - BPL 3
-L00004ab0           move.w  (a3)+,$0028(a1)         ; Line 2 - BPL 0
-L00004ab4           move.w  (a3)+,$1cb4(a1)         ; Line 2 - BPL 1
-L00004ab8           move.w  (a3)+,$3940(a1)         ; Line 2 - BPL 2
-L00004abc           move.w  (a3)+,$55cc(a1)         ; Line 2 - BPL 3
-L00004ac0           dbf.w   d7,draw_next_block      ; L00004a98
+L00004ac4               addq.w  #$01,d3                                     ; Increment world Y value (index into tile map)
+L00004ac6               addq.w  #$01,d2                                     ; Increment dest buffer Y value  (index into dest gfx buffer)
 
-L00004ac4           addq.w  #$01,d3                 ; increase X or Y value
-L00004ac6           addq.w  #$01,d2                 ; d2 is passed in to routine
-L00004ac8           cmp.w   #$0057,d2               ; #$57 (87 decimal)
-L00004acc           bcs.b   L00004ad0               ; branch when d2 >= 88
-L00004ace           clr.w   d2                      ; else clear d2
-L00004ad0           dbf.w   d1,L00004a60            ;   
+                        ; test for end of dest gfx buffer
+L00004ac8               cmp.w   #$0057,d2                                   ; #$57 (87 decimal) (raster 174 - end of display buffer)
+L00004acc               bcs.b   L00004ad0                                   ; branch when d2 > 87 (raster 174 - end of display buffer)
+L00004ace               clr.w   d2                                          ; Wrap Scroll Offset to top of display buffer
+L00004ad0           dbf.w   d1,draw_next_scroll_line                    ; L00004a60              
    
 L00004ad4           rts 
 
@@ -3335,16 +3339,16 @@ L00004b60           rts
                     ; This routine draws the level background and the actors
                     ; It does not draw the player.
                     ;
-draw_level_and_actors                                       ; original address L00004b62
+draw_level_and_actors                                           ; original address L00004b62
 L00004b62           move.w  #$8400,$00dff096
-L00004b6a           movea.l playfield_buffer_2,a6           ; L000036f6,a6            ; playfield buffer 2
-L00004b6e           subq.w #$02,a6                          ; subaq.w
-L00004b70           movea.l L0000631e,a5                    ; [0005a36c] CODE1_CHIPMEM_BUFFER
+L00004b6a           movea.l playfield_buffer_2,a6               ; L000036f6,a6            ; playfield buffer 2
+L00004b6e           subq.w #$02,a6                              ; subaq.w
+L00004b70           movea.l offscreen_display_buffer_ptr,a5     ; L0000631e,a5                    ; [0005a36c] CODE1_CHIPMEM_BUFFER
 L00004b74           move.w  L00006312,d1
 L00004b78           clr.l   d6
 L00004b7a           subq.w  #$01,d6
 L00004b7c           swap.w  d6
-L00004b7e           move.w  L000067bc,d2                        ; updated_batman_distance_walked
+L00004b7e           move.w  scroll_window_x_coord,d2        ; L000067bc,d2                        ; updated_batman_distance_walked
 L00004b82           and.w   #$0007,d2
 L00004b86           beq.b   L00004b8c
 L00004b88           ror.l   d2,d6
@@ -3972,7 +3976,7 @@ L000051e0           rts
 
 
 L000051e2           move.w  #$0028,L000067c6
-L000051e8           move.w  L000067bc,d2                    ; updated_batman_distance_walked
+L000051e8           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                    ; updated_batman_distance_walked
 L000051ec           add.w   d0,d2
 L000051ee           and.w   #$0007,d2
 L000051f2           subq.w  #$04,d2
@@ -3987,7 +3991,7 @@ input_up
 L00005202           bsr.b   L00005208                               ; Jmp Table CMD6
 L00005204           bra.w   L00005430
 L00005208           move.w  #$0048,L000067c6
-L0000520e           move.w  L000067bc,d2                            ; updated_batman_distance_walked
+L0000520e           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                            ; updated_batman_distance_walked
 L00005212           add.w   d0,d2
 L00005214           and.w   #$0007,d2
 L00005218           subq.w  #$04,d2
@@ -4024,7 +4028,7 @@ L00005260           sub.b   #$79,d2
 L00005264           cmp.b   #$0d,d2
 L00005268           bcc.w   L0000545a
 L0000526c           lea.l   batman_sprite3_id,a0            ; L000062ea,a0
-L00005270           add.w   L000067bc,d0                    ; updated_batman_distance_walked
+L00005270           add.w   scroll_window_x_coord,d0        ; L000067bc,d0                    ; updated_batman_distance_walked
 L00005274           lsr.w   #$01,d0
 L00005276           and.w   #$0007,d0
 L0000527a           addq.w  #$05,d0
@@ -4063,7 +4067,7 @@ L000052b6           sub.b   #$79,d2
 L000052ba           cmp.b   #$0d,d2
 L000052be           bcc.w   L0000545a
 L000052c2           lea.l   batman_sprite3_id,a0        ; L000062ea,a0
-L000052c6           add.w   L000067bc,d0                ; updated_batman_distance_walked
+L000052c6           add.w   scroll_window_x_coord,d0    ; L000067bc,d0                ; updated_batman_distance_walked
 L000052ca           not.w   d0
 L000052cc           lsr.w   #$01,d0
 L000052ce           and.w   #$0007,d0
@@ -4342,7 +4346,7 @@ L0000559e           rts
 
 
 
-L000055a0           movem.w level_parameters,d2-d3                  ; L000067bc,d2-d3 ; level parameters (updated_batman_distance_walked, unknown)
+L000055a0           movem.w level_parameters,d2-d3                  ; Scroll Window X & Y? L000067bc,d2-d3 ; level parameters (updated_batman_distance_walked, unknown)
 L000055a6           add.w   d0,d2
 L000055a8           add.w   d1,d3
 L000055aa           lsr.w   #$03,d2
@@ -4777,16 +4781,16 @@ L000058a8           rts
 
 
 L000058aa           clr.l   d0
-L000058ac           move.w  L000067bc,d0                ; Pixel Offset Value? (updated_batman_distance_walked)
-L000058b0           lsr.w   #$03,d0                     ; D0.w divide by 8 (d0 = byte offset)
-L000058b2           add.w   d0,d0                       ; D0.w multiply by 2 (word offset)
-L000058b4           movea.l #CODE1_CHIPMEM_BUFFER,a4          ; #$0005a36c,a4 ; External Address 
-L000058ba           adda.l  d0,a4                       ; a4 = location in chip mem buffer (gfx base address?)
-L000058bc           move.l  a4,L0000631e                ; SRC or DEST address
+L000058ac           move.w  scroll_window_x_coord,d0                        ; L000067bc,d0                ; Pixel Offset Value? (updated_batman_distance_walked)
+L000058b0           lsr.w   #$03,d0                                         ; D0.w divide by 8 (d0 = byte offset)
+L000058b2           add.w   d0,d0                                           ; D0.w multiply by 2 (word offset)
+L000058b4           movea.l #CODE1_CHIPMEM_BUFFER,a4                        ; #$0005a36c,a4 ; External Address 
+L000058ba           adda.l  d0,a4                                           ; a4 = location in chip mem buffer (gfx base address?)
+L000058bc           move.l  a4,offscreen_display_buffer_ptr                 ; L0000631e                ; SRC or DEST address
 
 L000058c0           clr.w   L00006312
 L000058c4           clr.l   d1
-L000058c6           move.w  L000067bc,d1                ; Pixel Offset Value? (updated_batman_distance_walked)
+L000058c6           move.w  scroll_window_x_coord,d1                    ; L000067bc,d1                ; Pixel Offset Value? (updated_batman_distance_walked)
 L000058ca           moveq   #$14,d7                     ; counter = $15 + $1 = $16 (22 dec)
 L000058cc           movem.l d1/d7/a4,-(a7)
 L000058d0           bsr.w   draw_background_screen_horizontal ; L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
@@ -5148,7 +5152,7 @@ L00005b02           clr.w   (a6)
 L00005b04           rts 
 
 L00005b06           move.w  #$0590,d0
-L00005b0a           sub.w   L000067bc,d0                            ; updated_batman_distance_walked
+L00005b0a           sub.w   scroll_window_x_coord,d0                ; L000067bc,d0                            ; updated_batman_distance_walked
 L00005b0e           addq.w  #$02,$000a(a6)
 L00005b12           movea.l $0008(a6),a5
 L00005b16           move.w  (a5),d2
@@ -5372,7 +5376,7 @@ L00005da6           move.b  #PANEL_ST1_VAL_TIMER_EXPIRED,PANEL_STATUS_1    ; Set
 L00005dae           rts
 
 
-L00005db0           move.w  L000067bc,d2                                    ; updated_batman_distance_walked
+L00005db0           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                                    ; updated_batman_distance_walked
 L00005db4           cmp.w   #$0540,d2
 L00005db8           beq.b   L00005dce
 L00005dba               addq.w  #$02,$0002(a6)          ; $00dff002
@@ -5723,8 +5727,10 @@ L00006316           dc.w $0000
 L00006318           dc.w $0000
 L0000631a           dc.w $0000 
 L0000631c           dc.w $0034
-L0000631e           dc.w $0005
-L00006320           dc.w $A36C
+
+offscreen_display_buffer_ptr                                        ; original address L0000631e
+                    dc.l CODE1_CHIPMEM_BUFFER                       ; ptr to offscreen displayy buffer - $0005A36C
+
 L00006322           dc.w $0000
 L00006324           dc.w $3DFE
 batman_sprite_anim_00                                               ; a 3 byte batman sprite array
@@ -5864,6 +5870,7 @@ L000067AC           dc.w $0050, $0200, $0000, $0200, $0050, $0038, $0038, $0050 
                     ; 7 words from L000067a0 (default_level_parameters) copied here on game_start
 level_parameters                            ;               original address L000067bc
 updated_batman_distance_walked              ;               original address L000067bc
+scroll_window_x_coord
 L000067bc           dc.w $0000
 L000067be           dc.w $00F0
 batman_distance_walked                      ;               original address L000067c0
