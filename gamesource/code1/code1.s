@@ -3182,9 +3182,9 @@ L00004a5c           rts
                     ; it also scrolls when batman is climbing a ladder.
                     ;
                     ; IN:
-                    ;   d1.w - unknown
-                    ;   d2.w - unknown
-                    ;   d3.w - possible X,Y value
+                    ;   d1.w - Num ber of 'scroll' counts (two lines per scroll)
+                    ;   d2.w - 
+                    ;   d3.w - Y value of map data location to scroll in to the display
                     ;   a3.l - source base gfx ptr
                     ;
 draw_background_vertical_scroll                     ; original address L00004a5e
