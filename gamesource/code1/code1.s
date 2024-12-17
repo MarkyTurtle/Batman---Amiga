@@ -3126,22 +3126,22 @@ scroll_display_window_down                                              ; origin
                     ;---------------------------------------
 
                     ; scroll display up (e.g. climbing upwards)
+                    ; NB: d1 is negative
 scroll_display_window_up 
-L000049d4           move.w  offscreen_y_coord,d2
-L000049d8           add.w   d1,d2
-L000049da           bpl.b   L000049e0
-L000049dc           add.w   #DISPLAY_MAX_Y,d2                           ; #$87 (174 display)
-L000049e0           move.w  d2,offscreen_y_coord
-L000049e4           add.w   d1,d3
-L000049e6           neg.w   d1
-L000049e8           bsr.w   draw_background_vertical_scroll         ; L00004a5e
-                    ;   d1.w - Number of 'scroll' counts (two raster lines per scroll)
-                    ;   d2.w - Destination GFX Buffer Y Value to add scroll GFX into. - Y value is divided by 2
-                    ;   d3.w - Y value of world/tilemap location to display - Y value is divided by 2
-                    ;   a3.l - source base gfx ptr
+                    move.w  offscreen_y_coord,d2                        ; get current offscreen buffer Y co-ord
+                    add.w   d1,d2                                       ; add number of scroll increments
+                    ; test for underflow wrap at top
+                    bpl.b   .no_underflow_wrap                          ; if +ve then no underflow wrap.
+.is_enderflow_wrap
+                    add.w   #DISPLAY_MAX_Y,d2                           ; wrap y co-ord to bottom of offscreen buffer
+.no_underflow_wrap
+                    move.w  d2,offscreen_y_coord                        ; store offscreen buffer Y co-ord
+                    add.w   d1,d3                                       ; add scroll increments to world Y position
+                    neg.w   d1                                          ; make number of scroll increments +ve
+                    bsr.w   draw_background_vertical_scroll         ; L00004a5e
 
                     ; maybe do horizontal scroll
-do_horizontal_scroll
+do_horizontal_scroll                                                ; jmp L00004a5c to bypass horizontal scroll
 L000049ec           move.w  L000067c2,d0
 L000049f0           sub.w   L000067c8,d0
 L000049f4           move.w  d0,L0000630e
