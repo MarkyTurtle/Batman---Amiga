@@ -203,6 +203,7 @@ SFX_EXPLOSION       EQU         $0d
 
 ; MAPPGR.IFF
 MAPGR_ADDRESS                   EQU $7FFC                                                       ; $7ffc - physical load address of MAPGR.IFF
+MAPGR_TILEDATA_OFFSET           EQU $7a                                                         ; offsset from $8002 to $800c
 MAPGR_START                     EQU MAPGR_ADDRESS+4                                             ; $8000 - data start address                                      
 MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
 MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
@@ -3237,16 +3238,16 @@ draw_background_vertical_scroll                                         ; origin
                         mulu.w  (a0),d4                                 ; multiply d4 by #$c0 (size of level data block - maybe width of level map)
                                                                         ; d4 = offset into map data (y)
                         ; calc X offset into map tile map data
-                        move.w  scroll_window_x_coord,d0                ; L000067bc,d0            ; d0 = Scroll Window X?
+                        move.w  scroll_window_x_coord,d0
                         lsr.w   #$03,d0                                 ; d0 = X byte offset into tile map
 
                         ; calc total offset into tile map data
-                        add.w   d0,d4                                   ; add X value to offset into map data
-                        lea.l   $7a(a0,d4.W),a0                         ; a0 = index to level data to display - $8002 + $7a = $807c (start of level data)
+                        add.w   d0,d4                                   ; add X byte value
+                        lea.l   MAPGR_TILEDATA_OFFSET(a0,d4.W),a0       ; a0 = tile map ptr
 
                         ; calc gfx destination address
                         move.w  d2,d4                                   ; d2 = dest buffer Y value / 2
-                        mulu.w  #$0054,d4                               ; d4 = d4 * 84 (84 = two rasters height?)
+                        mulu.w  #DISPLAY_2RASTERS,d4                    ; d4 = d4 * 84 (84 = two rasters height?)
                         add.l   offscreen_display_buffer_ptr,d4
                         movea.l d4,a1                                   ; store in a1 - destination GFX Display Address
 
@@ -3263,17 +3264,17 @@ draw_background_vertical_scroll                                         ; origin
                             ; calc gfx source address ptr               ; original address L00004a9e
                             dc.w    $47f2                               ; lea.l   $XX(a2,d0.W),a3 - Self Modified Code                          
                             dc.b    $00
-.gfx_lea_offset              dc.b    $00                                ; $XX - byte offset value - original address L00004aa1
+.gfx_lea_offset             dc.b    $00                                 ; $XX - byte offset value - original address L00004aa1
 
                             ; draw gfx block (2 rasters)
-                            move.w  (a3)+,(a1)+                         ; Line 1 - BPL 0
-                            move.w  (a3)+,$1c8a(a1)                     ; Line 1 - BPL 1
-                            move.w  (a3)+,$3916(a1)                     ; Line 1 - BPL 2
-                            move.w  (a3)+,$55a2(a1)                     ; Line 1 - BPL 3
-                            move.w  (a3)+,$0028(a1)                     ; Line 2 - BPL 0
-                            move.w  (a3)+,$1cb4(a1)                     ; Line 2 - BPL 1
-                            move.w  (a3)+,$3940(a1)                     ; Line 2 - BPL 2
-                            move.w  (a3)+,$55cc(a1)                     ; Line 2 - BPL 3
+                            move.w  (a3)+,(a1)+                                                ; Line 1 - BPL 0
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET-2(a1)                     ; Line 1 - BPL 1
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET-2(a1)                     ; Line 1 - BPL 2
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET-2(a1)                     ; Line 1 - BPL 3
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 0
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 1
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 2
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 3
                         dbf.w   d7,.draw_next_block     
 
                         ; update Y co-ords
@@ -3327,7 +3328,7 @@ draw_background_screen_horizontal                                       ; origin
                     move.w  (a0),d4                                     ; d4 = source map width (192 bytes? 48 bytes per plane interleaved? 384 pixels wide)
                     mulu.w  d4,d1                                       ; d1 = d1 * width
                     add.w   d2,d1                                       ; d1 = d1 + byte offset
-                    lea.l   $7a(a0,d1.W),a0                             ; a0 = Tile Map source ptr
+                    lea.l   MAPGR_TILEDATA_OFFSET(a0,d1.W),a0           ; a0 = Tile Map source ptr
 
                     ; init display loop
                     moveq   #DISPLAY_MAX_Y-1,d7                         ; height of display / 2
