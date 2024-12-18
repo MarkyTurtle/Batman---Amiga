@@ -171,7 +171,17 @@ KEY_F2              EQU         $0082
 KEY_F10             EQU         $008a
 KEY_ESC             EQU         $001b
 
-DISPLAY_MAX_Y       EQU $57                 ; max display Y value (87) represents line 174 of the display (87*2)
+
+
+; offscreen, double buffer display sizes
+DISPLAY_MAX_Y           EQU         $57                                         ; max display Y value (87) represents line 174 of the display (87*2)
+DISPLAY_BYTEWIDTH       EQU         $2a                                         ; 42 bytes wide
+DISPLAY_2RASTERS        EQU         DISPLAY_BYTEWIDTH*2                         ; 84 bytes for two raster lines 
+DISPLAY_BUFFER_BYTES    EQU         2*DISPLAY_MAX_Y*DISPLAY_BYTEWIDTH           ; size of display buffer in bytes
+DISPLAY_BUFFER_BPL0_OFFSET  EQU     $0
+DISPLAY_BUFFER_BPL1_OFFSET  EQU     DISPLAY_BUFFER_BYTES
+DISPLAY_BUFFER_BPL2_OFFSET  EQU     DISPLAY_BUFFER_BYTES*2
+DISPLAY_BUFFER_BPL3_OFFSET  EQU     DISPLAY_BUFFER_BYTES*3
 
 
 ;Chem.iff - Level Music - Constants
@@ -3087,7 +3097,7 @@ L0000497a           moveq   #$07,d0
 L0000497c           bra.b   L00004980
 L0000497e           MOVE.L  #$fffffffd,D0           ; d0 = -3
 
-L00004980           move.w  L000067be,d1
+L00004980           move.w  scroll_window_y_coord,d1            ; L000067be,d1
 L00004984           move.w  d1,d3
 L00004986           add.w   d0,d1
 L00004988           cmp.w   #$00f1,d1
@@ -3101,7 +3111,7 @@ L0000499a           bra.b   L000049a0
 L0000499c           sub.w   d1,d0
 L0000499e           clr.w   d1
 L000049a0           sub.w   d0,L000067c4
-L000049a4           move.w  d1,L000067be
+L000049a4           move.w  d1,scroll_window_y_coord            ; L000067be
 
 check_vertical_scroll                                                   ; original address L000049a8
                     ; calculate the number of increments to scroll
@@ -3190,6 +3200,10 @@ L00004a5c           rts
                     ; This routine draws 2 raster lines of graphics that are being scrolled 
                     ; into the new window when the screen scrolls vertically.
                     ;
+                    ; NB: This routine draws the background information into the 
+                    ;       off-screen buffer. This buffer is a then presented into
+                    ;       
+                    ;
                     ; The way the scroll window works is that it moves to keep batman in
                     ; the frame.  The vertical scroll moves when the joystick movement
                     ; is made up/down and allows the player to see more background
@@ -3271,86 +3285,101 @@ draw_background_vertical_scroll                                         ; origin
                         bcs.b   .no_wrap_dest_y                         ; branch when d2 > 87 (raster 174 - end of display buffer)
 .wrap_dest_y            clr.w   d2                                      ; Wrap Scroll Offset to top of display buffer
 .no_wrap_dest_y     dbf.w   d1,.draw_next_scroll_line                   ; L00004a60              
-   
+
 .exit           rts 
 
 
 
+                    ; -------------------- draw background vertical scroll --------------------
+                    ; draw background screen blocks for Horizonal Scroll.
+                    ; Draws a column of tiles into the offscreen buffer.
+                    ;
+                    ; The draw loops for the tile are 'upsidedown' see 'dbf' at display_gfx_loop
+                    ; this makes understanding the draw a little more complicated.
+                    ; the d5 in this loop represents the count of 2 rasters of gfx displayed.
+                    ; once this loop ends it moves on to the next tile to draw.
+                    ;
+                    ; IN: -
+                    ;   d1.w = world X co-ordinate
+                    ;   a4.l = offscreen display buffer. 
+                    ;
+draw_background_screen_horizontal                                       ; original address L00004ad6
+                    movea.l background_gfx_base,a2                      ; $a07c - a2 = src gfx address MAPGR.IFF
 
-; draw background screen blocks for Horizonal Scroll
-; a4 = destination chipmemptr, 
-; d1 = source pixel offset, d7 = counter
-; L0000630a = base gfx ptr $0000A07C 
-draw_background_screen_horizontal
-L00004ad6           movea.l background_gfx_base,a2                  ; L0000630a,a2        ; a2 = src gfx address (sprite sheet?)
+                    ; calc tile map x offset
+                    move.w  d1,d2                                       ; copy world X co-ord
+                    lsr.w   #$03,d2                                     ; d2 = X co-ord byte offset 
 
-                    ; d1 = source gfx offset value
-L00004ada           move.w  d1,d2               ; d1, d2 = source gfx offset value 
-L00004adc           lsr.w   #$03,d2             ; d2 = source gfx byte offset
+                    ; calc src gfx Y clip
+                    move.w  scroll_window_y_coord,d1
+                    move.w  d1,d0                                       ; d0 = display window world Y co-ord
+                    and.w   #$0007,d0                                   ; d0 = Y soft scroll bits
+                    ; calc first tile draw loop count
+                    ; clipping for first tile
+                    move.w  d0,d5                                       ; d0, d5 = low 3 bits
+                    not.w   d5
+                    and.w   #$0007,d5                                   ; counter for number of initial tile rasters to draw (clip first tile)             
+                    lsl.w   #$04,d0                                     ; d0 = src gfx clip offset. multiply soft scroll by 16 (bytes per tile raster)
 
-L00004ade           move.w  L000067be,d1        ; d1 = $00f0            - source x/y of gfx?
-L00004ae2           move.w  d1,d0               ; d0 = $00f0
-L00004ae4           and.w   #$0007,d0           ; mask low 3 bits (0-7)
-L00004ae8           move.w  d0,d5               ; d0, d5 = low 3 bits
-L00004aea           not.w   d5
-L00004aec           and.w   #$0007,d5
+                    ; calc tilemap src ptr
+                    lsr.w   #$03,d1                                     ; d1 = Y world co-ord byte offset
+                    lea.l   MAPGR_BASE,a0                               ; MAPGR.IFF (addr $8002)
+                    move.w  (a0),d4                                     ; d4 = source map width (192 bytes? 48 bytes per plane interleaved? 384 pixels wide)
+                    mulu.w  d4,d1                                       ; d1 = d1 * width
+                    add.w   d2,d1                                       ; d1 = d1 + byte offset
+                    lea.l   $7a(a0,d1.W),a0                             ; a0 = Tile Map source ptr
 
-                    
-L00004af0           lsl.w   #$04,d0             ; d0 = multiply by 16
+                    ; init display loop
+                    moveq   #DISPLAY_MAX_Y-1,d7                         ; height of display / 2
+                    move.w  offscreen_y_coord,d1                        ; start index into offscreen buffer Y
 
-                    ; d1 = Y source co-ord (source gfx)
-                    ; d2 = X byte co-ord (source gfx)
-L00004af2           lsr.w   #$03,d1             ; d1 = divide by 8 (d1 = $0f)
-L00004af4           lea.l   MAPGR_BASE,a0       ; MAPGR.IFF (addr $8002)
-L00004afa           move.w  (a0),d4             ; d4 = source gfx width (192 bytes? 48 bytes per plane interleaved? 384 pixels wide)
-L00004afc           mulu.w  d4,d1               ; d1 = d1 * width
-L00004afe           add.w   d2,d1               ; d1 = d1 + byte offset
-L00004b00           lea.l   $7a(a0,d1.W),a0     ; Source GFX PTR
+                    ; calc start dest buffer address
+                    moveq   #DISPLAY_MAX_Y-1,d6                         ; d6 = inner counter $57 = 87 dec (*2 = 174 - height of display)
+                    sub.w   d1,d6                                       ; subtract offscreen_y_coord
+                    mulu.w  #DISPLAY_2RASTERS,d1
+                    lea.l   $00(a4,d1.L),a1                             ; a1 = offscreen buffer, gfx destination ptr   
 
-L00004b04           moveq   #$56,d7             ; d7 = outer counter $57 = 87 dec (*2 = 174 - height of display)
-L00004b06           move.w  offscreen_y_coord,d1        ; d1 = Destination Offset Y
-L00004b0a           moveq   #$56,d6             ; d6 = inner counter $57 = 87 dec (*2 = 174 - height of display)
-L00004b0c           sub.w   d1,d6               ; (start y / gfx height)
-L00004b0e           mulu.w  #$0054,d1           ; $54 = 84 dec
-L00004b12           lea.l   $00(a4,d1.L),a1     ; a1 = DESTINATION PTR   
-
-calc_gfx_offset
-L00004b16           clr.w   d1
-L00004b18           move.b  (a0),d1             ; d1 = source byte
-L00004b1a           asl.w   #$07,d1             ; d1 = d1 * 128
-L00004b1c           add.w   d1,d0               ; d0 = gfx offet
-L00004b1e           bra.b   start_gfx_copy      ; L00004b2c
+.calc_1st_gfx_offset ; calc 1st tile gfx offset (maybe clipped)          ; original address L00004b16
+                    clr.w   d1
+                    move.b  (a0),d1                                     ; d1 = tile map bytes
+                    asl.w   #$07,d1                                     ; d1 = tile gfx offset (128 bytes per tile gfX)
+                    add.w   d1,d0                                       ; d0 = add first block gfx clip offset
+                    bra.b   .start_gfx_copy                              ; start drawing first tile
                     ;---------------------
 
-L00004b20           dbf.w   d5,copy_2_rasters   ; L00004b32
-L00004b24           moveq   #$07,d5
-L00004b26           clr.w   d0
-L00004b28           move.b  (a0),d0
-L00004b2a           asl.w   #$07,d0
+.display_gfx_loop                                                        ; original address L00004b20
+                    ; continue displaying current tile
+                    dbf.w   d5,.copy_2_rasters                           ; d5 = tile height/2 (2 rasters per loop)
 
-start_gfx_copy
-L00004b2c           lea.l   $00(a2,d0.W),a3     ; D0 = gfx start offset, a2 = gfx base address
-L00004b30           adda.w  d4,a0
+.do_next_tile        ; calc tile gfx offset                              ; original address L00004b24
+                    moveq   #$07,d5                                     ; set tile height = 8 * 2 = 16 pixels 
+                    clr.w   d0
+                    move.b  (a0),d0                                     ; d0 = tile map byte
+                    asl.w   #$07,d0                                     ; tile gfx offset (128 bytes per tile gfx)
 
-                    ; copy 16 bits to 4 bitplanes
-                    ; do 2 scan lines per loop iteration
-                    ; source data is interleaved bitmap data
-                    ; $1c81 = 7308 bytes
-                    ; 7308 / 42 = 174 rasters high
-copy_2_rasters
-L00004b32           move.w  (a3)+,(a1)           ; line 0, bpl0 (42 byte wide display?)
-L00004b34           move.w  (a3)+,$1c8c(a1)      ; line 0, bpl1 
-L00004b38           move.w  (a3)+,$3918(a1)      ; line 0, bpl2
-L00004b3c           move.w  (a3)+,$55a4(a1)      ; line 0, bpl3
-L00004b40           move.w  (a3)+,$002a(a1)      ; line 1, bpl0 + 42(a1)
-L00004b44           move.w  (a3)+,$1cb6(a1)      ; line 1, bpl1 + 42(a1)
-L00004b48           move.w  (a3)+,$3942(a1)      ; line 1, bpl2 + 42(a1)
-L00004b4c           move.w  (a3)+,$55ce(a1)      ; line 1, bpl3 + 42(a1)
-L00004b50           lea.l   $0054(a1),a1         ; A1 = a1 + 84 bytes (skip 2 rasters)
-L00004b54           dbf.w   d6,L00004b5c
-L00004b58           lea.l   -$1c8c(a1),a1        ; subtract 1 bitplane from the destination.
-L00004b5c           dbf.w   d7,L00004b20            ; Loop 87 times
-L00004b60           rts 
+.start_gfx_copy      ; in: d0 - src gfx offset                           ; original address L00004b2c
+                    lea.l   $00(a2,d0.W),a3                             ; D0 = gfx start offset, a2 = gfx base address
+                    adda.w  d4,a0                                       ; increment tile map ptr to next line down (d4 = tile map width)
+
+                    
+.copy_2_rasters      ; write 2 rasters of background gfx data            ; original address L00004b32
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET(a1)                    ; line 0, bpl0
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET(a1)                    ; line 0, bpl1 
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET(a1)                    ; line 0, bpl2
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET(a1)                    ; line 0, bpl3
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET+DISPLAY_BYTEWIDTH(a1)  ; line 1, bpl0 + 42(a1)
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET+DISPLAY_BYTEWIDTH(a1)  ; line 1, bpl1 + 42(a1)
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET+DISPLAY_BYTEWIDTH(a1)  ; line 1, bpl2 + 42(a1)
+                    move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET+DISPLAY_BYTEWIDTH(a1)  ; line 1, bpl3 + 42(a1)
+                    lea.l   DISPLAY_2RASTERS(a1),a1                                 ; increase dest ptr by 2 rasters
+                    dbf.w   d6,.continue_drawing
+.top_buffer
+                    lea.l   -DISPLAY_BUFFER_BYTES(a1),a1                            ; reset dest ptr to top of the buffer.
+.continue_drawing
+                    dbf.w   d7,.display_gfx_loop                         ; Loop for display height 174/2 = 87
+.exit               rts 
+
+
 
 
                     ;-------------------------------------------------------------------------------------------------------
@@ -3688,18 +3717,18 @@ L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16)
                     ; Updated Self Modified JSR (game_loop) when ($00006306).w is zero
 L00004e64            lea.l   L00006318,a0                
 L00004e68            move.w  (a0),d5
-L00004e6a            move.b  player_input_command,d4    ; L00006308,d4
+L00004e6a            move.b  player_input_command,d4        ; L00006308,d4
 L00004e6e            btst.l  #$0003,d4
 L00004e72            beq.b   L00004ea8
 L00004e74            move.w  #$0048,L000067c6
 L00004e7a            subq.w  #$01,d5
 L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
-L00004e80            move.l  #L00005058,gl_jsr_address  ; L00003c90 ; Self modified code JSR game_loop
+L00004e80            move.l  #L00005058,gl_jsr_address      ; L00003c90 ; Self modified code JSR game_loop
 L00004e86            move.w  #$0005,L000062f2
 L00004e8c            move.w  #$6426,L00006326
 L00004e92            move.w  d1,d2
-L00004e94            add.w   L000067be,d2
+L00004e94            add.w   scroll_window_y_coord,d2       ; L000067be,d2
 L00004e98            subq.w  #$02,d2
 L00004e9a            and.w   #$0007,d2
 L00004e9e            sub.w   d2,d1
@@ -3961,7 +3990,7 @@ L00005166           subq.w  #$07,d3
 L00005168           add.w   #$000a,d4
 L0000516c           sub.w   d4,d1
 L0000516e           bcs.b   L000051a8
-L00005170           move.w  L000067be,d5
+L00005170           move.w  scroll_window_y_coord,d5                ; L000067be,d5
 L00005174           add.w   d1,d5
 L00005176           btst.l  #$0002,d5
 L0000517a           bne.b   L000051ae
@@ -4117,7 +4146,7 @@ L00005312           btst.b  #$0000,playfield_swap_count+1           ; test even/
 L00005318           bne.b   L000052ec
 L0000531a           clr.w   d4
 L0000531c           move.b  player_input_command,d4                 ; L00006308,d4
-L00005320           move.w  L000067be,d2
+L00005320           move.w  scroll_window_y_coord,d2                ; L000067be,d2
 L00005324           add.w   d1,d2
 L00005326           and.w   #$0007,d2
 L0000532a           beq.b   L0000534e
@@ -4160,7 +4189,7 @@ L0000539a           cmp.b   #$85,d2
 L0000539e           bcs.b   L000053ce
 L000053a0           subq.w  #$01,d1
 L000053a2           move.w  d1,L000067c4
-L000053a6           move.w  L000067be,d2
+L000053a6           move.w  scroll_window_y_coord,d2            ; L000067be,d2
 L000053aa           add.w   L000067c4,d2
 L000053ae           addq.w  #$02,d2
 L000053b0           not.w   d2
@@ -4332,7 +4361,7 @@ L00005530           move.l  #$0000555a,gl_jsr_address           ; Set game_loop 
 L00005538           clr.w   L000062f6
 L0000553c           move.w  #$0001,L000062fa
 L00005542           move.w  #$0002,L000062f2
-L00005548           move.w  L000067be,d0
+L00005548           move.w  scroll_window_y_coord,d0            ; L000067be,d0
 L0000554c           add.w   d1,d0
 L0000554e           and.w   #$0007,d0
 L00005552           sub.w   d0,d1
@@ -5236,7 +5265,7 @@ L00005bcc           jmp     AUDIO_PLAYER_INIT_SFX
 
 L00005bd2           subq.w  #$01,L000067c8
 L00005bd6           sub.w   #$0018,d0
-L00005bda           sub.w   L000067be,d0
+L00005bda           sub.w   scroll_window_y_coord,d0                ; L000067be,d0
 L00005bde           neg.w   d0
 L00005be0           add.w   L000067c4,d0
 L00005be4           move.w  d0,L000067c6
@@ -5310,7 +5339,7 @@ L00005ca4           add.w   d5,d1
 L00005ca6           bsr.w   L000055a0
 L00005caa           cmp.b   #$79,d2
 L00005cae           bcs.b   L00005cd8
-L00005cb0           move.w  L000067be,d3
+L00005cb0           move.w  scroll_window_y_coord,d3                ; L000067be,d3
 L00005cb4           add.w   d1,d3
 L00005cb6           and.w   #$0007,d3
 L00005cba           not.w   d3
@@ -5895,9 +5924,13 @@ L000067AC           dc.w $0050, $0200, $0000, $0200, $0050, $0038, $0038, $0050 
                     ; 7 words from L000067a0 (default_level_parameters) copied here on game_start
 level_parameters                            ;               original address L000067bc
 updated_batman_distance_walked              ;               original address L000067bc
-scroll_window_x_coord
+
+scroll_window_x_coord                                       ; original address L000067bc
 L000067bc           dc.w $0000
-L000067be           dc.w $00F0
+scroll_window_y_coord                                       ; original address L000067be
+                    dc.w $00F0
+
+
 batman_distance_walked                      ;               original address L000067c0
 L000067c0           dc.w $0000              ; value that keep track of Batman's distance walked through the level
 
