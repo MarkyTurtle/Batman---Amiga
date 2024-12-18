@@ -3088,35 +3088,35 @@ scroll_offscreen_buffer                                             ; original a
                     ; it's fannying around with values in d0.
                     ; d0 is an offset added to the window Y coord further below.
 scroll_speed_shenanigans                                            ; original address L0000494e
-L0000494e           tst.w   L000062fa
+                    tst.w   L000062fa
                     ; check < 0
                     bmi.b   .is_negative                                ; L0000496c
                     ; check = 0
-                    beq.b   continue_vertical_scroll                    ; L00004980
+                    beq.b   .continue_vertical_scroll                    ; L00004980
                     ; check 1 to 4 scroll intervals
                     cmp.w   #$0004,d0
-                    bcs.b   continue_vertical_scroll                    ; L00004980
+                    bcs.b   .continue_vertical_scroll                    ; L00004980
                     ; check -3 to -1 scroll intervals
                     cmp.w   #$fffd,d0
-                    bcc.b   continue_vertical_scroll                    ; L00004980
+                    bcc.b   .continue_vertical_scroll                    ; L00004980
 
                     bpl.b   .L00004968
                     MOVE.L  #$fffffffe,D0           ; d0 = -2
-                    bra.b   continue_vertical_scroll                    ; L00004980
+                    bra.b   .continue_vertical_scroll                    ; L00004980
 .L00004968          moveq   #$02,d0
-                    bra.b   continue_vertical_scroll                    ; L00004980
+                    bra.b   .continue_vertical_scroll                    ; L00004980
 
 .is_negative                                                            ; original address L0000496c
                     cmp.w   #$0008,d0
-                    bcs.b   continue_vertical_scroll                    ; L00004980
+                    bcs.b   .continue_vertical_scroll                    ; L00004980
                     cmp.w   #$fffd,d0               ; -3
-                    bcc.b   continue_vertical_scroll                    ; L00004980
+                    bcc.b   .continue_vertical_scroll                    ; L00004980
                     bmi.b   .L0000497e
                     moveq   #$07,d0
-                    bra.b   continue_vertical_scroll                    ; L00004980
+                    bra.b   .continue_vertical_scroll                    ; L00004980
 .L0000497e          MOVE.L  #$fffffffd,D0           ; d0 = -3
 
-continue_vertical_scroll                                                ; original address L00004980
+.continue_vertical_scroll                                                ; original address L00004980
                     ; d0 = amount to scroll
                     move.w  scroll_window_y_coord,d1                    ; window Y coord
                     move.w  d1,d3                                       ; copy window Y coord
