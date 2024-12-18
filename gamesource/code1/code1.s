@@ -41,7 +41,12 @@
                 ; CHEM              $47FE4              - Level Music Player, Music & SFX
                 ; STACK             $5a36c              - Address of program stack - not a file load.
                 ;
-                ; CHIP MEM BUFFER   $5a36c  ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ; CHIP MEM BUFFER   $5a36c              ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ; (off screen scroll buffer)            ; This is an off-screen buffer used to prepare the background
+                ;                                       ; scroll graphics. It's a bit like a circular gfx buffer.
+                ;                                       ; A routine copies the data in this buffer to the back buffer
+                ;                                       ; which is eventually displayed as part of the double buffering.
+                ;               
                 ;
                 ; DISPLAY BUFFER (Double Buffered Display)  
                 ;    display buffer 1 - $61b9c - $68dcc 
@@ -1692,7 +1697,7 @@ gl_jsr_address                                              ; original address L
 L00003c90           dc.l    $00004c3e                       ; Self Modified Address  
                     ; ----- END OF SELF MODIFYING CODE -----
 
-L00003c94           bsr.w   update_view_window                      ; L00004936 ; Scroll Background Window (not draw that's later)
+L00003c94           bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
 L00003c98           bsr.w   update_score_by_distance_walked         ; L00003dd4 ; Update Scre based upon comparison of $67bc.w and $67c0.w 
 L00003c9c           bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
 L00003ca0           bsr.w   draw_level_and_actors                   ; L00004b62 ; Draw/Update Screen
@@ -3060,59 +3065,81 @@ L00004894
 
 
 
-                    ; -------------------------------------------------------------------------------------------
-                    ; -- Update the View Window
-                    ;--------------------------------------------------------------------------------------------
-                    ; This routine updates the view into the background level.
-                    ; It does not draw the background graphics.
-                    ; It scrolls the view window around, following the player (i.e. the view camera)
-                    ; It may do other things also, haven't analysed in depth yet.
-                    ;--------------------------------------------------------------------------------------------
-L00004934           dc.w    $0000                       ; referenced as word below
+                    ; ----------------------------------------------------------------------------------------------
+                    ; -- Update Background Scroll (off screen buffer)
+                    ;-----------------------------------------------------------------------------------------------
+                    ; This routine manages the background level scrolling,
+                    ; It draws the changes into the Off-Screen Buffer (kinda like a circular buffer of screen data)
+                    ;
+                    ;-----------------------------------------------------------------------------------------------
+temp_vertical_scroll_increments                                     ; original address L00004934
+                    dc.w    $0000                                   ; referenced as word below - oly set never read
 
-update_view_window                                      ; original address $00004936
-L00004936           movem.w L000067c4,D1-D2
-L0000493c           move.w  d1,d0
-L0000493e           sub.w   d2,d0
-L00004940           move.w  vertical_scroll_increments,L00004934
-L00004946           move.w  d0,vertical_scroll_increments           ; d0,L00006310
-L0000494a           beq.w   L000049ec
+scroll_offscreen_buffer                                             ; original address $00004936
+                    movem.w L000067c4,D1-D2                         ; d1,d2 - window framing values
+                    move.w  d1,d0
+                    sub.w   d2,d0                                   ; d0 = difference between values
+                    move.w  vertical_scroll_increments,temp_vertical_scroll_increments
+                    move.w  d0,vertical_scroll_increments           ; store difference between values
+                    beq.w   do_horizontal_scroll                    ; no vertical scroll, goto horizontal scroll.
+
+
+                    ; think this is doing something to set the scroll speed.
+                    ; it's fannying around with values in d0.
+                    ; d0 is an offset added to the window Y coord further below.
+scroll_speed_shenanigans                                            ; original address L0000494e
 L0000494e           tst.w   L000062fa
-L00004952           bmi.b   L0000496c
-L00004954           beq.b   L00004980
-L00004956           cmp.w   #$0004,d0
-L0000495a           bcs.b   L00004980
-L0000495c           cmp.w   #$fffd,d0               ; -3
-L00004960           bcc.b   L00004980
-L00004962           bpl.b   L00004968
-L00004964           MOVE.L  #$fffffffe,D0           ; d0 = -2
-L00004966           bra.b   L00004980
-L00004968           moveq   #$02,d0
-L0000496a           bra.b   L00004980
-L0000496c           cmp.w   #$0008,d0
-L00004970           bcs.b   L00004980
-L00004972           cmp.w   #$fffd,d0
-L00004976           bcc.b   L00004980
-L00004978           bmi.b   L0000497e
-L0000497a           moveq   #$07,d0
-L0000497c           bra.b   L00004980
-L0000497e           MOVE.L  #$fffffffd,D0           ; d0 = -3
+                    ; check < 0
+                    bmi.b   .is_negative                                ; L0000496c
+                    ; check = 0
+                    beq.b   continue_vertical_scroll                    ; L00004980
+                    ; check 1 to 4 scroll intervals
+                    cmp.w   #$0004,d0
+                    bcs.b   continue_vertical_scroll                    ; L00004980
+                    ; check -3 to -1 scroll intervals
+                    cmp.w   #$fffd,d0
+                    bcc.b   continue_vertical_scroll                    ; L00004980
 
-L00004980           move.w  scroll_window_y_coord,d1            ; L000067be,d1
-L00004984           move.w  d1,d3
-L00004986           add.w   d0,d1
-L00004988           cmp.w   #$00f1,d1
-L0000498c           bcs.b   L000049a0
-L0000498e           bmi.b   L0000499c
-L00004990           move.w  #$00f0,d2
-L00004994           sub.w   d2,d1
-L00004996           sub.w   d1,d0
-L00004998           move.w  d2,d1
-L0000499a           bra.b   L000049a0
-L0000499c           sub.w   d1,d0
-L0000499e           clr.w   d1
-L000049a0           sub.w   d0,L000067c4
-L000049a4           move.w  d1,scroll_window_y_coord            ; L000067be
+                    bpl.b   .L00004968
+                    MOVE.L  #$fffffffe,D0           ; d0 = -2
+                    bra.b   continue_vertical_scroll                    ; L00004980
+.L00004968          moveq   #$02,d0
+                    bra.b   continue_vertical_scroll                    ; L00004980
+
+.is_negative                                                            ; original address L0000496c
+                    cmp.w   #$0008,d0
+                    bcs.b   continue_vertical_scroll                    ; L00004980
+                    cmp.w   #$fffd,d0               ; -3
+                    bcc.b   continue_vertical_scroll                    ; L00004980
+                    bmi.b   .L0000497e
+                    moveq   #$07,d0
+                    bra.b   continue_vertical_scroll                    ; L00004980
+.L0000497e          MOVE.L  #$fffffffd,D0           ; d0 = -3
+
+continue_vertical_scroll                                                ; original address L00004980
+                    ; d0 = amount to scroll
+                    move.w  scroll_window_y_coord,d1                    ; window Y coord
+                    move.w  d1,d3                                       ; copy window Y coord
+                    add.w   d0,d1                                       ; add scroll increment amount to Y coord
+                    cmp.w   #$00f1,d1                                   ; 241 - Max Y coord?
+                    bcs.b   .update_y_scroll_position                    ; no clamp required
+
+                    bmi.b   .clamp_y_min                                ; L0000499c
+
+.clamp_y_max        ; clamp to max Y coord                              ; original address L00004990
+                    move.w  #$00f0,d2
+                    sub.w   d2,d1                                       ; subtract max from y coord
+                    sub.w   d1,d0                                       ; d0 = scroll amount to get to max Y 
+                    move.w  d2,d1                                       ; d1 = window y coord - clamp Y at max value #$f0 (240)
+                    bra.b   .update_y_scroll_position
+
+.clamp_y_min        ; clamp to min Y coord?                             ; original address L0000499c
+                    sub.w   d1,d0                                       ; d0 = scroll amount to get to #$00
+                    clr.w   d1                                          ; d1 = window y coord - clamp Y at min value #$00
+
+.update_y_scroll_position                                               ; original address L000049a0
+                    sub.w   d0,L000067c4                                ; subtract scroll amount from $67c4
+                    move.w  d1,scroll_window_y_coord                    ; update window Y coord
 
 check_vertical_scroll                                                   ; original address L000049a8
                     ; calculate the number of increments to scroll
@@ -3149,49 +3176,73 @@ scroll_display_window_up
                     move.w  d2,offscreen_y_coord                        ; store offscreen buffer Y co-ord
                     add.w   d1,d3                                       ; add scroll increments to world Y position
                     neg.w   d1                                          ; make number of scroll increments +ve
-                    bsr.w   draw_background_vertical_scroll         ; L00004a5e
+                    bsr.w   draw_background_vertical_scroll
 
-                    ; maybe do horizontal scroll
-do_horizontal_scroll                                                ; jmp L00004a5c to bypass horizontal scroll
-L000049ec           move.w  L000067c2,d0
-L000049f0           sub.w   L000067c8,d0
-L000049f4           move.w  d0,L0000630e
-L000049f8           beq.w   L00004a5c
-L000049fc           move.w  scroll_window_x_coord,d1                ; L000067bc,d1
-L00004a00           move.w  d1,d2
-L00004a02           add.w   d0,d1
-L00004a04           bpl.b   L00004a0c
-L00004a06           move.w  d1,d0
-L00004a08           clr.w   d1
-L00004a0a           bra.b   L00004a1c
-L00004a0c           clr.w   d0
-L00004a0e           cmp.w   #$0540,d1
-L00004a12           bls.b   L00004a1c
-L00004a14           move.w  #$0540,d0
-L00004a18           sub.w   d0,d1
-L00004a1a           exg.l   d1,d0
-L00004a1c           add.w   L000067c8,d0
-L00004a20           move.w  d0,L000067c2 
-L00004a24           move.w  d1,scroll_window_x_coord                ; L000067bc
-L00004a28           move.w  d1,d3
-L00004a2a           sub.w   d2,d3
-L00004a2c           move.w  d3,L0000630e
-L00004a30           beq.b   L00004a5c
-L00004a32           eor.w   d1,d2
-L00004a34           btst.l  #$0003,d2
-L00004a38           beq.b   L00004a5c
-L00004a3a           movea.l offscreen_display_buffer_ptr,a4         ; L0000631e,a4
-L00004a3e           tst.w   d3
-L00004a40           bmi.b   L00004a52
-L00004a42           add.w   #$00a0,d1
-L00004a46           addq.w  #$02,a4             ; addaq.w
-L00004a48           move.l  a4,offscreen_display_buffer_ptr         ; L0000631e
-L00004a4c           lea.l   $0028(a4),a4
-L00004a50           bra.b   L00004a58
-L00004a52           subq.w  #$02,a4             ; subaq.w
-L00004a54           move.l  a4,offscreen_display_buffer_ptr         ; L0000631e
-L00004a58           bsr.w   draw_background_screen_horizontal       ; L00004ad6
-L00004a5c           rts  
+
+
+                    ; ------- do horizontal scroll -------
+do_horizontal_scroll                                                    ; original address L000049ec
+                    move.w  L000067c2,d0                                ; last batman X position scroll value
+                    sub.w   L000067c8,d0                                ; current X scroll value
+                    move.w  d0,L0000630e                                ; amount of scroll
+                    beq.w   .exit_horizontal_scroll                      ; no horizontal scroll.
+
+                    move.w  scroll_window_x_coord,d1                    ; d1 = current window X
+
+.test_min_X         ; test window min X value (0)
+                    move.w  d1,d2                                       ; d2 = copy of current window X
+                    add.w   d0,d1                                       ; d1 = add amount of scroll
+                    bpl.b   .test_max_X                                 ; L00004a0c
+          
+.clamp_low_X        ; clamp window at X=0
+                    move.w  d1,d0
+                    clr.w   d1                                          ; clamp X pos to 0.
+                    bra.b   .cont_horiz_scroll                          ; L00004a1c
+          
+.test_max_X        ; test window max X value (1344)
+                    clr.w   d0
+                    cmp.w   #$0540,d1                                   ; #$540 = 1344
+                    bls.b   .cont_horiz_scroll                          ; L00004a1c
+                
+.clamp_max_X        ; clamp window at x = 1344 (byte 168 just over one screen width from far right)
+                    move.w  #$0540,d0
+                    sub.w   d0,d1
+                    exg.l   d1,d0
+
+.cont_horiz_scroll  ; calc amount of horizontal scroll                  ; original address L00004a1c
+                    add.w   L000067c8,d0                                ; d0 = new X scroll value (framing value)
+                    move.w  d0,L000067c2                                ; update last X scroll value (framing value)
+                    move.w  d1,scroll_window_x_coord                    ; update scroll window X coord
+                    move.w  d1,d3
+                    sub.w   d2,d3                                       ; d3 = difference between old and new X window 
+                    move.w  d3,L0000630e                                ; store difference between old and new window X
+                    beq.b   .exit_horizontal_scroll                     ; no horizontal scroll then exit.
+
+                    ; check if coarse scroll                            ; original address L00004a32
+                    eor.w   d1,d2                                       ; xor window X with old window X
+                    btst.l  #$0003,d2                                   ; if not 16 pixel boundary change
+                    beq.b   .exit_horizontal_scroll                     ; no coarse horizontal scroll then exit.
+
+                    ; set up coarse scroll                              ; original address L00004a3a
+                    movea.l offscreen_display_buffer_ptr,a4
+                    tst.w   d3                                          ; amount to scroll 
+                    bmi.b   .scroll_left                                ; if -ve then scroll left
+
+.scroll_right       ; do scroll right                                   ; original address L00004a42
+                    add.w   #$00a0,d1                                   ; add 160 (320 pixel to update column)
+                    addq.w  #$02,a4                                     ; increase offscreen ptr 16 pixels to right
+                    move.l  a4,offscreen_display_buffer_ptr             ; update offscreen buffer ptr
+                    lea.l   $0028(a4),a4                                ; add 40 bytes to ptr (right hand side of screen)
+                    bra.b   .update_horizontal
+
+.scroll_left        ; do scroll left.
+                    subq.w  #$02,a4                                     ; sub 2 bytes to ptr (left hand side of screen)
+                    move.l  a4,offscreen_display_buffer_ptr             ; update offscreen buffer ptr.
+
+.update_horizontal  ; draw new column of tile map                       ; original address L00004a58
+                    bsr.w   draw_background_horizontal_scroll
+.exit_horizontal_scroll
+                    rts  
 
 
 
@@ -3304,7 +3355,7 @@ draw_background_vertical_scroll                                         ; origin
                     ;   d1.w = world X co-ordinate
                     ;   a4.l = offscreen display buffer. 
                     ;
-draw_background_screen_horizontal                                       ; original address L00004ad6
+draw_background_horizontal_scroll                                       ; original address L00004ad6
                     movea.l background_gfx_base,a2                      ; $a07c - a2 = src gfx address MAPGR.IFF
 
                     ; calc tile map x offset
@@ -4843,7 +4894,7 @@ L000058c4           clr.l   d1
 L000058c6           move.w  scroll_window_x_coord,d1                    ; L000067bc,d1                ; Pixel Offset Value? (updated_batman_distance_walked)
 L000058ca           moveq   #$14,d7                     ; counter = $15 + $1 = $16 (22 dec)
 L000058cc           movem.l d1/d7/a4,-(a7)
-L000058d0           bsr.w   draw_background_screen_horizontal ; L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
+L000058d0           bsr.w   draw_background_horizontal_scroll ; L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
 L000058d4           movem.l (a7)+,d1/d7/a4
 L000058d8           addq.w  #$08,d1                     ; increase Pixel Offset by 8 bits?
 L000058da           addq.l  #$02,a4                     ; increase gfx ptr by 16 bits
@@ -5427,7 +5478,7 @@ L00005dae           rts
 
 
 L00005db0           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                                    ; updated_batman_distance_walked
-L00005db4           cmp.w   #$0540,d2
+L00005db4           cmp.w   #$0540,d2                               ; 1344 (max X)
 L00005db8           beq.b   L00005dce
 L00005dba               addq.w  #$02,$0002(a6)          ; $00dff002
 L00005dbe               moveq   #$70,d2
