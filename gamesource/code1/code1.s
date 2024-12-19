@@ -1672,44 +1672,49 @@ end_of_key_checks
 
 
 
+                    ; -------- start of player state machine updates ------------
 gl_update_state_machine
                     btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1         ; Test Timer has expired
-                    bne.b   L00003c80
+                    bne.b   .execute_player_state                           ; if timer expired then continue
 .timer_not_expired
+                        ; tick panel update (level timer etc)
+                        jsr     PANEL_UPDATE                
                         jsr     PANEL_UPDATE
-                        jsr     PANEL_UPDATE
+                        ; check if timer now expired
                         btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Test Timer has expired 
-                        beq.b   L00003c80
+                        beq.b   .execute_player_state                       ; if timer expired then continue
 .timer_still_not_expired
+                            ; update player state machine?
                             moveq   #$01,d6
                             bsr.w   update_self_modified_code_ptr           ; update state machine?
 
-
-L00003c80           clr.l   d0
-L00003c82           clr.l   d1
-L00003c84           bsr.w   L00005854
-L00003c88           movem.w L000067c2,d0-d1
-
+.execute_player_state
+                    clr.l   d0
+                    clr.l   d1
+                    bsr.w   read_player_input
+                    movem.w L000067c2,d0-d1                                 ; batman X,Y? or centre window co-ords
 
                     ; ----- SELF MODIFYING CODE -----
                     ; updated all over the place to run an alternative routine.
                     ; a bit of a state machine kinda update routine.
-L00003c8e           dc.w    $4eb9                           ; jsr - opcode (jsr     L00004c3e)
-gl_jsr_address                                              ; original address L00003c90
-L00003c90           dc.l    $00004c3e                       ; Self Modified Address  
+gl_jsr_intstruction dc.w    $4eb9                           ; jsr - opcode (jsr $L00004c3e) ; original address L00003c8e
+gl_jsr_address      dc.l    $00004c3e                       ; Self Modified Address         ; original address L00003c90
                     ; ----- END OF SELF MODIFYING CODE -----
 
-L00003c94           bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
-L00003c98           bsr.w   update_score_by_distance_walked         ; L00003dd4 ; Update Scre based upon comparison of $67bc.w and $67c0.w 
-L00003c9c           bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
-L00003ca0           bsr.w   draw_level_and_actors                   ; L00004b62 ; Draw/Update Screen
-L00003ca4           bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
-L00003ca8           bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
-L00003cac           bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
-L00003cb0           bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
-L00003cb4           bsr.w   double_buffer_playfield                 ; L000036fa
+                    ; -------- end of player state machine updates ------------
 
-L00003cb8           bra.w   game_loop                               ; L00003bfa ; jump back to main loop
+
+                    bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
+                    bsr.w   update_score_by_level_progress          ; L00003dd4 ; Update Score based upon progress from left to right through the level.
+                    bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
+                    bsr.w   draw_level_and_actors                   ; L00004b62 ; Draw/Update Screen
+                    bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
+                    bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
+                    bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+                    bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
+                    bsr.w   double_buffer_playfield                 ; L000036fa
+
+                    bra.w   game_loop                               ; L00003bfa ; jump back to main loop
 
                     ;-----------------------------------------------------
                     ;------------------ End of Game Loop -----------------
@@ -1887,7 +1892,7 @@ panel_fade_out                                                          ; origin
                         cmp.w   frame_counter,d0                        ; compare current frame count with furture frame count
                         bne.b   .frame_delay_loop                       ; loop until equal (NB frame_counter incremented by level 3interrupt)
 
-                    dbf.w   d7,.fade_all_colours_loop       ; fade all colours to black (16 iterations)
+                    dbf.w   d7,.fade_all_colours_loop                   ; fade all colours to black (16 iterations)
                     rts
 
 
@@ -1895,37 +1900,29 @@ panel_fade_out                                                          ; origin
                     ;--------------------------------------------------------------------------------------------------------
                     ;  update score by distance walked
                     ;--------------------------------------------------------------------------------------------------------     
-                    ; Updated the score based on the distance travelled through the level.
+                    ; Update the score based onX distance travelled through the level.
                     ;
-                    ;
-                    ; called from game_loop every cycle.
-                    ; Adding a value to the score based upon the value held in $67bc compared with $67c0 (batman_distance_walked).
-                    ;
-                    ; when $67bc.w is greater than $67bc.w then no score is added.
-                    ; else
-                    ;       take the value ($67bc.w * 16)
-                    ;       Add 100 to the score for every multiple of #$64
-                    ;
-update_score_by_distance_walked                                     ; original address $00003dd4
-                    clr.l   d0                                      ; clear score update value
-                    move.w  scroll_window_x_coord,d1                ; updated_batman_distance_walked,d1
-                    sub.w   batman_distance_walked,d1               ; L000067c0,d1
-                    bls.b   .exit                                   ; if ($67c0 > $67bc) then exit
+update_score_by_level_progress                                         ; original address $00003dd4
+                    clr.l   d0                                          ; clear score update value
+                    move.w  scroll_window_x_coord,d1
+                    sub.w   scroll_window_max_x_coord,d1
+                    bls.b   .exit                                       ; if not progressed further then exit.
 
-.do_update_score                                                    ; original address L00003de0
-                    move.w  scroll_window_x_coord,batman_distance_walked        ; else ($67c0 <= $67bc) so, copy $67bc into $67c0
-                    lsl.w   #$04,d1                                 ; d1 = d1 * 16 (multiple difference in distance by 16)
-                    move.b  d1,d0                                   ; copy d1 into d0 (low byte) - set initial score update value
+.do_update_score                                                                ; original address L00003de0
+                    move.w  scroll_window_x_coord,scroll_window_max_x_coord     ; update new max x co-ord value
+                    lsl.w   #$04,d1                                             ; multiply change by 16
+                    move.b  d1,d0                                               ; copy d1 into d0 (low byte)
                     bra.b   .do_increase_score                       
 
-.increase_score_loop                                                ; original address L00003dec
-                    add.w   #$0100,d0
-.do_increase_score                                                  ; original address L00003df0
-                    sub.w   #$0064,d1                               ; subtract 64 from d1 (distance * 16)
-                    bcc.b   .increase_score_loop                    ; for every multiple of #$64, add 100 to the score.
-.update_score_value                                                 ; original address L00003df6
-                    jmp     PANEL_ADD_SCORE                         ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
-.exit                                                               ; original address L00003dfc
+                    ; increase score by 100 BCD for every 4 (64) X co-ord units moved to the right
+.increase_score_loop                                                    ; original address L00003dec
+                    add.w   #$0100,d0                                   ; add 100 BCD to score update
+.do_increase_score                                                      ; original address L00003df0
+                    sub.w   #$0064,d1                                   ; subtract 64 from d1 (distance delta * 16)
+                    bcc.b   .increase_score_loop                        ; for every multiple of #$64, add 100 to the score.
+.update_score_value                                                     ; original address L00003df6
+                    jmp     PANEL_ADD_SCORE                             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
+.exit                                                                   ; original address L00003dfc
                     rts     
 
 
@@ -3526,7 +3523,7 @@ L00004c3c           rts
                     ;
 player_move_commands                                                ; original address $00004c3e
 L00004c3e           clr.w   d2
-L00004c40           move.b  player_input_command,d2                 ; L00006308,d2 ; Player Movement Command Index
+L00004c40           move.b  player_input_command,d2                 ; play joystick input bits
 L00004c44           asl.w   #$02,d2
 L00004c46           movea.l player_input_cmd_table(pc,d2.W),a0      ; get input command address.
 L00004c4a           jmp (a0)                                        ; execute input command
@@ -3534,38 +3531,39 @@ L00004c4a           jmp (a0)                                        ; execute in
 
                     ; Jump Table (for above) - 32 Commands
 player_input_cmd_table                                  ; original address $00004c4c
-L00004c4c           dc.l    cmd_nop                     ; CMD00 - NOP 
-L00004c50           dc.l    input_right                 ; CMD01 - $00005246 - Batman Walk Right
-L00004c54           dc.l    input_left                  ; CMD02 - $0000529c - Batman Walk Left
-L00004c58           dc.l    cmd_nop                     ; CMD03 - NOP
-L00004c5c           dc.l    input_down                  ; CMD04 - $000053f4 - Batman Down (duck, scroll window)) - Not Ladder, Not Jump Down
-L00004c60           dc.l    input_down_right            ; CMD05 - $00005240 - Batman Down + Right
-L00004c64           dc.l    input_down_left             ; CMD06 - $00005292 - Batman Down + Left
-L00004c68           dc.l    cmd_nop                     ; CMD07 - NOP
-L00004c6c           dc.l    input_up                    ; CMD08 - $00005202 - Batman Up (scroll window) - Not Ladder, Not Batrope
-L00004c70           dc.l    input_up_right              ; CMD09 - $00005244 - Batman Up + Right
-L00004c74           dc.l    input_up_left               ; CMD10 - $00005298 - Batman Up + Left
-L00004c78           dc.l    cmd_nop                     ; CMD11 - NOP
-L00004c7c           dc.l    cmd_nop                     ; CMD12 - NOP 
-L00004c80           dc.l    cmd_nop                     ; CMD13 - NOP
-L00004c84           dc.l    cmd_nop                     ; CMD14 - NOP
-L00004c88           dc.l    cmd_nop                     ; CMD15 - NOP
-L00004c8c           dc.l    input_fire                  ; CMD16 - $00004fe0 - Fire + no direction
-L00004c90           dc.l    input_fire                  ; CMD17 - $00004fe0 - Fire + Right
-L00004c94           dc.l    input_fire                  ; CMD18 - $00004fe0 - Fire + Left
-L00004c98           dc.l    input_fire                  ; CMD19 - $00004fe0 - Fire + Unknown
-L00004c9c           dc.l    input_fire_down             ; CMD20 - $000053d6 - Fire + Down
-L00004ca0           dc.l    input_fire_down             ; CMD21 - $000053d6 - Fire + Down + Right
-L00004ca4           dc.l    input_fire_down             ; CMD22 - $000053d6 - fire + Down + Left
-L00004ca8           dc.l    input_fire_down             ; CMD23 - $000053d6 - Fire + Unknown
-L00004cac           dc.l    input_fire_up               ; CMD24 - $000050f8 - Fire + Up
-L00004cb0           dc.l    input_fire_up_right         ; CMD25 - $000050e6 - Fire + Up + Right
-L00004cb4           dc.l    input_fire_up_left          ; CMD26 - $000050ee - Fire + Up + Left
-L00004cb8           dc.l    cmd_nop                     ; CMD27 - NOP
-L00004cbc           dc.l    cmd_nop                     ; CMD28 - NOP
-L00004cc0           dc.l    cmd_nop                     ; CMD29 - NOP
-L00004cc4           dc.l    cmd_nop                     ; CMD30 - NOP
-L00004cc8           dc.l    cmd_nop                     ; CMD31 - NOP
+                                                        ; Fire  | Up    | Down  | Right | Left  |
+L00004c4c           dc.l    cmd_nop                     ; 0     | 0     | 0     | 0     | 0     | - CMD00 - NOP - (no input)
+L00004c50           dc.l    input_left_new              ; 0     | 0     | 0     | 0     | 1     | - CMD01 - $00005246 - Batman Left
+L00004c54           dc.l    input_right_new             ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Right
+L00004c58           dc.l    cmd_nop                     ; 0     | 0     | 0     | 1     | 1     | - CMD03 - NOP - (input left and right)
+L00004c5c           dc.l    input_down                  ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
+L00004c60           dc.l    input_down_left_new         ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Left
+L00004c64           dc.l    input_down_right_new        ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Right
+L00004c68           dc.l    cmd_nop                     ; 0     | 0     | 1     | 1     | 1     | - CMD07 - NOP - (input down, left & right)
+L00004c6c           dc.l    input_up                    ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
+L00004c70           dc.l    input_up_left_new           ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Left
+L00004c74           dc.l    input_up_right_new          ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Right
+L00004c78           dc.l    cmd_nop                     ; 0     | 1     | 0     | 1     | 1     | - CMD11 - NOP - (input up, left & right)
+L00004c7c           dc.l    cmd_nop                     ; 0     | 1     | 1     | 0     | 0     | - CMD12 - NOP - (input up, & down)
+L00004c80           dc.l    cmd_nop                     ; 0     | 1     | 1     | 0     | 1     | - CMD13 - NOP - (input up, down & left)
+L00004c84           dc.l    cmd_nop                     ; 0     | 1     | 1     | 1     | 0     | - CMD14 - NOP - (input up, down & right)
+L00004c88           dc.l    cmd_nop                     ; 0     | 1     | 1     | 1     | 1     | - CMD15 - NOP - (input up, down, left & right)
+L00004c8c           dc.l    input_fire                  ; 1     | 0     | 0     | 0     | 0     | - CMD16 - $00004fe0 - Fire
+L00004c90           dc.l    input_fire                  ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Left
+L00004c94           dc.l    input_fire                  ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Right
+L00004c98           dc.l    input_fire                  ; 1     | 0     | 0     | 1     | 1     | - CMD19 - $00004fe0 - Fire + Left + Right
+L00004c9c           dc.l    input_fire_down             ; 1     | 0     | 1     | 0     | 0     | - CMD20 - $000053d6 - Fire + Down
+L00004ca0           dc.l    input_fire_down             ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Left
+L00004ca4           dc.l    input_fire_down             ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Right
+L00004ca8           dc.l    input_fire_down             ; 1     | 0     | 1     | 1     | 1     | - CMD23 - $000053d6 - Fire + Down + Left + Right
+L00004cac           dc.l    input_fire_up               ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
+L00004cb0           dc.l    input_fire_up_left_new      ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Left
+L00004cb4           dc.l    input_fire_up_right_new     ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Right
+L00004cb8           dc.l    cmd_nop                     ; 1     | 1     | 0     | 1     | 1     | - CMD27 - NOP - (input fire, up, left & right)
+L00004cbc           dc.l    cmd_nop                     ; 1     | 1     | 1     | 0     | 0     | - CMD28 - NOP - (input fire, up & down)
+L00004cc0           dc.l    cmd_nop                     ; 1     | 1     | 1     | 0     | 1     | - CMD29 - NOP - (input fire, up, down & left)
+L00004cc4           dc.l    cmd_nop                     ; 1     | 1     | 1     | 1     | 0     | - CMD30 - NOP - (input fire, up, down & right)
+L00004cc8           dc.l    cmd_nop                     ; 1     | 1     | 1     | 1     | 1     | - CMD31 - NOP - (input firem up, down, left & right)
 
 
 
@@ -3772,7 +3770,7 @@ L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16)
 L00004e64            lea.l   L00006318,a0                
 L00004e68            move.w  (a0),d5
 L00004e6a            move.b  player_input_command,d4        ; L00006308,d4
-L00004e6e            btst.l  #$0003,d4
+L00004e6e            btst.l  #PLAYER_INPUT_UP,d4
 L00004e72            beq.b   L00004ea8
 L00004e74            move.w  #$0048,L000067c6
 L00004e7a            subq.w  #$01,d5
@@ -3789,9 +3787,9 @@ L00004e9e            sub.w   d2,d1
 L00004ea0            move.w  d1,L000067c4
 L00004ea4            rts  
 
-
+                    ; d4.b = player_input_command
 L00004ea6            move.w  d5,(a0) 
-L00004ea8            btst.l  #$0002,d4
+L00004ea8            btst.l  #PLAYER_INPUT_DOWN,d4
 L00004eac            beq.w   L00004ec0
 L00004eb0            move.w  #$0028,L000067c6
 L00004eb6            addq.w  #$01,d5
@@ -3861,7 +3859,7 @@ L00004f74            add.w   d4,d1
 L00004f76            add.w   d5,d0
 L00004f78            movem.w d0-d1,L000067c2
 L00004f7e            move.l  L0000631a,L00006328
-L00004f84            btst.b  #$0004,player_input_command            ; L00006308
+L00004f84            btst.b  #PLAYER_INPUT_FIRE,player_input_command            ; L00006308
 L00004f8a            bne.b   L00004fae
 L00004f8c            rts 
 
@@ -3995,14 +3993,14 @@ L000050e4           rts
 
 
                     ; ------- batrope up-right - Jump Table CMD12 --------
-input_fire_up_right                                                 ; original address L000050e6
+input_fire_up_left_new                                              ; original address L000050e6
 L000050e6           clr.w   batman_sprite1_id                       ; set right facing sprite
 L000050ea           moveq   #$7f,d0                                 ; d0 = +127
 L000050ec           bra.b   L000050fa
 
 
                     ; -------- batrope up-left - Jump Table CMD13 --------
-input_fire_up_left                                                  ; original address L000050ee
+input_fire_up_right_new                                             ; original address L000050ee
 L000050ee           move.w  #$e000,batman_sprite1_id                ; set left facing sprite
 L000050f4           MOVE.L  #$ffffff81,D0                           ; d0 = -127
 L000050f6           bra.b   L000050fa
@@ -4023,9 +4021,9 @@ L0000511a           bsr.w   set_batman_sprites
 L0000511e           moveq   #SFX_BATROPE,d0
 L00005120           jsr     AUDIO_PLAYER_INIT_SFX
 L00005126           movem.w L000067c2,d0-d1
-L0000512c           bclr.b  #$0004,player_input_command
+L0000512c           bclr.b  #PLAYER_INPUT_FIRE,player_input_command
 L00005132           lea.l   L00006314,a0
-L00005136           btst.b  #$0004,player_input_command
+L00005136           btst.b  #PLAYER_INPUT_FIRE,player_input_command
 L0000513e           bne     L000051be
 L00005140           move.w  $0004(a0),d2
 L00005144           addq.w  #$02,d2
@@ -4065,7 +4063,7 @@ L000051ae           rts
 
 
 L000051b0           lea.l   L00006314,a0
-L000051b4           btst.b  #$0004,player_input_command             ; L00006308
+L000051b4           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
 L000051bc           beq.b   L000051c4
 L000051be           move.w  #$0002,$0004(a0)
 L000051c4           subq.w  #$03,$0004(a0)
@@ -4105,19 +4103,19 @@ L00005224           add.w   #$000c,d1
 L00005228           cmp.b   #$85,d2
 L0000522c           bcs.b   L000051e0
 L0000522e           addq.w  #$04,a7                                 ; addaq.w
-L00005230           and.b   #$0c,player_input_command               ; L00006308
+L00005230           and.b   #$0c,player_input_command               ; L00006308 - mask bits leaving up and down flags
 L00005236           move.l  #L00005308,gl_jsr_address               ; L00003c90 ; Self Modified Code JSR - game_loop
 L0000523c           bra.w   L00005308
 
 
-input_down_right
+input_down_left_new
 L00005240           bsr.b   L000051e2           ; jmp table CMD4
-L00005242           bra.b   input_right         ; L00005246 
+L00005242           bra.b   input_left_new      ; L00005246 
 
-input_up_right
+input_up_left_new
 L00005244           bsr.b   L00005208           ; jmp table CMD7
 
-input_right
+input_left_new
 L00005246           addq.w  #$04,d0                    ; jmp table CMD1
 L00005248           subq.w  #$02,d1
 L0000524a           bsr.w   L000055a0
@@ -4148,15 +4146,15 @@ cmd_nop
 L00005290           rts                      
 
 
-input_down_left
+input_down_right_new
 L00005292           bsr.w   L000051e2               ; Jump Table CMD5
-L00005296           bra.w   input_left              ; L0000592c     ; bra.b 
+L00005296           bra.w   input_right_new              ; L0000592c     ; bra.b 
 
-input_up_left
+input_up_right_new
 L00005298           bsr.w   L00005208               ; Jump Table CMD8
 
 
-input_left
+input_right_new
 L0000529c           subq.w  #$05,d0                 ; Jump Table CMD2
 L0000529e           subq.w  #$02,d1
 L000052a0           bsr.w   L000055a0
@@ -4194,7 +4192,7 @@ L000052fc           bcc.w   L00005368                               ; bcc.b
 L000052fe           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005304           bra.w   player_move_commands                    ; L00004c3e
 
-L00005308           btst.b  #$0004,player_input_command             ; L00006308
+L00005308           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
 L0000530e           bne.w   L0000545a
 L00005312           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00005318           bne.b   L000052ec
@@ -4204,11 +4202,11 @@ L00005320           move.w  scroll_window_y_coord,d2                ; L000067be,
 L00005324           add.w   d1,d2
 L00005326           and.w   #$0007,d2
 L0000532a           beq.b   L0000534e
-L0000532c           btst.l  #$0002,d4
+L0000532c           btst.l  #PLAYER_INPUT_DOWN,d4
 L00005330           beq.b   L0000533a
 L00005332           addq.w  #$01,d1
 L00005334           move.w  #$0028,L000067c6
-L0000533a           btst.l  #$0003,d4
+L0000533a           btst.l  #PLAYER_INPUT_UP,d4
 L0000533e           beq.b   L00005348
 L00005340           subq.w  #$01,d1
 L00005342           move.w  #$0048,L000067c6
@@ -4284,7 +4282,7 @@ L00005404           rts
                     ; by code line L000053fe
 L00005406           lea.l   L000063d9,a0
 L0000540a           bsr.b   set_batman_sprites
-L0000540c           btst.b  #$0002,player_input_command             ; L00006308
+L0000540c           btst.b  #PLAYER_INPUT_DOWN,player_input_command             ; L00006308
 L00005412           bne.b   L00005420
 
 
@@ -4294,7 +4292,7 @@ L00005412           bne.b   L00005420
 L00005414           move.l  #set_default_gl_jsr,gl_jsr_address      ; L00003c90 ; Set game_loop JSR self modified code
 L0000541a           lea.l   L000063d6,a0
 L0000541e           bra.b   set_batman_sprites
-L00005420           btst.b  #$0004,player_input_command             ; L00006308
+L00005420           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
 L00005426           bne.b   input_fire_down                         ; L000053d6
 L00005428           rts 
 
@@ -4850,34 +4848,65 @@ exit_draw_sprite                                            ; original address L
 
 
 
+                    ; ----------------- read player input -----------------
+                    ; called from game loop, part of player state update?
+                    ; IN:-
+                    ;   d0.l = #$00000000
+                    ;   d1.l = #$00000000  
+                    ;
+                    ; OUT:-
+                    ;   d0.b = #$00 - not pressed, #$ff - button pressed
+                    ;   d2.b = joystick direction bits
+                    ;               bit 0 = left
+                    ;               bit 1 = right
+                    ;               bit 2 = down
+                    ;               bit 3 = up
+                    ;               bit 4 = pulse when button pressed
+                    ;
+read_player_input                                           ; original address L00005854       
+                    move.w  $00dff00c,d0                    ; JOY1DAT
+                    clr.b   d2
+.do_left_right      ; detect left/right
+                    btst.l  #$0001,d0                       ; 1 = left
+                    beq.b   .not_joy_left                   ; L00005866
+.is_joy_left
+                    bset.l  #$0000,d2                       ; bit 0 = joystick left pushed
+.not_joy_left
+                    btst.l  #$0009,d0                       ; 1 = right
+                    beq.b   .not_joy_right
+.is_joy_right
+                    bset.l  #$0001,d2                       ; bit 1 = joystick right pushed
+.not_joy_right
+            
+.do_up_down         ; detect up/down                        ; original address L00005870
+                    move.w  d0,d1                           ; xor requied to read up/down switch status
+                    lsr.w   #$01,d1                         ;   -   up = bit 9 xor bit 8
+                    eor.w   d0,d1                           ;   - down = bit 1 xor bit 0 
 
-
-L00005854           move.w  $00dff00c,d0
-L0000585a           clr.b   d2
-L0000585c           btst.l  #$0001,d0
-L00005860           beq.b   L00005866
-L00005862           bset.l  #$0000,d2
-L00005866           btst.l  #$0009,d0
-L0000586a           beq.b   L00005870
-L0000586c           bset.l  #$0001,d2
-L00005870           move.w  d0,d1
-L00005872           lsr.w   #$01,d1
-L00005874           eor.w   d0,d1
-L00005876           btst.l  #$0000,d1
-L0000587a           beq.b   L00005880
-L0000587c           bset.l  #$0002,d2
-L00005880           btst.l  #$0008,d1
-L00005884           beq.b   L0000588a
-L00005886           bset.l  #$0003,d2
-L0000588a           btst.b  #$0007,$00bfe001
-L00005892           seq.b   d0
-L00005894           move.b  L00006309,d1
-L00005898           bne.b   L000058a0
-L0000589a           and.w   #$0010,d0
-L0000589e           or.w    d0,d2
-L000058a0           move.b  d0,L00006309
-L000058a4           move.b  d2,player_input_command                 ; L00006308
-L000058a8           rts
+                    btst.l  #$0000,d1                       ; 1 = down - (bit 1 xor bit 0) 
+                    beq.b   .not_joy_down
+.is_joy_down
+                    bset.l  #$0002,d2                       ; bit 2 = joystick down
+.not_joy_down
+                    btst.l  #$0008,d1                       ; 1 = up (bit 9 xor bit 8)
+                    beq.b   .not_joy_up
+.is_joy_up
+                    bset.l  #$0003,d2                       ; bit 3 = joystick up
+.not_joy_up
+                    ; test fire button
+.do_fire_button
+                    btst.b  #$0007,$00bfe001                ; 0 = joystick button pressed
+                    seq.b   d0                              ; $ff = button pressed (active low)
+.check_last_state
+                    move.b  player_button_pressed,d1        ; d1 = last button pressed value
+                    bne.b   .update_button_value            ; if previously pressed then update with new value
+.pulse_bit4         ; pulse bit 4 if button pressed
+                    and.w   #$0010,d0                       ; mask bit 4 (button)
+                    or.w    d0,d2                           ; if button not previously pressed then set bit 4
+.update_button_value ; set player button flag
+                    move.b  d0,player_button_pressed
+                    move.b  d2,player_input_command 
+                    rts
 
 
 
@@ -5802,7 +5831,7 @@ L000062fa           dc.w $0001
 L000062fc           dc.w $0000
 
 
-                    ; refernced by draw_sprite
+                    ; referenced by draw_sprite
 sprite_array_ptr                        ; original address L000062fe
 L000062fe           dc.l $00010000      ; ptr to an array of sprite definition data structures
                                         ; structure def:
@@ -5814,27 +5843,45 @@ L000062fe           dc.l $00010000      ; ptr to an array of sprite definition d
                                         ;         4-7  | Long Pointer to GFX Data (Mask, BPL0, BPL1, BPL2, BPL3)
 
 sprite_gfx_left_offset                  ; original address L00006302
-                    dc.l $00000000      ; appears to be an address offset value added to the base sprite data for left had facing sprites
+                    dc.l $00000000      ; appears to be an address offset value added to the base sprite data for left hand facing sprites
                                         ; used in draw_sprite
 L00006304           dc.w $0000
 L00006306           dc.w $0000
 
-player_input_command
-L00006308           dc.b $00                        ; value range 0 - 31 used by player_move_commands (main game loop)
-                                                    ; to identify commad to process.
 
-L00006309           dc.b $00
+
+
+PLAYER_INPUT_LEFT   EQU     $0          ; player_input_command - bit 0 = Player Left Pushed
+PLAYER_INPUT_RIGHT  EQU     $1          ; player_input_command - bit 1 = Player Right Pushed 
+PLAYER_INPUT_DOWN   EQU     $2          ; player_input_command - bit 2 = Player Down Pushed
+PLAYER_INPUT_UP     EQU     $3          ; player_input_command - bit 3 = Player Up Pushed
+PLAYER_INPUT_FIRE   EQU     $4          ; player_input_command - bit 4 = Player Fire Pushed (pulsed for 1 frame)
+
+player_input_command                                ; original address L00006308
+                    dc.b $00                        ; bit 0 = left
+                                                    ; bit 1 = right
+                                                    ; bit 2 = down
+                                                    ; bit 3 = up
+                                                    ; bit 4 = pulse when button pressed
+
+player_button_pressed                               ; original address L00006309
+                    dc.b $00                        ; #$00 = not pressed, #$ff = button pressed
+
+
+
+
 
 background_gfx_base                                 ; original address L0000630a
 L0000630a           dc.l MAPGR_GFX_ADDRESS          ; base level gfx ptr? $0000A07C
 
 L0000630e           dc.w $0000
 
+
 vertical_scroll_increments                          ; original address L00006310
                     dc.w $0000                      ; the number of increments +/- the window has scrolled this frame.
 
 offscreen_y_coord                                   ; original address L00006312
-                    dc.w $0000                      ; Y co-ord - offscreen buffer.
+                    dc.w $0000                      ; Y co-ord into offscreen buffer (circular buffer).
 
 L00006314           dc.w $0000
 L00006316           dc.w $0000
@@ -5982,17 +6029,17 @@ L000067AC           dc.w $0050, $0200, $0000, $0200, $0050, $0038, $0038, $0050 
 
 
                     ; 7 words from L000067a0 (default_level_parameters) copied here on game_start
-level_parameters                            ;               original address L000067bc
-updated_batman_distance_walked              ;               original address L000067bc
+level_parameters                                            ; original address L000067bc
+updated_batman_distance_walked                              ; original address L000067bc
 
 scroll_window_x_coord                                       ; original address L000067bc
-L000067bc           dc.w $0000
+                    dc.w $0000
 scroll_window_y_coord                                       ; original address L000067be
                     dc.w $00F0
 
-
+scroll_window_max_x_coord
 batman_distance_walked                      ;               original address L000067c0
-L000067c0           dc.w $0000              ; value that keep track of Batman's distance walked through the level
+L000067c0           dc.w $0000              ; keeps track of max window scroll X value (i.e. progress though the level left to right)
 
 L000067c2           dc.w $0050              ; 
 L000067c4           dc.w $0048
