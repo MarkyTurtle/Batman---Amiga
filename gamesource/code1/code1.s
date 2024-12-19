@@ -1575,11 +1575,13 @@ L00003ba4           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 
 
 
                     ; display level title 'Axis Chemical Factory'
-L00003bc2           lea.l   text_axis_chemicals,a0
-L00003bc6           bsr.w   large_text_plotter
-L00003bca           bsr.w   double_buffer_playfield   
+display_axis_chemical_factory                                       ; original address L00003bc2
+                    lea.l   text_axis_chemicals,a0
+                    bsr.w   large_text_plotter
+                    bsr.w   double_buffer_playfield   
 
-L00003bce           bsr.w   L000058aa                               ; display 'Axis Chemicals'
+                    ; draw initial level gfx to offscreen buffer    ; original address L00003bce
+                    bsr.w   initialise_offscreen_buffer             ; draw initial backgroun gfx to offscreen buffer
 
 L00003bd2           bsr.w   draw_level_and_actors                   ; L00004b62                               
 
@@ -4879,27 +4881,33 @@ L000058a8           rts
 
 
 
+                    ; -------------------- inititialise offscreen buffer --------------------
+                    ; Draw the initial level bacground into the off-screen back buffer
+                    ; This is the initial background starting point for batman.
+                    ;
+initialise_offscreen_buffer                                                 ; original address L000058aa
+                    ; initialise offscreen buffer ptr
+                    clr.l   d0
+                    move.w  scroll_window_x_coord,d0                        ; Display Window X coord
+                    lsr.w   #$03,d0                                         ; Display Window X byte index
+                    add.w   d0,d0                                           ; Display Window Y Word Index
+                    movea.l #CODE1_CHIPMEM_BUFFER,a4                        ; Off Screen Buffer Absolute Address 
+                    adda.l  d0,a4                                           ; Destination GFX Address - in offscreen buffer
+                    move.l  a4,offscreen_display_buffer_ptr                 ; Initialise Off Screen Dest GFX pointer
 
-
-L000058aa           clr.l   d0
-L000058ac           move.w  scroll_window_x_coord,d0                        ; L000067bc,d0                ; Pixel Offset Value? (updated_batman_distance_walked)
-L000058b0           lsr.w   #$03,d0                                         ; D0.w divide by 8 (d0 = byte offset)
-L000058b2           add.w   d0,d0                                           ; D0.w multiply by 2 (word offset)
-L000058b4           movea.l #CODE1_CHIPMEM_BUFFER,a4                        ; #$0005a36c,a4 ; External Address 
-L000058ba           adda.l  d0,a4                                           ; a4 = location in chip mem buffer (gfx base address?)
-L000058bc           move.l  a4,offscreen_display_buffer_ptr                 ; L0000631e                ; SRC or DEST address
-
-L000058c0           clr.w   offscreen_y_coord
-L000058c4           clr.l   d1
-L000058c6           move.w  scroll_window_x_coord,d1                    ; L000067bc,d1                ; Pixel Offset Value? (updated_batman_distance_walked)
-L000058ca           moveq   #$14,d7                     ; counter = $15 + $1 = $16 (22 dec)
-L000058cc           movem.l d1/d7/a4,-(a7)
-L000058d0           bsr.w   draw_background_horizontal_scroll ; L00004ad6                   ; a4 = chipmemptr, d1 = pixel offset, d7 = counter
-L000058d4           movem.l (a7)+,d1/d7/a4
-L000058d8           addq.w  #$08,d1                     ; increase Pixel Offset by 8 bits?
-L000058da           addq.l  #$02,a4                     ; increase gfx ptr by 16 bits
-L000058dc           dbf.w   d7,L000058cc
-L000058e0           rts 
+                    ; set up draw loop
+                    clr.w   offscreen_y_coord                               ; reset offscreen buffer y index
+                    clr.l   d1
+                    move.w  scroll_window_x_coord,d1                        ; Display Window X Coord
+                    moveq   #$14,d7                                         ; (21) - GFX Tile Columns to draw (42 bytes wide offscreen buffer)
+.draw_gfx_column                                                            ; original address L000058cc
+                    movem.l d1/d7/a4,-(a7)
+                    bsr.w   draw_background_horizontal_scroll               ; a4 = off screen buffer, d1 = word x co-ord
+                    movem.l (a7)+,d1/d7/a4
+                    addq.w  #$08,d1                                         ; increase X co-ord by 8 (co-ords are stored halved - really 16 pixels)
+                    addq.l  #$02,a4                                         ; increase dest gfx ptr by 16 pixels
+                    dbf.w   d7,.draw_gfx_column
+                    rts 
 
 
 
@@ -5630,7 +5638,7 @@ L00005f54           bsr.w   L000045bc
 L00005f58           moveq   #$05,d2
 L00005f5a           addq.w  #$08,d0
 L00005f5c           bsr.w   L000045bc
-L00005f60           bra.w   L000058aa
+L00005f60           bra.w   initialise_offscreen_buffer         ; draw full background screen to offscreen buffer - L000058aa
 
 
 L00005f64            dc.l $00005fc4                     ; a ptr used with map data - to location down below
