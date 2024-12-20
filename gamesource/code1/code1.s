@@ -3468,74 +3468,84 @@ draw_background_horizontal_scroll                                       ; origin
                     ; being displayed to the player.
                     ;
 copy_offscreen_to_backbuffer                                            ; original address L00004b62
-L00004b62           move.w  #$8400,$00dff096                            ; set blitter nasty bit DMACON
+                    move.w  #$8400,$00dff096                            ; set blitter nasty bit DMACON
                     ; init ptrs to display back buffer
-L00004b6a           movea.l playfield_buffer_2,a6                       ; a6 = back buffer address
-L00004b6e           subq.w  #$02,a6                                     ; a6 = decrement ptr by 16 pixels 
+                    movea.l playfield_buffer_2,a6                       ; a6 = back buffer address
+                    subq.w  #$02,a6                                     ; a6 = decrement ptr by 16 pixels 
 
-L00004b70           movea.l offscreen_display_buffer_ptr,a5             ; a5 = offscreen background scroll gfx buffer (circular buffer)
-L00004b74           move.w  offscreen_y_coord,d1
-L00004b78           clr.l   d6                                          ; d6 = $00000000
-L00004b7a           subq.w  #$01,d6                                     ; d6 = $0000ffff
-L00004b7c           swap.w  d6                                          ; d6 = $ffff0000
-L00004b7e           move.w  scroll_window_x_coord,d2                    ; d2 = word co-ord of display window
-L00004b82           and.w   #$0007,d2                                   ; d2 = soft scroll value (0-7) co-ords are halved (2 pixel resolution)
-L00004b86           beq.b   no_soft_scroll                              ; if soft scroll = 0 (16 pixel boundary)
-is_soft_scroll
+                    movea.l offscreen_display_buffer_ptr,a5             ; a5 = offscreen background scroll gfx buffer (circular buffer)
+                    move.w  offscreen_y_coord,d1
+                    clr.l   d6                                          ; d6 = $00000000
+                    subq.w  #$01,d6                                     ; d6 = $0000ffff
+                    swap.w  d6                                          ; d6 = $ffff0000
+                    move.w  scroll_window_x_coord,d2                    ; d2 = word co-ord of display window
+                    and.w   #$0007,d2                                   ; d2 = soft scroll value (0-7) co-ords are halved (2 pixel resolution)
+                    beq.b   .no_soft_scroll                              ; if soft scroll = 0 (16 pixel boundary)
+.is_soft_scroll
                     ; shift firstword/llastword mask?
-L00004b88           ror.l   d2,d6                                       ; shift mask in d6 by soft scroll value
-L00004b8a           ror.l   d2,d6                                       ; shift mask in d6 by soft scroll value
-no_soft_scroll                                                          ; original address L00004b8c
+                    ror.l   d2,d6                                       ; shift mask in d6 by soft scroll value
+                    ror.l   d2,d6                                       ; shift mask in d6 by soft scroll value
+.no_soft_scroll                                                          ; original address L00004b8c
                     ; calc blitter shift value (soft scroll value)
-L00004b8c           neg.w   d2
-L00004b8e           ror.w   #$03,d2
-L00004b90           and.l   #$0000e000,d2                               ; d2 = blitter shift value?
-L00004b96           bne.b   set_minterms                                ; L00004b9a
+                    neg.w   d2
+                    ror.w   #$03,d2
+                    and.l   #$0000e000,d2                               ; d2 = blitter shift value?
+                    bne.b   .set_minterms                                ; L00004b9a
 
-adjust_dest_ptr    ; no blit shift blit - align dest buffer exactly   
-L00004b98           addq.w #$02,a6                                      ; a6 = backbuffer address (no need to shift into additional word of buffer)
+.adjust_dest_ptr    ; no blit shift blit - align dest buffer exactly   
+                    addq.w #$02,a6                                      ; a6 = backbuffer address (no need to shift into additional word of buffer)
 
-set_minterms        ; init BLTCON0 & BLTCON1
-L00004b9a           or.w    #$09f0,d2
-L00004b9e           swap.w  d2                                          ; d2 = BLTCON0 & BLTCON1
+.set_minterms        ; init BLTCON0 & BLTCON1
+                    or.w    #$09f0,d2
+                    swap.w  d2                                          ; d2 = BLTCON0 & BLTCON1
 
-                    ; calc source address - offscreen buffer
-L00004ba0           move.w  d1,d4                                       ; offscreen Y co-ord
-L00004ba2           mulu.w  #$0054,d4                                   ; multiply by 84 (2 rasters - coords are stored halved)
-L00004ba6           lea.l   $00(a5,d4.L),a1                             ; a1 = source address (start line of offscreen buffer)
+.calc_src_addr_1    ; calc source address - offscreen buffer
+                    move.w  d1,d4                                       ; offscreen Y co-ord
+                    mulu.w  #$0054,d4                                   ; multiply by 84 (2 rasters - coords are stored halved)
+                    lea.l   $00(a5,d4.L),a1                             ; a1 = source address (start line of offscreen buffer)
 
-L00004baa           movea.l a6,a0                                       ; a0 = destination buffer address
-L00004bac           moveq   #$28,d3                                     ; d3 = 40
-L00004bae           move.w  #$00ae,d4                                   ; d4 = 174 (display height)
+                    ; calc dest gfx adddr
+.set_dest_addr_1    movea.l a6,a0                                       ; a0 = destination buffer address
+
+                    ; calc blit height
+.calc_blit_height_1 moveq   #$28,d3                                     ; d3 = 40
+                    move.w  #$00ae,d4                                   ; d4 = 174 (display height)
                     ; calc blit 1 display height
-L00004bb2           sub.w   d1,d4
-L00004bb4           sub.w   d1,d4
-                    ; do blit
-L00004bb6           bsr.w   L00004bde
+                    sub.w   d1,d4
+                    sub.w   d1,d4
 
-                    ; check if 2nd blit required (second half of screen)
-L00004bba           move.w  d1,d4
-L00004bbc           beq.b   end_copy                                    ; first blit was full screen - no need for 2nd blit -L00004bd4
+                    ; do blit 1 
+                    ; (may  be whole buffer or part buffer depends on offscreen start Y bposition)
+.do_blit_1          bsr.w   blit_src_to_dest                            ; L00004bde
+   
+.check_blit2_required ; check if 2nd blit required (second half of screen)
+                    move.w  d1,d4
+                    beq.b   .end_copy                                    ; first blit was full screen - no need for 2nd blit -L00004bd4
 
                     ; blit second half of buffer (circular offscreen buffer)
-L00004bbe           moveq   #$57,d3                                     ; d3 = 87 (full screen height/2)
-L00004bc0           sub.w   d4,d3                                       ; difference between offscreen Y and full screen height
-L00004bc2           mulu.w  #$0054,d3                                   ; multiple difference by 2 rasters (84 bytes) - dimensions held halved (resolution of 2 pixels)
+                    moveq   #$57,d3                                     ; d3 = 87 (full screen height/2)
+                    sub.w   d4,d3                                       ; difference between offscreen Y and full screen height
+                    mulu.w  #$0054,d3                                   ; multiple difference by 2 rasters (84 bytes) - dimensions held halved (resolution of 2 pixels)
                     ; calc 2nd blit dest ptr
-L00004bc6           lea.l   $00(a6,d3.L),a0                             ; a0 = back buffer destination ptr
+.calc_dest_addr_2   lea.l   $00(a6,d3.L),a0                             ; a0 = back buffer destination ptr
                     ; calc 2nd blit height
-L00004bca           add.w   d4,d4
+.calc_blit_height_2 add.w   d4,d4
                     ; calc 2nd blit width 
-L00004bcc           moveq   #$28,d3
+.calc_blit_width_2  moveq   #$28,d3
                     ; dest ptr is top half of screen
-L00004bce           lea.l   (a5),a1
-                    ; do second blit
-L00004bd0           bsr.w   L00004bde
-end_copy
-L00004bd4           move.w  #$0400,$00dff096
-L00004bdc           rts  
+.calc_src_addr_2    lea.l   (a5),a1
+                    ; do blit 2
+                    bsr.w   blit_src_to_dest                            ; L00004bde
+.end_copy            ; turn off blitter nasty and exit
+                    move.w  #$0400,$00dff096                            ; switch off blitter nasty
+                    rts  
 
 
+                    ; -------------------- blit source to destination --------------------
+                    ; Routine used by the copy_offscreen_to_backbuffer routine above
+                    ; to copy the off-screen background scroll gfx into the back buffer
+                    ; of the double buffered display.
+                    ;
                     ; IN:-
                     ;   d2.l = BLTCON0 & BLTCON1 
                     ;   d3.w = Blit Width
@@ -3543,34 +3553,39 @@ L00004bdc           rts
                     ;   d6.l = firstword/lastwoord mask
                     ;   a0.l = DEST Blitter Address ptr
                     ;   a1.l = GFX Source Address ptr
-L00004bde           move.l  d2,d5
-L00004be0           swap.w  d5
-L00004be2           and.w   #$e000,d5
-L00004be6           addq.w  #$02,d3
-L00004be8           asl.w   #$06,d4
-L00004bea           move.w  d3,d5
-L00004bec           lsr.w   #$01,d5
-L00004bee           add.w   d5,d4
-L00004bf0           sub.w   #$002a,d3
-L00004bf4           neg.w   d3
-L00004bf6           lea.l   $00dff000,a4
-L00004bfc           move.l  #$00001c8c,d5               
-L00004c02           btst.b  #$0006,$00dff002
-L00004c0a           bne.b   L00004c02
-L00004c0c           move.l  d6,$0044(a4)                ; BLTAFWM & BLTALWM - Channel A firt/last word mask
-L00004c10           move.w  d3,$0064(a4)
-L00004c14           move.w  d3,$0066(a4)
-L00004c18           move.l  d2,$0040(a4)                ; BLTCON0 & BLTCON1
-L00004c1c           moveq   #$03,d7
-L00004c1e           btst.b  #$0006,$00dff002
-L00004c26           bne.b   L00004c1e
-L00004c28           move.l  a1,$0050(a4)        ; $00bfe151
-L00004c2c           move.l  a0,$0054(a4)        ; $00bfe155
-L00004c30           move.w  d4,$0058(a4)        ; $00bfe159
-L00004c34           adda.l  d5,a1
-L00004c36           adda.l  d5,a0
-L00004c38           dbf.w   d7,L00004c1e
-L00004c3c           rts  
+blit_src_to_dest                                                        ; original address L00004bde
+                    move.l  d2,d5
+                    swap.w  d5
+                    and.w   #$e000,d5
+                    addq.w  #$02,d3
+                    asl.w   #$06,d4
+                    move.w  d3,d5
+                    lsr.w   #$01,d5
+                    add.w   d5,d4
+                    sub.w   #$002a,d3
+                    neg.w   d3
+                    lea.l   $00dff000,a4
+                    move.l  #$00001c8c,d5  
+.blit_wait                                              ; original address L00004c02        
+                    btst.b  #$0006,$00dff002
+                    bne.b   .blit_wait                  ; L00004c02
+
+                    move.l  d6,$0044(a4)                ; BLTAFWM & BLTALWM - Channel A firt/last word mask
+                    move.w  d3,$0064(a4)
+                    move.w  d3,$0066(a4)
+                    move.l  d2,$0040(a4)                ; BLTCON0 & BLTCON1
+
+                    moveq   #$03,d7                     ; bitplane loop counter (3+1)
+.blit_next_bitplane                                     ; original address 
+                    btst.b  #$0006,$00dff002
+                    bne.b   .blit_next_bitplane         ; L00004c1e
+                    move.l  a1,$0050(a4)        ; $00bfe151
+                    move.l  a0,$0054(a4)        ; $00bfe155
+                    move.w  d4,$0058(a4)        ; $00bfe159
+                    adda.l  d5,a1
+                    adda.l  d5,a0
+                    dbf.w   d7,.blit_next_bitplane      ; L00004c1e
+                    rts  
 
 
 
