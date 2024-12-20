@@ -1586,8 +1586,7 @@ display_axis_chemical_factory                                       ; original a
 
                     ; draw initial level gfx to offscreen buffer    ; original address L00003bce
                     bsr.w   initialise_offscreen_buffer             ; draw initial backgroun gfx to offscreen buffer
-
-L00003bd2           bsr.w   draw_level_and_actors                   ; L00004b62                               
+L00003bd2           bsr.w   copy_offscreen_to_backbuffer                   ; L00004b62                               
 
 L00003bd6           bsr.w   draw_batman_and_rope                    ; L000055c4
 
@@ -1711,7 +1710,7 @@ gl_jsr_address      dc.l    player_move_commands            ; $00004c3e ; Self M
                     bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
                     bsr.w   update_score_by_level_progress          ; L00003dd4 ; Update Score based upon progress from left to right through the level.
                     bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
-                    bsr.w   draw_level_and_actors                   ; L00004b62 ; Draw/Update Screen
+                    bsr.w   copy_offscreen_to_backbuffer            ; L00004b62 ; Copy Off-Screen Background GFX to Back-Buffer
                     bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
                     bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
                     bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
@@ -3445,57 +3444,105 @@ draw_background_horizontal_scroll                                       ; origin
 
 
 
-                    ;-------------------------------------------------------------------------------------------------------
-                    ; -- Draw the Background Level and Actors
-                    ;-------------------------------------------------------------------------------------------------------
-                    ; This routine draws the level background and the actors
-                    ; It does not draw the player.
+                    ;-------------------- copy off-screen buffer to back buffer --------------------------
+                    ; This routine copies the background scroll GFX from the off-screen buffer into
+                    ; the back buffer of the double-buffered display.
                     ;
-draw_level_and_actors                                           ; original address L00004b62
-L00004b62           move.w  #$8400,$00dff096
-L00004b6a           movea.l playfield_buffer_2,a6               ; L000036f6,a6            ; playfield buffer 2
-L00004b6e           subq.w #$02,a6                              ; subaq.w
-L00004b70           movea.l offscreen_display_buffer_ptr,a5     ; L0000631e,a5                    ; [0005a36c] CODE1_CHIPMEM_BUFFER
+                    ; the offscreen buffer is circular (i.e it wraps in the Y direction)
+                    ; This means that the start (source gfx ptr) of the back buffer may vary any number
+                    ; of rasters down into the buffer.
+                    ;
+                    ; so, when the gfx in the off-screen buffer aligned to the top, then only a single
+                    ; full screen blit is required.
+                    ;
+                    ; whem the gfx in the offscreen buffer starts (x) rasters down the buffer then
+                    ; the gfx requires two blits to the back buffer.
+                    ;   1) one for the first section of the display
+                    ;   2) for the wrapped portion of the display. 
+                    ;
+                    ; I like to think of the back buffer like an old CRT monitor where the picture
+                    ; is rolling (mechanism used to manage the 8 way scrolling without requiring huge
+                    ; double buffering)
+                    ;;
+                    ; This off-screen buffer needs to be re-aligned to the back buffer before
+                    ; being displayed to the player.
+                    ;
+copy_offscreen_to_backbuffer                                            ; original address L00004b62
+L00004b62           move.w  #$8400,$00dff096                            ; set blitter nasty bit DMACON
+                    ; init ptrs to display back buffer
+L00004b6a           movea.l playfield_buffer_2,a6                       ; a6 = back buffer address
+L00004b6e           subq.w  #$02,a6                                     ; a6 = decrement ptr by 16 pixels 
+
+L00004b70           movea.l offscreen_display_buffer_ptr,a5             ; a5 = offscreen background scroll gfx buffer (circular buffer)
 L00004b74           move.w  offscreen_y_coord,d1
-L00004b78           clr.l   d6
-L00004b7a           subq.w  #$01,d6
-L00004b7c           swap.w  d6
-L00004b7e           move.w  scroll_window_x_coord,d2        ; L000067bc,d2                        ; updated_batman_distance_walked
-L00004b82           and.w   #$0007,d2
-L00004b86           beq.b   L00004b8c
-L00004b88           ror.l   d2,d6
-L00004b8a           ror.l   d2,d6
+L00004b78           clr.l   d6                                          ; d6 = $00000000
+L00004b7a           subq.w  #$01,d6                                     ; d6 = $0000ffff
+L00004b7c           swap.w  d6                                          ; d6 = $ffff0000
+L00004b7e           move.w  scroll_window_x_coord,d2                    ; d2 = word co-ord of display window
+L00004b82           and.w   #$0007,d2                                   ; d2 = soft scroll value (0-7) co-ords are halved (2 pixel resolution)
+L00004b86           beq.b   no_soft_scroll                              ; if soft scroll = 0 (16 pixel boundary)
+is_soft_scroll
+                    ; shift firstword/llastword mask?
+L00004b88           ror.l   d2,d6                                       ; shift mask in d6 by soft scroll value
+L00004b8a           ror.l   d2,d6                                       ; shift mask in d6 by soft scroll value
+no_soft_scroll                                                          ; original address L00004b8c
+                    ; calc blitter shift value (soft scroll value)
 L00004b8c           neg.w   d2
 L00004b8e           ror.w   #$03,d2
-L00004b90           and.l   #$0000e000,d2
-L00004b96           bne.b   L00004b9a
-L00004b98           addq.w #$02,a6              ; addaq.w
+L00004b90           and.l   #$0000e000,d2                               ; d2 = blitter shift value?
+L00004b96           bne.b   set_minterms                                ; L00004b9a
+
+adjust_dest_ptr    ; no blit shift blit - align dest buffer exactly   
+L00004b98           addq.w #$02,a6                                      ; a6 = backbuffer address (no need to shift into additional word of buffer)
+
+set_minterms        ; init BLTCON0 & BLTCON1
 L00004b9a           or.w    #$09f0,d2
-L00004b9e           swap.w  d2
-L00004ba0           move.w  d1,d4
-L00004ba2           mulu.w  #$0054,d4
-L00004ba6           lea.l   $00(a5,d4.L),a1
-L00004baa           movea.l a6,a0
-L00004bac           moveq   #$28,d3
-L00004bae           move.w  #$00ae,d4
+L00004b9e           swap.w  d2                                          ; d2 = BLTCON0 & BLTCON1
+
+                    ; calc source address - offscreen buffer
+L00004ba0           move.w  d1,d4                                       ; offscreen Y co-ord
+L00004ba2           mulu.w  #$0054,d4                                   ; multiply by 84 (2 rasters - coords are stored halved)
+L00004ba6           lea.l   $00(a5,d4.L),a1                             ; a1 = source address (start line of offscreen buffer)
+
+L00004baa           movea.l a6,a0                                       ; a0 = destination buffer address
+L00004bac           moveq   #$28,d3                                     ; d3 = 40
+L00004bae           move.w  #$00ae,d4                                   ; d4 = 174 (display height)
+                    ; calc blit 1 display height
 L00004bb2           sub.w   d1,d4
 L00004bb4           sub.w   d1,d4
+                    ; do blit
 L00004bb6           bsr.w   L00004bde
+
+                    ; check if 2nd blit required (second half of screen)
 L00004bba           move.w  d1,d4
-L00004bbc           beq.b   L00004bd4
-L00004bbe           moveq   #$57,d3
-L00004bc0           sub.w   d4,d3
-L00004bc2           mulu.w  #$0054,d3
-L00004bc6           lea.l   $00(a6,d3.L),a0
+L00004bbc           beq.b   end_copy                                    ; first blit was full screen - no need for 2nd blit -L00004bd4
+
+                    ; blit second half of buffer (circular offscreen buffer)
+L00004bbe           moveq   #$57,d3                                     ; d3 = 87 (full screen height/2)
+L00004bc0           sub.w   d4,d3                                       ; difference between offscreen Y and full screen height
+L00004bc2           mulu.w  #$0054,d3                                   ; multiple difference by 2 rasters (84 bytes) - dimensions held halved (resolution of 2 pixels)
+                    ; calc 2nd blit dest ptr
+L00004bc6           lea.l   $00(a6,d3.L),a0                             ; a0 = back buffer destination ptr
+                    ; calc 2nd blit height
 L00004bca           add.w   d4,d4
+                    ; calc 2nd blit width 
 L00004bcc           moveq   #$28,d3
+                    ; dest ptr is top half of screen
 L00004bce           lea.l   (a5),a1
+                    ; do second blit
 L00004bd0           bsr.w   L00004bde
+end_copy
 L00004bd4           move.w  #$0400,$00dff096
 L00004bdc           rts  
 
 
-
+                    ; IN:-
+                    ;   d2.l = BLTCON0 & BLTCON1 
+                    ;   d3.w = Blit Width
+                    ;   d4.w = Blit Height
+                    ;   d6.l = firstword/lastwoord mask
+                    ;   a0.l = DEST Blitter Address ptr
+                    ;   a1.l = GFX Source Address ptr
 L00004bde           move.l  d2,d5
 L00004be0           swap.w  d5
 L00004be2           and.w   #$e000,d5
@@ -3510,10 +3557,10 @@ L00004bf6           lea.l   $00dff000,a4
 L00004bfc           move.l  #$00001c8c,d5               
 L00004c02           btst.b  #$0006,$00dff002
 L00004c0a           bne.b   L00004c02
-L00004c0c           move.l  d6,$0044(a4)
+L00004c0c           move.l  d6,$0044(a4)                ; BLTAFWM & BLTALWM - Channel A firt/last word mask
 L00004c10           move.w  d3,$0064(a4)
 L00004c14           move.w  d3,$0066(a4)
-L00004c18           move.l  d2,$0040(a4)
+L00004c18           move.l  d2,$0040(a4)                ; BLTCON0 & BLTCON1
 L00004c1c           moveq   #$03,d7
 L00004c1e           btst.b  #$0006,$00dff002
 L00004c26           bne.b   L00004c1e
@@ -3680,10 +3727,10 @@ L00004d80           beq.b   exit_rts                                ; L00004d36
                     ; lose a life - audio & animation?
 L00004d82           jsr     AUDIO_PLAYER_SILENCE              
 L00004d88           clr.w   L00006318
-L00004d8c           moveq   #$03,d0                             ; song/sound number - 03 = player life lost
+L00004d8c           moveq   #$03,d0                                             ; song/sound number - 03 = player life lost
 L00004d8e           jsr     AUDIO_PLAYER_INIT_SONG            
 L00004d94           move.l  #L00004da2,gl_jsr_address           
-L00004d9a           move.w  #$63dc,batman_sprite_anim_00        ; L00006326
+L00004d9a           move.l  #batman_sprite_anim_0a,batman_sprite_anim_ptr       ; modified ptr to longword - L00006326
 L00004da0           rts 
 
 
@@ -3692,10 +3739,10 @@ L00004da0           rts
                     ;  - installed be rouine L00004d82 above.
                     ;
 player_state_dead                                                       ; original address L00004da2
-                    ; player dead animation
-L00004da2            movea.w batman_sprite_anim_00,a0                   ; L00006326,a0                               
+                    ; player dead animation                             
+L00004da2            movea.l batman_sprite_anim_ptr,a0                   ; modified to long pointer - L00006326,a0                               
 L00004da6            bsr.w   set_batman_sprites
-L00004daa            move.w  a0,batman_sprite_anim_00                   ; L00006326
+L00004daa            move.l  a0,batman_sprite_anim_ptr                   ; modified to long pointer - L00006326
 L00004dae            tst.b   (a0)
 L00004db0            bne     exit_rts                                   ;  L00004d36  ; Exit (JMP to RTS)
 
@@ -3797,7 +3844,7 @@ L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
 L00004e80            move.l  #L00005058,gl_jsr_address      ; L00003c90 ; Self modified code JSR game_loop
 L00004e86            move.w  #$0005,L000062f2
-L00004e8c            move.w  #$6426,batman_sprite_anim_00   ; L00006326
+L00004e8c            move.l  #$00006426,batman_sprite_anim_ptr   ; modified to long pointer L00006326
 L00004e92            move.w  d1,d2
 L00004e94            add.w   scroll_window_y_coord,d2       ; L000067be,d2
 L00004e98            subq.w  #$02,d2
@@ -3922,9 +3969,9 @@ L00004fe8           move.l  #L00004ff6,gl_jsr_address       ; Set game_loop Self
 L00004fee           moveq   #SFX_BATARANG,d0
 L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX
 
-L00004ff6           movea.w batman_sprite_anim_00,a0        ; L00006326,a0
+L00004ff6           movea.l batman_sprite_anim_ptr,a0        ; modified to long pointer - L00006326,a0
 L00004ffa           bsr.w   set_batman_sprites
-L00004ffe           move.w  a0,batman_sprite_anim_00        ; L00006326
+L00004ffe           move.l  a0,batman_sprite_anim_ptr        ; modified to long pointer - L00006326
 L00005002           tst.b   (a0)
 L00005004           bne.b   L00005034
 L00005006           move.w  #$0008,L000062f2
@@ -3976,9 +4023,9 @@ L00005084           bsr.w   L000055a0
 L00005088           cmp.b   #$17,d2
 L0000508c           bcs.b   L00005092
 L0000508e           subq.w  #$01,L000067c2
-L00005092           movea.w batman_sprite_anim_00,a0                ; L00006326,a0
+L00005092           movea.l batman_sprite_anim_ptr,a0                ; modified to long pointer - L00006326,a0
 L00005096           bsr.w   set_batman_sprites
-L0000509a           move.w  a0,batman_sprite_anim_00                ; L00006326
+L0000509a           move.l  a0,batman_sprite_anim_ptr                ; modified to long pointer - L00006326
 L0000509e           move.b  (a0),d7
 L000050a0           bne.b   L000050a8
 L000050a2           move.l  #$00005414,gl_jsr_address   ; L00003c90  ; update self modified code JSR game_loop
@@ -4035,7 +4082,7 @@ L00005106           clr.l   (a0)+
 L00005108           bsr.w   get_empty_projectile                    ; a0 = address of empty projectile or the end of the list - L0000463e
 L0000510c           move.w  #$0001,(a0)
 L00005110           move.l  #L00005132,gl_jsr_address               ; Set game_loop Self Modified Code JSR
-L00005116           lea.l   L000063d0,a0
+L00005116           lea.l   batman_sprite_anim_01,a0                ; L000063d0,a0
 L0000511a           bsr.w   set_batman_sprites
 L0000511e           moveq   #SFX_BATROPE,d0
 L00005120           jsr     AUDIO_PLAYER_INIT_SFX
@@ -4075,7 +4122,7 @@ L0000518e           cmp.b   #$79,d2
 L00005192           bcs.b   L000051ae
 L00005194           move.l  #L00004e64,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L0000519a           move.l  L0000631a,L00006328
-L000051a0           lea.l   L00006416,a0
+L000051a0           lea.l   batman_sprite_anim_07,a0                ; L00006416,a0
 L000051a4           bra.w   set_batman_sprites
 L000051a8           move.l  #L000051b0,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L000051ae           rts
@@ -4300,7 +4347,7 @@ L000053f0            bra.w   L0000545a
 
 input_down
 L000053f4           bsr.w   L000051e2                               ; Jump table CMD3
-L000053f8           lea.l   L000063d6,a0
+L000053f8           lea.l   batman_sprite_anim_03,a0                ; L000063d6,a0
 L000053fc           bsr.b   set_batman_sprites
 L000053fe           move.l  #L00005406,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code - game_loop JSR
 L00005404           rts
@@ -4309,7 +4356,7 @@ L00005404           rts
 
                     ; address moved into self modified JSR
                     ; by code line L000053fe
-L00005406           lea.l   L000063d9,a0
+L00005406           lea.l   batman_sprite_anim_04,a0                            ; L000063d9,a0
 L0000540a           bsr.b   set_batman_sprites
 L0000540c           btst.b  #PLAYER_INPUT_DOWN,player_input_command             ; L00006308
 L00005412           bne.b   L00005420
@@ -4319,7 +4366,7 @@ L00005412           bne.b   L00005420
                     ; address moved into self modified JSR
                     ; by code line L000050a2
 L00005414           move.l  #set_default_gl_jsr,gl_jsr_address      ; L00003c90 ; Set game_loop JSR self modified code
-L0000541a           lea.l   L000063d6,a0
+L0000541a           lea.l   batman_sprite_anim_03,a0                ; L000063d6,a0
 L0000541e           bra.b   set_batman_sprites
 L00005420           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
 L00005426           bne.b   input_fire_down                         ; L000053d6
@@ -5951,9 +5998,9 @@ offscreen_display_buffer_ptr                                        ; original a
 L00006322           dc.w $0000
 L00006324           dc.w $3DFE
 
-batman_sprite_anim_ptr
-batman_sprite_anim_00
-L00006326           dc.w $0000                                      ; ptr to 3 byte animation array (originally a word)
+batman_sprite_anim_ptr  ; ----- ptr to batman sprite animation ---  ; original address L00006326
+L00006326           dc.l $00000000                                  ; modified to long ptr to 3 byte animation array (originally a word)
+;L00006326           dc.w $0000                                     ; ptr to 3 byte animation array (originally a word)
 
 L00006328           dc.w $0000
 L0000632a           dc.w $0000   
@@ -5962,45 +6009,72 @@ playfield_swap_count                                                ; original a
                     dc.w $0000                                      ; word value incremented when playfield buffers are swapped
 
 
-L0000632e           dc.w $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615         ;.."! ...........
-L0000633C           dc.w $1413, $1211, $100F, $0E0D, $0C0B, $0A09, $0807, $0605         ;................
-L0000634C           dc.w $0403, $0201, $0003, $0609, $0D10, $1316, $191C, $1F22         ;..............."
-L0000635C           dc.w $2529, $2C2F, $3235, $383B, $3E41, $4447, $4A4D, $5053         ;%),/258;>ADGJMPS
-L0000636C           dc.w $5659, $5C5F, $6264, $676A, $6D70, $7375, $787B, $7E80         ;VY\_bdgjmpsux{~.
-L0000637C           dc.w $8386, $888B, $8E90, $9395, $989A, $9D9F, $A2A4, $A7A9         ;................
-L0000638C           dc.w $ABAE, $B0B2, $B4B7, $B9BB, $BDBF, $C1C3, $C5C7, $C9CB         ;................
-L0000639C           dc.w $CDCF, $D0D2, $D4D6, $D7D9, $DBDC, $DEDF, $E1E2, $E4E5         ;................
-L000063AC           dc.w $E7E8, $E9EA, $ECED, $EEEF, $F0F1, $F2F3, $F4F5, $F6F7         ;................
-L000063BC           dc.w $F7F8, $F9F9, $FAFB, $FBFC, $FCFD, $FDFD, $FEFE, $FEFF         ;................
+L0000632e           dc.w $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615 
+L0000633C           dc.w $1413, $1211, $100F, $0E0D, $0C0B, $0A09, $0807, $0605
+L0000634C           dc.w $0403, $0201, $0003, $0609, $0D10, $1316, $191C, $1F22
+L0000635C           dc.w $2529, $2C2F, $3235, $383B, $3E41, $4447, $4A4D, $5053
+L0000636C           dc.w $5659, $5C5F, $6264, $676A, $6D70, $7375, $787B, $7E80
+L0000637C           dc.w $8386, $888B, $8E90, $9395, $989A, $9D9F, $A2A4, $A7A9
+L0000638C           dc.w $ABAE, $B0B2, $B4B7, $B9BB, $BDBF, $C1C3, $C5C7, $C9CB
+L0000639C           dc.w $CDCF, $D0D2, $D4D6, $D7D9, $DBDC, $DEDF, $E1E2, $E4E5
+L000063AC           dc.w $E7E8, $E9EA, $ECED, $EEEF, $F0F1, $F2F3, $F4F5, $F6F7
+L000063BC           dc.w $F7F8, $F9F9, $FAFB, $FBFC, $FCFD, $FDFD, $FEFE, $FEFF
 L000063CC           dc.w $FFFF, $FFFF
+
 
                     ; sprite 3 array structure
                     ; byte 0 = initial sprite id
                     ; byte 1 = second sprite offset
                     ; byte 2 = third sprite offset
-batman_sprite_anim_01
-L000063d0           dc.b $30,$D2,$04                        ; 48, 02, 06
-batman_sprite_anim_02
-L000063d3           dc.b $01,$02,$07                        ; 01, 03, 10
-batman_sprite_anim_03
-L000063d6           dc.b $19,$01,$E6                        ; 25, 26, 00
-batman_sprite_anim_04
-L000063d9           dc.b $1E,$01,$E1                        ; 30, 31, 00
+batman_sprite_anim_01                                       ; sprite ids - original address L000063d0
+                     dc.b $30,$D2,$04                        ; 48, 02, 06
 
-L000063DC           dc.w $1901
-L000063de           dc.w $E619, $01E6, $1901, $E61B, $01E4, $1B01 ,$E41B         ;................
-L000063EC           dc.w $01E4, $1B01, $E41B, $01E4, $1B01, $E41B, $01E4 ,$1B01         ;................
-L000063FC           dc.w $E41D, $E300, $1DE3, $001D, $E300, $1DE3, $001D ,$E300         ;................
-L0000640C           dc.w $1DE3, $001D
-L00006410           dc.w $E300, $1DE3, $0000
+batman_sprite_anim_02                                       ; sprite ids - original address L000063d3
+                    dc.b $01,$02,$07                        ; 01, 03, 10
 
-batman_sprite_anim_07
-L00006416           dc.b $24, $01, $01                      ; 36, 37, 38
-batman_sprite_anim_08
+batman_sprite_anim_03                                       ; sprite ids - original address L000063d6
+                    dc.b $19,$01,$E6                        ; 25, 26, 00
+
+batman_sprite_anim_04                                       ; sprite ids - original address L000063d9
+                    dc.b $1E,$01,$E1                        ; 30, 31, 00
+
+batman_sprite_anim_0a                                       ; sprite ids - original address L000063DC
+                    dc.b $19, $01, $E6                      ; 25, 26, 00
+                    dc.b $19, $01, $E6                      ; 25, 26, 00
+                    dc.b $19, $01, $E6                      ; 25, 26, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00 
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1B, $01, $E4                      ; 27, 28, 00
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00 
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $1D ,$E3, $00                      ; 29, 00, 00
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $00
+
+batman_sprite_anim_07                                       ; sprite ids - original address L00006416
+                    dc.b $24, $01, $01                      ; 36, 37, 38
+
+                    ; ------ something to do with 'fire' button ------
+                    ; ------ not sure that this is a sprite animation ------
+batman_sprite_anim_08                                       ; sprite ids - original address L00006419
                     dc.b $27, $01, $01                      ; 39, 40, 41
-                    
-L0000641C           dc.w $2A01, $FE2C, $FDD7, $2D01, $0100, $1301, $0116 ,$0101         ;*..,..-.........
-L0000642C           dc.w $001B
+                    dc.b $2A, $01, $FE                      ; 42, 43, 41
+                    dc.b $2C, $FD, $D7                      ; 44, 41, 00
+                    dc.b $2D, $01, $01                      ; 45, 46, 47
+                    dc.b $00, $13, $01                      ; 00, 19, 20
+                    dc.b $01, $16 ,$01                      ; 01, 22, 23
+                    dc.b $01, $00, $1B                      ; 01, 01, 28
+
+
 
                     ; referenced during game_start
                     ; appears to be a data structure where word at offet 4 is a multiple of 6 bytes to start of next structure.
@@ -6011,6 +6085,7 @@ L0000642C           dc.w $001B
                     ;    0      2      4      6
                     ;                  offset
                     ;                   x 6
+                    even
 L0000642e           dc.w $02C1, $0081, $0001, $0022, $0240, $00C0 
                     dc.w $0040, $00F0, $0002, $0003, $00C0, $0118, $000F, $00A0 ,$0118
                     dc.w $0040, $00E2, $0001, $0002, $0008, $00D8
