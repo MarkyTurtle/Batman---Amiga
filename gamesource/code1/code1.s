@@ -1,14 +1,68 @@
 
 
                 ;
-                ; Level 1 - Memory Map
-                ; ------------------------------
-                ; The following files are loaded and decrunched into the following locations
-                ; by the game loader
+                ;
+                ; TERMINOLOGY
+                ; -----------
+                ; I've used the following teminology/metaphors etc to reverse engineer and label code and data.
+                ; Some of these terms maybe correct, close to correct or just plain incorrect.
+                ;
+                ;   Term                        Description
+                ;   -----------------           --------------------------------------------------------------------
+                ;   Double Buffered Display     Twos display screens of memory 
+                ;                               2 buffers, 42 bytes wide, 174 rasters high, 4 bitplanes deep (16 colours)
+                ;                               The display/game runs at 25 frames per second.
+                ;                               The buffers are swapped using the copper so that the next display
+                ;                               can be calculated while the last display remains on screen.
+                ;                               They are then swapped and the next frame is prepped, and so on.
+                ;
+                ;   Display Buffer              I use this term to mean the double buffered display or the
+                ;                               Currently displayed fram of theDouble Buffer.
+                ;
+                ;   Back Buffer                 I use this term to mean the area of the double buffered display 
+                ;                               being prepped for display.
+                ;
+                ;   Off Screen Buffer           Buffer used to perform background level scrolling. It is separate
+                ;                               to the double buffered display.  Graphics (GFX) are copied from this
+                ;                               'Off Screen Buffer' into the 'Back Buffer' of the 'Double Buffered'
+                ;                               display.
+                ;                               This buffer operated like a circular buffer in the Y axis, so,
+                ;                               as the screen scolls vertically downwards then,
+                ;                               the top of the display starts further down in the buffer and new data 
+                ;                               is written into the top of the buffer to represent new graphics scrolling 
+                ;                               into the display.
+                ;                               The opposite occurs when the view scrolls upwards.
+                ;                               I think of it like an old CRT display when the picture starts to roll.
+                ;
+                ;                               Buffer (no vertical scroll)                 Buffer (some vertical scroll)
+                ;                               +---------------+ <-- Top of Display        +---------------+    
+                ;                               |               |                           |               | 
+                ;                               |               |                           |               |  <-- Bottom of Display
+                ;                               |               |                           |---------------|  <-- Top of Display
+                ;                               |               |                           |               |
+                ;                               |               |                           |               |
+                ;                               +---------------+ <-- Bottom of Display     +---------------+
+                ;
+                ;                               The above buffer is copied into the 'Back Buffer' to correct it for
+                ;                               Display and adding sprites etc before being displayed to the player.
+                ;
+                ;
+                ;   Sprites                     Game Objects overlayed on top of the background GFX, not hardware sprites
+                ;                               Typically Blitter Objects (Bobs) - I haven't seen any use of hardware sprites
+                ;                               in the code as yet. The Copper doesn't manage any, so a good indication
+                ;                               that hardware sprites aren't being used anywhere in this code.
                 ;
                 ; NOTES:
                 ; ------
                 ; 1) If 'JAMMMM' cheat mode active then 'F10' skip to next level (Enter text 'JAMMMM' on title screen)
+                ;
+                ; 
+                ;
+                ;
+                ; Level 1 - Memory Map
+                ; ------------------------------
+                ; The following files are loaded and decrunched into the following locations
+                ; by the game loader
                 ;
                 ;
                 ; Filename/Area     Start   End         Additional Info
@@ -41,11 +95,11 @@
                 ; CHEM              $47FE4              - Level Music Player, Music & SFX
                 ; STACK             $5a36c              - Address of program stack - not a file load.
                 ;
-                ; CHIP MEM BUFFER   $5a36c              ; - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
-                ; (off screen scroll buffer)            ; This is an off-screen buffer used to prepare the background
-                ;                                       ; scroll graphics. It's a bit like a circular gfx buffer.
-                ;                                       ; A routine copies the data in this buffer to the back buffer
-                ;                                       ; which is eventually displayed as part of the double buffering.
+                ; Off Screen Buffer - $5a36c            - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ;                                           - This is an off-screen buffer used to prepare the background
+                ;                                           - scroll graphics. It's a bit like a circular gfx buffer.
+                ;                                           - A routine copies the data in this buffer to the back buffer
+                ;                                           - which is eventually displayed as part of the double buffering.
                 ;               
                 ;
                 ; DISPLAY BUFFER (Double Buffered Display)  
@@ -1585,8 +1639,8 @@ display_axis_chemical_factory                                       ; original a
                     bsr.w   double_buffer_playfield   
 
                     ; draw initial level gfx to offscreen buffer    ; original address L00003bce
-                    bsr.w   initialise_offscreen_buffer             ; draw initial backgroun gfx to offscreen buffer
-L00003bd2           bsr.w   copy_offscreen_to_backbuffer                   ; L00004b62                               
+                    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
+                    bsr.w   copy_offscreen_to_backbuffer            ; copy initial level background gfx to back-buffer                              
 
 L00003bd6           bsr.w   draw_batman_and_rope                    ; L000055c4
 
