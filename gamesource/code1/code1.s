@@ -52,6 +52,18 @@
                 ;                               in the code as yet. The Copper doesn't manage any, so a good indication
                 ;                               that hardware sprites aren't being used anywhere in this code.
                 ;
+                ;
+                ;  Player Control States        The main game loop contains some self-modifying JSR code whose destination
+                ;                               address is modified depending upon whether the player is:-
+                ;                                   - Walking on the Ground/Plaform
+                ;                                   - Climbing up/down the stairs
+                ;                                   - Falling from a platform/stairs
+                ;                                   - Swinging from the Batrope.
+                ;                               Depending on the current state, then the JSR is modified to point to the
+                ;                               required handler.  The handler commands called by the JSR also manage the
+                ;                               transition to other states. This means that there are many placed in the
+                ;                               code where this JSR destination is modified (and that's the reason).
+                ;
                 ; NOTES:
                 ; ------
                 ; 1) If 'JAMMMM' cheat mode active then 'F10' skip to next level (Enter text 'JAMMMM' on title screen)
@@ -124,7 +136,6 @@
 
 
 ; Loader Constants
-;------------------
 LOADER_TITLE_SCREEN             EQU $00000820                       ; Load Title Screen 
 LOADER_LEVEL_1                  EQU $00000824                       ; Load Level 1
 LOADER_LEVEL_2                  EQU $00000828                       ; Load Level 2
@@ -1539,12 +1550,18 @@ restart_level                                                       ; original a
 
 
 
-                    ; make data driven changes to level data blocks
-                    ; doesn't appear to run on level 1
-                    ; reads 3 words of data from address ptr L00005f64
+                    ; ------------ modify level tile map ------------
+                    ; Make data driven changes to level data blocks
+                    ; doesn't appear to run on level 1.
+                    ; Reads 3 words of data from address ptr L00005f64
                     ; d3 = index into level data
                     ; d2 = first value to write into level data
                     ; d4 = second value to write into level data
+                    ;
+                    ; Could be used for with game protection check to
+                    ; alter the level to make it impossible to complete.
+                    ; e.g. shorten platform, add/remove walls/doors etc
+                    ;
 update_level_data
                     lea.l   MAPGR_DATA_ADDRESS,a0
                     movea.l L00005f64,a5                            ; a5 = 00005fc4 (default do nothing data address ptr)
@@ -1606,57 +1623,65 @@ L00003b8c           lea.l   L000039c8,a0
                     dbf.w   d7,.loop
 
 
-
-                    ; ------ Set initial batman sprite ids -----
-                                                                    ; original address L00003b98
-L00003b98           clr.w   batman_sprite1_id
+                    ; ------ Set initial batman sprite ids -----    ; original address L00003b98
+init_batman_sprites clr.w   batman_sprite1_id
                     lea.l   batman_sprite_anim_02,a0                ; L000063d3,a0
                     bsr.w   set_batman_sprites
 
 
-
-                    ; ------ set player 1 level default parameters ------
-                    ; sets the player start location and default
-                    ; values. Either start of level or halfway point.
-set_player_defaults                                                 ; original address L00003ba4
-L00003ba4           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92                                                      
-                    lea.l   default_level_parameters,a0             ; L000067a0,a0 - level end L000067ae
-                    move.w  level_spawn_point_index,d6              ; Spawn Point Index 0 or 1 - L000062fc,d6
-.outer_loop                                                         ; original address L00003bb2
-                    moveq   #$06,d7                                 ; counter #$6 + 1 = #$7
-                    lea.l   level_parameters,a1                     ; L000067bc,a1
-.inner_loop                                                         ; original address L00003bb8
-                    move.w  (a0)+,(a1)+
-                    dbf.w   d7,.inner_loop                          ; loop 7 times
-                    dbf.w   d6,.outer_loop                          ; loop 0 times (d6 has to be 0, or code is overwritten) 
+                    ; ------ Set initial player control state ------
+                    ; initial state is 'walking' on platform.
+init_control_state  move.l  #player_move_commands,gl_jsr_address    ; set default player input state handler 'walking'
 
 
+                    ; -------- set player spawn point --------
+                    ; sets the player start location and display
+                    ; window default values. 
+                    ; Either start of level or halfway point.
+set_player_defaults                                                  
+                    lea.l   default_level_parameters,a0             ; start of spawn point array of default values
+                    move.w  level_spawn_point_index,d6              ; Spawn Point Index 0 or 1
+.outer_loop
+                    moveq   #$06,d7                                 ; 7 values to copy for each spawn point (window pos, batman offset, batman target offset, tracker for max x distance travelled)
+                    lea.l   level_parameters,a1                     ; address of current display parameters
+.inner_loop 
+                    move.w  (a0)+,(a1)+                             ; copy single parameter (0-6)
+                    dbf.w   d7,.inner_loop                          ; parameter cop loop loop (7 times)
+                    dbf.w   d6,.outer_loop                          ; loop again until required spawn point parameters have been copied 
 
-                    ; display level title 'Axis Chemical Factory'
+
+                    ; ---------- display level title -------
 display_axis_chemical_factory                                       ; original address L00003bc2
                     lea.l   text_axis_chemicals,a0
                     bsr.w   large_text_plotter
                     bsr.w   double_buffer_playfield   
 
-                    ; draw initial level gfx to offscreen buffer    ; original address L00003bce
-                    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
+
+                    ; -------- initialise back buffer ------        ; original address L00003bce
+init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
                     bsr.w   copy_offscreen_to_backbuffer            ; copy initial level background gfx to back-buffer                              
 
-L00003bd6           bsr.w   draw_batman_and_rope                    ; L000055c4
 
-L00003bda           moveq   #$32,d0
-L00003bdc           bsr.w   wait_for_frame_count                    ; L00005e8c
-
-L00003be0           btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
-L00003be8           bne.b   sfx_only                                ; L00003bf2
-L00003bea           moveq   #$01,d0                                 ; song number - 01 = level music
-L00003bec           jsr     AUDIO_PLAYER_INIT_SONG                        ; chem.iff - music/sfx - initialise song (d0 = song number) $00048010 ; External Address $48010 - CHEM.IFF
-
-sfx_only                                                            ; original address L00003bf2
-                    bsr.w   screen_wipe_to_backbuffer               ; L00003cc0 ; Wipe 'Axis Chemical' -> Show Playfield
+                    ; -------- draw player in at point -------
+draw_player         bsr.w   draw_batman_and_rope
 
 
-L00003bf6           clr.l   frame_counter_and_target_counter                           ; NB: Long Clear - clears next word also -L000036ee
+                    ; --------- pause for 1 second --------
+one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
+                    bsr.w   wait_for_frame_count
+
+
+                    ; --------- start music (if selected) ----------
+set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
+                    bne.b   .no_music                              ; L00003bf2
+.set_music
+                    moveq   #$01,d0                                 ; song number - 01 = level music
+                    jsr     AUDIO_PLAYER_INIT_SONG
+.no_music
+
+                    ; --------- wipe screen from text to level gfx ---------
+                    bsr.w   screen_wipe_to_backbuffer
+                    clr.l   frame_counter_and_target_counter
 
 
 
