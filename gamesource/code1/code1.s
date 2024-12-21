@@ -1979,13 +1979,11 @@ panel_fade_out                                                          ; origin
 
 
 
-                    ;--------------------------------------------------------------------------------------------------------
-                    ;  update score by distance walked
-                    ;--------------------------------------------------------------------------------------------------------     
-                    ; Update the score based onX distance travelled through the level.
+                    ; ----------------- update score by level progress ------------------   
+                    ; Update the score based on X distance travelled through the level.
                     ;
 update_score_by_level_progress                                         ; original address $00003dd4
-                    clr.l   d0                                          ; clear score update value
+                    clr.l   d0                                         ; clear score update value
                     move.w  scroll_window_x_coord,d1
                     sub.w   scroll_window_max_x_coord,d1
                     bls.b   .exit                                       ; if not progressed further then exit.
@@ -2014,17 +2012,18 @@ update_score_by_level_progress                                         ; origina
                     ;---------------------------------------------------------------------------------------
                     ; If this routine is not executed then the level has not active actors displayed on it.
                     ;---------------------------------------------------------------------------------------
-update_level_actors_01                                              ; original address L00003dfe
-L00003dfe           movem.w level_parameters,d0-d1                  ; scroll window X, Y? - L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
+update_level_actors_01                                                  ; original address L00003dfe
+L00003dfe           movem.w scroll_window_xy_coords,d0-d1               ; scroll window X, Y? - L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
 L00003e04           lea.l   L0000642e,a0
-L00003e08           movem.w (a0)+,d2-d3
-L00003e0c           sub.w   d0,d2
-L00003e0e           cmp.w   #$0098,d2
-L00003e12           bcc.b   L00003e30
-L00003e14           sub.w   d1,d3
-L00003e16           cmp.w   #$0050,d3
-L00003e1a           bcc.b   L00003e30
-L00003e1c           bset.b  #$0007,-$0004(a0)
+L00003e08           movem.w (a0)+,d2-d3                                 ; actor X,Y co-ords?
+L00003e0c           sub.w   d0,d2                                       ; sub window x from actor x
+L00003e0e           cmp.w   #$0098,d2                                   ; compare 152 (304 decimal)
+L00003e12           bcc.b   L00003e30                                   ; actor is > 152 (304) from window X
+L00003e14           sub.w   d1,d3                                       ; d3 = window Y - actor Y
+L00003e16           cmp.w   #$0050,d3                                   ; is actor > 80 (160) from window Y
+L00003e1a           bcc.b   L00003e30                                   ; actor is > 80 (160) from window Y
+
+L00003e1c           bset.b  #$0007,-$0004(a0)                           ; set MSB of ?????
 L00003e22           move.w  (a0)+,d7
 L00003e24           subq.w  #$01,d7
 L00003e26           bsr.w   L00003e74
@@ -2700,16 +2699,24 @@ L0000459e           move.b  -$2(a0,d3.W),d5     ; $00000d11
 L000045a2           ext.w   d5
 L000045a4           sub.w   d5,d4
 L000045a6           asr.w   #$01,d4
-L000045a8           movem.w d0-d1/d4,$000e(a6)  ; $00dff00e
+L000045a8           movem.w d0-d1/d4,$000e(a6)  ; update Sprite X, Y and Id to offset 14
 L000045ae           movem.w d0-d1/a5-a6,-(a7)
 L000045b2           bsr.w   draw_sprite         ; draw top/head of bad guy  ; L000056f4
 L000045b6           movem.w (a7)+,d0-d1/a5-a6
 L000045ba           rts 
 
 
-L000045bc           add.w   $0006(a6),d2        ; $00dff006
+                    ; IN:-
+                    ;   d0.w - Sprite X Position
+                    ;   d1.w - Sprite Y Position
+                    ;   d2.w - current sprite id
+                    ;   a6.l - address of object/sprite struct
+                    ; OUT:
+                    ;   d2.w - updated sprite id
+draw_next_sprite                                                        ; original address L000045bc
+L000045bc           add.w   $0006(a6),d2                                ; set sprite id
 L000045c0           movem.w d0-d1/a5-a6,-(a7)
-L000045c4           bsr.w   draw_sprite
+L000045c4           bsr.w   draw_sprite                                 ; d0.w - Sprite X Position, d1.w - Sprite Y Position,  d2.w - Sprite id
 L000045c8           movem.w (a7)+,d0-d1/a5-a6
 L000045cc           rts 
 
@@ -5544,7 +5551,7 @@ L00005b18           bpl.w   L000045bc
 L00005b1c           bsr.w   double_buffer_playfield                 ; L000036fa
 L00005b20           moveq   #$32,d0
 L00005b22           bsr.w   wait_for_frame_count                    ; L00005e8c
-L00005b26           bra.w   L00005e3a
+L00005b26           bra.w   Load_level_2                            ; L00005e3a
 
 
 L00005b2a           dc.w    $0001, $0001                            ; or.b #$01,d1
@@ -5760,10 +5767,14 @@ L00005da6           move.b  #PANEL_ST1_VAL_TIMER_EXPIRED,PANEL_STATUS_1    ; Set
 L00005dae           rts
 
 
-L00005db0           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                                    ; updated_batman_distance_walked
+                    ; IN:
+                    ;   d0.w - Sprite X co-ord
+                    ;   d1.w - Unknown - maybe Sprite Y
+                    ;   a6.l - object/sprite structure ptr
+L00005db0           move.w  scroll_window_x_coord,d2
 L00005db4           cmp.w   #$0540,d2                               ; 1344 (max X)
 L00005db8           beq.b   L00005dce
-L00005dba               addq.w  #$02,$0002(a6)          ; $00dff002
+L00005dba               addq.w  #$02,$0002(a6)
 L00005dbe               moveq   #$70,d2
 L00005dc0               sub.w   d0,d2
 L00005dc2               cmp.w   #$fffd,d2
@@ -5772,10 +5783,10 @@ L00005dc8                   move.l  #$fffffffe,D2
 L00005dca               add.w   d2,L000067c8
 
                     ; check level complete
-L00005dce           cmp.w   #$0048,d1
-L00005dd2           bcc.b   level_completed                                 ; d1 <= #$48 (72 dec) then Level Is Completed - L00005e26 
+L00005dce           cmp.w   #$0048,d1                       ; d1.w - maybe sprite Y co-ord  
+L00005dd2           bcc.b   level_completed                 ; d0.w = Sprite X, a6.l = object/sprite struct?    ; d1 <= #$48 (72 dec) then Level Is Completed - L00005e26 
 
-L00005dd4           move.w  $000a(a6),d3            ; $00dff00a,d3
+L00005dd4           move.w  $000a(a6),d3
 L00005dd8           cmp.w   #$000e,d3
 L00005ddc           bpl.b   L00005de4
 L00005dde           addq.w  #$01,d3
@@ -5805,44 +5816,66 @@ L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score
 
 
                     ; ------------------------ level completed ------------------------
-level_completed                                                     ; Original Address L00005e26
-L00005e26           moveq   #$50,d1
-L00005e28           moveq   #$0b,d2
-L00005e2a           bsr.w   L000045bc
-L00005e2e           bsr.w   double_buffer_playfield     ; L000036fa
-L00005e32           bset.b  #PANEL_ST2_LEVEL_COMPLETE,PANEL_STATUS_2  ; Panel - Status 2 Bytes - bit #$0006 of $0007c875
-                    ; ------ load level 2 ------
-Load_level_2                                            ; original address L00005e3a
-L00005e3a           jsr     AUDIO_PLAYER_SILENCE              ; Chem.iff - Music/SFX player - Silence all audio - $00048004
-L00005e40           moveq   #$02,d0                     ; song number - 02 = Level completed
-L00005e42           jsr     AUDIO_PLAYER_INIT_SONG            ; chem.iff - music/sfx - init sonng - d0.l = song number - $00048010 ; External Address - CHEM.IFF
-L00005e48           move.w  #$00fa,d0
-L00005e4c           bsr.b   wait_for_frame_count        ; L00005e8c
-L00005e4e           moveq   #$64,d0
-L00005e50           bsr.w   wait_for_frame_count        ; L00005e8c
-L00005e54           bsr.w   clear_backbuffer_playfield  ; L00004e28
-L00005e58           lea.l   text_jack_is_dead,a0        ; L00003abd,a0
-L00005e5c           bsr.w   large_text_plotter          ; L000067ca 
-L00005e60           bsr.w   screen_wipe_to_backbuffer   ; L00003cc0
-L00005e64           moveq   #$64,d0
-L00005e66           bsr.w   wait_for_frame_count        ; L00005e8c
-L00005e6a           bsr.w   clear_backbuffer_playfield  ; L00004e28
-L00005e6e           lea.l   text_the_joker_lives,a0     ; L00003acd,a0
-L00005e72           bsr.w   large_text_plotter          ; L000067ca
-L00005e76           bsr.w   screen_wipe_to_backbuffer   ; L00003cc0
-L00005e7a           moveq   #$64,d0
-L00005e7c           bsr.w   wait_for_frame_count        ; L00005e8c
-L00005e80           bsr.w   screen_wipe_to_black        ; L00003cbc
-L00005e84           bsr.w   panel_fade_out              ; L00003d8c
-L00005e88           bra.w   LOADER_LEVEL_2              ; External Address - Loader $00000828 
+                    ; IN:
+                    ;   d0.w - Sprite X
+                    ;   a6.l - address of object/sprite structure
+level_completed                                                         ; Original Address L00005e26
+                    moveq   #$50,d1                                     ; Sprite Y position
+                    moveq   #$0b,d2                                     ; current sprite id
+                    bsr.w   draw_next_sprite                            
+                    bsr.w   double_buffer_playfield 
+                    bset.b  #PANEL_ST2_LEVEL_COMPLETE,PANEL_STATUS_2  
+                    ; fall through to 'load_level_2'
 
 
-                    ; wait for frame count
-wait_for_frame_count
-L00005e8c           add.w   frame_counter,d0            ; L000036ee,d0
-L00005e90           cmp.w   frame_counter,d0            ; L000036ee,d0
-L00005e94           bpl.b   L00005e90
-L00005e96           rts 
+                    ; -------------------------- load level 2 ------------------------
+                    ; do level completed sequence of displaying the text:
+                    ;   - Jack is Dead
+                    ;   - The Joker Lives
+                    ; then clear the screen and load level 2
+                    ;
+Load_level_2        ; silence current audio                             ; original address L00005e3a
+                    jsr     AUDIO_PLAYER_SILENCE
+                    ; play level complete audio
+                    moveq   #SFX_LEVEL_COMPLETE,d0 
+                    jsr     AUDIO_PLAYER_INIT_SONG 
+                    ; wait for 5 seconds (250 frames)
+                    move.w  #$00fa,d0
+                    bsr.b   wait_for_frame_count
+                    ; wait for 2 seconds (100 frames)
+                    moveq   #$64,d0
+                    bsr.w   wait_for_frame_count
+                    ; display 'Jack is Dead' text
+                    bsr.w   clear_backbuffer_playfield  
+                    lea.l   text_jack_is_dead,a0        
+                    bsr.w   large_text_plotter           
+                    bsr.w   screen_wipe_to_backbuffer  
+                    ; wait for 2 seconds (100 frames)
+                    moveq   #$64,d0
+                    bsr.w   wait_for_frame_count
+                    ; display 'The Joker Lives' text
+                    bsr.w   clear_backbuffer_playfield  
+                    lea.l   text_the_joker_lives,a0    
+                    bsr.w   large_text_plotter          
+                    bsr.w   screen_wipe_to_backbuffer  
+                    ; wait for 2 seconds (100 frames)
+                    moveq   #$64,d0
+                    bsr.w   wait_for_frame_count
+                    bsr.w   screen_wipe_to_black
+                    ; fade bottom panel (score etc)
+                    bsr.w   panel_fade_out
+                    ; jump to loader, load level 2
+                    bra.w   LOADER_LEVEL_2
+
+
+
+                    ; -------- wait for frame count ---------
+wait_for_frame_count                                                    ; original address L00005e8c
+                    add.w   frame_counter,d0
+.wait_loop
+                    cmp.w   frame_counter,d0                            ; frame counter incremented by level 3 vbl interrrupt handler
+                    bpl.b   .wait_loop
+                    rts 
 
 
 L00005e98           movem.w batman_xy_offset,d2-d3
@@ -6215,8 +6248,9 @@ batman_sprite_anim_08                                       ; sprite ids - origi
                     dc.b $2C, $FD, $D7                      ; 44, 41, 00
                     dc.b $2D, $01, $01                      ; 45, 46, 47
                     dc.b $00, $13, $01                      ; 00, 19, 20
-                    dc.b $01, $16 ,$01                      ; 01, 22, 23
-                    dc.b $01, $00, $1B                      ; 01, 01, 28
+                    dc.b $01, $16 
+                    
+
 
 
 
@@ -6230,6 +6264,8 @@ batman_sprite_anim_08                                       ; sprite ids - origi
                     ;                  offset
                     ;                   x 6
                     even
+                    dc.w $0101
+                    dc.w $001B
 L0000642e           dc.w $02C1, $0081, $0001, $0022, $0240, $00C0 
                     dc.w $0040, $00F0, $0002, $0003, $00C0, $0118, $000F, $00A0 ,$0118
                     dc.w $0040, $00E2, $0001, $0002, $0008, $00D8
