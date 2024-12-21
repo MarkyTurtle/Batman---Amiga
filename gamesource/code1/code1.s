@@ -1774,7 +1774,7 @@ gl_update_state_machine
                     clr.l   d0
                     clr.l   d1
                     bsr.w   read_player_input
-                    movem.w L000067c2,d0-d1                                 ; batman X,Y? or centre window co-ords
+                    movem.w batman_xy_offset,d0-d1
 
                     ; ----- SELF MODIFYING CODE -----
                     ; updated all over the place to run an alternative routine.
@@ -2145,14 +2145,14 @@ L00003f52           move.w  d7,-(a7)
 L00003f54           jsr     (a0)
 
 L00003f56           movem.w $000e(a6),d0-d2
-L00003f5c           sub.w   L000067c2,d0
+L00003f5c           sub.w   batman_x_offset,d0
 L00003f60           addq.w  #$06,d0
 L00003f62           cmp.w   #$000d,d0
 L00003f66           bcc.b   L00003fa6
 L00003f68           sub.w   L000062f0,d1
 L00003f6c           subq.w  #$06,d1
 L00003f6e           bmi.b   L00003fa6
-L00003f70           sub.w   L000067c4,d2
+L00003f70           sub.w   batman_y_offset,d2
 L00003f74           bpl.b   L00003fa6
 L00003f76           move.w  (a6),d0
 L00003f78           subq.w  #$02,d0
@@ -2175,7 +2175,7 @@ L00003fac           dbf.w   d7,L00003eec
 L00003fb0           rts
 
 L00003fb2           add.w   #$0002,(a6)
-L00003fb6           movem.w L000067c2,d2
+L00003fb6           move.w  batman_x_offset,d2
 L00003fbc           move.w  L000062f0,d3
 L00003fc0           add.w   #$0015,d3
 L00003fc4           sub.w   d1,d3
@@ -2237,7 +2237,7 @@ L00004062           bmi.b   L000040b0
 L00004064           subq.w  #$01,$0008(a6)
 L00004068           bpl.b   L00004082
 L0000406a           move.w  d0,d2
-L0000406c           sub.w   L000067c2,d2
+L0000406c           sub.w   batman_x_offset,d2
 L00004070           cmp.w   #$0030,d2
 L00004074           bcc.b   L00004082
 L00004076           clr.w   $0008(a6)
@@ -2247,14 +2247,14 @@ L00004082           moveq   #$07,d2
 L00004084           and.w   d4,d2
 L00004086           bne.w   L00004318
 L0000408a           sub.w   #$000c,d0
-L0000408e           bsr.w   L000055a0
+L0000408e           bsr.w   get_map_tile_at_display_offset_d0_d1            ; out: d2.b = tile value
 L00004092           add.w   #$000c,d0
 L00004096           cmp.b   #$79,d2
 L0000409a           bcc.w   L00004318
 L0000409e           tst.w   $0008(a6)
 L000040a2           bpl.b   L000040b0
 L000040a4           move.w  d0,d2
-L000040a6           sub.w   L000067c2,d2
+L000040a6           sub.w   batman_x_offset,d2
 L000040aa           cmp.w   #$0040,d2
 L000040ae           bcs.b   L00004076
 L000040b0           move.w  #$0002,(a6)
@@ -2289,7 +2289,7 @@ L0000410a           cmp.w   #$00e0,d0
 L0000410e           bpl.b   L00004158
 L00004110           subq.w  #$01,$0008(a6)
 L00004114           bpl.b   L0000412e
-L00004116           move.w  L000067c2,d2
+L00004116           move.w  batman_x_offset,d2
 L0000411a           sub.w   d0,d2
 L0000411c           cmp.w   #$0030,d2
 L00004120           bcc.b   L0000412e
@@ -2300,19 +2300,19 @@ L0000412e           moveq   #$07,d2
 L00004130           and.w   d4,d2
 L00004132           bne.w   L00004242
 L00004136           addq.w  #$08,d0
-L00004138           bsr.w   L000055a0
+L00004138           bsr.w   get_map_tile_at_display_offset_d0_d1            ; d2.b = tile value
 L0000413c           subq.w  #$08,d0
 L0000413e           cmp.b   #$79,d2
 L00004142           bcc.w   L00004242
 L00004146           tst.w   $0008(a6)
 L0000414a           bpl.b   L00004158
-L0000414c           move.w  L000067c2,d2
+L0000414c           move.w  batman_x_offset,d2
 L00004150           sub.w   d0,d2
 L00004152           cmp.w   #$0040,d2
 L00004156           bcs.b   L00004122
 L00004158           move.w  #$0003,(a6)
 L0000415c           bra.w   L00004248
-L00004160           move.w  L000067c4,d5
+L00004160           move.w  batman_y_offset,d5
 L00004164           sub.w   d1,d5
 L00004166           add.w   #$0010,d5
 L0000416a           cmp.w   #$0020,d5
@@ -2340,7 +2340,7 @@ L000041aa           bne.w   L00004242
 L000041ae           cmp.w   #$0140,d0
 L000041b2           bpl.b   L000041c2
 L000041b4           addq.w  #$07,d0
-L000041b6           bsr.w   L000055a0
+L000041b6           bsr.w   get_map_tile_at_display_offset_d0_d1            ; out: d2.b = tile value
 L000041ba           subq.w  #$07,d0
 L000041bc           cmp.b   #$79,d2
 L000041c0           bcc.b   L000041ce
@@ -2351,7 +2351,7 @@ L000041ce           bsr.w   L00004160
 L000041d2           subq.w  #$01,$0008(a6)
 L000041d6           beq.w   L00004348
 L000041da           bpl.b   L00004242
-L000041dc           move.w  L000067c2,d2
+L000041dc           move.w  batman_x_offset,d2
 L000041e0           sub.w   d0,d2
 L000041e2           bmi.b   L00004242
 L000041e4           cmp.w   #$0020,d5
@@ -2407,7 +2407,7 @@ L00004274           bne.w   L00004318
 L00004278           cmp.w   #$ff60,d0
 L0000427c           bmi.b   L00004298
 L0000427e           subq.w  #$07,d0
-L00004280           bsr.w   L000055a0
+L00004280           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00004284           addq.w  #$07,d0
 L00004286           cmp.b   #$79,d2
 L0000428a           bcc.b   L000042a4
@@ -2422,7 +2422,7 @@ L000042a8           subq.w  #$01,$0008(a6)
 L000042ac           beq.w   L00004348
 L000042b0           bpl.b   L00004318
 L000042b2           move.w  d0,d2
-L000042b4           sub.w   L000067c2,d2
+L000042b4           sub.w   batman_x_offset,d2
 L000042b8           bmi.b   L00004318
 L000042ba           cmp.w   #$0020,d5
 L000042be           bpl.b   L000042fa
@@ -2500,7 +2500,7 @@ L0000438e           move.w  d4,$0004(a6)
 L00004392           addq.w  #$01,d1
 L00004394           and.w   #$0007,d4
 L00004398           bne.b   L000043ce
-L0000439a           bsr.w   L000055a0
+L0000439a           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L0000439e           bra.b   L000043c6
 L000043a0           move.w  $0004(a6),d4
 L000043a4           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
@@ -2511,7 +2511,7 @@ L000043b2           subq.w  #$01,d1
 L000043b4           and.w   #$0007,d4
 L000043b8           bne.b   L000043ce
 L000043ba           sub.w   #$0018,d1
-L000043be           bsr.w   L000055a0
+L000043be           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000043c2           add.w   #$0018,d1
 L000043c6           cmp.b   #$85,d2
 L000043ca           bcc.b   L000043ce
@@ -2829,14 +2829,14 @@ update_projectiles                                  ; original address L00004658
 
 badguy_shooting
 L00004686           movem.w d0-d1,(a6)
-L0000468a           bsr.w   L000055a0
+L0000468a           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L0000468e           cmp.b   #$17,d2
 L00004692           bcs.b   L000046ba
-L00004694           sub.w   L000067c2,d0
+L00004694           sub.w   batman_x_offset,d0
 L00004698           addq.w  #$04,d0
 L0000469a           cmp.w   #$0009,d0
 L0000469e           bcc.b   exit_badguy_shooting            ; L000046c0
-L000046a0           cmp.w   L000067c4,d1
+L000046a0           cmp.w   batman_y_offset,d1
 L000046a4           bpl.b   exit_badguy_shooting            ; L000046c0
 L000046a6           cmp.w   L000062f0,d1
 L000046aa           bmi.b   exit_badguy_shooting            ; L000046c0
@@ -2898,7 +2898,7 @@ L00004726           rts
 L00004728           addq.w  #$04,d0                     ; batman fire right
 L0000472a           cmp.w   #$00a8,d0
 L0000472e           bpl.b   L00004722
-L00004730           bsr.w   L000055a0
+L00004730           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00004734           cmp.b   #$17,d2
 L00004738           movem.w d0-d1,(a6)
 L0000473c           bcc.b   L0000477e
@@ -2907,7 +2907,7 @@ L0000473e           bcs.b   L00004722
 L00004740           subq.w  #$04,d0                     ; batman fire left
 L00004742           cmp.w   #$fff6,d0
 L00004746           bmi.b   L00004722
-L00004748           bsr.w   L000055a0
+L00004748           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L0000474c           cmp.b   #$17,d2
 L00004750           movem.w d0-d1,(a6)
 L00004754           bcc.b   L0000477e
@@ -2915,7 +2915,7 @@ L00004756           bra.b   L00004722
 
 L00004758           move.w  L00006318,d0                ; batman grappling hook
 L0000475c           beq.b   L00004722
-L0000475e           movem.w L000067c2,d0-d1
+L0000475e           movem.w batman_xy_offset,d0-d1
 L00004764           add.w   L0000631a,d0
 L00004768           sub.w   L0000631c,d1
 L0000476c           sub.w   #$000c,d1
@@ -2962,14 +2962,14 @@ L000047da           add.w   d2,d1
 L000047dc           cmp.w   #$0060,d1
 L000047e0           bpl.w   L00004722
 L000047e4           movem.w d0-d1,(a6)
-L000047e8           bsr.w   L000055a0
+L000047e8           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000047ec           cmp.b   #$17,d2
 L000047f0           bcs.b   L00004814
-L000047f2           sub.w   L000067c2,d0
+L000047f2           sub.w   batman_x_offset,d0
 L000047f6           addq.w  #$03,d0
 L000047f8           cmp.w   #$0007,d0
 L000047fc           bcc.b   L00004820
-L000047fe           cmp.w   L000067c4,d1
+L000047fe           cmp.w   batman_y_offset,d1
 L00004802           bpl.b   L00004820
 L00004804           cmp.w   L000062f0,d1
 L00004808           bmi.b   L00004820
@@ -3165,9 +3165,9 @@ temp_vertical_scroll_increments                                     ; original a
                     dc.w    $0000                                   ; referenced as word below - oly set never read
 
 scroll_offscreen_buffer                                             ; original address $00004936
-                    movem.w L000067c4,D1-D2                         ; d1,d2 - window framing values
+                    movem.w batman_y_offset,D1-D2                   ; d1 = y offset, d2 = y offset (target Y) - window framing values
                     move.w  d1,d0
-                    sub.w   d2,d0                                   ; d0 = difference between values
+                    sub.w   d2,d0                                   ; d0 = difference new y and old y values
                     move.w  vertical_scroll_increments,temp_vertical_scroll_increments
                     move.w  d0,vertical_scroll_increments           ; store difference between values
                     beq.w   do_horizontal_scroll                    ; no vertical scroll, goto horizontal scroll.
@@ -3227,7 +3227,7 @@ scroll_speed_shenanigans                                            ; original a
                     clr.w   d1                                          ; d1 = window y coord - clamp Y at min value #$00
 
 .update_y_scroll_position                                               ; original address L000049a0
-                    sub.w   d0,L000067c4                                ; subtract scroll amount from $67c4
+                    sub.w   d0,batman_y_offset                          ; subtract scroll amount from $67c4
                     move.w  d1,scroll_window_y_coord                    ; update window Y coord
 
 check_vertical_scroll                                                   ; original address L000049a8
@@ -3271,7 +3271,7 @@ scroll_display_window_up
 
                     ; ------- do horizontal scroll -------
 do_horizontal_scroll                                                    ; original address L000049ec
-                    move.w  L000067c2,d0                                ; last batman X position scroll value
+                    move.w  batman_x_offset,d0                          ; last batman X position scroll value
                     sub.w   L000067c8,d0                                ; current X scroll value
                     move.w  d0,L0000630e                                ; amount of scroll
                     beq.w   .exit_horizontal_scroll                      ; no horizontal scroll.
@@ -3299,8 +3299,8 @@ do_horizontal_scroll                                                    ; origin
                     exg.l   d1,d0
 
 .cont_horiz_scroll  ; calc amount of horizontal scroll                  ; original address L00004a1c
-                    add.w   L000067c8,d0                                ; d0 = new X scroll value (framing value)
-                    move.w  d0,L000067c2                                ; update last X scroll value (framing value)
+                    add.w   L000067c8,d0
+                    move.w  d0,batman_x_offset
                     move.w  d1,scroll_window_x_coord                    ; update scroll window X coord
                     move.w  d1,d3
                     sub.w   d2,d3                                       ; d3 = difference between old and new X window 
@@ -3626,44 +3626,48 @@ copy_offscreen_to_backbuffer                                            ; origin
                     ; of the double buffered display.
                     ;
                     ; IN:-
-                    ;   d2.l = BLTCON0 & BLTCON1 
+                    ;   d2.l = BLTCON0 & BLTCON1 ($x9f00000) x = shift
                     ;   d3.w = Blit Width
                     ;   d4.w = Blit Height
                     ;   d6.l = firstword/lastwoord mask
                     ;   a0.l = DEST Blitter Address ptr
                     ;   a1.l = GFX Source Address ptr
 blit_src_to_dest                                                        ; original address L00004bde
-                    move.l  d2,d5
-                    swap.w  d5
-                    and.w   #$e000,d5
-                    addq.w  #$02,d3
-                    asl.w   #$06,d4
-                    move.w  d3,d5
-                    lsr.w   #$01,d5
-                    add.w   d5,d4
-                    sub.w   #$002a,d3
-                    neg.w   d3
-                    lea.l   $00dff000,a4
-                    move.l  #$00001c8c,d5  
-.blit_wait                                              ; original address L00004c02        
-                    btst.b  #$0006,$00dff002
-                    bne.b   .blit_wait                  ; L00004c02
+                    move.l  d2,d5                                       ; copy bltcon value (unused)
+                    swap.w  d5                                          ; swap low/high word (unused)
+                    and.w   #$e000,d5                                   ; d5 = preserve shift value (unused)
+                    addq.w  #$02,d3                                     ; add 2 bytes to blit width (for shifting?)
+                    asl.w   #$06,d4                                     ; shift blit height to correct bits 15-6
+                    move.w  d3,d5                                       ; copy blit width to d5
+                    lsr.w   #$01,d5                                     ; divide blit width to get numberof words (instead of bytes)
+                    add.w   d5,d4                                       ; set bits 0-5 for blit width
+                    sub.w   #DISPLAY_BYTEWIDTH,d3                       ; subtract 42 from blit width (get modulo?)
+                    neg.w   d3                                          ; make +ve if d3 < display width (will most likely be 0)
+                    lea.l   CUSTOM,a4                                   ; a4 = custom base
+                    move.l  #DISPLAY_BUFFER_BYTES,d5                    ; d5 = display bitplane size (offscreen buffer & back buffer same size)
 
-                    move.l  d6,$0044(a4)                ; BLTAFWM & BLTALWM - Channel A firt/last word mask
-                    move.w  d3,$0064(a4)
-                    move.w  d3,$0066(a4)
-                    move.l  d2,$0040(a4)                ; BLTCON0 & BLTCON1
+.blit_wait                                                              ; original address L00004c02        
+                    btst.b  #$0006,$00dff002                            ; test blitter finished dmaconr
+                    bne.b   .blit_wait
 
-                    moveq   #$03,d7                     ; bitplane loop counter (3+1)
-.blit_next_bitplane                                     ; original address 
+                    move.l  d6,BLTAFWM(a4)                              ; BLTAFWM & BLTALWM - Channel A firt/last word mask
+                    move.w  d3,BLTAMOD(a4)
+                    move.w  d3,BLTDMOD(a4)
+                    move.l  d2,BLTCON0(a4)                              ; BLTCON0 ($x9f0) & BLTCON1 ($0000) - x = shift ,$9 = use A & D, $f0 = minterms (D=A
+
+                    moveq   #$03,d7                                     ; bitplane loop counter (3+1)
+.blit_next_bitplane
                     btst.b  #$0006,$00dff002
-                    bne.b   .blit_next_bitplane         ; L00004c1e
-                    move.l  a1,$0050(a4)        ; $00bfe151
-                    move.l  a0,$0054(a4)        ; $00bfe155
-                    move.w  d4,$0058(a4)        ; $00bfe159
-                    adda.l  d5,a1
-                    adda.l  d5,a0
-                    dbf.w   d7,.blit_next_bitplane      ; L00004c1e
+                    bne.b   .blit_next_bitplane                         ; test blitter finished dmaconr
+
+                    move.l  a1,BLTAPT(a4)                               ; BLTAPTH & BLTAPTL
+                    move.l  a0,BLTDPT(a4)                               ; BLTDPTH & BLTDPTL
+                    move.w  d4,BLTSIZE(a4)                              ; start the blit of required size.
+
+                    adda.l  d5,a1                                       ; increment src ptr by bitplane size
+                    adda.l  d5,a0                                       ; increment dest ptr by bitplane size
+
+                    dbf.w   d7,.blit_next_bitplane                      ; loopto do next bitplane (4 in total)
                     rts  
 
 
@@ -3677,8 +3681,8 @@ blit_src_to_dest                                                        ; origin
                     ; Jump table into player input/movement commands
                     ;
                     ; IN:-
-                    ;   - D0.w = L000067c2 - Window/Batman X co-ord
-                    ;   - D1.w = L000067c4 - Window/Batman Y co-ord
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
                     ; 
 player_move_commands                                                ; original address $00004c3e
 L00004c3e           clr.w   d2
@@ -3944,7 +3948,7 @@ L00004e94            add.w   scroll_window_y_coord,d2       ; L000067be,d2
 L00004e98            subq.w  #$02,d2
 L00004e9a            and.w   #$0007,d2
 L00004e9e            sub.w   d2,d1
-L00004ea0            move.w  d1,L000067c4
+L00004ea0            move.w  d1,batman_y_offset
 L00004ea4            rts  
 
                     ; d4.b = player_input_command
@@ -3991,9 +3995,9 @@ L00004f12            bra.b   L00004f16
 L00004f14            moveq   #$7f,d2
 L00004f16            movem.w d2-d3,(a0)
 L00004f1a            lea.l   L00006314,a0
-L00004f1e            lea.l   L000067c2,a2
+L00004f1e            lea.l   batman_xy_offset,a2
 L00004f22            bsr.w   L000050aa
-L00004f26            movem.w L000067c2,d0-d1
+L00004f26            movem.w batman_xy_offset,d0-d1
 L00004f2c            movem.w L00006328,d5-d6
 L00004f32            sub.w   d3,d5
 L00004f34            move.w  d5,L000062f4
@@ -4004,7 +4008,7 @@ L00004f42            add.w   d4,d1
 L00004f44            add.w   d5,d0
 L00004f46            subq.w  #$04,d1
 L00004f48            subq.w  #$05,d0
-L00004f4a            bsr.w   L000055a0
+L00004f4a            bsr.w   get_map_tile_at_display_offset_d0_d1               ; out: d2.b = tile value
 L00004f4e            moveq   #$02,d7
 L00004f50            move.b  $00(a0,d3.W),d2
 L00004f54            cmp.b   #$17,d2
@@ -4014,10 +4018,10 @@ L00004f5e            cmp.b   #$17,d2
 L00004f62            bcs.b   L00004f8e
 L00004f64            sub.w   MAPGR_BASE,d3            ; MAPGR.IFF (value $00c0)
 L00004f6a            dbf.w   d7,L00004f50
-L00004f6e            movem.w L000067c2,d0-d1
+L00004f6e            movem.w batman_xy_offset,d0-d1
 L00004f74            add.w   d4,d1
 L00004f76            add.w   d5,d0
-L00004f78            movem.w d0-d1,L000067c2
+L00004f78            movem.w d0-d1,batman_xy_offset
 L00004f7e            move.l  L0000631a,L00006328
 L00004f84            btst.b  #PLAYER_INPUT_FIRE,player_input_command            ; L00006308
 L00004f8a            bne.b   L00004fae
@@ -4050,7 +4054,7 @@ L00004fc8           asl.w   #$02,d4
 L00004fca           addq.w  #$02,d4
 L00004fcc           movem.w d4-d5,L000062f4
 L00004fd2           clr.w   L00006318
-L00004fd6           movem.w L000067c2,d0-d1
+L00004fd6           movem.w batman_xy_offset,d0-d1
 L00004fdc           bra.w   L00005464
 
 
@@ -4102,21 +4106,21 @@ L00005054           bra.w   player_move_commands                ; L00004c3e
 L00005058           subq.w  #$01,L000062f2
 L0000505c           bne.b   L00005034
 L0000505e           move.w  #$0006,L000062f2
-L00005064           subq.w  #$05,L000067c4
+L00005064           subq.w  #$05,batman_y_offset
 L00005068           subq.w  #$04,d1
 L0000506a           move.w  batman_sprite1_id,d2                     ; L000062ee,d2
 L0000506e           bmi.b   L00005082
 L00005070           addq.w  #$07,d0
-L00005072           bsr.w   L000055a0
+L00005072           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005076           cmp.b   #$17,d2
 L0000507a           bcs.b   L00005092
-L0000507c           addq.w  #$01,L000067c2
+L0000507c           addq.w  #$01,batman_x_offset
 L00005080           bra.b   L00005092
 L00005082           subq.w  #$06,d0
-L00005084           bsr.w   L000055a0
+L00005084           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005088           cmp.b   #$17,d2
 L0000508c           bcs.b   L00005092
-L0000508e           subq.w  #$01,L000067c2
+L0000508e           subq.w  #$01,batman_x_offset
 L00005092           movea.l batman_sprite_anim_ptr,a0                ; modified to long pointer - L00006326,a0
 L00005096           bsr.w   set_batman_sprites
 L0000509a           move.l  a0,batman_sprite_anim_ptr                ; modified to long pointer - L00006326
@@ -4180,7 +4184,7 @@ L00005116           lea.l   batman_sprite_anim_01,a0                ; L000063d0,
 L0000511a           bsr.w   set_batman_sprites
 L0000511e           moveq   #SFX_BATROPE,d0
 L00005120           jsr     AUDIO_PLAYER_INIT_SFX
-L00005126           movem.w L000067c2,d0-d1
+L00005126           movem.w batman_xy_offset,d0-d1
 L0000512c           bclr.b  #PLAYER_INPUT_FIRE,player_input_command
 L00005132           lea.l   L00006314,a0
 L00005136           btst.b  #PLAYER_INPUT_FIRE,player_input_command
@@ -4207,7 +4211,7 @@ L00005174           add.w   d1,d5
 L00005176           btst.l  #$0002,d5
 L0000517a           bne.b   L000051ae
 L0000517c           add.w   d3,d0
-L0000517e           bsr.w   L000055a0
+L0000517e           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005182           cmp.b   #$17,d2
 L00005186           bcs.b   L000051a8
 L00005188           cmp.b   #$85,d2
@@ -4242,15 +4246,23 @@ L000051ec           add.w   d0,d2
 L000051ee           and.w   #$0007,d2
 L000051f2           subq.w  #$04,d2
 L000051f4           bne.b   L000051e0
-L000051f6           bsr.w   L000055a0
+L000051f6           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000051fa           cmp.b   #$85,d2
 L000051fe           bcs.b   L000051e0
 L00005200           bra.b   L0000522e
 
 
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
 input_up
 L00005202           bsr.b   L00005208                               ; Jmp Table CMD6
 L00005204           bra.w   L00005430
+
+
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
 L00005208           move.w  #$0048,L000067c6
 L0000520e           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                            ; updated_batman_distance_walked
 L00005212           add.w   d0,d2
@@ -4258,11 +4270,13 @@ L00005214           and.w   #$0007,d2
 L00005218           subq.w  #$04,d2
 L0000521a           bne.b   L000051e0
 L0000521c           sub.w   #$000c,d1
-L00005220           bsr.w   L000055a0
+L00005220           bsr.w   get_map_tile_at_display_offset_d0_d1    ; d2.b = tile value
 L00005224           add.w   #$000c,d1
 L00005228           cmp.b   #$85,d2
 L0000522c           bcs.b   L000051e0
-L0000522e           addq.w  #$04,a7                                 ; addaq.w
+                    ; probably on stairs (mask left & right input)
+                    ; and change batman movement - self modified code address to $5308
+L0000522e           addq.w  #$04,a7                                 ; manipulate the stack? remove last return address?
 L00005230           and.b   #$0c,player_input_command               ; L00006308 - mask bits leaving up and down flags
 L00005236           move.l  #L00005308,gl_jsr_address               ; L00003c90 ; Self Modified Code JSR - game_loop
 L0000523c           bra.w   L00005308
@@ -4270,47 +4284,59 @@ L0000523c           bra.w   L00005308
 
 
                     ; IN:-
-                    ;   - D0.w = L000067c2 - Window/Batman X co-ord
-                    ;   - D1.w = L000067c4 - Window/Batman Y co-ord
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
 input_down_right
 L00005240           bsr.b   L000051e2           ; jmp table CMD4
 L00005242           bra.b   input_right      ; L00005246 
 
                     ; IN:-
-                    ;   - D0.w = L000067c2 - Window/Batman X co-ord
-                    ;   - D1.w = L000067c4 - Window/Batman Y co-ord
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
 input_up_right
 L00005244           bsr.b   L00005208           ; jmp table CMD7
 
+                    ;------------------- input right --------------------------------------
+                    ; checks tile to batman's right, if wall (tile > 23) then exit.
+                    ; otherwise move 1 unit to right (2 pixels) and check if now falling.
+                    ; if not falling the set sprite walk right animation.
+                    ;   - a bit contrived from batman's workd x co-ordinate to choose
+                    ;     animation frames for legs (sprite 3) and body (sprite 2)
+                    ;     the head sprite is always set to id = 1 (sprite 1)
+                    ;
                     ; IN:-
-                    ;   - D0.w = L000067c2 - Window/Batman X co-ord
-                    ;   - D1.w = L000067c4 - Window/Batman Y co-ord
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
 input_right
-L00005246           addq.w  #$04,d0                         ; add 4 to X co-ord
-L00005248           subq.w  #$02,d1                         ; sub 2 from Y co-ord
-L0000524a           bsr.w   L000055a0
+L00005246           addq.w  #$04,d0                         ; add 4 to batman_x_offset
+L00005248           subq.w  #$02,d1                         ; sub 2 from batman_y_offset
+L0000524a           bsr.w   get_map_tile_at_display_offset_d0_d1 ; get tile 8 pixels to batman's right, middle, out: d2.b = tile value
 L0000524e           cmp.b   #$17,d2
-L00005252           bcs.b   L00005290
-L00005254           addq.w  #$01,L000067c2
-L00005258           addq.w  #$07,d1
-L0000525a           subq.w  #$05,d0
-L0000525c           bsr.w   L000055a0
+L00005252           bcs.b   cmd_exit                        ; if tile > 23 then exit (wall I guess - can't move)
+
+                    ; update batman x offset
+L00005254           addq.w  #$01,batman_x_offset            ; increment batman x offset by 1
+L00005258           addq.w  #$07,d1                         ; d1 (y offset), already decremented by 2, increment by further 7 (+5)
+L0000525a           subq.w  #$05,d0                         ; d0 (x offset), already incremented by 4, decrement by further 5 (-1)
+L0000525c           bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value (tile by feet?)
 L00005260           sub.b   #$79,d2
-L00005264           cmp.b   #$0d,d2
-L00005268           bcc.w   L0000545a
+L00005264           cmp.b   #$0d,d2                         ; check d2 in range #$79 - #$86
+L00005268           bcc.w   L0000545a                       ; if in range thenn (maybe falling?)
+
+                    ; update batman walk sprite animation
 L0000526c           lea.l   batman_sprite3_id,a0            ; L000062ea,a0
-L00005270           add.w   scroll_window_x_coord,d0        ; L000067bc,d0                    ; updated_batman_distance_walked
-L00005274           lsr.w   #$01,d0
-L00005276           and.w   #$0007,d0
-L0000527a           addq.w  #$05,d0
-L0000527c           move.w  d0,(a0)+
-L0000527e           and.w   #$0006,d0
-L00005282           lsr.w   #$01,d0
+L00005270           add.w   scroll_window_x_coord,d0        ; d0 = world x co-ord
+L00005274           lsr.w   #$01,d0                         ; divide window x co-ord by 2 (already divied by 2, now divided by 4)
+L00005276           and.w   #$0007,d0                       ; take value 0-7 (resolution 4 pixels)
+L0000527a           addq.w  #$05,d0                         ; 5 base value for sprite animation (legs?)                        
+L0000527c           move.w  d0,(a0)+                        ; set sprite id value (range 5 - 13 decimal)
+L0000527e           and.w   #$0006,d0                       ; mask all but range 2-6 (resolution of 2)
+L00005282           lsr.w   #$01,d0                         ; range 0 - 3
 L00005284           bne.b   L00005288
-L00005286           moveq   #$02,d0
+L00005286           moveq   #$02,d0                         ; set default value of #$02 
 L00005288           addq.w  #$01,d0
-L0000528a           move.w  d0,(a0)+
-L0000528c           move.w  #$0001,(a0)
+L0000528a           move.w  d0,(a0)+                        ; set sprite 2 (arms/body anim)
+L0000528c           move.w  #$0001,(a0)                     ; set head anim
 cmd_exit
 cmd_nop
 L00005290           rts                      
@@ -4327,13 +4353,13 @@ L00005298           bsr.w   L00005208               ; Jump Table CMD8
 input_left
 L0000529c           subq.w  #$05,d0                 ; Jump Table CMD2
 L0000529e           subq.w  #$02,d1
-L000052a0           bsr.w   L000055a0
+L000052a0           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000052a4           cmp.b   #$17,d2
 L000052a8           bcs.b   L00005290
-L000052aa           subq.w  #$01,L000067c2
+L000052aa           subq.w  #$01,batman_x_offset
 L000052ae           addq.w  #$07,d1
 L000052b0           addq.w  #$05,d0
-L000052b2           bsr.w   L000055a0
+L000052b2           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000052b6           sub.b   #$79,d2
 L000052ba           cmp.b   #$0d,d2
 L000052be           bcc.w   L0000545a
@@ -4362,6 +4388,13 @@ L000052fc           bcc.w   L00005368                               ; bcc.b
 L000052fe           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L00005304           bra.w   player_move_commands                    ; L00004c3e
 
+
+                    ; ----------------- batman climb stairs -------------------
+                    ; inserted into game loop self modified code for batman
+                    ; control state updates.
+                    ; state is entered via the up/down input command handlers
+                    ;
+batman_climb_stairs
 L00005308           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
 L0000530e           bne.w   L0000545a
 L00005312           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
@@ -4380,24 +4413,24 @@ L0000533a           btst.l  #PLAYER_INPUT_UP,d4
 L0000533e           beq.b   L00005348
 L00005340           subq.w  #$01,d1
 L00005342           move.w  #$0048,L000067c6
-L00005348           move.w  d1,L000067c4
+L00005348           move.w  d1,batman_y_offset
 L0000534c           bra.b   L000053a6
-L0000534e           bsr.w   L000055a0
+L0000534e           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005352           move.w  d4,d5
 L00005354           and.b   #$03,d5
 L00005358           move.b  d5,player_input_command                 ; L00006308
 L0000535c           moveq   #$01,d5
 L0000535e           asr.w   #$01,d4
-L00005360           bcs.w   L000052ee               ; bcs.b 
-L00005362           MOVE.L #$ffffffff,D5
+L00005360           bcs.w   L000052ee                               ; exit climb ladder state 
+L00005362           MOVE.L  #$ffffffff,D5
 L00005364           asr.w   #$01,d4
-L00005366           bcs.w   L000052ee               ; bcs.b
+L00005366           bcs.w   L000052ee                               ; exit climb ladder state
 L00005368           asr.w   #$01,d4
 L0000536a           bcc.b   L00005380
 L0000536c           move.w  #$0028,L000067c6
 L00005372           cmp.b   #$85,d2
 L00005376           bcs.w   L000053ce
-L0000537a           addq.w  #$01,L000067c4
+L0000537a           addq.w  #$01,batman_y_offset
 L0000537e           bra.b   L000053a6
 L00005380           asr.w   #$01,d4
 L00005382           bcc.b   L000053cc
@@ -4410,9 +4443,9 @@ L00005396           move.b  $00(a0,d3.W),d2         ; $00000d13 [d6],d2
 L0000539a           cmp.b   #$85,d2
 L0000539e           bcs.b   L000053ce
 L000053a0           subq.w  #$01,d1
-L000053a2           move.w  d1,L000067c4
+L000053a2           move.w  d1,batman_y_offset
 L000053a6           move.w  scroll_window_y_coord,d2            ; L000067be,d2
-L000053aa           add.w   L000067c4,d2
+L000053aa           add.w   batman_y_offset,d2
 L000053ae           addq.w  #$02,d2
 L000053b0           not.w   d2
 L000053b2           and.w   #$0007,d2
@@ -4431,8 +4464,8 @@ L000053d4           rts
 
 input_fire_down
 L000053d6            add.w   #$0008,d1                              ; Jump Table CMD10
-L000053da            bsr.w   L000055a0
-L000053de            movem.w L000067c2,d0-d1
+L000053da            bsr.w   get_map_tile_at_display_offset_d0_d1   ; out: d2.b = tile value
+L000053de            movem.w batman_xy_offset,d0-d1
 L000053e4            cmp.b   #$17,d2
 L000053e8            bcs.b   input_down                             ; L000053f4
 L000053ea            move.w  #$8000,L00005506
@@ -4510,14 +4543,19 @@ batman_sprite_anim_05
 L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
 
 
-L0000545a           movem.w L000067c2,d0-d1
+
+                    ; -------- batman falling between platform? -----------
+L0000545a           movem.w batman_xy_offset,d0-d1
 L00005460           clr.l   L000062f4
-L00005464           move.w  L000067c4,L000067c6
+L00005464           move.w  batman_y_offset,L000067c6
 L0000546a           lea.l   L00005454(pc),a0                        ; 3 sprite id array
 L0000546e           bsr.w   set_batman_sprites
 L00005472           move.l  #L00005482,gl_jsr_address               ; Set game_loop Self Modifying Code JSR 
 L00005478           move.w  #$ffff,L000062fa
 L0000547e           clr.w   L000062f8
+
+
+
 
                     ; ----------- default game loop state? -------------
                     ; appears to be the default routine called by the
@@ -4529,8 +4567,8 @@ L0000548c           beq.b   L000054cc
 L0000548e           sub.w   #$0010,d1
 L00005492           subq.w  #$04,d0
 L00005494           add.w   d4,d0
-L00005496           bsr.w   L000055a0
-L0000549a           movem.w L000067c2,d0-d1
+L00005496           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
+L0000549a           movem.w batman_xy_offset,d0-d1
 L000054a0           moveq   #$01,d7
 L000054a2           cmp.b   #$17,d2
 L000054a6           bcs.b   L000054c8
@@ -4541,7 +4579,7 @@ L000054b2           add.w   MAPGR_BASE,d3                   ; MAPGR.IFF (value =
 L000054b8           move.b  $00(a0,d3.W),d2                 ; $00000d13 [d6],d2
 L000054bc           dbf.w   d7,L000054a2
 L000054c0           add.w   d0,d4
-L000054c2           move.w  d4,L000067c2
+L000054c2           move.w  d4,batman_x_offset
 L000054c6           bra.b   L000054cc
 L000054c8           clr.w   L000062f4 
 L000054cc           cmp.w   #$0010,d5
@@ -4550,7 +4588,7 @@ L000054d2           addq.w  #$01,d5
 L000054d4           move.w  d5,L000062f6
 L000054d8           asr.w   #$02,d5
 L000054da           add.w   d5,d1
-L000054dc           move.w  d1,L000067c4
+L000054dc           move.w  d1,batman_y_offset
 L000054e0           btst.l  #$000f,d1
 L000054e4           beq.b   L000054e8
 L000054e6           rts 
@@ -4559,11 +4597,11 @@ L000054e6           rts
 
 
 
-L000054e8           bsr.w   L000055a0
+L000054e8           bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
 L000054ec           cmp.b   #$17,d2
 L000054f0           bcc.b   L000054fe
-L000054f2           subq.w  #$07,L000067c4
-L000054f6           movem.w L000067c2,d0-d1
+L000054f2           subq.w  #$07,batman_y_offset
+L000054f6           movem.w batman_xy_offset,d0-d1
 L000054fc           bra.w   L00005482           ; bra.b
 L000054fe           sub.b   #$79,d2
 L00005502           cmp.b   #$0d,d2
@@ -4587,7 +4625,7 @@ L00005548           move.w  scroll_window_y_coord,d0            ; L000067be,d0
 L0000554c           add.w   d1,d0
 L0000554e           and.w   #$0007,d0
 L00005552           sub.w   d0,d1
-L00005554           move.w  d1,L000067c4
+L00005554           move.w  d1,batman_y_offset
 L00005558           rts
 
 
@@ -4616,20 +4654,32 @@ L0000559e           rts
 
 
 
+
+                    ;----------------------- get tile at display offset d0 & d1 --------------------
+                    ; using window x,y co-rds and a given pixel offset into the display,
+                    ; return the value for the background map tile at this position.
+                    ; NB: the pixel offsets have a resolution of 2 pixels in this game.
+                    ;
                     ; IN:-
-                    ;   - D0.w = L000067c2 - Window/Batman X co-ord
-                    ;   - D1.w = L000067c4 - Window/Batman Y co-ord
-L000055a0           movem.w level_parameters,d2-d3                          ; Scroll Window X & Y? L000067bc,d2-d3 ; level parameters (updated_batman_distance_walked, unknown)
-L000055a6           add.w   d0,d2
-L000055a8           add.w   d1,d3
-L000055aa           lsr.w   #$03,d2
-L000055ac           lsr.w   #$03,d3
-L000055ae           mulu.w  MAPGR_BASE,d3           ; MAPGR.IFF (value = $00c0)
-L000055b4           add.w   d2,d3
-L000055b6           lea.l   MAPGR_DATA_ADDRESS,a0           ; $0000807c,a0            ; External Address - MAPGR.IFF
-L000055bc           clr.w   d2
-L000055be           move.b  $00(a0,d3.W),d2
-L000055c2           rts
+                    ;   - D0.w = L000067c2 - x_offset
+                    ;   - D1.w = L000067c4 - y_offset
+                    ; OUT:
+                    ;   - D2.b = Tile Value
+                    ;
+get_map_tile_at_display_offset_d0_d1                        ; original address
+                    movem.w scroll_window_xy_coords,d2-d3   ; get display window co-ords
+                    add.w   d0,d2                           ; add offset to window X co-ord
+                    add.w   d1,d3                           ; add offset to window Y co-ord
+                    lsr.w   #$03,d2                         ; calc tile map X co-ord
+                    lsr.w   #$03,d3                         ; calc tile map Y co-ord
+                    mulu.w  MAPGR_BASE,d3                   ; multiply Y co-ord by tile map width ($c0 - 192)
+                    add.w   d2,d3                           ; add x and y offset to get tile index
+                    lea.l   MAPGR_DATA_ADDRESS,a0           ; $0000807c,a0 - tile map start data address
+                    clr.w   d2                              ; initialise return value = $00000000
+                    move.b  $00(a0,d3.W),d2                 ; get tile from tile map
+                    rts
+
+
 
 
 
@@ -4641,7 +4691,7 @@ L000055c2           rts
 draw_batman_and_rope                                ; original address L000055c4
 L000055c4           move.w  L00006318,d2
 L000055c8           beq.w   L000056a6
-L000055cc           movem.w L000067c2,d0-d1
+L000055cc           movem.w batman_xy_offset,d0-d1
 L000055d2           sub.w   #$000c,d1
 L000055d6           addq.w  #$03,d0
 L000055d8           move.w  batman_sprite1_id,d2        ; L000062ee,d2
@@ -4714,7 +4764,7 @@ L000056a0           not.w   d6                      ; invert mask/line pattern?
 L000056a2           dbf.w   d7,L00005678            ; loop next bitplane
 
                     ; draw first Batman Sprite
-L000056a6           movem.w L000067c2,d0-d1         ; batman object X & Y co-ords
+L000056a6           movem.w batman_xy_offset,d0-d1  ; batman object X & Y co-ords
 L000056ac           move.w  batman_sprite1_id,d2    ; sprite id
 L000056b0           clr.w   d4
 L000056b2           move.b  d2,d4
@@ -4729,14 +4779,14 @@ L000056c8           move.w  d3,L000062f0            ; store update Y co-ord
 L000056cc           bsr.b   draw_sprite             ; Draw Batman Part - L000056f4
 
                     ; draw second Batman Sprite
-L000056ce           movem.w L000067c2,d0-d1         ; batman object X & Y co-ords
+L000056ce           movem.w batman_xy_offset,d0-d1  ; batman object X & Y co-ords
 L000056d4           move.w  batman_sprite2_id,d2    ; sprite id            
 L000056d8           move.b  d2,d2
 L000056da           beq.w   exit_draw_batman        ; if (sprite id) == 0 then exit
 L000056de           bsr.b   draw_sprite
 
                     ; draw third Batman Sprite
-L000056e0           movem.w L000067c2,d0-d1         ; batman object X & Y co-ords
+L000056e0           movem.w batman_xy_offset,d0-d1  ; batman object X & Y co-ords
 L000056e6           move.w  batman_sprite3_id,d2    ; sprite id
 L000056ea           move.b  d2,d2
 L000056ec           beq.w   exit_draw_batman        ; if (sprite id == 0) then exit
@@ -5552,7 +5602,7 @@ L00005bd2           subq.w  #$01,L000067c8
 L00005bd6           sub.w   #$0018,d0
 L00005bda           sub.w   scroll_window_y_coord,d0                ; L000067be,d0
 L00005bde           neg.w   d0
-L00005be0           add.w   L000067c4,d0
+L00005be0           add.w   batman_y_offset,d0
 L00005be4           move.w  d0,L000067c6
 L00005be8           rts
 
@@ -5589,10 +5639,10 @@ L00005c3e           addq.w  #$01,d2
 L00005c40           rts 
 
 
-L00005c42           movem.w L000067c2,d3-d4
+L00005c42           movem.w batman_xy_offset,d3-d4
 L00005c48           add.w   #$0010,d3
 L00005c4c           bra.b   L00005c56
-L00005c4e           movem.w L000067c2,d3-d4
+L00005c4e           movem.w batman_xy_offset,d3-d4
 L00005c54           addq.w  #$04,d3
 L00005c56           sub.w   d0,d3
 L00005c58           cmp.w   #$0016,d3
@@ -5621,10 +5671,10 @@ L00005c9a           lsr.w   #$01,d5
 L00005c9c           add.w   $0008(a6),d5
 L00005ca0           move.w  d5,$0008(a6)
 L00005ca4           add.w   d5,d1
-L00005ca6           bsr.w   L000055a0
+L00005ca6           bsr.w   get_map_tile_at_display_offset_d0_d1            ; out: d2 = tile value 
 L00005caa           cmp.b   #$79,d2
 L00005cae           bcs.b   L00005cd8
-L00005cb0           move.w  scroll_window_y_coord,d3                ; L000067be,d3
+L00005cb0           move.w  scroll_window_y_coord,d3                         ; L000067be,d3
 L00005cb4           add.w   d1,d3
 L00005cb6           and.w   #$0007,d3
 L00005cba           not.w   d3
@@ -5638,14 +5688,14 @@ L00005cce           bsr.w   play_proximity_sfx                      ; play sfx i
 L00005cd2           moveq   #$02,d2
 L00005cd4           bra.w   L000045bc
 L00005cd8           moveq   #$01,d2
-L00005cda           move.w  L000067c2,d3
+L00005cda           move.w  batman_x_offset,d3
 L00005cde           sub.w   d0,d3
 L00005ce0           addq.w  #$03,d3
 L00005ce2           cmp.w   #$0007,d3
 L00005ce6           bcc.w   L000045bc
 L00005cea           cmp.w   L000062f0,d1
 L00005cee           bmi.w   L000045bc
-L00005cf2           cmp.w   L000067c4,d1
+L00005cf2           cmp.w   batman_y_offset,d1
 L00005cf6           bpl.w   L000045bc
 L00005cfa           moveq   #$02,d6                                 ; Value of Energy to Lose (2 of 48)
 L00005cfc           bsr.w   batman_lose_energy
@@ -5795,7 +5845,7 @@ L00005e94           bpl.b   L00005e90
 L00005e96           rts 
 
 
-L00005e98           movem.w L000067c2,d2-d3
+L00005e98           movem.w batman_xy_offset,d2-d3
 L00005e9e           sub.w   d1,d3
 L00005ea0           cmp.w   #$0001,d3
 L00005ea4           bcc.b   L00005eca
@@ -5835,7 +5885,7 @@ L00005ef4           bra.w   L000045bc
                     ; IN:-
                     ;   a0.l = level data index?
 L00005ef8           clr.w   (a6)
-L00005efa           bsr.w   L000055a0
+L00005efa           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005efe           lsl.w   #$08,d2
 L00005f00           move.b  $01(a0,d3.W),d2
 L00005f04           move.b  $02(a0,d3.W),d4
@@ -5905,14 +5955,14 @@ L00005fd0           bpl.b   L00006012
 L00005fd2           and.w   #$0007,d4
 L00005fd6           bne.b   L00005fe6
 L00005fd8           addq.w  #$08,d0
-L00005fda           bsr.w   L000055a0
+L00005fda           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b - tile value
 L00005fde           subq.w  #$08,d0
 L00005fe0           cmp.b   #$79,d2
 L00005fe4           bcs.b   L00006012
 L00005fe6           addq.w  #$01,$0002(a6)
 L00005fea           subq.w  #$01,$0008(a6)
 L00005fee           bpl.b   L00006016
-L00005ff0           movem.w L000067c2,d2-d3
+L00005ff0           movem.w batman_xy_offset,d2-d3
 L00005ff6           sub.w   d0,d2
 L00005ff8           cmp.w   #$0008,d2
 L00005ffc           bcc.b   L00006016
@@ -5932,14 +5982,14 @@ L00006024           bmi.b   L0000606a
 L00006026           and.w   #$0007,d4
 L0000602a           bne.b   L0000603e
 L0000602c           sub.w   #$0010,d0
-L00006030           bsr.w   L000055a0
+L00006030           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00006034           add.w   #$0010,d0
 L00006038           cmp.b   #$79,d2
 L0000603c           bcs.b   L0000606a
 L0000603e           subq.w  #$01,$0002(a6)
 L00006042           subq.w  #$01,$0008(a6)
 L00006046           bpl.b   L0000606e
-L00006048           movem.w L000067c2,d2-d3
+L00006048           movem.w batman_xy_offset,d2-d3
 L0000604e           sub.w   d0,d2
 L00006050           add.w   #$000a,d2
 L00006054           bcc.b   L0000606e
@@ -6007,13 +6057,13 @@ display_object_coords                                                           
 L000062de           dc.w $0001, $0002, $0003, $0004, $0005, $0007
 
 
-
+                    ; sprite
 batman_sprite3_id                                       ; original address L000062ea
-L000062ea           dc.w $0005                          ; batman sprite id 3 (0 = do not display 3)
+L000062ea           dc.w $0005                          ; batman sprite id 3 (0 = do not display 3) (legs)
 batman_sprite2_id                                       ; original address L000062ec
-L000062ec           dc.w $0002                          ; batman sprite id 2 (0 = do not display 2,3)
+L000062ec           dc.w $0002                          ; batman sprite id 2 (0 = do not display 2,3) (middle)
 batman_sprite1_id                                       ; original address L000062ee
-L000062ee           dc.w $0001                          ; batman sprite id 1 (0 = do not display 1,2,3)
+L000062ee           dc.w $0001                          ; batman sprite id 1 (0 = do not display 1,2,3) (head)
 
 L000062f0           dc.w $0000                          ; batman (some kind of updated Y co-ordinate? set in draw_batman_and_rope routine)
                     
@@ -6255,8 +6305,8 @@ default_level_parameters                                    ; original address L
                     dc.w $0000                              ; window x co-ord
                     dc.w $00F0                              ; window y co-ord
                     dc.w $0000                              ; scroll_window_max_x_coord
-                    dc.w $0050                              ; default L000067c2
-                    dc.w $0048                              ; default L000067c4
+                    dc.w $0050                              ; default L000067c2 - batman_x_offset
+                    dc.w $0048                              ; default L000067c4 - batman_y_offset
                     dc.w $0048                              ; default L000067c6
                     dc.w $0050                              ; default L000067c8
 
@@ -6266,8 +6316,8 @@ halfway_spawn_point_parameters                              ; original address L
                     dc.w $0200                              ; window x co-ord
                     dc.w $0000                              ; window y co-ord
                     dc.w $0200                              ; scroll_window_max_x_coord
-                    dc.w $0050                              ; default L000067c2
-                    dc.w $0038                              ; default L000067c4
+                    dc.w $0050                              ; default L000067c2 - batman_x_offset
+                    dc.w $0038                              ; default L000067c4 - batman_y_offset
                     dc.w $0038                              ; default L000067c6
                     dc.w $0050                              ; default L000067c8
 
@@ -6277,6 +6327,7 @@ halfway_spawn_point_parameters                              ; original address L
 level_parameters                                            ; original address L000067bc
 updated_batman_distance_walked                              ; original address L000067bc
 
+scroll_window_xy_coords
 scroll_window_x_coord                                       ; original address L000067bc
                     dc.w $0000
 scroll_window_y_coord                                       ; original address L000067be
@@ -6286,8 +6337,11 @@ scroll_window_max_x_coord
 batman_distance_walked                      ;               original address L000067c0
 L000067c0           dc.w $0000              ; keeps track of max window scroll X value (i.e. progress though the level left to right)
 
-L000067c2           dc.w $0050              ; 
-L000067c4           dc.w $0048
+batman_xy_offset                            ; original address L000067c2 (used as sometimes accessed both together movem)
+batman_x_offset                             ; original address L000067c2
+L000067c2           dc.w $0050              ; batman offset X co-ordinate (from window X co-ord)
+batman_y_offset                             ; original address L000067c4
+L000067c4           dc.w $0048              ; batman offset Y co-ordinate (from window Y co-ord)
 L000067c6           dc.w $0048
 L000067c8           dc.w $0050
 
