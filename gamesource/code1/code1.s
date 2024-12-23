@@ -1623,13 +1623,13 @@ clear_projectile_data                                               ; original a
                     ; ------------ (re)enable actors -------------
                     ; clear MSB flag of each data structure
                                                                     ; original address L00003b64
-clear_msb           lea.l   L0000642e,a0                
-.loop               bclr.b  #$0007,(a0)                             ; clear MSB
-                    move.w  $0004(a0),d0                            ; word at 4(a0) offset to next structure
-                    mulu.w  #$0006,d0 
-                    lea.l   $06(a0,d0.W),a0
-                    cmpa.l  L00006722,a0
-                    bcs.b   .loop
+clear_msb           lea.l   actor_definitions_list,a0               ; L0000642e,a0                
+.loop               bclr.b  #$0007,(a0)                             ; clear MSB (enable/disable flag?)
+                    move.w  $0004(a0),d0                            ; count of data entries and/or offset to next structure, word at 4(a0) 
+                    mulu.w  #$0006,d0                               ; size of each data entry (6 bytes)
+                    lea.l   $06(a0,d0.W),a0                         ; increment pointer to next actor definition
+                    cmpa.l  L00006722,a0                            ; check if end of list
+                    bcs.b   .loop                                   ; loop until end of list.
 
 
 
@@ -2051,7 +2051,7 @@ update_score_by_level_progress                                         ; origina
                     ;---------------------------------------------------------------------------------------
 update_level_actors_01                                                  ; original address L00003dfe
 L00003dfe           movem.w scroll_window_xy_coords,d0-d1               ; scroll window X, Y? - L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
-L00003e04           lea.l   L0000642e,a0
+L00003e04           lea.l   actor_definitions_list,a0                   ; L0000642e,a0
 process_next_actor                                                      ; original address L00003e08
 L00003e08           movem.w (a0)+,d2-d3                                 ; actor X,Y co-ords?
 L00003e0c           sub.w   d0,d2                                       ; sub window x from actor x
@@ -2079,6 +2079,7 @@ L00003e38           lea.l   $02(a0,d2.W),a0                             ; skip t
                     ; check end of actor list
 L00003e3c           cmpa.w  #$6722,a0
 L00003e40           bcs.b   process_next_actor                          ; not at end of list (process next actor in list)
+
 
                     ; process list of 6 bytes (other actors)
                     ; possibly steam jets and toxic drips?
@@ -2113,9 +2114,9 @@ L00003e72           rts
                     ;   d1.w = window scroll y
                     ;   a0.l = ptr to actor data
 L00003e74           movem.w (a0)+,d2-d4                             ; get 3 words of actor data
-L00003e78           cmp.w   $00000022,d0                            ; compare window X with 34
-L00003e7e           beq.b   L00003e7e                               ; if window X = 34 then infinite loop?
-L00003e80           nop                                             ; wtf? maybe another potential protection feature?
+L00003e78           cmp.w   $00000022,d0                            ; compare window X with value at $22.w (privilege violation vector - is set by Rob Northen protection)
+L00003e7e           beq.b   L00003e7e                               ; if window X = value in low word of vector then **** infinite loop ****
+L00003e80           nop                                             ; wtf? maybe a copy-protection feature?
 L00003e82           lea.l   actors_list,a6                          ; L000039c8,a6
 L00003e86           moveq   #$09,d6                                 ; loop 10 times
 L00003e88           tst.w   (a6)                                    ; look for blank entry
@@ -6341,6 +6342,7 @@ batman_sprite_anim_08                                       ; sprite ids - origi
                     even
 
                     ; 44 entries in list from this address
+actor_definitions_list                                                          ; original address L0000642e
 L0000642e           dc.w $02C1, $0081, $0001, $0022, $0240, $00C0 
                     dc.w $0040, $00F0, $0002, $0003, $00C0, $0118, $000F, $00A0 ,$0118
                     dc.w $0040, $00E2, $0001, $0002, $0008, $00D8
