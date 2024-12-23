@@ -1374,9 +1374,27 @@ debug_print_word_value                                                      ; or
 
 
 
+                    ; active actors (potentially offscreen)
+                    ; list of structures
+                    ; original format (22 bytes): 220 bytes (10 entries)
+                    ;
+                    ; new format (24 bytes): 240 bytes (10 entries) - updated for long address pointers
+                    ;
+                    ;   Offset |    Descripton
+                    ;   ----------------------
+                    ;   0
+                    ;   4
+                    ;   8
+                    ;   12
+                    ;   16
+                    ;   20      - (long updated from word) Address of actor data structure
+                    ;
+                    ; 
 
-                    ; 110 words, 220 bytes structure - cleared at game_start
-                    ; there are values in here which are cleared at game_start
+ACTORLIST_STRUCT_SIZE   EQU     $18                         ; original size #$16 (22 bytes) - new size 24 bytes
+ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+
+actors_list                                                 ; original address L000039c8
 L000039c8           dc.w    $0000
                     dc.w    $0119
                     dc.w    $003a
@@ -1387,18 +1405,8 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $00a0
-                    dc.w    $0038
-                    dc.w    $0046
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
                     dc.w    $0000
                     dc.w    $00a0
                     dc.w    $0038
@@ -1409,18 +1417,8 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $00a0
-                    dc.w    $0038
-                    dc.w    $0046
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
                     dc.w    $0000
                     dc.w    $00a0
                     dc.w    $0038
@@ -1431,18 +1429,8 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $00a0
-                    dc.w    $0038
-                    dc.w    $0046
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
                     dc.w    $0000
                     dc.w    $00a0
                     dc.w    $0038
@@ -1453,18 +1441,8 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $00a0
-                    dc.w    $0038
-                    dc.w    $0046
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
                     dc.w    $0000
                     dc.w    $00a0
                     dc.w    $0038
@@ -1475,7 +1453,55 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
                     dc.w    $0000
+                    dc.w    $00a0
+                    dc.w    $0038
+                    dc.w    $0046
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
+                    dc.w    $0000
+                    dc.w    $00a0
+                    dc.w    $0038
+                    dc.w    $0046
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
+                    dc.w    $0000
+                    dc.w    $00a0
+                    dc.w    $0038
+                    dc.w    $0046
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
+
+                    dc.w    $0000
+                    dc.w    $00a0
+                    dc.w    $0038
+                    dc.w    $0046
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
 
 L00003a8e           dc.w    $0000
                     dc.w    $00a0
@@ -1487,7 +1513,7 @@ L00003a8e           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.w    $0000
+                    dc.l    $0000           ; 16 bit address of actor data structure
 
 
                     ; AXIS CHEMICAL FACTORY - Original Address L00003aa4
@@ -1606,6 +1632,7 @@ clear_msb           lea.l   L0000642e,a0
                     bcs.b   .loop
 
 
+
                     ; clear MSB flag of each data structure
 L00003b7e                                                           ; original address                    
 .loop               bclr.b  #$0007,$0004(a0)
@@ -1614,13 +1641,15 @@ L00003b7e                                                           ; original a
                     bcs.b   .loop
 
 
-                    ; clear 110 words (220 bytes) starting at L000039c8
-                                                                    ; original address L00003b8c
-L00003b8c           lea.l   L000039c8,a0
-                    moveq   #$6d,d7                                 ; counter = #$6d + 1 = #$6e (110 decimal) (220 bytes)
+
+                    ; Clear Active Actors List?                     ; original address L00003b8c
+L00003b8c           lea.l   actors_list,a0                          ; L000039c8,a0
+                    moveq  #(ACTORLIST_SIZE/2)-1,d7
+                    ;moveq   #$6d,d7                                ; counter = #$6d + 1 = #$6e (110 decimal) (220 bytes)
 .loop
                     clr.w   (a0)+
                     dbf.w   d7,.loop
+
 
 
                     ; ------ Set initial batman sprite ids -----    ; original address L00003b98
@@ -1629,9 +1658,11 @@ init_batman_sprites clr.w   batman_sprite1_id
                     bsr.w   set_batman_sprites
 
 
+
                     ; ------ Set initial player control state ------
                     ; initial state is 'walking' on platform.
 init_control_state  move.l  #player_move_commands,gl_jsr_address    ; set default player input state handler 'walking'
+
 
 
                     ; -------- set player spawn point --------
@@ -1650,6 +1681,7 @@ set_player_defaults
                     dbf.w   d6,.outer_loop                          ; loop again until required spawn point parameters have been copied 
 
 
+
                     ; ---------- display level title -------
 display_axis_chemical_factory                                       ; original address L00003bc2
                     lea.l   text_axis_chemicals,a0
@@ -1657,18 +1689,22 @@ display_axis_chemical_factory                                       ; original a
                     bsr.w   double_buffer_playfield   
 
 
+
                     ; -------- initialise back buffer ------        ; original address L00003bce
 init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
                     bsr.w   copy_offscreen_to_backbuffer            ; copy initial level background gfx to back-buffer                              
+
 
 
                     ; -------- draw player in at point -------
 draw_player         bsr.w   draw_batman_and_rope
 
 
+
                     ; --------- pause for 1 second --------
 one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
                     bsr.w   wait_for_frame_count
+
 
 
                     ; --------- start music (if selected) ----------
@@ -1678,6 +1714,7 @@ set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - St
                     moveq   #$01,d0                                 ; song number - 01 = level music
                     jsr     AUDIO_PLAYER_INIT_SONG
 .no_music
+
 
                     ; --------- wipe screen from text to level gfx ---------
                     bsr.w   screen_wipe_to_backbuffer
@@ -2019,19 +2056,20 @@ process_next_actor                                                      ; origin
 L00003e08           movem.w (a0)+,d2-d3                                 ; actor X,Y co-ords?
 L00003e0c           sub.w   d0,d2                                       ; sub window x from actor x
 L00003e0e           cmp.w   #$0098,d2                                   ; compare 152 (304 decimal)
-L00003e12           bcc.b   L00003e30                                   ; actor is > 152 (304) from window X
+L00003e12           bcc.b   skip_to_next                                ; actor is > 152 (304) from window X
 L00003e14           sub.w   d1,d3                                       ; d3 = window Y - actor Y
 L00003e16           cmp.w   #$0050,d3                                   ; is actor > 80 (160) from window Y
-L00003e1a           bcc.b   L00003e30                                   ; actor is > 80 (160) from window Y
+L00003e1a           bcc.b   skip_to_next                                ; actor is > 80 (160) from window Y
 
+actor_in_range      ; actor in window range
 L00003e1c           bset.b  #$0007,-$0004(a0)                           ; set MSB of offset 0 (facing direction? enabled/disabled?)
 L00003e22           move.w  (a0)+,d7                                    ; d7 = offset to next actor (or length of remaining data)
 L00003e24           subq.w  #$01,d7                                     ; counter
 L00003e26           bsr.w   L00003e74                                   ; do something with this actor's data
 L00003e2a           dbf.w   d7,L00003e26
 L00003e2e           bra.b   L00003e3c
-
-                    ; skip this actor 
+                   
+skip_to_next        ; skip this actor                                   ; original address L00003e30
 L00003e30           move.w  (a0),d2                                     ; get number of data items
 L00003e32           add.w   d2,d2                                       ; multiply by 2
 L00003e34           add.w   (a0),d2                                     ; add again (multiply by 3)
@@ -2069,30 +2107,39 @@ L00003e72           rts
 
 
 
-
-L00003e74           movem.w (a0)+,d2-d4
-L00003e78           cmp.w   $00000022,d0
-L00003e7e           beq.b   L00003e7e
-L00003e80           nop
-L00003e82           lea.l   L000039c8,a6
-L00003e86           moveq   #$09,d6
-L00003e88           tst.w   (a6)
+                    ; find blank entry for this actor
+                    ; IN:
+                    ;   d0.w = window scroll x
+                    ;   d1.w = window scroll y
+                    ;   a0.l = ptr to actor data
+L00003e74           movem.w (a0)+,d2-d4                             ; get 3 words of actor data
+L00003e78           cmp.w   $00000022,d0                            ; compare window X with 34
+L00003e7e           beq.b   L00003e7e                               ; if window X = 34 then infinite loop?
+L00003e80           nop                                             ; wtf? maybe another potential protection feature?
+L00003e82           lea.l   actors_list,a6                          ; L000039c8,a6
+L00003e86           moveq   #$09,d6                                 ; loop 10 times
+L00003e88           tst.w   (a6)                                    ; look for blank entry
 L00003e8a           beq.b   L00003e96
-L00003e8c           lea.l   $0016(a6),a6
+L00003e8c           lea.l   ACTORLIST_STRUCT_SIZE(a6),a6
 L00003e90           dbf.w   d6,L00003e88
 L00003e94           rts
 
-L00003e96           move.w  a0,$0014(a6)
+
+                    ; a6.l = address of blank entry in list
+L00003e96           move.l  a0,$0014(a6)                            ; offset 20 - (32 bit address) - store address of actor data struct
+;L00003e96           move.w  a0,$0014(a6)                            ; offset 20 - (16 bit address) - store address of actor data struct
 L00003e9a           bset.l  #$000f,d2
 L00003e9e           movem.w d2-d4,(a6)
 L00003ea2           clr.l   $0008(a6)
 L00003ea6           bclr.l  #$000f,d2
 L00003eaa           clr.l   $0010(a6)
 L00003eae           lea.l   L00005a7a,a5
+
 L00003eb2           cmp.w   (a5)+,d2
 L00003eb4           bcs.b   L00003eba
 L00003eb6           addq.w  #$02,a5             ; addaq.w
 L00003eb8           bra.b   L00003eb2
+
 L00003eba           move.w  (a5),d3
 L00003ebc           cmp.w   #$0046,d3
 L00003ec0           bne.b   L00003ed0
@@ -2100,6 +2147,7 @@ L00003ec2           bsr.w   L00003ed6
 L00003ec6           btst.l  #$000c,d2
 L00003eca           beq.b   L00003ed0
 L00003ecc           move.w  #$009e,d3
+
 L00003ed0           move.w  d3,$0006(a6)
 L00003ed4           rts
 
@@ -2117,7 +2165,7 @@ L00003ee4           rts
                     ; If this routine is skipped then the level is empty of any actors.
                     ;
 update_level_actor_02                                       ; original address L00003ee6
-L00003ee6           lea.l   L000039c8,a6
+L00003ee6           lea.l   actors_list,a6                  ; L000039c8,a6
 L00003eea           moveq   #$09,d7
 L00003eec           move.w  (a6),d6
 L00003eee           beq.w   L00003fa8
@@ -2144,7 +2192,8 @@ L00003f2e           cmp.w   #$0014,d6
 L00003f32           bcs.b   L00003f44
 L00003f34           lea.l   $00000000,a0                    ; External Address $00000000
 L00003f38           movea.l d0,a0
-L00003f3a           movea.w $0014(a6),a0
+;L00003f3a           movea.w $0014(a6),a0                   ; 16 bit address
+L00003f3a           movea.l $0014(a6),a0                    ; 32 bit address
 L00003f3e           bclr.b  #$0007,-$0002(a0)
 L00003f44           clr.w   (a6)
 L00003f46           bra.b   L00003fa8
@@ -5496,7 +5545,7 @@ L00005a98           dc.w    $0000
                     ; converted from word to long addresses
                     ; when called the routines have the following
                     ; IN:-
-                    ;   a6 = L000039c8
+                    ;   a6 = L000039c8  - actors_list
 L00005a9a           dc.l    L00005290                       ; original 16 bit value $5290
                     dc.l    L000045ce                       ; original 16 bit value $45ce
                     dc.l    L0000410a                       ; original 16 bit value $410a
@@ -5536,7 +5585,7 @@ L00005a9a           dc.l    L00005290                       ; original 16 bit va
                     dc.l    set_player_spawn_point_3        ; original 16 bit value $5af8
 
 
-                    ; a6 = L000039c8
+                    ; a6 = L000039c8 - actors_list
 set_player_spawn_point_1                                                ; original address L00005ae4
                     moveq   #$01,d0
                     cmp.w   level_spawn_point_index,d0                  ; compare current spawn point with suggested.
@@ -5585,12 +5634,12 @@ L00005b5a           dc.w    $ffff                                   ; illegal
 
 
 L00005b5c           move.w  #$0098,$0004(a6)                        ; $00dff004
-L00005b62           lea.l   L000039c8,a5
+L00005b62           lea.l   actors_list,a5                          ; L000039c8,a5
 L00005b66           move.w  #$0085,d2
 L00005b6a           moveq   #$09,d7
 L00005b6c           cmp.w   $0006(a5),d2                            ; $00bfd106,d2
 L00005b70           beq.b   L00005b7c
-L00005b72           lea.l   $0016(a5),a5
+L00005b72           lea.l   ACTORLIST_STRUCT_SIZE(a5),a5
 L00005b76           dbf.w   d7,L00005b6c
 L00005b7a           bra.b   L00005b80
 L00005b7c           move.w  (a5),d2
@@ -5759,12 +5808,12 @@ L00005d5e           addq.w  #$01,d2
 L00005d60           bsr.w   L000045bc
 L00005d64           sub.w   #$0010,d1
 L00005d68           bpl.b   L00005d54
-L00005d6a           lea.l   L000039c8,a5
+L00005d6a           lea.l   actors_list,a5                          ; L000039c8,a5
 L00005d6e           move.w  #$0103,d2
 L00005d72           moveq   #$09,d7
 L00005d74           cmp.w   $0006(a5),d2
 L00005d78           beq.b   L00005d88
-L00005d7a           lea.l   $0016(a5),a5
+L00005d7a           lea.l   ACTORLIST_STRUCT_SIZE(a5),a5            ; #$0016(a5)
 L00005d7e           dbf.w   d7,L00005d74
 L00005d82           moveq   #$5a,d6                                 ; Value of Energy to Lose (90 of 48) - DEAD!
 L00005d84           bra.w   batman_lose_energy
