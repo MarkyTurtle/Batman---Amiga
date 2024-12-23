@@ -1594,7 +1594,7 @@ clear_projectile_data                                               ; original a
                     dbf.w   d7,.loop
 
 
-
+                    ; ------------ (re)enable actors -------------
                     ; clear MSB flag of each data structure
                                                                     ; original address L00003b64
 clear_msb           lea.l   L0000642e,a0                
@@ -2015,6 +2015,7 @@ update_score_by_level_progress                                         ; origina
 update_level_actors_01                                                  ; original address L00003dfe
 L00003dfe           movem.w scroll_window_xy_coords,d0-d1               ; scroll window X, Y? - L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
 L00003e04           lea.l   L0000642e,a0
+process_next_actor                                                      ; original address L00003e08
 L00003e08           movem.w (a0)+,d2-d3                                 ; actor X,Y co-ords?
 L00003e0c           sub.w   d0,d2                                       ; sub window x from actor x
 L00003e0e           cmp.w   #$0098,d2                                   ; compare 152 (304 decimal)
@@ -2023,26 +2024,35 @@ L00003e14           sub.w   d1,d3                                       ; d3 = w
 L00003e16           cmp.w   #$0050,d3                                   ; is actor > 80 (160) from window Y
 L00003e1a           bcc.b   L00003e30                                   ; actor is > 80 (160) from window Y
 
-L00003e1c           bset.b  #$0007,-$0004(a0)                           ; set MSB of ?????
-L00003e22           move.w  (a0)+,d7
-L00003e24           subq.w  #$01,d7
-L00003e26           bsr.w   L00003e74
+L00003e1c           bset.b  #$0007,-$0004(a0)                           ; set MSB of offset 0 (facing direction? enabled/disabled?)
+L00003e22           move.w  (a0)+,d7                                    ; d7 = offset to next actor (or length of remaining data)
+L00003e24           subq.w  #$01,d7                                     ; counter
+L00003e26           bsr.w   L00003e74                                   ; do something with this actor's data
 L00003e2a           dbf.w   d7,L00003e26
 L00003e2e           bra.b   L00003e3c
 
-L00003e30           move.w  (a0),d2
-L00003e32           add.w   d2,d2
-L00003e34           add.w   (a0),d2
-L00003e36           add.w   d2,d2
-L00003e38           lea.l   $02(a0,d2.W),a0
+                    ; skip this actor 
+L00003e30           move.w  (a0),d2                                     ; get number of data items
+L00003e32           add.w   d2,d2                                       ; multiply by 2
+L00003e34           add.w   (a0),d2                                     ; add again (multiply by 3)
+L00003e36           add.w   d2,d2                                       ; muliply by 2 (multiply by 6)
+L00003e38           lea.l   $02(a0,d2.W),a0                             ; skip to start of next actor data structure
+
+                    ; check end of actor list
 L00003e3c           cmpa.w  #$6722,a0
-L00003e40           bcs.b   L00003e08
-L00003e42           sub.w   #$0010,d0
-L00003e46           subq.w  #$08,d1
-L00003e48           movem.w $0002(a0),d2-d3
-L00003e4e           sub.w   d0,d2
-L00003e50           cmp.w   #$00c0,d2
-L00003e54           bcc.b   L00003e6a
+L00003e40           bcs.b   process_next_actor                          ; not at end of list (process next actor in list)
+
+                    ; process list of 6 bytes (other actors)
+                    ; possibly steam jets and toxic drips?
+                    ; do something else
+                    ; what is d0 here? sill window x?
+L00003e42           sub.w   #$0010,d0                                   ; sub 16 from window x?
+L00003e46           subq.w  #$08,d1                                     ; sub 8 from window y?
+process_next_basic_actor                                                ; original address L00003e48
+L00003e48           movem.w $0002(a0),d2-d3                             ; get actor x & y
+L00003e4e           sub.w   d0,d2                                       ; subtract window X from actor X
+L00003e50           cmp.w   #$00c0,d2                                   ; compare 192 with actor X
+L00003e54           bcc.b   L00003e6a                                   ; if actor X > 194 (388?)
 L00003e56           sub.w   d1,d3
 L00003e58           cmp.w   #$0060,d3
 L00003e5c           bcc.b   L00003e6a
@@ -2050,10 +2060,15 @@ L00003e5e           bsr.w   L00003e74
 L00003e62           bset.b  #$0007,-$0002(a0)
 L00003e68           bra.b   L00003e6c
 
-L00003e6a           addq.w  #$06,a0                 ; addaq.w
-L00003e6c           cmpa.w  #$67a0,a0
-L00003e70           bcs.b   L00003e48
+                    ; skip to next
+L00003e6a           addq.w  #$06,a0                                     ; add structure size to address ptr                       
+;L00003e6c           cmpa.w  #$67a0,a0                                  ; end_of_actors
+L00003e6c           cmpa.l  #end_of_actors,a0                           ; check end of actor list (converted to long word)
+L00003e70           bcs.b   process_next_basic_actor                    ; if not the end of the list then process next
 L00003e72           rts
+
+
+
 
 L00003e74           movem.w (a0)+,d2-d4
 L00003e78           cmp.w   $00000022,d0
@@ -6248,8 +6263,8 @@ batman_sprite_anim_08                                       ; sprite ids - origi
                     dc.b $2C, $FD, $D7                      ; 44, 41, 00
                     dc.b $2D, $01, $01                      ; 45, 46, 47
                     dc.b $00, $13, $01                      ; 00, 19, 20
-                    dc.b $01, $16 
-                    
+                    dc.b $01, $16, $01                      ; 01, 23, 24
+                    dc.b $01, $00, $1B                      ; 01, 01, 28
 
 
 
@@ -6260,12 +6275,23 @@ batman_sprite_anim_08                                       ; sprite ids - origi
                     ; 
                     ; The MSB of byte offset 0 is a flag which is reset at level start.
                     ;
-                    ;    0      2      4      6
-                    ;                  offset
-                    ;                   x 6
+                    ;   Offset  |   Description
+                    ;   --------|---------------
+                    ;       0   | Possibly Actor X Value in low byte  
+                    ;           | MSB (bit 7) - flag
+                    ;           |  
+                    ;       2   | Possibly Actor Y value in low byte
+                    ;           |
+                    ;       4   | Relative Offset, multipied by 6 to find start of next Actor in the list
+                    ;           | added to current address.
+                    ;           |
+                    ;       (x) | Remaining bytes (Actor Data?)
+                    ;           |
+                    ;
+                    ;
                     even
-                    dc.w $0101
-                    dc.w $001B
+
+                    ; 44 entries in list from this address
 L0000642e           dc.w $02C1, $0081, $0001, $0022, $0240, $00C0 
                     dc.w $0040, $00F0, $0002, $0003, $00C0, $0118, $000F, $00A0 ,$0118
                     dc.w $0040, $00E2, $0001, $0002, $0008, $00D8
@@ -6313,6 +6339,7 @@ L0000670a           dc.w $0574, $0030, $0003, $0018, $0520, $0018, $0017, $0580,
 
                     ; 3 word/ 6 byte data structure list
                     ; MSB of byte 0 is cleared on game_start
+                    ; 21 - entries in list
 L00006722           dc.w $0014, $0118, $0038
                     dc.w $0015, $00D0, $0028
                     dc.w $0014, $0070, $0068
@@ -6334,7 +6361,7 @@ L00006722           dc.w $0014, $0118, $0038
                     dc.w $0014, $0510, $0100
                     dc.w $0014, $0570, $0108
                     dc.w $0014, $0578, $0108
-
+end_of_actors                                               ; original address L000067a0
 
                     ; ---------- Start level_parameters on game_start ----------
 default_level_parameters                                    ; original address L000067a0
