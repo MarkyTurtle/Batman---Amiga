@@ -1382,22 +1382,25 @@ debug_print_word_value                                                      ; or
                     ;
                     ;   Offset |    Descripton
                     ;   ----------------------
-                    ;   0
-                    ;   4
+                    ;   0       |
+                    ;   2       | Actor X
+                    ;   4       | Actor Y
                     ;   8
                     ;   12
                     ;   16
                     ;   20      - (long updated from word) Address of actor data structure
                     ;
                     ; 
-
+ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
 ACTORLIST_STRUCT_SIZE   EQU     $18                         ; original size #$16 (22 bytes) - new size 24 bytes
 ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
 
 actors_list                                                 ; original address L000039c8
 L000039c8           dc.w    $0000
-                    dc.w    $0119
-                    dc.w    $003a
+                    dc.w    $0119                           ; actor X
+                    dc.w    $003a                           ; actor Y
                     dc.w    $0097
                     dc.w    $0000
                     dc.w    $0000
@@ -1833,7 +1836,7 @@ gl_jsr_address      dc.l    player_move_commands            ; $00004c3e ; Self M
                     bsr.w   copy_offscreen_to_backbuffer            ; L00004b62 ; Copy Off-Screen Background GFX to Back-Buffer
                     bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
                     
-                    bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
+                    bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
                     
                     bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
                     bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
@@ -2202,48 +2205,67 @@ L00003ee4           rts
                     ;-----------------------------------------------------------------------------------------------
                     ; If this routine is skipped then the level is empty of any actors.
                     ;
-update_level_actor_02                                       ; original address L00003ee6
-L00003ee6           lea.l   actors_list,a6                  ; L000039c8,a6
-L00003eea           moveq   #$09,d7
-L00003eec           move.w  (a6),d6
-L00003eee           beq.w   L00003fa8
-L00003ef2           movem.w $0002(a6),d0-d1
-L00003ef8           move.w  d0,d4
-L00003efa           movem.w level_parameters,d2-d3          ; Scroll Window X & Y? - L000067bc,d2-d3 (updated_batman_distance_walked,unknown)
-L00003f00           sub.w   d2,d0
-L00003f02           sub.w   d3,d1
-L00003f04           cmp.w   #$0140,d0
-L00003f08           bcs.b   L00003f10
-L00003f0a           cmp.w   #$ff60,d0
-L00003f0e           bcs.b   L00003f2e
-L00003f10           cmp.w   #$00a0,d1
-L00003f14           bcs.b   L00003f1c
-L00003f16           cmp.w   #$ffb0,d1
-L00003f1a           bcs.b   L00003f2e
-L00003f1c           bclr.b  #$0007,(a6)
-L00003f20           beq.b   L00003f48
-L00003f22           cmp.w   #$0050,d1
-L00003f26           bcc.b   L00003f48
-L00003f28           cmp.w   #$00a0,d0
-L00003f2c           bcc.b   L00003f48
-L00003f2e           cmp.w   #$0014,d6
-L00003f32           bcs.b   L00003f44
-L00003f34           lea.l   $00000000,a0                    ; External Address $00000000
-L00003f38           movea.l d0,a0
-;L00003f3a           movea.w $0014(a6),a0                   ; 16 bit address
-L00003f3a           movea.l $0014(a6),a0                    ; 32 bit address
-L00003f3e           bclr.b  #$0007,-$0002(a0)
-L00003f44           clr.w   (a6)
-L00003f46           bra.b   L00003fa8
+update_active_actors                                                    ; original address L00003ee6
+                    lea.l   actors_list,a6                              ; 24 byte struct, list of max 10 active actors
+                    moveq   #$09,d7                                     ; actor count (10-1)
 
-L00003f48           lea.l   L00005a9a,a0                    ; jmp table
-L00003f4c           add.w   d6,d6                           ; convert index to word value
-L00003f4e           adda.w  d6,a0                           ; add word value to address - jmp table index (word table)
-L00003f4e1          adda.w  d6,a0                           ; add word value to address - jmp table index (long table) - additional line of code (jmp table converted to long from word)
-;L00003f50           movea.w (a0),a0
-L00003f50           movea.l (a0),a0                         ; code change  (jmp table converted to long from word)
-L00003f52           move.w  d7,-(a7)
-L00003f54           jsr     (a0)
+process_next_actor                                                      
+                    move.w  (a6),d6                                     ; d6 = actor type/id?
+                    beq.w   skip_to_next_actor
+calc_actor_coords
+                    movem.w ACTORSTRUCT_XY(a6),d0-d1                    ; actor X,Y
+                    move.w  d0,d4                                       ; d4 = actorX
+                    movem.w scroll_window_xy_coords,d2-d3               ; d2,d3 = Scroll Window X & Y
+                    sub.w   d2,d0                                       ; d0 = actorX - windowX
+                    sub.w   d3,d1                                       ; d1 = actorY - windowY
+actor_check_x
+                    cmp.w   #$0140,d0                       ; compare 320,d0 (screen width + 1 screen width)
+                    bcs.b   actor_check_y                   ; L00003f10
+                    cmp.w   #$ff60,d0                       ; compare -160,d0 (-1 screen width)
+                    bcs.b   forget_actor                    ; L00003f2e
+actor_check_y                                               ; original address L00003f10
+                    cmp.w   #$00a0,d1                       ; compare 160,d1 (screen height + 1 screen height)
+                    bcs.b   actor_in_range                  ; L00003f1c
+                    cmp.w   #$ffb0,d1                       ; compare -80,d1 (-1 screen height)
+                    bcs.b   forget_actor                    ; L00003f2e
+actor_in_range                                              ; original address L00003f1c
+                    bclr.b  #$0007,(a6)                     ; test & clear
+                    beq.b   execute_handler                 ; jmp if bit already clear (last execution before disabled?)
+
+actor_in_display    ; check actor is in display window
+L00003f22           cmp.w   #$0050,d1                       ; compare 80,d1 (y)
+L00003f26           bcc.b   execute_handler                 ; jmp if d1 > 80 (I guess off screen)
+L00003f28           cmp.w   #$00a0,d0                       ; compare 160,d0 (x)
+L00003f2c           bcc.b   execute_handler                 ; jmp id d0 > 160 (I guess offscreen)
+
+forget_actor        ; actor is out of bounds forget about it            ; original address L00003f2e
+                    cmp.w   #$0014,d6
+                    bcs.b   remove_actor                    ; if actor type <= 14 jmp
+                    ; this code doesn't appear to execute
+                    ; looks like it may kill-off the actor
+                    lea.l   $00000000,a0                    ; Looks like nonsense -- clear a0
+                    movea.l d0,a0                           ; Looks like nonsense --copy d0 into a0 (why?)
+                    movea.l ACTORLIST_STRUCT_ADDR(a6),a0    ; a0 = actor data ptr - conveted to 32 bit address
+                    bclr.b  #$0007,-$0002(a0)               ; clear enable? status bit?
+remove_actor
+                    clr.w   (a6)                            ; take actor out of the list
+                    bra.b   skip_to_next_actor              ; L00003fa8
+
+execute_handler     ; execute actor handler                 ; original address L00003f48
+                    lea.l   actor_handler_table,a0          ; jmp table
+                    add.w   d6,d6                           ; convert index to word value
+                    adda.w  d6,a0                           ; add word value to address - jmp table index (word table)
+                    adda.w  d6,a0                           ; add word value to address - jmp table index (long table) - additional line of code (jmp table converted to long from word)
+                    movea.l (a0),a0                         ; code change  (jmp table converted to long from word)
+                    move.w  d7,-(a7)                        ; store loop count on stack
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+                    jsr     (a0)
+
 
 L00003f56           movem.w $000e(a6),d0-d2
 L00003f5c           sub.w   batman_x_offset,d0
@@ -2270,10 +2292,16 @@ L00003f9a           tst.w   L000062f4
 L00003f9e           bne.b   L00003fa6
 L00003fa0           moveq   #$05,d6                         ; Value of Energy to Lose (5 of 48)
 L00003fa2           bsr.w   batman_lose_energy
-L00003fa6           move.w  (a7)+,d7
-L00003fa8           lea.l   $0016(a6),a6
-L00003fac           dbf.w   d7,L00003eec
-L00003fb0           rts
+L00003fa6           move.w  (a7)+,d7                        ; pop loop counter from the stack
+
+
+skip_to_next_actor  ; increment data struct ptr to next actor           ; original address L00003fa8
+                   lea.l   ACTORLIST_STRUCT_SIZE(a6),a6
+                   dbf.w   d7,process_next_actor                       ; loop upto 10 times - do next active actor
+                   rts
+
+
+
 
 L00003fb2           add.w   #$0002,(a6)
 L00003fb6           move.w  batman_x_offset,d2
@@ -2307,6 +2335,14 @@ L00004000           jsr     AUDIO_PLAYER_INIT_SFX
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_05
 L0000400c           move.w  $0008(a6),d2
 L00004010           cmp.w   #$0007,d2
 L00004014           bne.b   L0000402e
@@ -2325,6 +2361,14 @@ L0000403a           adda.w  d2,a5
 L0000403c           add.w   d2,d2
 L0000403e           adda.w  d2,a5
 L00004040           bra.w   L0000457c
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_07
 L00004044           lea.l   L000044ec,a5
 L00004048           bsr.w   L0000457c
 L0000404c           subq.w  #$01,$0008(a6)
@@ -2333,6 +2377,15 @@ L00004052           move.w  #$0020,$0008(a6)
 L00004058           move.w  #$0002,(a6)
 L0000405c           rts
 
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_03
 L0000405e           cmp.w   #$ffc0,d0
 L00004062           bmi.b   L000040b0
 L00004064           subq.w  #$01,$0008(a6)
@@ -2360,6 +2413,15 @@ L000040aa           cmp.w   #$0040,d2
 L000040ae           bcs.b   L00004076
 L000040b0           move.w  #$0002,(a6)
 L000040b4           bra.w   L0000431e
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_04
 L000040b8           move.w  $0008(a6),d2
 L000040bc           cmp.w   #$0007,d2
 L000040c0           bne.b   L000040da
@@ -2378,6 +2440,16 @@ L000040e6           adda.w  d2,a5
 L000040e8           add.w   d2,d2
 L000040ea           adda.w  d2,a5
 L000040ec           bra.w   L0000457c
+
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_06
 L000040f0           lea.l   L0000450a,a5
 L000040f4           bsr.w   L0000457c
 L000040f8           subq.w  #$01,$0008(a6)
@@ -2386,6 +2458,15 @@ L000040fe           move.w  #$0020,$0008(a6)
 L00004104           move.w  #$0003,(a6)
 L00004108           rts
 
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_02
 L0000410a           cmp.w   #$00e0,d0
 L0000410e           bpl.b   L00004158
 L00004110           subq.w  #$01,$0008(a6)
@@ -2434,6 +2515,14 @@ L00004198           bpl.b   L000041a0
 L0000419a           move.w  #$000c,$000c(a6)
 L000041a0           rts
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_14
 L000041a2           move.w  d4,d2
 L000041a4           addq.w  #$04,d2
 L000041a6           and.w   #$0007,d2
@@ -2501,6 +2590,15 @@ L00004262           bsr.w   L000045bc
 L00004266           moveq   #$04,d2
 L00004268           bra.w   L0000458a
 
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_15_23
 L0000426c           move.w  d4,d2
 L0000426e           addq.w  #$04,d2
 L00004270           and.w   #$0007,d2
@@ -2585,7 +2683,7 @@ L0000436a           sub.w   L000062f0,d2
 L0000436e           bpl.b   L00004374
 L00004370           addq.w  #$02,$000a(a6)
 
-L00004374           lea.l   L00005a9a,a0                    ; jmp table
+L00004374           lea.l   actor_handler_table,a0          ; L00005a9a,a0                    ; jmp table
 L00004378           add.w   d6,d6                           ; convert index to word value
 L0000437a           adda.w  d6,a0                           ; add word value to address - jmp table index (word table)
 L0000437a1          adda.w  d6,a0                           ; add word value to address - jmp table index (long table) - additional line of code (jmp table converted to long from word)
@@ -2593,6 +2691,14 @@ L0000437a1          adda.w  d6,a0                           ; add word value to 
 L0000437c           movea.l (a0),a0                         ; code change  (jmp table converted to long from word)
 L0000437e           jmp     (a0)
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_13
 L00004380           move.w  $0004(a6),d4
 L00004384           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L0000438a           bne.b   L000043ce
@@ -2603,6 +2709,15 @@ L00004394           and.w   #$0007,d4
 L00004398           bne.b   L000043ce
 L0000439a           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L0000439e           bra.b   L000043c6
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_12
 L000043a0           move.w  $0004(a6),d4
 L000043a4           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L000043aa           bne.b   L000043ce
@@ -2652,6 +2767,14 @@ L00004424           bpl.b   L00004428
 L00004426           addq.w  #$02,d2
 L00004428           move.w  d2,$000a(a6)
 L0000442c           move.w  #$0010,(a6)
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_16
 L00004430           bsr.w   L00004570
 L00004434           subq.w  #$01,$0008(a6)
 L00004438           bpl.b   L00004442
@@ -2659,6 +2782,14 @@ L0000443a           addq.w  #$01,(a6)
 L0000443c           move.w  #$0003,$0008(a6)
 L00004442           rts
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_17
 L00004444           bsr.w   L00004570
 L00004448           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00004450           bne.b   L00004442
@@ -2677,6 +2808,14 @@ L00004474           move.w  #$0006,$0008(a6)
 L0000447a           addq.w  #$01,(a6)
 L0000447c           rts 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_18
 L0000447e           bsr.w   L00004570
 L00004482           subq.w  #$01,$0008(a6)
 L00004486           bne.b   L00004442
@@ -2823,6 +2962,16 @@ L000045c8           movem.w (a7)+,d0-d1/a5-a6
 L000045cc           rts 
 
 
+
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_01
 L000045ce           move.w  $000a(a6),d2            ; $00dff00a
 L000045d2           addq.w  #$01,d2
 L000045d4           cmp.w   #$000e,d2
@@ -4447,6 +4596,7 @@ L00005288           addq.w  #$01,d0
 L0000528a           move.w  d0,(a0)+                        ; set sprite 2 (arms/body anim)
 L0000528c           move.w  #$0001,(a0)                     ; set head anim
 cmd_exit
+
 cmd_nop
 L00005290           rts                      
 
@@ -4464,7 +4614,7 @@ L0000529c           subq.w  #$05,d0                 ; Jump Table CMD2
 L0000529e           subq.w  #$02,d1
 L000052a0           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000052a4           cmp.b   #$17,d2
-L000052a8           bcs.b   L00005290
+L000052a8           bcs.b   cmd_nop                                     ; L00005290
 L000052aa           subq.w  #$01,batman_x_offset
 L000052ae           addq.w  #$07,d1
 L000052b0           addq.w  #$05,d0
@@ -5583,44 +5733,46 @@ L00005a98           dc.w    $0000
                     ; converted from word to long addresses
                     ; when called the routines have the following
                     ; IN:-
-                    ;   a6 = L000039c8  - actors_list
-L00005a9a           dc.l    L00005290                       ; original 16 bit value $5290
-                    dc.l    L000045ce                       ; original 16 bit value $45ce
-                    dc.l    L0000410a                       ; original 16 bit value $410a
-                    dc.l    L0000405e                       ; original 16 bit value $405e
-                    dc.l    L000040b8                       ; original 16 bit value $40b8
-                    dc.l    L0000400c                       ; original 16 bit value $400c
-                    dc.l    L000040f0                       ; original 16 bit value $40f0
-                    dc.l    L00004044                       ; original 16 bit value $4044
-                    dc.l    L00005290                       ; original 16 bit value $5290
-                    dc.l    L00005290                       ; original 16 bit value $5290
-                    dc.l    L00005290                       ; original 16 bit value $5290
-                    dc.l    L00005290                       ; original 16 bit value $5290
-                    dc.l    L000043a0                       ; original 16 bit value $43a0
-                    dc.l    L00004380                       ; original 16 bit value $4380
-                    dc.l    L000041a2                       ; original 16 bit value $41a2
-                    dc.l    L0000426c                       ; original 16 bit value $426c
-                    dc.l    L00004430                       ; original 16 bit value $4430
-                    dc.l    L00004444                       ; original 16 bit value $4444
-                    dc.l    L0000447e                       ; original 16 bit value $447e
-                    dc.l    $00000000                       ; original 16 bit value $0000
-                    dc.l    L00005c6e                       ; original 16 bit value $5c6e
-                    dc.l    L00005bea                       ; original 16 bit value $5bea
-                    dc.l    L00005c02                       ; original 16 bit value $5c02
-                    dc.l    L0000426c                       ; original 16 bit value $426c
-                    dc.l    L00005b5c                       ; original 16 bit value $5b5c
-                    dc.l    L00005b06                       ; original 16 bit value $5b06
-                    dc.l    L00005eb8                       ; original 16 bit value $5eb8
-                    dc.l    L00005ecc                       ; original 16 bit value $5ecc
-                    dc.l    L00005f42                       ; original 16 bit value $5f42
-                    dc.l    L00005fcc                       ; original 16 bit value $5fcc
-                    dc.l    L00006020                       ; original 16 bit value $6020
-                    dc.l    L00005d04                       ; original 16 bit value $5d04
-                    dc.l    L00005d3c                       ; original 16 bit value $5d3c
-                    dc.l    L00005db0                       ; original 16 bit value $5db0
-                    dc.l    set_player_spawn_point_1        ; original 16 bit value $5ae4
-                    dc.l    set_player_spawn_point_2        ; original 16 bit value $5aee
-                    dc.l    set_player_spawn_point_3        ; original 16 bit value $5af8
+                    ;   a6 = L000039c8  - 
+actor_handler_table                                         ; original address L00005a9a
+                                                            ; index | offset    | Description
+L00005a9a           dc.l    cmd_nop                         ;   0   |    0      |                        original 16 bit value $5290
+                    dc.l    actor_cmd_01                    ;   1   |    4      |                        original 16 bit value $45ce
+                    dc.l    actor_cmd_02                    ;   2   |    8      |                        original 16 bit value $410a
+                    dc.l    actor_cmd_03                    ;   3   |    12     |                        original 16 bit value $405e
+                    dc.l    actor_cmd_04                    ;   4   |    16     |                        original 16 bit value $40b8
+                    dc.l    actor_cmd_05                    ;   5   |    20     |                        original 16 bit value $400c
+                    dc.l    actor_cmd_06                    ;   6   |    24     |                        original 16 bit value $40f0
+                    dc.l    actor_cmd_07                    ;   7   |    28     |                        original 16 bit value $4044
+                    dc.l    cmd_nop                         ;   8   |    32     |                        original 16 bit value $5290
+                    dc.l    cmd_nop                         ;   9   |    36     |                        original 16 bit value $5290
+                    dc.l    cmd_nop                         ;   10  |    40     |                        original 16 bit value $5290
+                    dc.l    cmd_nop                         ;   11  |    44     |                        original 16 bit value $5290
+                    dc.l    actor_cmd_12                    ;   12  |    48     |                        original 16 bit value $43a0
+                    dc.l    actor_cmd_13                    ;   13  |    52     |                        original 16 bit value $4380
+                    dc.l    actor_cmd_14                    ;   14  |    56     |                        original 16 bit value $41a2
+                    dc.l    actor_cmd_15_23                 ;   15  |    60     |                        original 16 bit value $426c
+                    dc.l    actor_cmd_16                    ;   16  |    64     |                        original 16 bit value $4430
+                    dc.l    actor_cmd_17                    ;   17  |    68     |                        original 16 bit value $4444
+                    dc.l    actor_cmd_18                    ;   18  |    72     |                        original 16 bit value $447e
+                    dc.l    $00000000                       ;   19  |    76     |                        original 16 bit value $0000
+                    dc.l    actor_cmd_20                    ;   20  |    80     |                        original 16 bit value $5c6e
+                    dc.l    actor_cmd_21                    ;   21  |    84     |                        original 16 bit value $5bea
+                    dc.l    actor_cmd_22                    ;   22  |    88     |                        original 16 bit value $5c02
+                    dc.l    actor_cmd_15_23                 ;   23  |    92     |                        original 16 bit value $426c
+                    dc.l    actor_cmd_24                    ;   24  |    96     |                        original 16 bit value $5b5c
+                    dc.l    actor_cmd_25                    ;   25  |    100    |                        original 16 bit value $5b06
+                    dc.l    actor_cmd_26                    ;   26  |    104    |                        original 16 bit value $5eb8
+                    dc.l    actor_cmd_27                    ;   27  |    108    |                        original 16 bit value $5ecc
+                    dc.l    actor_cmd_28                    ;   28  |    112    |                        original 16 bit value $5f42
+                    dc.l    actor_cmd_29                    ;   29  |    116    |                        original 16 bit value $5fcc
+                    dc.l    actor_cmd_30                    ;   30  |    120    |                        original 16 bit value $6020
+                    dc.l    actor_cmd_31                    ;   31  |    124    |                        original 16 bit value $5d04
+                    dc.l    actor_cmd_32_jackvat            ;   32  |    128    |                        original 16 bit value $5d3c
+                    dc.l    actor_cmd_33_level_complete     ;   33  |    132    |                        original 16 bit value $5db0
+                    dc.l    set_player_spawn_point_1        ;   34  |    136    |                        original 16 bit value $5ae4
+                    dc.l    set_player_spawn_point_2        ;   35  |    140    |                        original 16 bit value $5aee
+                    dc.l    set_player_spawn_point_3        ;   36  |    144    |                        original 16 bit value $5af8
 
 
                     ; a6 = L000039c8 - actors_list
@@ -5644,6 +5796,14 @@ skip_set_spawn_point                                                    ; origin
                     rts 
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_25
 L00005b06           move.w  #$0590,d0
 L00005b0a           sub.w   scroll_window_x_coord,d0                ; L000067bc,d0                            ; updated_batman_distance_walked
 L00005b0e           addq.w  #$02,$000a(a6)
@@ -5671,6 +5831,14 @@ L00005b56           dc.w    $0001, $0001                            ; or.b #$01,
 L00005b5a           dc.w    $ffff                                   ; illegal
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_24
 L00005b5c           move.w  #$0098,$0004(a6)                        ; $00dff004
 L00005b62           lea.l   actors_list,a5                          ; L000039c8,a5
 L00005b66           move.w  #$0085,d2
@@ -5692,7 +5860,7 @@ L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a                               ; jmp to rts above
 L00005b90           jsr     AUDIO_PLAYER_INIT_SFX_1
 L00005b96           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 
-L00005b9e           move.l  #L00005290,gl_jsr_address               ; Set game_loop Self Modifying Code JSR 
+L00005b9e           move.l  #cmd_nop,gl_jsr_address                 ; Set game_loop Self Modifying Code JSR 
 L00005ba4           clr.w   L000062fa
 L00005ba8           clr.w   L00006318
 L00005bac           move.w  $0004(a5),d0                            ; $00bfd104,d0
@@ -5716,6 +5884,13 @@ L00005be4           move.w  d0,L000067c6
 L00005be8           rts
 
 
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_21
 L00005bea           bsr.b   L00005c20
 L00005bec           cmp.w   #$0008,d2
 L00005bf0           bcc.b   L00005be8
@@ -5724,6 +5899,14 @@ L00005bf6           bne.w   L000045bc
 L00005bfa           bsr.b   L00005c4e
 L00005bfc           moveq   #$04,d2
 L00005bfe           bra.w   L000045bc
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_22
 L00005c02           bsr.b   L00005c20
 L00005c04           or.w    #$e000,d2
 L00005c08           cmp.w   #$e008,d2
@@ -5763,6 +5946,14 @@ L00005c66           bmi.b   L00005c40
 L00005c68           moveq   #$03,d6                         ; Value of Energy to Lose (3 of 48)
 L00005c6a           bra.w   batman_lose_energy              ; L00004ccc
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_20
 L00005c6e           move.w  $000c(a6),d3            ; $00dff00c,d3
 L00005c72           addq.b  #$06,d3
 L00005c74           move.w  d3,$000c(a6)            ; $00dff00c
@@ -5812,6 +6003,14 @@ L00005d00           bra.b   L00005cbe
 L00005d02           rts 
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_31
 L00005d04           move.w  $0004(a6),d2
 L00005d08           not.w   d2
 L00005d0a           and.w   #$0007,d2
@@ -5832,7 +6031,16 @@ L00005d38           bmi.b   L00005d82
 L00005d3a           rts 
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+
                     ; jack falls hits the vat?
+actor_cmd_32_jackvat
 L00005d3c           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00005d42           beq.b   L00005d54
 L00005d44           movem.l d0-d1/a6,-(a7)
@@ -5861,7 +6069,7 @@ L00005d88           move.w  (a5),d2
 L00005d8a           beq.b   L00005d82
 L00005d8c           subq.w  #$01,d2
 L00005d8e           bne.w   L00005d02
-L00005d92           move.l  #L00005290,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
+L00005d92           move.l  #cmd_nop,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005d98           move.w  #$0021,(a5)
 L00005d9c           clr.w   L00006318
 L00005da0           move.w  #$ffff,L000062fa
@@ -5869,10 +6077,18 @@ L00005da6           move.b  #PANEL_ST1_VAL_TIMER_EXPIRED,PANEL_STATUS_1    ; Set
 L00005dae           rts
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
                     ; IN:
                     ;   d0.w - Sprite X co-ord
                     ;   d1.w - Unknown - maybe Sprite Y
                     ;   a6.l - object/sprite structure ptr
+actor_cmd_33_level_complete
 L00005db0           move.w  scroll_window_x_coord,d2
 L00005db4           cmp.w   #$0540,d2                               ; 1344 (max X)
 L00005db8           beq.b   L00005dce
@@ -5992,6 +6208,14 @@ L00005eb2           cmp.b   #$24,d2
 L00005eb6           rts
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_26
 L00005eb8           bsr.b   L00005e98
 L00005eba           bcc.b   L00005eca
 L00005ebc           move.w  #$0018,L000067c6
@@ -6000,6 +6224,14 @@ L00005ec4           move.w  #$0020,$0008(a6)
 L00005eca           rts  
 
 
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_27
 L00005ecc           subq.w  #$01,$0008(a6)
 L00005ed0           beq.b   L00005ef8
 L00005ed2           moveq   #$27,d2
@@ -6034,9 +6266,18 @@ L00005f20           move.b  #$4f,$01(a0,d3.W)
 L00005f26           move.b  #$4f,$02(a0,d3.W)
 L00005f2c           move.b  #$4f,$03(a0,d3.W)
 L00005f32           bsr.w   L00005e98
-L00005f36           bcc.b   L00005f42
+L00005f36           bcc.b   actor_cmd_28                ; L00005f42
 L00005f38           move.l  #L000053d6,gl_jsr_address           ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005f3e           clr.w   L00006318
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_28
 L00005f42           moveq   #$05,d2
 L00005f44           bsr.w   L000045bc
 L00005f48           moveq   #$05,d2
@@ -6085,6 +6326,13 @@ L00005fc8           dc.w $0000
 
 
 
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_29
 L00005fcc           cmp.w   #$00c0,d0
 L00005fd0           bpl.b   L00006012
 L00005fd2           and.w   #$0007,d4
@@ -6112,6 +6360,15 @@ L00006016           move.w  d4,d2
 L00006018           lsr.w   #$01,d2
 L0000601a           addq.w  #$01,d2
 L0000601c           bra.w   L000045bc
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_30
 L00006020           cmp.w   #$ffc0,d0
 L00006024           bmi.b   L0000606a
 L00006026           and.w   #$0007,d4
