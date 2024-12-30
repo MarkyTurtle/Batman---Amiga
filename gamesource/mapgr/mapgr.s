@@ -9,22 +9,12 @@
                 section mapgr,code_c
 
 
-TEST_TITLEPRG SET 1             ; run a test build with imported GFX
-
-        IFND TEST_TITLEPRG
+        IFND    TEST_BUILD_LEVEL
                 org     $7ffc                                         ; original load address
-        ELSE
+        ENDC
 
-                ;--------------------------------------------------
-                ; TEST PROGRAM
-                ;--------------------------------------------------
-start
-                Add.w   #$1,d0
-                move.w  d0,$dff180
-                jmp start     
-
-        ENDC    
-           
+  
+MapGR_IFF       
 L00007FFC           dc.w $0000, $8000, $0029, $00C0, $0029, $0000, $0000, $0014             ;.....)...)......
 L0000800C           dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000             ;................
 L0000801C           dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000             ;................

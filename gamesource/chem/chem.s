@@ -15,12 +15,13 @@
                 section chem,code_c
 
 
-TEST_TITLEPRG SET 1             ; run a test build with imported GFX
+;TEST_MUSIC_BUILD SET 1             ; run a test build with imported GFX
 
-        IFND TEST_TITLEPRG
-                org     $47fe4                                         ; original load address
+        IFND TEST_MUSIC_BUILD
+                IFND TEST_BUILD_LEVEL
+                        org     $47fe4                                         ; original load address
+                ENDC
         ELSE
-
 
 kill_system
                 lea     $dff000,a6

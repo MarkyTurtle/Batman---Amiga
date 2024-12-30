@@ -4,8 +4,10 @@ INFINITE_ENERGY_CHEAT   SET 1                           ; if defined then the 'J
 
 
                 section panel,code_c
-                org     $7C7FC                                      ; original load address
 
+            IFND    TEST_BUILD_LEVEL
+                org     $7C7FC                                      ; original load address
+            ENDC
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"

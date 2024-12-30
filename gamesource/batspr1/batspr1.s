@@ -11,20 +11,13 @@
 
 ;TEST_TITLEPRG SET 1             ; run a test build with imported GFX
 
-        IFND TEST_TITLEPRG
+        
+        IFND    TEST_BUILD_LEVEL
                 org     $10ffc                                         ; original load address
-        ELSE
+        ENDC
 
-                ;--------------------------------------------------
-                ; TEST PROGRAM
-                ;--------------------------------------------------
-start
-                Add.w   #$1,d0
-                move.w  d0,$dff180
-                jmp start     
-
-        ENDC      
-
+    
+Batspr1
 L00010FFC           dc.w $3033, $0001, $7976, $0131, $800F, $0909, $0000, $0000         ;03..yv.1........
 L0001100C           dc.w $800F, $100A, $0000, $0064, $800F, $140A, $0000, $0140         ;.......d.......@
 L0001101C           dc.w $800F, $130A, $0000, $021C, $800F, $1115, $0000, $02F8         ;................

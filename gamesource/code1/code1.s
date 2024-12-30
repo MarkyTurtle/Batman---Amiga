@@ -133,6 +133,10 @@
                 ;
                 ;
 
+TEST_BUILD_LEVEL    SET 1                              ; run a test build with imported GFX, level data and Panel
+
+
+
 
 
 ; Loader Constants
@@ -144,7 +148,7 @@ LOADER_LEVEL_4                  EQU $00000830                       ; Load Level
 LOADER_LEVEL_5                  EQU $00000834                       ; Load Level 5
 
 
-
+                IFND TEST_BUILD_LEVEL
 ; Music Player Constants
 AUDIO_PLAYER_INIT               EQU $00048000                       ; initialise music/sfx player
 AUDIO_PLAYER_SILENCE            EQU $00048004                       ; Silence all audio
@@ -153,9 +157,19 @@ AUDIO_PLAYER_INIT_SFX_2         EQU $0004800c                       ; same as in
 AUDIO_PLAYER_INIT_SONG          EQU $00048010                       ; initialise song to play - D0.l = song/sound 1 to 13
 AUDIO_PLAYER_INIT_SFX           EQU $00048014                       ; initialise sfx to play - d0.l = sfx 5 to 13
 AUDIO_PLAYER_UPDATE             EQU $00048018                       ; regular update (vblank to keep sounds/music playing)
+                ENDC
+                IFD TEST_BUILD_LEVEL
+; Music Player Constants
+AUDIO_PLAYER_INIT               EQU Init_Player                     ; initialise music/sfx player
+AUDIO_PLAYER_SILENCE            EQU Stop_Playing                    ; Silence all audio
+AUDIO_PLAYER_INIT_SFX_1         EQU Init_SFX_1                      ; Initialise SFX Audio Channnel
+AUDIO_PLAYER_INIT_SFX_2         EQU Init_SFX_2                      ; same as init_sfx_1 above
+AUDIO_PLAYER_INIT_SONG          EQU Init_Song                       ; initialise song to play - D0.l = song/sound 1 to 13
+AUDIO_PLAYER_INIT_SFX           EQU Init_SFX                        ; initialise sfx to play - d0.l = sfx 5 to 13
+AUDIO_PLAYER_UPDATE             EQU Play_Sounds                     ; regular update (vblank to keep sounds/music playing)
+                ENDC                
 
-
-
+                IFND TEST_BUILD_LEVEL
 ; Panel Constants - original function addresses
 PANEL_UPDATE                    EQU $0007c800                       ; called on VBL to update panel display
 PANEL_INIT_TIMER                EQU $0007c80e                       ; initialise level timer (D0.w = BCD encoded MIN:SEC)
@@ -187,6 +201,41 @@ PANEL_JOKER_GFX                 EQU $0007ebba                                   
 PANEL_SCORE_GFX                 EQU $0007f30a                                                   ; score digits gfx
 PANEL_LIVES_ON_GFX              EQU $0007f374                                                   ; batman symbol - lives icon 'on'
 PANEL_LIVES_OFF_GFX             EQU $0007f838                                                   ; batman symbol - lives icon 'off'
+                    ENDC
+                    IFD TEST_BUILD_LEVEL
+; Panel Constants - original function addresses
+PANEL_UPDATE                    EQU Panel_Update                    ; called on VBL to update panel display
+PANEL_INIT_TIMER                EQU Initialise_Level_Timer          ; initialise level timer (D0.w = BCD encoded MIN:SEC)
+PANEL_INIT_SCORE                EQU Initialise_Player_Score         ; initialise player score
+PANEL_ADD_SCORE                 EQU Update_Player_Score             ; add value to player score (D0.l = BCD encoded value)
+PANEL_INIT_LIVES                EQU Initialise_Player_Lives         ; initialise player lives
+PANEL_ADD_LIFE                  EQU Add_Extra_Life                  ; add 1 to player lives
+PANEL_INIT_ENERGY               EQU Initialise_Player_Energy        ; initialise player energy to full value
+PANEL_LOSE_LIFE                 EQU Lose_a_Life                     ; sub 1 from player lives, check end game, set status bytes
+PANEL_LOSE_ENERGY               EQU Add_Hit_Damage                  ; reduce player energy (increase hit damage) D0.w = amount to lose
+; Panel Constants - original data value addresses
+PANEL_STATUS_1                  EQU panel_status_1                  ; Game Status Bits
+PANEL_STATUS_2                  EQU panel_status_2                  ; Game Status Bits
+PANEL_LIVES_COUNT               EQU player_lives_count              ; player lives left
+PANEL_HISCORE                   EQU High_Score                      ; hi-score BCD value
+PANEL_SCORE                     EQU Player_Score                    ; player score BCD value
+PANEL_FRAMETICK                 EQU frame_tick                      ; counts down from 50 to 0 on each update
+PANEL_TIMER_UPDATE_VALUE        EQU clock_timer_update_value        ; Timer BCD update value
+PANEL_TIMER_VALUE               EQU clock_timer_minutes             ; Timer BCD value Min:Sec (word)
+PANEL_TIMER_SECONDS             EQU clock_timer_seconds             ; Timer BCD seconds value
+PANEL_SCORE_UPDATE_VALUE        EQU Player_Score_Update_Value       ; player score update value
+PANEL_SCORE_DISPLAY_VALUE       EQU Player_Score_Display_Value      ; player score copy BCD value used for display
+PANEL_ENERGY_VALUE              EQU player_remaining_energy         ; player energy value (40 max value)
+PANEL_HIT_DAMAGE                EQU player_hit_damage               ; player hit damge (subtracted from player energy on each panel update)
+; Panel Constants - resources
+PANEL_GFX                       EQU panel_gfx                                                   ; main bottom display panel gfx
+PANEL_BATMAN_GFX                EQU batman_energy_gfx                                           ; batman energy image
+PANEL_JOKER_GFX                 EQU joker_energy_gfx                                            ; joker energy image
+PANEL_SCORE_GFX                 EQU score_digits                                                ; score digits gfx
+PANEL_LIVES_ON_GFX              EQU batman_lives_icon_on_mask                                   ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX             EQU batman_lives_icon_off_mask                                  ; batman symbol - lives icon 'off'
+                ENDC
+
 PANEL_DISPLAY_PIXELWIDTH        EQU $140                                                        ; 320 pixels wide
 PANEL_DISPLAY_BYTEWIDTH         EQU PANEL_DISPLAY_PIXELWIDTH/8;                                 ; 40 bytes wide
 PANEL_DISPLAY_LINEHEIGHT        EQU $30                                                         ; 48 Raster Lines High
@@ -209,9 +258,16 @@ PANEL_ST2_CHEAT_ACTIVE          EQU $7                                          
 
 
 
+
+
 ; Code1 - Constants
 ;-------------------
+                IFND TEST_BUILD_LEVEL
 STACK_ADDRESS                   EQU $0005a36c
+                ENDC
+                IFD TEST_BUILD_LEVEL
+STACK_ADDRESS                   EQU start                                                       ; set stack to start of program.
+                ENDC
 
 
 CODE1_INITIAL_TIMER_BCD         EQU $0800                                                       ; BCD Vaue for 08:00 minutes
@@ -222,15 +278,31 @@ CODE1_DISPLAY_BITPLANEBYTES     EQU (CODE1_DISPLAY_BYTESWIDE*CODE1_DISPLAY_LINES
 CODE1_DISPLAY_BITPLANEDEPTH     EQU $4                                                          ; 4 bitplanes (16 colour display)
 
                                 ; screen display double buffer
+                                IFND TEST_BUILD_LEVEL
 CODE1_DOUBLE_BUFFER_ADDRESS     EQU $00061b9c                                                   ; original address - start of double buffer display in memory
+                                ENDC
+                                IFD TEST_BUILD_LEVEL
+CODE1_DOUBLE_BUFFER_ADDRESS     EQU chipmem_doublebuffer
+                                ENDC                                
 CODE1_DISPLAY_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BITPLANEBYTES*CODE1_DISPLAY_BITPLANEDEPTH;    ; size of each display buffer in bytes
 CODE1_DOUBLE_BUFFER_BYTESIZE    EQU CODE1_DISPLAY_BUFFER_BYTESIZE*2                             ; size of double buffer display in bytes
 CODE1_DISPLAY_BUFFER1_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS                                 ; Address $61b9c
 CODE1_DISPLAY_BUFFER2_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS+CODE1_DISPLAY_BUFFER_BYTESIZE   ; Address $68dcc
 
                                 ; off-screen display buffer (maybe used for composing the back buffer display)
+                                IFND TEST_BUILD_LEVEL
 CODE1_CHIPMEM_BUFFER            EQU $0005a36c                                                   ; original address  $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                                ENDC
+                                IFD TEST_BUILD_LEVEL
+CODE1_CHIPMEM_BUFFER            EQU chipmem_buffer 
+                                ENDC
+
 CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE           
+
+                                even
+
+
+
 
 ; Code1 - debug_print_word_value constants
 FONT_8x8_HEIGHT     EQU         $8
@@ -272,25 +344,40 @@ SFX_EXPLOSION       EQU         $0d
 
 
 ; MAPPGR.IFF
+                    IFND    TEST_BUILD_LEVEL
 MAPGR_ADDRESS                   EQU $7FFC                                                       ; $7ffc - physical load address of MAPGR.IFF
+                    ELSE
+MAPGR_ADDRESS                   EQU MapGR_IFF                                                   ; label defined in Mapgr.iff
+                    ENDC
 MAPGR_TILEDATA_OFFSET           EQU $7a                                                         ; offsset from $8002 to $800c
 MAPGR_START                     EQU MAPGR_ADDRESS+4                                             ; $8000 - data start address                                      
 MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
 MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
 MAPGR_DATA_ADDRESS              EQU MAPGR_ADDRESS+$80                                           ; $807c - Address offset of the first level data block.
 MAPGR_GFX_ADDRESS               EQU MAPGR_DATA_ADDRESS+$2000                                    ; $a07c - Address offset of level GFX.
-
 MAPGR_PREPROC_BLOCK_OFFSET      EQU $76                                                         ; 1st data block offset (data preprocessing step)
 
 
 ; BATSPR1.IFF
+                    IFND    TEST_BUILD_LEVEL
 BATSPR1_ADDRESS                 EQU $10FFC                                                      ; $10FFC - physical load address of BATSPR1.IFF
+                    ELSE
+BATSPR1_ADDRESS                 EQU Batspr1                                                     ; label defined in batspr1.iff
+                    ENDC
 BATSPR1_START                   EQU BATSPR1_ADDRESS+4                                           ; $11000 - data start address
 BATSPR1_BASE                    EQU BATSPR1_ADDRESS+6                                           ; $11002 - 
 
 
+
                 section code1,code_c
-                ;org     $0                                          ; original load address
+                
+             
+            ; if not test then org $2FFC   
+            IFND TEST_BUILD_LEVEL
+                org     $2ffc                                           ; original load address $2FFC
+            ENDC
+
+
 
 
                 ;--------------------- includes and constants ---------------------------
@@ -299,9 +386,18 @@ BATSPR1_BASE                    EQU BATSPR1_ADDRESS+6                           
                 opt         o-
 
 
+            ; if test then jump to game start
+            IFD TEST_BUILD_LEVEL
 start               ; added for testing (doesn't run yet!!!)
                     jmp game_start     
-           
+            ENDC
+
+_DEBUG_COLOURS
+            move.w  d0,$dff180
+            add.w   #$1,d0
+            btst    #6,$bfe001
+            bne.s   _DEBUG_COLOURS
+            rts
 
 
 original_start:                                             ; original address $2FFC
@@ -311,6 +407,7 @@ original_start:                                             ; original address $
 
 game_start                                                  ; original address $00003000
 initialise_system
+                    ;JSR _DEBUG_COLOURS
                     ; kill the system & initialise h/w
                     moveq   #$00,d0
                     move.w  #$1fff,$00dff09a                ; DMACON - Disable DMA (All DMA Channels)
@@ -405,6 +502,7 @@ initialise_system
                     move.b  #$93,$00bfdd00                  ; CIAB - ICR - Enable FLG & Timer A & B Interrupts
                     move.w  #$e078,$00dff09a                ; INTENA - Enable - EXTER (disk sync), BLIT, VERTB, COPER, PORTS (keyboard & Timers)                
                                                             ;        - Level 2,3,6
+                    ;JSR     _DEBUG_COLOURS
 
                     ; start initialising the game           ; original address $0000317a
                     jsr     PANEL_INIT_LIVES                ; Panel - Initialise Player Lives - $0007c838
@@ -418,6 +516,9 @@ initialise_system
                     lea.l   copper_list,a0                  ; L000031c8,a0
                     bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
                     bsr.w   double_buffer_playfield         ; L000036fa
+
+                    ;JSR     _DEBUG_COLOURS
+
                     bra.w   initialise_game                      ; L00003ae4
 
 
@@ -492,6 +593,7 @@ copper_playfield_planes                             ; original address $000031d4
                     dc.w $da01,$fffe
                     dc.w BPL2MOD,$0000              ; Modulo = 0
                     dc.w BPL1MOD,$0000              ; Modulo = 0
+copper_panel_planes
                     dc.w BPL1PTL                    ; $00e2                     
                     dc.w $c89a                      ; Bitplane 1 - $7C89A = $780 (1920) bytes (48 Rasters @ 40 bytes per line (320 pixels))
                     dc.w BPL1PTH                    ; $00e0                      
@@ -1191,6 +1293,32 @@ reset_display                                               ; original address $
                     move.w  #$3080,$00dff08e                ; DIWSTRT - Display Window Start Vertical Start = $30, Horizontal Start = $80 (320x218 window)
                     move.w  #$0ac0,$00dff090                ; DIWSTOP - Display Window Stop Vertical Stop = $10a, Horizontal Stop = $1c0
                     move.w  #$4200,$00dff100                ; BPLCON0 - 4 bitplane, colour display 
+ 
+                    ; set bitplane ptrs if running a test build
+                IFD     TEST_BUILD_LEVEL
+                    lea     copper_panel_planes,a0
+                    move.l  #PANEL_GFX,d0
+                    move.w  d0,2(a0)
+                    swap.w  d0
+                    move.w  d0,6(a0)
+                    swap.w  d0
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$0a(a0)
+                    swap.w  d0
+                    move.w  d0,$0e(a0)
+                    swap.w  d0  
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$12(a0)
+                    swap.w  d0
+                    move.w  d0,$16(a0)
+                    swap.w  d0        
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$1a(a0)
+                    swap.w  d0
+                    move.w  d0,$1e(a0)
+                    swap.w  d0       
+                ENDC
+ 
                     clr.w   frame_counter                   ; L000036ee
 .wait_vbl
                     tst.w   frame_counter                   ; L000036ee
@@ -1557,6 +1685,7 @@ initialise_game                                                     ; original a
                     bsr.w   double_buffer_playfield 
 
                     bsr.w   preprocess_data
+                    ;JSR     _DEBUG_COLOURS
 
                     jsr     AUDIO_PLAYER_INIT
                     clr.w   level_spawn_point_index                 ; start at beginning of the level - L000062fc
@@ -1574,6 +1703,7 @@ restart_level                                                       ; original a
 
                     bsr.w   panel_fade_in
 
+                    ;JSR     _DEBUG_COLOURS
 
 
                     ; ------------ modify level tile map ------------
@@ -1610,6 +1740,7 @@ update_level_data
                     move.l  #$00005fc4,L00005f64                    ; reset ptr to default (no update data - all 0 values)
 
 
+                    ;JSR     _DEBUG_COLOURS
 
                     ; clear 40 longs (160 bytes)
                     ; data referenced by projectiles
@@ -1619,26 +1750,29 @@ clear_projectile_data                                               ; original a
 .loop               clr.l   (a0)+                   
                     dbf.w   d7,.loop
 
+                    ;JSR     _DEBUG_COLOURS
 
                     ; ------------ (re)enable actors -------------
                     ; clear MSB flag of each data structure
                                                                     ; original address L00003b64
-clear_msb           lea.l   actor_definitions_list,a0               ; L0000642e,a0                
-.loop               bclr.b  #$0007,(a0)                             ; clear MSB (enable/disable flag?)
-                    move.w  $0004(a0),d0                            ; count of data entries and/or offset to next structure, word at 4(a0) 
-                    mulu.w  #$0006,d0                               ; size of each data entry (6 bytes)
-                    lea.l   $06(a0,d0.W),a0                         ; increment pointer to next actor definition
-                    cmpa.l  L00006722,a0                            ; check if end of list
-                    bcs.b   .loop                                   ; loop until end of list.
+;clear_msb           lea.l   actor_definitions_list,a0               ; L0000642e,a0                
+;.loop               bclr.b  #$0007,(a0)                             ; clear MSB (enable/disable flag?)
+;                    move.w  $0004(a0),d0                            ; count of data entries and/or offset to next structure, word at 4(a0) 
+;                    mulu.w  #$0006,d0                               ; size of each data entry (6 bytes)
+;                    lea.l   $06(a0,d0.W),a0                         ; increment pointer to next actor definition
+;                    cmpa.l  L00006722,a0                            ; check if end of list
+;                    bcs.b   .loop                                   ; loop until end of list.
+;
+;
+;                    JSR     _DEBUG_COLOURS
 
 
-
-                    ; clear MSB flag of each data structure
-L00003b7e                                                           ; original address                    
-.loop               bclr.b  #$0007,$0004(a0)
-                    addq.w  #$06,a0                                 ; start of next data structure
-                    cmpa.l  default_level_parameters,a0
-                    bcs.b   .loop
+;                    ; clear MSB flag of each data structure
+;L00003b7e                                                           ; original address                    
+;.loop               bclr.b  #$0007,$0004(a0)
+;                    addq.w  #$06,a0                                 ; start of next data structure
+;                    cmpa.l  default_level_parameters,a0
+;                    bcs.b   .loop
 
 
 
@@ -1650,7 +1784,7 @@ L00003b8c           lea.l   actors_list,a0                          ; L000039c8,
                     clr.w   (a0)+
                     dbf.w   d7,.loop
 
-
+                    ;JSR     _DEBUG_COLOURS
 
                     ; ------ Set initial batman sprite ids -----    ; original address L00003b98
 init_batman_sprites clr.w   batman_sprite1_id
@@ -1681,6 +1815,8 @@ set_player_defaults
                     dbf.w   d6,.outer_loop                          ; loop again until required spawn point parameters have been copied 
 
 
+                    
+                    ;JSR     _DEBUG_COLOURS
 
                     ; ---------- display level title -------
 display_axis_chemical_factory                                       ; original address L00003bc2
@@ -1688,24 +1824,24 @@ display_axis_chemical_factory                                       ; original a
                     bsr.w   large_text_plotter
                     bsr.w   double_buffer_playfield   
 
-
+                    ;JSR     _DEBUG_COLOURS
 
                     ; -------- initialise back buffer ------        ; original address L00003bce
 init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
                     bsr.w   copy_offscreen_to_backbuffer            ; copy initial level background gfx to back-buffer                              
 
-
+                    ;JSR     _DEBUG_COLOURS
 
                     ; -------- draw player in at point -------
-draw_player         bsr.w   draw_batman_and_rope
-
-
+;draw_player         bsr.w   draw_batman_and_rope
+;
+;                    JSR     _DEBUG_COLOURS
 
                     ; --------- pause for 1 second --------
 one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
                     bsr.w   wait_for_frame_count
 
-
+                    ;JSR     _DEBUG_COLOURS
 
                     ; --------- start music (if selected) ----------
 set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
@@ -1720,7 +1856,7 @@ set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - St
                     bsr.w   screen_wipe_to_backbuffer
                     clr.l   frame_counter_and_target_counter
 
-
+                    ;JSR     _DEBUG_COLOURS
 
 
 
@@ -1791,6 +1927,8 @@ end_of_key_checks
 
 
 
+                    ;jmp     do_system_updates
+
                     ; -------- start of player state machine updates ------------
 gl_update_state_machine
                     btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1         ; Test Timer has expired
@@ -1823,14 +1961,15 @@ gl_jsr_address      dc.l    player_move_commands            ; $00004c3e ; Self M
                     ; -------- end of player state machine updates ------------
 
 
+do_system_updates
                     bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
                     bsr.w   update_score_by_level_progress          ; L00003dd4 ; Update Score based upon progress from left to right through the level.
-                    bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
+                    ;bsr.w   update_level_actors_01                  ; L00003dfe ; Update Level Actors 01
                     bsr.w   copy_offscreen_to_backbuffer            ; L00004b62 ; Copy Off-Screen Background GFX to Back-Buffer
-                    bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
-                    bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
-                    bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
-                    bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
+                    ;bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
+                    ;bsr.w   update_level_actor_02                   ; L00003ee6 ; Update Level Actors 02
+                    ;bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+                    ;bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)
                     bsr.w   double_buffer_playfield                 ; L000036fa
 
                     bra.w   game_loop                               ; L00003bfa ; jump back to main loop
@@ -5267,6 +5406,7 @@ preproc_font                                            ; original address L0000
                     addq.w  #$05,a0                     ; 5 byte structure.
                     dbf.w   d7,.loop                    ; 
 
+
                     ; ------ init map data ------
                     ; swaps 20 blocks of level data (192 bytes)
                     ; outermost to inner most blocks are swapped (41 blocks in total)
@@ -5418,6 +5558,9 @@ preproc_display_object_data_2                           ; original address L0000
                     addq.w  #$01,a1     
                     btst.b  #$0000,(a1)                 ; test lsb of mask 1st word.
                     bne.w   preprocess_sprite_gfx       ; create left facing sprite sheet?
+
+                    ;JSR     _DEBUG_COLOURS
+
                     rts
 
 
@@ -5432,6 +5575,7 @@ preproc_display_object_data_2                           ; original address L0000
                     ; 2) create mirror image of sprites
                     ;
 preprocess_sprite_gfx                               ; original address L000059b8
+                    ;JSR     _DEBUG_COLOURS
 invert_sprites                                      ; original address L000059b8
                     move.w  d6,d7
                     movea.l sprite_array_ptr,a1     ; L000062fe,a1
@@ -6605,3 +6749,38 @@ large_text_plotter                                                  ; original a
 large_character_gfx                                     ; original address L000068a0
                     include font8x8x4.s
 
+
+
+
+
+            ; if test build, allocate backbuffers in chip memory
+                                IFD TEST_BUILD_LEVEL
+chipmem_buffer                  dcb.b   CODE1_DISPLAY_BUFFER_BYTESIZE,$01
+                                even
+chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
+                                ENDC
+
+            ; If Test Build - Include the Level Music and SFX
+            IFD TEST_BUILD_LEVEL
+                incdir      "../chem/"
+                include     "chem.s"
+            ENDC
+
+            ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
+            IFD TEST_BUILD_LEVEL
+                incdir      "../panel/"
+                include     "panel.s"                                           ; original load address $2FFC
+            ENDC
+
+            ; If Test Build - Include the level map data and graphics
+            IFD TEST_BUILD_LEVEL
+                incdir      "../mapgr/"
+                include     "mapgr.s"
+            ENDC
+
+            ; If Test Build - Include Batman Sprites File 1n( also allocate memory for mirrored sprites)
+            IFD TEST_BUILD_LEVEL
+                incdir      "../batspr1/"
+                include     "batspr1.s"
+                dcb.b       98856,0
+            ENDC
