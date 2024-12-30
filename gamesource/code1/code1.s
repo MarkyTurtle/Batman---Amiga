@@ -420,7 +420,11 @@ initialise_system
     
                     move.w  #$8340,$00dff096                ; DMACON - Enable Bitplane, Blitter, Master
                     move.w  #$7fff,$00dff09e                ; ADKCON - Clear Disk & Audio modulaton bits
-
+            
+            ; if test build, set stack to start of code.
+            IFD TEST_BUILD_LEVEL
+                    lea     start,a7
+            ENDC
                     ; clear all sprite postions
                     moveq   #$07,d7                         ; counter = 7 + 1
                     lea.l   $00dff140,a0                    ; SPR0POS - first sprite position
@@ -2023,8 +2027,9 @@ screen_wipe_to_backbuffer                                   ; original address L
                         and.w   d2,d3
                         moveq   #$0f,d5
                         lsr.w   #$01,d3
-                        bcc.b   .exit_check
-                        MOVE.L  #$fffffff0,D5                    
+                        bcc.b   .skip_d5
+                        moveq   #-$16,d5                            ;  #$fffffff0,D5                    
+.skip_d5
                         cmp.w   d0,d3
                         bcc.b   .skip_inner_loops                    ; L00003d32
                         move.w  d2,d4
@@ -3584,14 +3589,14 @@ scroll_speed_shenanigans                                            ; original a
                     ; check -3 to -1 scroll intervals
                     cmp.w   #$fffd,d0
                     bcc.b   .continue_vertical_scroll                    ; L00004980
-
                     bpl.b   .L00004968
-                    MOVE.L  #$fffffffe,D0           ; d0 = -2
+                    moveq   #-$2,d0                                     ; $fffffffe,D0           ; d0 = -2
                     bra.b   .continue_vertical_scroll                    ; L00004980
+
 .L00004968          moveq   #$02,d0
                     bra.b   .continue_vertical_scroll                    ; L00004980
 
-.is_negative                                                            ; original address L0000496c
+.is_negative        ; original address L0000496c
                     cmp.w   #$0008,d0
                     bcs.b   .continue_vertical_scroll                    ; L00004980
                     cmp.w   #$fffd,d0               ; -3
@@ -3599,9 +3604,9 @@ scroll_speed_shenanigans                                            ; original a
                     bmi.b   .L0000497e
                     moveq   #$07,d0
                     bra.b   .continue_vertical_scroll                    ; L00004980
-.L0000497e          MOVE.L  #$fffffffd,D0           ; d0 = -3
+.L0000497e          moveq   #-$3,d0                                     ;   #$fffffffd,D0           ; d0 = -3
 
-.continue_vertical_scroll                                                ; original address L00004980
+.continue_vertical_scroll     ; original address L00004980
                     ; d0 = amount to scroll
                     move.w  scroll_window_y_coord,d1                    ; window Y coord
                     move.w  d1,d3                                       ; copy window Y coord
@@ -3622,11 +3627,11 @@ scroll_speed_shenanigans                                            ; original a
                     sub.w   d1,d0                                       ; d0 = scroll amount to get to #$00
                     clr.w   d1                                          ; d1 = window y coord - clamp Y at min value #$00
 
-.update_y_scroll_position                                               ; original address L000049a0
+.update_y_scroll_position   ; original address L000049a0
                     sub.w   d0,batman_y_offset                          ; subtract scroll amount from $67c4
                     move.w  d1,scroll_window_y_coord                    ; update window Y coord
 
-check_vertical_scroll                                                   ; original address L000049a8
+check_vertical_scroll  ; original address L000049a8
                     ; calculate the number of increments to scroll
                     sub.w   d3,d1                                       
                     move.w  d1,vertical_scroll_increments               ; store the number of increments to scroll            
@@ -3650,14 +3655,14 @@ scroll_display_window_down                                              ; origin
 
                     ; scroll display up (e.g. climbing upwards)
                     ; NB: d1 is negative
-scroll_display_window_up 
+scroll_display_window_up    ; original address L000049d4
                     move.w  offscreen_y_coord,d2                        ; get current offscreen buffer Y co-ord
                     add.w   d1,d2                                       ; add number of scroll increments
                     ; test for underflow wrap at top
                     bpl.b   .no_underflow_wrap                          ; if +ve then no underflow wrap.
 .is_enderflow_wrap
                     add.w   #DISPLAY_MAX_Y,d2                           ; wrap y co-ord to bottom of offscreen buffer
-.no_underflow_wrap
+.no_underflow_wrap  ; L000049e0
                     move.w  d2,offscreen_y_coord                        ; store offscreen buffer Y co-ord
                     add.w   d1,d3                                       ; add scroll increments to world Y position
                     neg.w   d1                                          ; make number of scroll increments +ve
@@ -3666,7 +3671,7 @@ scroll_display_window_up
 
 
                     ; ------- do horizontal scroll -------
-do_horizontal_scroll                                                    ; original address L000049ec
+do_horizontal_scroll    ; original address L000049ec
                     move.w  batman_x_offset,d0                          ; last batman X position scroll value
                     sub.w   L000067c8,d0                                ; current X scroll value
                     move.w  d0,L0000630e                                ; amount of scroll
@@ -3684,7 +3689,8 @@ do_horizontal_scroll                                                    ; origin
                     clr.w   d1                                          ; clamp X pos to 0.
                     bra.b   .cont_horiz_scroll                          ; L00004a1c
           
-.test_max_X        ; test window max X value (1344)
+
+.test_max_X        ; test window max X value (1344) L00004a0c
                     clr.w   d0
                     cmp.w   #$0540,d1                                   ; #$540 = 1344
                     bls.b   .cont_horiz_scroll                          ; L00004a1c
@@ -3709,24 +3715,24 @@ do_horizontal_scroll                                                    ; origin
                     beq.b   .exit_horizontal_scroll                     ; no coarse horizontal scroll then exit.
 
                     ; set up coarse scroll                              ; original address L00004a3a
-                    movea.l offscreen_display_buffer_ptr,a4
+                    move.l offscreen_display_buffer_ptr,a4
                     tst.w   d3                                          ; amount to scroll 
                     bmi.b   .scroll_left                                ; if -ve then scroll left
 
-.scroll_right       ; do scroll right                                   ; original address L00004a42
+.scroll_right       ; do scroll right L00004a42                                   ; original address L00004a42
                     add.w   #$00a0,d1                                   ; add 160 (320 pixel to update column)
                     addq.w  #$02,a4                                     ; increase offscreen ptr 16 pixels to right
                     move.l  a4,offscreen_display_buffer_ptr             ; update offscreen buffer ptr
                     lea.l   $0028(a4),a4                                ; add 40 bytes to ptr (right hand side of screen)
                     bra.b   .update_horizontal
 
-.scroll_left        ; do scroll left.
+.scroll_left        ; do scroll left. L00004a52
                     subq.w  #$02,a4                                     ; sub 2 bytes to ptr (left hand side of screen)
                     move.l  a4,offscreen_display_buffer_ptr             ; update offscreen buffer ptr.
 
 .update_horizontal  ; draw new column of tile map                       ; original address L00004a58
                     bsr.w   draw_background_horizontal_scroll
-.exit_horizontal_scroll
+.exit_horizontal_scroll ; original address L00004a5c
                     rts  
 
 
@@ -3806,7 +3812,7 @@ draw_background_vertical_scroll                                         ; origin
                             move.w  (a3)+,(a1)+                                                ; Line 1 - BPL 0
                             move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET-2(a1)                     ; Line 1 - BPL 1
                             move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET-2(a1)                     ; Line 1 - BPL 2
-                            move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET-2(a1)                     ; Line 1 - BPL 3
+                            move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET-2(a1)                     ; Line 1 - BPL 3
                             move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 0
                             move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 1
                             move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET+DISPLAY_BYTEWIDTH-2(a1)   ; Line 2 - BPL 2
@@ -7051,8 +7057,10 @@ large_character_gfx                                     ; original address L0000
             ; if test build, allocate backbuffers in chip memory
                                 IFD TEST_BUILD_LEVEL
 chipmem_buffer                  dcb.b   CODE1_DISPLAY_BUFFER_BYTESIZE,$01
+                                dcb.B   40,0
                                 even
 chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
+                                dcb.b   40,0
                                 ENDC
 
             ; If Test Build - Include the Level Music and SFX
