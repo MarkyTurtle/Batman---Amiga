@@ -532,7 +532,7 @@ do_update_player_score                                              ; original r
                 cmp.b   d0,d1                                       ; d0 = MSD of score (before add), d1 = MSD of score (after add)
                 beq.b   .skip_extra_life
                 bsr.w   do_add_extra_life                           ; ticked over 100,000 points, calls $0007f95a
-.skip_extra_life
+.skip_extra_life    ; L0007fbc0
                 movem.l (a7)+,d0-d1                                 ; Restore Registers used above.
 
                 ; display player score (also keep copy in $7C88A)
@@ -544,7 +544,7 @@ do_update_player_score                                              ; original r
                 move.w  #$0c1e,d1                                   ; d1 = x,y
                 bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
 
-.display_score_mid
+.display_score_mid ; L0007fbe0
                 move.b  Player_Score+2,d0
                 cmp.b   Player_Score_Display_Value+2,d0
                 beq.b   .display_score_lo 
@@ -552,7 +552,7 @@ do_update_player_score                                              ; original r
                 move.w  #$0a1e,d1
                 bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
 
-.display_score_lo
+.display_score_lo   ; L0007fbfc
                 move.b  Player_Score+1,d0
                 cmp.b   Player_Score_Display_Value+1,d0
                 beq.b   .chk_high_score
@@ -560,37 +560,37 @@ do_update_player_score                                              ; original r
                 move.w  #$081e,d1
                 bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
 
-.chk_high_score
+.chk_high_score ; L0007fc18
                 move.l  High_Score,d0
                 cmp.l   Player_Score,d0
                 bhi.w   .exit_update_player_score                   ; player score is not the high score
 
-.plot_score_hi                                                      ; plot highest 2 score digits
+.plot_score_hi  ; L0007fc28                                                    ; plot highest 2 score digits
                 moveq   #$00,d0
                 move.b  Player_Score+3,d0
                 cmp.b   High_Score+3,d0
                 beq.b   .plot_score_mid
-                move.w  $0c0e,d1                                    ; d1.w = x,y
+                move.w  #$0c0e,d1                                   ; d1.w = x,y
                 bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0=chars
 
-.plot_score_mid                                                     ; plot middle 2 score digits
+.plot_score_mid     ; L0007fc40                                      ; plot middle 2 score digits
                 move.b  Player_Score+2,d0
                 cmp.b   High_Score+2,d0
                 beq.b   .plot_score_lo 
                 move.w  #$0a0e,d1
                 bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0=chars
 
-.plot_score_lo                                                      ; plot lowest 2 score digits
+.plot_score_lo  ; L0007fc56                                                     ; plot lowest 2 score digits
                 move.b  Player_Score+1,d0
                 cmp.b   High_Score+1,d0
                 beq.b   .store_high_score
                 move.w  #$080e,d1
                 bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0=chars
 
-.store_high_score
+.store_high_score  ; L0007fc6c
                 move.l Player_Score,High_Score
 
-.exit_update_player_score
+.exit_update_player_score ; L0007fc76
                 rts
 
 
