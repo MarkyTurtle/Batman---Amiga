@@ -367,7 +367,11 @@ BATSPR1_ADDRESS                 EQU Batspr1                                     
 BATSPR1_START                   EQU BATSPR1_ADDRESS+4                                           ; $11000 - data start address
 BATSPR1_BASE                    EQU BATSPR1_ADDRESS+6                                           ; $11002 - 
 
-
+                    IFND    TEST_BUILD_LEVEL
+BATSPR1_SPRTIE_LIST             EQU $100000
+                    ELSE
+BATSPR1_SPRTIE_LIST             EQU sprite_list
+                    ENDC
 
                 section code1,code_c
                 
@@ -421,10 +425,6 @@ initialise_system
                     move.w  #$8340,$00dff096                ; DMACON - Enable Bitplane, Blitter, Master
                     move.w  #$7fff,$00dff09e                ; ADKCON - Clear Disk & Audio modulaton bits
             
-            ; if test build, set stack to start of code.
-            IFD TEST_BUILD_LEVEL
-                    lea     start,a7
-            ENDC
                     ; clear all sprite postions
                     moveq   #$07,d7                         ; counter = 7 + 1
                     lea.l   $00dff140,a0                    ; SPR0POS - first sprite position
@@ -1404,7 +1404,7 @@ clear_display_memory                                                        ; or
 
                     ; clear off-screen display buffer
                     lea.l   CODE1_CHIPMEM_BUFFER,a0
-                    move.w  #CODE1_DISPLAY_BUFFER_BYTESIZE/4,d7
+                    move.w  #(CODE1_DISPLAY_BUFFER_BYTESIZE/4)-1,d7
 .clr_loop_2
                     clr.l   (a0)+                                   ; clear 4 bytes
                     dbf.w   d7,.clr_loop_2
@@ -1841,9 +1841,9 @@ init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initi
                     ;JSR     _DEBUG_COLOURS
 
                     ; -------- draw player in at point -------
-;draw_player         bsr.w   draw_batman_and_rope
-;
-;                    JSR     _DEBUG_COLOURS
+draw_player         bsr.w   draw_batman_and_rope
+
+                    JSR     _DEBUG_COLOURS
 
                     ; --------- pause for 1 second --------
 one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
@@ -1973,15 +1973,15 @@ do_system_updates
                     bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
                     bsr.w   update_score_by_level_progress          ; L00003dd4 ; Update Score based upon progress from left to right through the level.
                     
-                    ;bsr.w   trigger_new_actors                      ; L00003dfe ; Trigger new actors when in range.
+                    bsr.w   trigger_new_actors                      ; L00003dfe ; Trigger new actors when in range.
 
                     bsr.w   copy_offscreen_to_backbuffer            ; L00004b62 ; Copy Off-Screen Background GFX to Back-Buffer
-                    ;bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
+                    bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
                     
-                    ;bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
+                    bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
                     
-                    ;bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
-                    ;bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
+                    bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+                    bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
                     bsr.w   double_buffer_playfield                 ; L000036fa
 
                     bra.w   game_loop                               ; L00003bfa ; jump back to main loop
@@ -5092,6 +5092,7 @@ get_map_tile_at_display_offset_d0_d1                        ; original address
                     ; This routine draws the Batman Player and the Rope Swing
                     ;
 draw_batman_and_rope                                ; original address L000055c4
+                    jmp     draw_batman_sprite
 L000055c4           move.w  L00006318,d2
 L000055c8           beq.w   L000056a6
 L000055cc           movem.w batman_xy_offset,d0-d1
@@ -5167,32 +5168,33 @@ L000056a0           not.w   d6                      ; invert mask/line pattern?
 L000056a2           dbf.w   d7,L00005678            ; loop next bitplane
 
                     ; draw first Batman Sprite
-L000056a6           movem.w batman_xy_offset,d0-d1  ; batman object X & Y co-ords
-L000056ac           move.w  batman_sprite1_id,d2    ; sprite id
+draw_batman_sprite
+L000056a6           movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
+L000056ac           move.w  batman_sprite1_id,d2                        ; sprite id
 L000056b0           clr.w   d4
 L000056b2           move.b  d2,d4
-L000056b4           beq.w   exit_draw_batman        ; if (sprite id) == 0 then exit
-L000056b8           move.w  d1,d3                   ; d1 = Y co-ord
-L000056ba           lea.l   display_object_coords,a0            ; L0000607c,a0            ; unknown table 
-L000056be           add.w   d4,d4                   ; sprite id * 2
-L000056c0           add.w   d3,d3                   ; Y co-ord * 2
-L000056c2           sub.b   -2(a0,d4.W),d3          ; modify Y co-ord
-L000056c6           asr.w   #$01,d3                 ; divide y by 2 (X & Y stored as halved values)
-L000056c8           move.w  d3,L000062f0            ; store update Y co-ord
-L000056cc           bsr.b   draw_sprite             ; Draw Batman Part - L000056f4
+L000056b4           beq.w   exit_draw_batman                            ; if (sprite id) == 0 then exit
+L000056b8           move.w  d1,d3                                       ; d1 = Y co-ord
+L000056ba           lea.l   display_object_coords,a0                    ; L0000607c,a0            ; unknown table 
+L000056be           add.w   d4,d4                                       ; sprite id * 2
+L000056c0           add.w   d3,d3                                       ; Y co-ord * 2
+L000056c2           sub.b   -2(a0,d4.W),d3                              ; modify Y co-ord
+L000056c6           asr.w   #$01,d3                                     ; divide y by 2 (X & Y stored as halved values)
+L000056c8           move.w  d3,L000062f0                                ; store update Y co-ord
+L000056cc           bsr.b   draw_sprite                                 ; Draw Batman Part - L000056f4
 
                     ; draw second Batman Sprite
-L000056ce           movem.w batman_xy_offset,d0-d1  ; batman object X & Y co-ords
-L000056d4           move.w  batman_sprite2_id,d2    ; sprite id            
+L000056ce           movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
+L000056d4           move.w  batman_sprite2_id,d2                        ; sprite id            
 L000056d8           move.b  d2,d2
-L000056da           beq.w   exit_draw_batman        ; if (sprite id) == 0 then exit
+L000056da           beq.w   exit_draw_batman                            ; if (sprite id) == 0 then exit
 L000056de           bsr.b   draw_sprite
 
                     ; draw third Batman Sprite
-L000056e0           movem.w batman_xy_offset,d0-d1  ; batman object X & Y co-ords
-L000056e6           move.w  batman_sprite3_id,d2    ; sprite id
+L000056e0           movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
+L000056e6           move.w  batman_sprite3_id,d2                        ; sprite id
 L000056ea           move.b  d2,d2
-L000056ec           beq.w   exit_draw_batman        ; if (sprite id == 0) then exit
+L000056ec           beq.w   exit_draw_batman                            ; if (sprite id == 0) then exit
 L000056f0           bsr.b   draw_sprite
 
 exit_draw_batman
@@ -6622,7 +6624,7 @@ L000062fc           dc.w $0000                          ; used by level init to 
 
                     ; referenced by draw_sprite
 sprite_array_ptr                        ; original address L000062fe
-L000062fe           dc.l $00010000      ; ptr to an array of sprite definition data structures
+L000062fe           dc.l BATSPR1_SPRTIE_LIST    ; $00010000      ; ptr to an array of sprite definition data structures
                                         ; structure def:
                                         ;  byte offset | description
                                         ;           0  | Y Offset
@@ -7086,4 +7088,10 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
                 incdir      "../batspr1/"
                 include     "batspr1.s"
                 dcb.b       98856,0
+            ENDC
+
+
+            IFD TEST_BUILD_LEVEL
+                even
+sprite_list     dcb.b       305*8,0
             ENDC
