@@ -9,9 +9,7 @@
 				"args": [
 					"-m68000",
 					"-Fhunk",
-					"-linedebug",
-					"-devpac",
-					"-no-opt"
+					"-linedebug"
 				]
 			},
 			"vlink": {
@@ -31,37 +29,6 @@
 			"group": {
 				"kind": "build",
 				"isDefault": true
-			}
-		},
-		{
-			"type": "amigaassembly",
-			"vasm": {
-				"enabled": true,
-				"command": "${config:amiga-assembly.binDir}/vasmm68k_mot",
-				"args": [
-					"-m68000",
-					"-Fbin",
-					"-devpac",
-					"-no-opt"
-				]
-			},
-			"vlink": {
-				"enabled": true,
-				"command": "${config:amiga-assembly.binDir}/vlink",
-				"includes": "*.{s,S,asm,ASM}",
-				"excludes": "",
-				"exefilename": "../uae/dh0/code1",
-				"entrypoint": "code1.s",
-				"args": [
-					"-brawbin2",
-					"-Bstatic"
-				]
-			},
-			"problemMatcher": [],
-			"label": "amigaassembly: build-absolute",
-			"group": {
-				"kind": "build",
-				"isDefault": false
 			}
 		}
 	]
