@@ -65,6 +65,11 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+
+2024-12-31 - The latest video of the Level 1 build and the Batman character being controlled, walking around the level.  Next job is to debug all of the player controls.
+
+ - [YouTube Video](https://youtu.be/vJdWEZv0IVE)
+
 2024-12-30 - It's been a while, but that doesn't mean that I haven't been chipping away at this project in what little spare time I get. I've now disassembled large parts of the Level 1 code (Filename code1.s) and started to make a debug/test build in the project source. It successfully assembles, the level starts, playes the music and allows the player to walk around in a limited fashion. Lots left to debug to get it working properly.
 
  - Link to the [Test Build Project](./gamesource/code1/) 
