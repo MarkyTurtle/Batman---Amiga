@@ -1793,7 +1793,6 @@ L00003b7e                                                           ; original a
                     ; Clear Active Actors List?                     ; original address L00003b8c
 L00003b8c           lea.l   actors_list,a0                          ; L000039c8,a0
                     moveq  #(ACTORLIST_SIZE/2)-1,d7
-                    ;moveq   #$6d,d7                                ; counter = #$6d + 1 = #$6e (110 decimal) (220 bytes)
 .loop
                     clr.w   (a0)+
                     dbf.w   d7,.loop
@@ -4093,12 +4092,12 @@ blit_src_to_dest                                                        ; origin
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ; 
 player_move_commands                                                ; original address $00004c3e
-L00004c3e           clr.w   d2
-L00004c40           move.b  player_input_command,d2                 ; play joystick input bits
-L00004c44           asl.w   #$02,d2
-L00004c46           movea.l player_input_cmd_table(pc,d2.W),a0      ; get input command address.
-L00004c4a           jmp (a0)                                        ; execute input command
-
+                    clr.w   d2
+                    move.b  player_input_command,d2                 ; play joystick input bits
+                    asl.w   #$02,d2
+                    movea.l player_input_cmd_table(pc,d2.W),a0      ; get input command address.
+                    jmp (a0)                                        ; execute input command
+                    ; each command ends with an RTS that returns to caller.
 
                     ; Jump Table (for above) - 32 Commands
                     ; jump table index is the value held in player_input_command byte
@@ -4695,14 +4694,14 @@ L0000523c           bra.w   L00005308
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
 input_down_right
-L00005240           bsr.b   L000051e2           ; jmp table CMD4
-L00005242           bra.b   input_right      ; L00005246 
+L00005240           bsr.b   L000051e2               ; jmp table CMD4
+L00005242           bra.b   input_right             ; L00005246 
 
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
 input_up_right
-L00005244           bsr.b   L00005208           ; jmp table CMD7
+L00005244           bsr.b   L00005208               ; jmp table CMD7
 
                     ;------------------- input right --------------------------------------
                     ; checks tile to batman's right, if wall (tile > 23) then exit.
@@ -5096,115 +5095,123 @@ get_map_tile_at_display_offset_d0_d1                        ; original address
                     ; -- Draw Batman and Rope
                     ;------------------------------------------------------------------------------------------
                     ; This routine draws the Batman Player and the Rope Swing
+                    ; Status: Checked
                     ;
-draw_batman_and_rope                                ; original address L000055c4
+draw_batman_and_rope  ; original address L000055c4
                     ;jmp     draw_batman_sprite
-L000055c4           move.w  L00006318,d2
-L000055c8           beq.w   L000056a6
-L000055cc           movem.w batman_xy_offset,d0-d1
-L000055d2           sub.w   #$000c,d1
-L000055d6           addq.w  #$03,d0
-L000055d8           move.w  batman_sprite1_id,d2        ; L000062ee,d2
-L000055dc           bpl.b   L000055e0
-L000055de           subq.w  #$07,d0
-L000055e0           add.w   d1,d1
-L000055e2           move.w  d1,d7
-L000055e4           mulu.w  #$002a,d1
-L000055e8           ror.w   #$03,d0
-L000055ea           move.w  d0,d2
-L000055ec           and.w   #$0fff,d2
-L000055f0           add.w   d2,d2
-L000055f2           add.w   d2,d1
-L000055f4           ext.l   d1
-L000055f6           add.l   playfield_buffer_2,d1       ;  L000036f6,d1
+                    move.w  L00006318,d2
+                    beq.w   draw_batman_sprite          ; L000056a6
+                    movem.w batman_xy_offset,d0-d1
+                    sub.w   #$000c,d1
+                    addq.w  #$03,d0
+                    move.w  batman_sprite1_id,d2        ; L000062ee,d2
+                    bpl.b   L000055e0
+                    subq.w  #$07,d0                     ; update X
+L000055e0           add.w   d1,d1   
+                    move.w  d1,d7
+                    mulu.w  #DISPLAY_BYTEWIDTH,d1       ; $002a,d1
+                    ror.w   #$03,d0
+                    move.w  d0,d2
+                    and.w   #$0fff,d2
+                    add.w   d2,d2
+                    add.w   d2,d1
+                    ext.l   d1
+                    add.l   playfield_buffer_2,d1       ;  L000036f6,d1
 
-L000055fa           movem.w L0000631a,d2-d3
-L00005600           add.w   d2,d2
-L00005602           add.w   d3,d3
-L00005604           beq.w   L000056a6                   ; Jmp Draw Batman Sprite
+                    movem.w L0000631a,d2-d3
+                    add.w   d2,d2
+                    add.w   d3,d3
+                    beq.w   draw_batman_sprite          ; L000056a6                   ; Jmp Draw Batman Sprite
                     ; Draw BatRope as blitter line draw
-L00005608           and.w   #$e000,d0
-L0000560c           moveq   #$05,d4
-L0000560e           or.w    d0,d4
-L00005610           btst.l  #$000f,d2
-L00005614           beq.b   L0000561c
-L00005616           neg.w   d2
-L00005618           bset.l  #$0003,d4
+                    and.w   #$e000,d0
+                    moveq   #$05,d4
+                    or.w    d0,d4
+                    btst.l  #$000f,d2
+                    beq.b   L0000561c
+                    neg.w   d2
+                    bset.l  #$0003,d4
 L0000561c           add.w   d2,d2
-L0000561e           move.w  d2,d5
-L00005620           sub.w   d3,d5
-L00005622           bpl.b   L00005628
-L00005624           bset.l  #$0006,d4
+                    move.w  d2,d5
+                    sub.w   d3,d5
+                    bpl.b   L00005628
+                    bset.l  #$0006,d4
 L00005628           move.w  d5,d6
-L0000562a           sub.w   d3,d6
-L0000562c           sub.w   d3,d7
-L0000562e           subq.w  #$03,d7
-L00005630           bpl.b   L00005634
-L00005632           add.w   d7,d3
+                    sub.w   d3,d6
+                    sub.w   d3,d7
+                    subq.w  #$03,d7
+                    bpl.b   L00005634
+                    add.w   d7,d3
 L00005634           asl.w   #$06,d3
-L00005636           addq.w  #$02,d3
-L00005638           or.w    #$0bca,d0
-L0000563c           swap.w  d0
-L0000563e           move.w  d4,d0
-L00005640           lea.l   $00dff000,a5
+                    addq.w  #$02,d3
+                    or.w    #$0bca,d0
+                    swap.w  d0
+                    move.w  d4,d0
+
+                    ; L00005640
+                    lea.l   $00dff000,a5
+
                     ; blit wait
+                    btst.b  #$0006,$00dff002            ; added extra read for OCS
 L00005646           btst.b  #$0006,$00dff002
-L0000564e           bne.b   L00005646
+                    bne.b   L00005646
+
                     ; set blitter for line draw
-L00005650           move.w  d2,$0062(a5)            ; Channel B modulo
-L00005654           move.w  d6,$0064(a5)            ; Channel A modulo
-L00005658           move.w  #$002a,$0066(a5)        ; Channel D modulo
-L0000565e           move.w  #$002a,$0060(a5)        ; Channel C modulo
-L00005664           move.w  #$c000,$0074(a5)        ; A Data Register
-L0000566a           move.l  #$ffffffff,$0044(a5)    ; Channel A First/Last word mask
-L00005672           move.w  #$eeee,d6               ; Line Pattern Data
-L00005676           moveq   #$03,d7                 ; bitplane count
+                    move.w  d2,$0062(a5)            ; Channel B modulo
+                    move.w  d6,$0064(a5)            ; Channel A modulo
+                    move.w  #$002a,$0066(a5)        ; Channel D modulo
+                    move.w  #$002a,$0060(a5)        ; Channel C modulo
+                    move.w  #$c000,$0074(a5)        ; A Data Register
+                    move.l  #$ffffffff,$0044(a5)    ; Channel A First/Last word mask
+                    move.w  #$eeee,d6               ; Line Pattern Data
+                    moveq   #$03,d7                 ; bitplane count
+
                     ; blit wait
-L00005678           btst.b  #$0006,$00dff002
-L00005680           bne.b   L00005678
+L00005678           btst.b  #$0006,$00dff002        ; added extra read for OCS
+L00005678a          btst.b  #$0006,$00dff002
+                    bne.b   L00005678a
                     ; draw rope (Line Draw)
-L00005682           move.w  d5,$0052(a5)            ; A Channel
-L00005686           move.l  d0,$0040(a5)            ; BLTCON0
-L0000568a           move.l  d1,$0048(a5)            ; C Channel
-L0000568e           move.l  d1,$0054(a5)            ; D Channel
-L00005692           move.w  d6,$0072(a5)            ; B Data Register (line pattern)
-L00005696           move.w  d3,$0058(a5)            ; Blit Size
-L0000569a           add.l   #$00001c8c,d1           ; next bitplane dest offset
-L000056a0           not.w   d6                      ; invert mask/line pattern?
-L000056a2           dbf.w   d7,L00005678            ; loop next bitplane
+                    move.w  d5,$0052(a5)            ; A Channel
+                    move.l  d0,$0040(a5)            ; BLTCON0
+                    move.l  d1,$0048(a5)            ; C Channel
+                    move.l  d1,$0054(a5)            ; D Channel
+                    move.w  d6,$0072(a5)            ; B Data Register (line pattern)
+                    move.w  d3,$0058(a5)            ; Blit Size
+                    add.l   #DISPLAY_BUFFER_BYTES,d1    ;  $00001c8c,d1           ; next bitplane dest offset
+                    not.w   d6                      ; invert mask/line pattern?
+                    dbf.w   d7,L00005678            ; loop next bitplane
 
                     ; draw first Batman Sprite
-draw_batman_sprite
-L000056a6           movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
-L000056ac           move.w  batman_sprite1_id,d2                        ; sprite id
-L000056b0           clr.w   d4
-L000056b2           move.b  d2,d4
-L000056b4           beq.w   exit_draw_batman                            ; if (sprite id) == 0 then exit
-L000056b8           move.w  d1,d3                                       ; d1 = Y co-ord
-L000056ba           lea.l   display_object_coords,a0                    ; L0000607c,a0            ; unknown table 
-L000056be           add.w   d4,d4                                       ; sprite id * 2
-L000056c0           add.w   d3,d3                                       ; Y co-ord * 2
-L000056c2           sub.b   -2(a0,d4.W),d3                              ; modify Y co-ord
-L000056c6           asr.w   #$01,d3                                     ; divide y by 2 (X & Y stored as halved values)
-L000056c8           move.w  d3,L000062f0                                ; store update Y co-ord
-L000056cc           bsr.b   draw_sprite                                 ; Draw Batman Part - L000056f4
+draw_batman_sprite  ; original address L000056a6
+                    movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
+                    move.w  batman_sprite1_id,d2                        ; sprite id
+                    clr.w   d4
+                    move.b  d2,d4
+                    beq.w   exit_draw_batman                            ; if (sprite id) == 0 then exit
+                    move.w  d1,d3                                       ; d1 = Y co-ord
+                    lea.l   display_object_coords,a0                    ; L0000607c,a0            ; unknown table 
+                    add.w   d4,d4                                       ; sprite id * 2
+                    add.w   d3,d3                                       ; Y co-ord * 2
+                    sub.b   -2(a0,d4.W),d3                              ; modify Y co-ord
+                    asr.w   #$01,d3                                     ; divide y by 2 (X & Y stored as halved values)
+                    move.w  d3,L000062f0                                ; store update Y co-ord
+                    bsr.b   draw_sprite                                 ; Draw Batman Part - L000056f4
 
-                    ; draw second Batman Sprite
-L000056ce           movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
-L000056d4           move.w  batman_sprite2_id,d2                        ; sprite id            
-L000056d8           move.b  d2,d2
-L000056da           beq.w   exit_draw_batman                            ; if (sprite id) == 0 then exit
-L000056de           bsr.b   draw_sprite
+                    ; draw second Batman Sprite ; L000056ce
+                    movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
+                    move.w  batman_sprite2_id,d2                        ; sprite id            
+                    move.b  d2,d2
+                    beq.w   exit_draw_batman                            ; if (sprite id) == 0 then exit
+                    bsr.b   draw_sprite
 
-                    ; draw third Batman Sprite
-L000056e0           movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
-L000056e6           move.w  batman_sprite3_id,d2                        ; sprite id
-L000056ea           move.b  d2,d2
-L000056ec           beq.w   exit_draw_batman                            ; if (sprite id == 0) then exit
-L000056f0           bsr.b   draw_sprite
+                    ; draw third Batman Sprite; L000056e0
+                    movem.w batman_xy_offset,d0-d1                      ; batman object X & Y co-ords
+                    move.w  batman_sprite3_id,d2                        ; sprite id
+                    move.b  d2,d2
+                    beq.w   exit_draw_batman                            ; if (sprite id == 0) then exit
+                    bsr.b   draw_sprite
 
-exit_draw_batman
-L000056f2           rts 
+exit_draw_batman    ; L000056f2
+                    rts 
 
 
 
