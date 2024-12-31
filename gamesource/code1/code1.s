@@ -1653,10 +1653,16 @@ L00003a8e           dc.w    $0000
 
                     ; AXIS CHEMICAL FACTORY - Original Address L00003aa4
 text_axis_chemicals
-L00003aa4           dc.b    $50, $09                                    ; raster line (Y), byte offset (X)
+L00003aa4           
+                    dc.b    $30,$09
+                    dc.b    'TEST BUILD 31/12/2024',$00
+                    dc.b    $50, $09                                    ; raster line (Y), byte offset (X)
                     dc.b    'AXIS '                                     ; $41, $58, $49, $53, $20
                     dc.b    'CHEMICAL '                                 ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
                     dc.b    'FACTORY'                                   ; $46, $41, $43, $54, $4f, $52, $59
+                    dc.b    $00                                         ; Line Terminator
+                    dc.b    $70,$08
+                    dc.b    'PRESS LEFT MOUSE BUTTON'
                     dc.b    $00,$ff                                     ; Message Terminator
 
                     ; JACK IS DEAD - Original Address L00003abd
@@ -1973,15 +1979,15 @@ do_system_updates
                     bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
                     bsr.w   update_score_by_level_progress          ; L00003dd4 ; Update Score based upon progress from left to right through the level.
                     
-                    bsr.w   trigger_new_actors                      ; L00003dfe ; Trigger new actors when in range.
+                    ;bsr.w   trigger_new_actors                      ; L00003dfe ; Trigger new actors when in range.
 
                     bsr.w   copy_offscreen_to_backbuffer            ; L00004b62 ; Copy Off-Screen Background GFX to Back-Buffer
                     bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
                     
-                    bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
+                    ;bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
                     
-                    bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
-                    bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
+                    ;bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+                    ;bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
                     bsr.w   double_buffer_playfield                 ; L000036fa
 
                     bra.w   game_loop                               ; L00003bfa ; jump back to main loop
@@ -4344,7 +4350,7 @@ L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
 L00004e80            move.l  #L00005058,gl_jsr_address      ; L00003c90 ; Self modified code JSR game_loop
 L00004e86            move.w  #$0005,L000062f2
-L00004e8c            move.l  #$00006426,batman_sprite_anim_ptr   ; modified to long pointer L00006326
+L00004e8c            move.l  #L00006426,batman_sprite_anim_ptr   ; modified to long pointer L00006326
 L00004e92            move.w  d1,d2
 L00004e94            add.w   scroll_window_y_coord,d2       ; L000067be,d2
 L00004e98            subq.w  #$02,d2
@@ -4464,12 +4470,12 @@ L00004fdc           bra.w   L00005464
 
                     ; -------- input fire - Jump Table CMD9 ---------
 input_fire                                                  ; original address L00004fe0
-L00004fe0           move.w  #$6419,L00003626            
+L00004fe0           move.l  #batman_sprite_anim_08,batman_sprite_anim_ptr ;  #$6419,L00006326            
 L00004fe8           move.l  #L00004ff6,gl_jsr_address       ; Set game_loop Self Modified Code JSR 
 L00004fee           moveq   #SFX_BATARANG,d0
 L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX
 
-L00004ff6           movea.l batman_sprite_anim_ptr,a0        ; modified to long pointer - L00006326,a0
+L00004ff6           movea.l batman_sprite_anim_ptr,a0       ; modified to long pointer - L00006326,a0
 L00004ffa           bsr.w   set_batman_sprites
 L00004ffe           move.l  a0,batman_sprite_anim_ptr        ; modified to long pointer - L00006326
 L00005002           tst.b   (a0)
@@ -5092,7 +5098,7 @@ get_map_tile_at_display_offset_d0_d1                        ; original address
                     ; This routine draws the Batman Player and the Rope Swing
                     ;
 draw_batman_and_rope                                ; original address L000055c4
-                    jmp     draw_batman_sprite
+                    ;jmp     draw_batman_sprite
 L000055c4           move.w  L00006318,d2
 L000055c8           beq.w   L000056a6
 L000055cc           movem.w batman_xy_offset,d0-d1
@@ -5498,39 +5504,39 @@ read_player_input                                           ; original address L
                     beq.b   .not_joy_right                  ; L00005866
 .is_joy_right
                     bset.l  #PLAYER_INPUT_RIGHT,d2           ; bit 0 = joystick right pushed
-.not_joy_right
+.not_joy_right      ; 5866
                     btst.l  #$0009,d0                       ; 1 = Left
                     beq.b   .not_joy_left
 .is_joy_left
                     bset.l  #PLAYER_INPUT_LEFT,d2           ; bit 1 = joystick left pushed
-.not_joy_left
-            
+
+.not_joy_left       ; 5870            
 .do_up_down         ; detect up/down                        ; original address L00005870
                     move.w  d0,d1                           ; xor requied to read up/down switch status
                     lsr.w   #$01,d1                         ;   -   up = bit 9 xor bit 8
                     eor.w   d0,d1                           ;   - down = bit 1 xor bit 0 
-
+                    ; 5876
                     btst.l  #$0000,d1                       ; 1 = down - (bit 1 xor bit 0) 
                     beq.b   .not_joy_down
 .is_joy_down
                     bset.l  #PLAYER_INPUT_DOWN,d2           ; bit 2 = joystick down
-.not_joy_down
+.not_joy_down       ; 5880
                     btst.l  #$0008,d1                       ; 1 = up (bit 9 xor bit 8)
                     beq.b   .not_joy_up
-.is_joy_up
+.is_joy_up          ; 5886
                     bset.l  #PLAYER_INPUT_UP,d2             ; bit 3 = joystick up
-.not_joy_up
+.not_joy_up         ;588a
                     ; test fire button
 .do_fire_button
                     btst.b  #$0007,$00bfe001                ; 0 = joystick button pressed
                     seq.b   d0                              ; $ff = button pressed (active low)
-.check_last_state
+.check_last_state   ; 5894
                     move.b  player_button_pressed,d1        ; d1 = last button pressed value
                     bne.b   .update_button_value            ; if previously pressed then update with new value
 .pulse_bit4         ; pulse bit 4 if button pressed
-                    and.w   #2^PLAYER_INPUT_FIRE,d0         ; mask bit 4 (button)
+                    and.w   #$0010,d0                       ; mask bit 2 (button)
                     or.w    d0,d2                           ; if button not previously pressed then set bit 4
-.update_button_value ; set player button flag
+.update_button_value ; set player button flag ; 58a0
                     move.b  d0,player_button_pressed
                     move.b  d2,player_input_command 
                     rts
@@ -6556,44 +6562,44 @@ L00006078           bra.w   L000045bc
                     ; ---------------- display object co-ordinates ---------------
                     ; Start of 305 (sprite x & y positions - initialisation data)
 display_object_coords                                                               ; original address L0000607c
-                    dc.w $2A02, $2005, $2005, $2004, $1505, $1506, $1506, $1507
-                    dc.w $1507, $1506, $1507, $1507, $2C10, $2C08, $1402, $210D
-                    dc.w $2B05, $1905, $2504, $1706, $1702, $2005, $0F06, $0006
-                    dc.w $2405, $1507, $1C05, $1007, $1207, $1B03, $1308, $2C07
-                    dc.w $2C07, $2C07, $2C07, $2904, $1A06, $03FE, $2902, $2008
-                    dc.w $1306, $2A08, $2007, $2A04, $2A02, $24FA, $1405, $2A03
-                    dc.w $2A08, $0F05, $0F05, $0F05, $0F05, $2A07, $1507, $1508
-                    dc.w $1507, $1508, $0200, $0201, $0202, $0000, $0100, $0100
-                    dc.w $0101, $0604, $0B07, $0F07, $0C07, $0B06, $2005, $1208
-                    dc.w $1200, $2903, $2206, $2205, $2204, $1506, $1507, $1508
-                    dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1305
-                    dc.w $2904, $2CFD, $2904, $1BFD, $2004, $1CFD, $0C07, $2805
-                    dc.w $1503, $1503, $1503, $1503, $0301, $0301, $0601, $0401
-                    dc.w $0400, $04FD, $04FA, $1D05, $1108, $0809, $2903, $2006
-                    dc.w $2005, $2004, $1506, $1507, $1508, $1504, $1504, $1506
-                    dc.w $1507, $1504, $2906, $1306, $2A07, $2904, $2EFC, $2904
-                    dc.w $25FB, $0C0F, $2211, $3416, $2C16, $2009, $1208, $0B08
-                    dc.w $2903, $2005, $2004, $2004, $1505, $1506, $1507, $1503
-                    dc.w $1504, $1505, $1506, $1503, $2903, $25FC, $1405, $0800
-                    dc.w $0303, $2904, $1BFD, $2004, $1CFD, $0C07, $2004, $1207
-                    dc.w $0B07, $2904, $2006, $2005, $2004, $1506, $1507, $1508
-                    dc.w $1504, $1504, $1506, $1507, $1504, $2904, $25FD, $1405
-                    dc.w $2B04, $2FFD, $2904, $18FC, $2004, $1CFD, $0C07, $2806
-                    dc.w $1803, $1803, $1803, $1803, $0000, $0000, $0000, $0000
-                    dc.w $0000, $0908, $0908, $0908, $0808, $1D05, $1308, $0809
-                    dc.w $2904, $2006, $2005, $2004, $1506, $1507, $1508, $1504
-                    dc.w $1504, $1506, $1507, $1503, $2904, $25FD, $1505, $2B04
-                    dc.w $2FFE, $2904, $19FD, $2202, $1EFC, $1005, $2805, $1504
-                    dc.w $1504, $1504, $1504, $2906, $1503, $1503, $1503, $1503
-                    dc.w $1505, $0A08, $0009, $2903, $2005, $2004, $2004, $1405
-                    dc.w $1406, $1407, $1404, $1404, $1405, $1406, $1402, $2906
-                    dc.w $1506, $2906, $2A07, $2903, $2EFC, $2903, $24FC, $2004
-                    dc.w $2004, $2004, $2004, $2706, $1304, $1304, $1304, $1303
-                    dc.w $190B, $0F09, $120D, $130D, $1309, $0B0F, $1D05, $1208
-                    dc.w $0808, $2903, $2005, $2004, $2004, $1405, $1406, $1407
-                    dc.w $1404, $1404, $1405, $1406, $1402, $2903, $25FD, $1306
-                    dc.w $2B04, $2FFD, $2903, $18FC, $2202, $1EFC, $1005, $2805
-                    dc.w $1504, $1504, $1504, $1504, $2906, $1503, $1503, $1503 
+                    dc.w $2A02,$2005,$2005,$2004,$1505,$1506,$1506,$1507
+                    dc.w $1507,$1506,$1507,$1507,$2C10,$2C08,$1402,$210D
+                    dc.w $2B05,$1905,$2504,$1706,$1702,$2005,$0F06,$0006
+                    dc.w $2405,$1507,$1C05,$1007,$1207,$1B03,$1308,$2C07
+                    dc.w $2C07,$2C07,$2C07,$2904,$1A06,$03FE,$2902,$2008
+                    dc.w $1306,$2A08,$2007,$2A04,$2A02,$24FA,$1405,$2A03
+                    dc.w $2A08,$0F05,$0F05,$0F05,$0F05,$2A07,$1507,$1508
+                    dc.w $1507,$1508,$0200,$0201,$0202,$0000,$0100,$0100
+                    dc.w $0101,$0604,$0B07,$0F07,$0C07,$0B06,$2005,$1208
+                    dc.w $1200,$2903,$2206,$2205,$2204,$1506,$1507,$1508
+                    dc.w $1504,$1504,$1506,$1507,$1504,$2904,$25FD,$1305
+                    dc.w $2904,$2CFD,$2904,$1BFD,$2004,$1CFD,$0C07,$2805
+                    dc.w $1503,$1503,$1503,$1503,$0301,$0301,$0601,$0401
+                    dc.w $0400,$04FD,$04FA,$1D05,$1108,$0809,$2903,$2006
+                    dc.w $2005,$2004,$1506,$1507,$1508,$1504,$1504,$1506
+                    dc.w $1507,$1504,$2906,$1306,$2A07,$2904,$2EFC,$2904
+                    dc.w $25FB,$0C0F,$2211,$3416,$2C16,$2009,$1208,$0B08
+                    dc.w $2903,$2005,$2004,$2004,$1505,$1506,$1507,$1503
+                    dc.w $1504,$1505,$1506,$1503,$2903,$25FC,$1405,$0800
+                    dc.w $0303,$2904,$1BFD,$2004,$1CFD,$0C07,$2004,$1207
+                    dc.w $0B07,$2904,$2006,$2005,$2004,$1506,$1507,$1508
+                    dc.w $1504,$1504,$1506,$1507,$1504,$2904,$25FD,$1405
+                    dc.w $2B04,$2FFD,$2904,$18FC,$2004,$1CFD,$0C07,$2806
+                    dc.w $1803,$1803,$1803,$1803,$0000,$0000,$0000,$0000
+                    dc.w $0000,$0908,$0908,$0908,$0808,$1D05,$1308,$0809
+                    dc.w $2904,$2006,$2005,$2004,$1506,$1507,$1508,$1504
+                    dc.w $1504,$1506,$1507,$1503,$2904,$25FD,$1505,$2B04
+                    dc.w $2FFE,$2904,$19FD,$2202,$1EFC,$1005,$2805,$1504
+                    dc.w $1504,$1504,$1504,$2906,$1503,$1503,$1503,$1503
+                    dc.w $1505,$0A08,$0009,$2903,$2005,$2004,$2004,$1405
+                    dc.w $1406,$1407,$1404,$1404,$1405,$1406,$1402,$2906
+                    dc.w $1506,$2906,$2A07,$2903,$2EFC,$2903,$24FC,$2004
+                    dc.w $2004,$2004,$2004,$2706,$1304,$1304,$1304,$1303
+                    dc.w $190B,$0F09,$120D,$130D,$1309,$0B0F,$1D05,$1208
+                    dc.w $0808,$2903,$2005,$2004,$2004,$1405,$1406,$1407
+                    dc.w $1404,$1404,$1405,$1406,$1402,$2903,$25FD,$1306
+                    dc.w $2B04,$2FFD,$2903,$18FC,$2202,$1EFC,$1005,$2805
+                    dc.w $1504,$1504,$1504,$1504,$2906,$1503,$1503,$1503 
                     dc.w $1503
 ; End of 305 (sprite x & y positions - initialisation data)
 
@@ -6696,17 +6702,17 @@ playfield_swap_count                                                ; original a
                     dc.w $0000                                      ; word value incremented when playfield buffers are swapped
 
 
-L0000632e           dc.w $2221, $201F, $1E1D, $1C1B, $1A19, $1817, $1615 
-L0000633C           dc.w $1413, $1211, $100F, $0E0D, $0C0B, $0A09, $0807, $0605
-L0000634C           dc.w $0403, $0201, $0003, $0609, $0D10, $1316, $191C, $1F22
-L0000635C           dc.w $2529, $2C2F, $3235, $383B, $3E41, $4447, $4A4D, $5053
-L0000636C           dc.w $5659, $5C5F, $6264, $676A, $6D70, $7375, $787B, $7E80
-L0000637C           dc.w $8386, $888B, $8E90, $9395, $989A, $9D9F, $A2A4, $A7A9
-L0000638C           dc.w $ABAE, $B0B2, $B4B7, $B9BB, $BDBF, $C1C3, $C5C7, $C9CB
-L0000639C           dc.w $CDCF, $D0D2, $D4D6, $D7D9, $DBDC, $DEDF, $E1E2, $E4E5
-L000063AC           dc.w $E7E8, $E9EA, $ECED, $EEEF, $F0F1, $F2F3, $F4F5, $F6F7
-L000063BC           dc.w $F7F8, $F9F9, $FAFB, $FBFC, $FCFD, $FDFD, $FEFE, $FEFF
-L000063CC           dc.w $FFFF, $FFFF
+L0000632e           dc.w $2221,$201F,$1E1D,$1C1B,$1A19,$1817,$1615 
+L0000633C           dc.w $1413,$1211,$100F,$0E0D,$0C0B,$0A09,$0807,$0605
+L0000634C           dc.w $0403,$0201,$0003,$0609,$0D10,$1316,$191C,$1F22
+L0000635C           dc.w $2529,$2C2F,$3235,$383B,$3E41,$4447,$4A4D,$5053
+L0000636C           dc.w $5659,$5C5F,$6264,$676A,$6D70,$7375,$787B,$7E80
+L0000637C           dc.w $8386,$888B,$8E90,$9395,$989A,$9D9F,$A2A4,$A7A9
+L0000638C           dc.w $ABAE,$B0B2,$B4B7,$B9BB,$BDBF,$C1C3,$C5C7,$C9CB
+L0000639C           dc.w $CDCF,$D0D2,$D4D6,$D7D9,$DBDC,$DEDF,$E1E2,$E4E5
+L000063AC           dc.w $E7E8,$E9EA,$ECED,$EEEF,$F0F1,$F2F3,$F4F5,$F6F7
+L000063BC           dc.w $F7F8,$F9F9,$FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF
+L000063CC           dc.w $FFFF,$FFFF
 
 
                     ; sprite 3 array structure
@@ -6726,40 +6732,44 @@ batman_sprite_anim_04                                       ; sprite ids - origi
                     dc.b $1E,$01,$E1                        ; 30, 31, 00
 
 batman_sprite_anim_0a                                       ; sprite ids - original address L000063DC
-                    dc.b $19, $01, $E6                      ; 25, 26, 00
-                    dc.b $19, $01, $E6                      ; 25, 26, 00
-                    dc.b $19, $01, $E6                      ; 25, 26, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00 
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1B, $01, $E4                      ; 27, 28, 00
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00 
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00
-                    dc.b $1D ,$E3, $00                      ; 29, 00, 00
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00
-                    dc.b $1D, $E3, $00                      ; 29, 00, 00
+                    dc.b $19,$01,$E6                        ; 25, 26, 00
+                    dc.b $19,$01,$E6                        ; 25, 26, 00
+                    dc.b $19,$01,$E6                        ; 25, 26, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00 
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1B,$01,$E4                        ; 27, 28, 00
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00 
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00
+                    dc.b $1D $E3,$00                        ; 29, 00, 00
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00
+                    dc.b $1D,$E3,$00                        ; 29, 00, 00
                     dc.b $00
 
 batman_sprite_anim_07                                       ; sprite ids - original address L00006416
-                    dc.b $24, $01, $01                      ; 36, 37, 38
+                    dc.b $24,$01,$01                        ; 36, 37, 38
 
                     ; ------ something to do with 'fire' button ------
                     ; ------ not sure that this is a sprite animation ------
 batman_sprite_anim_08                                       ; sprite ids - original address L00006419
-                    dc.b $27, $01, $01                      ; 39, 40, 41
-                    dc.b $2A, $01, $FE                      ; 42, 43, 41
-                    dc.b $2C, $FD, $D7                      ; 44, 41, 00
-                    dc.b $2D, $01, $01                      ; 45, 46, 47
-                    dc.b $00, $13, $01                      ; 00, 19, 20
-                    dc.b $01, $16, $01                      ; 01, 23, 24
-                    dc.b $01, $00, $1B                      ; 01, 01, 28
+                    dc.b $27,$01,$01                        ; 39, 40, 41
+                    dc.b $2A,$01,$FE                        ; 42, 43, 41
+                    dc.b $2C,$FD,$D7                        ; 44, 41, 00
+                    dc.b $2D,$01,$01                        ; 45, 46, 47
+                    dc.b $00
+
+L00006426           dc.b $13,$01,$01                        ; 19, 20, 21
+                    dc.b $16,$01,$01                        ; 22, 23, 24
+                    dc.b $00
+                    
+                    dc.b $1B                      
 
 
 
