@@ -1512,21 +1512,27 @@ debug_print_word_value                                                      ; or
                     ;
                     ; new format (24 bytes): 240 bytes (10 entries) - updated for long address pointers
                     ;
-                    ;   Offset |    Descripton
+                    ;   Offset  |    Descripton
                     ;   ----------------------
-                    ;   0       |
-                    ;   2       | Actor X
-                    ;   4       | Actor Y
+                    ;   0-1     | Actor Id/Handler Id
+                    ;   2-3     | Actor X
+                    ;   4-5     | Actor Y
                     ;   8
                     ;   12
-                    ;   16
-                    ;   20      - (long updated from word) Address of actor data structure
+                    ;   14-15   | Actor X - Centre?
+                    ;   16-17   | Actor Y - Top
+                    ;   18-19   | Actor Y - Bottom
+                    ;   20-23   | (long updated from word) Address of actor data structure
                     ;
                     ; 
 ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
 ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
-ACTORLIST_STRUCT_SIZE   EQU     $18                         ; original size #$16 (22 bytes) - new size 24 bytes
+ACTORSTRUCT_UNKNOWN_1   EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+ACTORLIST_STRUCT_SIZE   EQU     $18                         ;  new size #$18 (24 bytes) - original size #$16 (22 bytes) -
 ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
 
 actors_list                                                 ; original address L000039c8
@@ -3306,18 +3312,40 @@ L00004722           clr.w   -$0002(a6)                      ; remove projjectile
 L00004726           rts
 
 
-L00004728           addq.w  #$04,d0                                     ; batman fire right
-L0000472a           cmp.w   #$00a8,d0
-L0000472e           bpl.b   remove_projectile                           ; L00004722
-L00004730           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L00004734           cmp.b   #$17,d2
-L00004738           movem.w d0-d1,(a6)
-L0000473c           bcc.b   actor_projectile_collision_check            ; L0000477e
-L0000473e           bcs.b   remove_projectile                           ; L00004722
+
+
+                    ; ------------------- batarang fire right ------------------
+                    ; batman firing a bat-a-rang projectile to the right
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+batarang_right      ; original address L00004728
+                    addq.w  #$04,d0                                     ; increment X co-ord
+                    cmp.w   #$00a8,d0                                   ; compare 168 (336)
+                    bpl.b   remove_projectile                           ; remove if > pixel 336
+                    bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
+                    cmp.b   #$17,d2                                     ; compare with wall tile(s)
+                    movem.w d0-d1,(a6)
+                    bcc.b   actor_projectile_collision_check            ; not a wall tile, check actor collision
+                    bra.b   remove_projectile                           ; modified to bra from bcs - L00004722
+                    ;bcs.b   remove_projectile                          ; L00004722
 
 
                     ; ------------------ batarang fire left ----------------
-                    ; batman fire projectile left.
+                    ; batman firing a bat-a-rang projectile to the left.
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
                     ;
                     ; d0.w = X
                     ; d1.w = Y
@@ -3329,15 +3357,30 @@ L0000473e           bcs.b   remove_projectile                           ; L00004
                     ; a6.l = projectile_list entry + 2
                     ;
 batarang_left       ; original address L00004740
-L00004740           subq.w  #$04,d0                                 ; decrement X co-ord               
-L00004742           cmp.w   #$fff6,d0                               ; -10
-L00004746           bmi.b   remove_projectile                       ; L00004722
-L00004748           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L0000474c           cmp.b   #$17,d2
-L00004750           movem.w d0-d1,(a6)
-L00004754           bcc.b   actor_projectile_collision_check        ; L0000477e
-L00004756           bra.b   remove_projectile                       ; if hit wall - L00004722
+                    subq.w  #$04,d0                                 ; decrement X co-ord               
+                    cmp.w   #$fff6,d0                               ; -10
+                    bmi.b   remove_projectile                       ; off screen so remove - L00004722
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
+                    cmp.b   #$17,d2                         
+                    movem.w d0-d1,(a6)                              ; store updated x,y co-ords
+                    bcc.b   actor_projectile_collision_check        ; if not wall tile, check active actor colliisions
+                    bra.b   remove_projectile                       ; if hit wall - L00004722
 
+
+                    ; ------------- batman grappling hook ---------------
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
 L00004758           move.w  L00006318,d0                ; batman grappling hook
 L0000475c           beq.b   remove_projectile           ; L00004722
 L0000475e           movem.w batman_xy_offset,d0-d1
@@ -3349,6 +3392,9 @@ L00004772           tst.w   batman_sprite1_id           ; L000062ee
 L00004776           bpl.b   L0000477a
 L00004778           subq.w  #$07,d0
 L0000477a           movem.w d0-d1,(a6)
+                    ; falls through to actor collision
+                    ; can be used to kill bad guys
+
 
                     ; active actor collision?
                     ; step through active actor list backwards
@@ -3359,14 +3405,14 @@ actor_projectile_collision_check                            ; original address L
                     move.w  (a4),d2
                     subq.w  #$02,d2                         ; actor 01, not collided with
                     bmi.b   .next_actor                     ; if actor 00 (free entry) or 01 (batman?) then skip
-                    move.w  $000e(a4),d2                    ; offset 14 (actor x)
+                    move.w  ACTORSTRUCT_X_CENTRE(a4),d2     ; offset 1$000e (actor x)
                     sub.w   d0,d2                           ; d2 = projectile x - actor x
                     addq.w  #$04,d2                         ; add boundary (8 pixels?)
                     cmp.w   #$0008,d2                       ; test projectile in 8 pixels
                     bcc.b   .next_actor                     ; L000047a4
-                    cmp.w   $0010(a4),d1                    ; offset 16 (actor y - top)
+                    cmp.w   ACTORSTRUCT_Y_TOP(a4),d1        ; offset $0010 (actor y - top)
                     bpl.b   .next_actor                     ; actor is further down screen - L000047a4
-                    cmp.w   $0012(a4),d1                    ; offset 18 (actor y - bottom)
+                    cmp.w   ACTORSTRUCT_Y_BOTTOM(a4),d1                    ; offset $0012 (actor y - bottom)
                     bpl.b   projectile_hit_actor            ; if bottom of actor is futher down screen
 .next_actor         ; L000047a4
                     lea.l   -ACTORLIST_STRUCT_SIZE(a4),a4   ; Check next actor  -$0016(a4),a4           ; sub 22 bytes from a4
@@ -3374,12 +3420,14 @@ actor_projectile_collision_check                            ; original address L
                     rts
 
                     ; ---------- actor collided with projectile -----------
-projectile_hit_actor
-L000047ae           move.w  #$0001,(a4)
-L000047b2           move.w  #$fffc,$000a(a4)
-L000047b8           bsr.w   remove_projectile               ; L00004722
-L000047bc           moveq   #SFX_GUYHIT,d0
-L000047be           jmp     AUDIO_PLAYER_INIT_SFX
+                    ; Batman's bat-a-rang projectile has hit an actor.
+                    ; This routine sets the handler index to $0001 (a4)
+projectile_hit_actor        ; original address L000047ae
+                    move.w  #$0001,(a4)                     ; handler id = 1
+                    move.w  #$fffc,$000a(a4)                ; -4 offset 10
+                    bsr.w   remove_projectile               ; remove projectile from list - L00004722
+                    moveq   #SFX_GUYHIT,d0
+                    jmp     AUDIO_PLAYER_INIT_SFX
                     ; use rts in audio player to return
 
 
@@ -3448,9 +3496,9 @@ L00004864           rts
                     ; modified for 32 bit addresses -  24 entries
 projectile_jmp_table        ; original address L00004866
 L00004866           dc.l    L00004758               ; batman grappling hook
-                    dc.l    L00004728               ; batman fire right
-                    dc.l    L00004740               ; batman fire left
-                    dc.l    L00004740               ; batman fire left
+                    dc.l    batarang_right          ; L00004728               ; batman fire right
+                    dc.l    batarang_left           ; L00004740               ; batman fire left
+                    dc.l    batarang_left           ; L00004740               ; batman fire left
                     dc.l    remove_projectile       ; L00004722               ; clr.w   -$0002(a6), RTS
                     dc.l    remove_projectile       ; L00004722               ; clr.w   -$0002(a6), RTS
                     dc.l    L00004718               ; Bad Guy Shooting
@@ -5127,7 +5175,7 @@ get_map_tile_at_display_offset_d0_d1                        ; original address
                     ;
 draw_batman_and_rope  ; original address L000055c4
                     ;jmp     draw_batman_sprite
-                    move.w  L00006318,d2
+                    move.w  L00006318,d2                ; grappling hook distance/height
                     beq.w   draw_batman_sprite          ; L000056a6
                     movem.w batman_xy_offset,d0-d1
                     sub.w   #$000c,d1
