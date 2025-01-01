@@ -6764,7 +6764,8 @@ offscreen_y_coord                                   ; original address L00006312
 
 L00006314           dc.w $0000
 L00006316           dc.w $0000
-L00006318           dc.w $0000
+grappling_hook_height
+L00006318           dc.w $0000                      ; length/height of grappling hook rope.
 L0000631a           dc.w $0000 
 L0000631c           dc.w $0034
 
