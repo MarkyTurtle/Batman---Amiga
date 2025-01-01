@@ -1637,7 +1637,7 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.l    $0000           ; 16 bit address of actor data structure
-
+last_active_actor
 L00003a8e           dc.w    $0000
                     dc.w    $00a0
                     dc.w    $0038
@@ -1985,8 +1985,8 @@ do_system_updates
                     
                     ;bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
                     
-                    ;bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
-                    ;bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
+                    bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
+                    bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
                     bsr.w   double_buffer_playfield                 ; L000036fa
 
                     bra.w   game_loop                               ; L00003bfa ; jump back to main loop
@@ -3148,13 +3148,13 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
                     ;
                     ; L00004894 - 8 byte structure (20 active projectiles?)
                     ;
-draw_projectiles                                    ; original address L000045fe
-L000045fe           lea.l   L00004866,a5
+draw_projectiles    ; original address L000045fe
+L000045fe           lea.l   projectile_jmp_table,a5     ; L00004866,a5
                     lea.l   projectile_list,a6
-                    moveq   #$13,d7                 ; d7 = 19 + 1 - counter
-.loop                                               ;                   original address L00004608
-                    move.w  (a6)+,d2                ; get 2 bytes - active projectile?
-                    beq.b   .skip_to_next           ; if d2 == 0 then skip_to_next - L00004636
+                    moveq   #$13,d7                     ; d7 = 19 + 1 - counter
+.loop               ; original address L00004608
+                    move.w  (a6)+,d2                    ; get 2 bytes - active projectile?
+                    beq.b   .skip_to_next               ; if d2 == 0 then skip_to_next - L00004636
 
                     movem.w (a6),d0-d1              ; get next 4 bytes from data struct.
                     move.l  a6,-(a7)                ; store data ptr - a6   
@@ -3205,30 +3205,30 @@ L00004656           rts
 
 
 
+
                     ;-------------------------------------------------------------------------------------
                     ; -- Update the Projectiles (bombs, bullets, player's batarang)
                     ;-------------------------------------------------------------------------------------
                     ; update projectiles on the level, including the player's projectiles
                     ; it does not draw them..
                     ;
-update_projectiles                                  ; original address L00004658
-                    lea.l   L00004866,a5
-                    lea.l   projectile_list,a6      ; L00004894,a6
-                    moveq   #$13,d7                 ; 19 + 1 - loop counter
-.update_loop
-                    move.w  (a6)+,d6                ; d6 = 1 based index into address jmp table L00004866
-                    beq.b   .L0000467e
+update_projectiles  ; original address L00004658
+                    lea.l   projectile_jmp_table,a5     ; L00004866,a5
+                    lea.l   projectile_list,a6          ; L00004894,a6
+                    moveq   #$13,d7                     ; 19 + 1 - loop counter
+.update_loop                                            ; original address L0004662
+                    move.w  (a6)+,d6                    ; d6 = 1 based index into address jmp table L00004866
+                    beq.b   .skip_to_next
                     movem.w (a6),d0-d1
                     sub.w   L0000630e,d0
                     sub.w   vertical_scroll_increments,d1           ; L00006310,d1
-                    ;asl.w   #$01,d6                ; multiply d6 * 2
                     asl.w   #$02,d6                 ; multiply d6 * 4 (modified address table to 32 bit addresses)
                     clr.l   d2                      ; clear d2
                     movea.l d2,a0                   ; clear a0
-                    ;movea.w -$2(a5,d6.W),a0        ; $fe(a5,d6.W),a0
                     movea.l -$4(a5,d6.W),a0         ; $fe(a5,d6.W),a0 (modified address table to 32 bit addresses)
                     jsr     (a0)
-.L0000467e          addq.w  #$06,a6                 ; addaq.w
+.skip_to_next                                       ; original address L0000467e
+                    addq.w  #$06,a6                 ; addaq.w
                     dbf.w   d7,.update_loop         ; L00004662
                     rts
 
@@ -3259,68 +3259,87 @@ L000046c0           rts
 
 L000046c2           subq.w  #$03,d0
 L000046c4           cmp.w   #$fff6,d0
-L000046c8           bmi.b   L00004722
+L000046c8           bmi.b   remove_projectile               ; L00004722
 L000046ca           subq.w  #$03,d1
 L000046cc           cmp.w   #$0058,d1
 L000046d0           bcs.b   badguy_shooting                 ; L00004686
-L000046d2           bra.b   L00004722
+L000046d2           bra.b   remove_projectile               ; L00004722
 
 L000046d4           addq.w  #$03,d0
 L000046d6           cmp.w   #$00a8,d0
-L000046da           bpl.b   L00004722
+L000046da           bpl.b   remove_projectile               ; L00004722
 L000046dc           subq.w  #$03,d1
 L000046de           cmp.w   #$0058,d1
 L000046e2           bcs.b   badguy_shooting                 ; L00004686
-L000046e4           bra.b   L00004722
+L000046e4           bra.b   remove_projectile               ; L00004722
 
 L000046e6           subq.w  #$03,d0
 L000046e8           cmp.w   #$fff6,d0
-L000046ec           bmi.b   L00004722
+L000046ec           bmi.b   remove_projectile               ; L00004722
 L000046ee           addq.w  #$03,d1
 L000046f0           cmp.w   #$0058,d1
 L000046f4           bcs.b   badguy_shooting                 ; L00004686
-L000046f6           bra.b   L00004722
+L000046f6           bra.b   remove_projectile               ; L00004722
 
 L000046f8           addq.w  #$03,d0
 L000046fa           cmp.w   #$00a8,d0
-L000046fe           bpl.b   L00004722
+L000046fe           bpl.b   remove_projectile               ; L00004722
 L00004700           addq.w  #$03,d1
 L00004702           cmp.w   #$0058,d1
 L00004706           bcs.w   badguy_shooting                 ; L00004686
-L0000470a           bra.b   L00004722
+L0000470a           bra.b   remove_projectile               ; L00004722
 
 L0000470c           subq.w  #$05,d0
 L0000470e           cmp.w   #$fff6,d0
 L00004712           bpl.w   badguy_shooting                 ; L00004686
-L00004716           bra.b   L00004722
+L00004716           bra.b   remove_projectile               ; L00004722
 
 L00004718           addq.w  #$05,d0
 L0000471a           cmp.w   #$00a8,d0
 L0000471e           bmi.w   badguy_shooting                 ; L00004686
-L00004722           clr.w   -$0002(a6)
+
+                    ; ---------------- remove projectile -----------------
+                    ; IN:-
+                    ;   a6.l = Projectile List Entry +2
+remove_projectile                                           ; original address L00004722
+L00004722           clr.w   -$0002(a6)                      ; remove projjectile Id from projectile list
 L00004726           rts
 
 
-L00004728           addq.w  #$04,d0                     ; batman fire right
+L00004728           addq.w  #$04,d0                                     ; batman fire right
 L0000472a           cmp.w   #$00a8,d0
-L0000472e           bpl.b   L00004722
+L0000472e           bpl.b   remove_projectile                           ; L00004722
 L00004730           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00004734           cmp.b   #$17,d2
 L00004738           movem.w d0-d1,(a6)
-L0000473c           bcc.b   L0000477e
-L0000473e           bcs.b   L00004722
+L0000473c           bcc.b   actor_projectile_collision_check            ; L0000477e
+L0000473e           bcs.b   remove_projectile                           ; L00004722
 
-L00004740           subq.w  #$04,d0                     ; batman fire left
-L00004742           cmp.w   #$fff6,d0
-L00004746           bmi.b   L00004722
+
+                    ; ------------------ batarang fire left ----------------
+                    ; batman fire projectile left.
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+batarang_left       ; original address L00004740
+L00004740           subq.w  #$04,d0                                 ; decrement X co-ord               
+L00004742           cmp.w   #$fff6,d0                               ; -10
+L00004746           bmi.b   remove_projectile                       ; L00004722
 L00004748           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L0000474c           cmp.b   #$17,d2
 L00004750           movem.w d0-d1,(a6)
-L00004754           bcc.b   L0000477e
-L00004756           bra.b   L00004722
+L00004754           bcc.b   actor_projectile_collision_check        ; L0000477e
+L00004756           bra.b   remove_projectile                       ; if hit wall - L00004722
 
 L00004758           move.w  L00006318,d0                ; batman grappling hook
-L0000475c           beq.b   L00004722
+L0000475c           beq.b   remove_projectile           ; L00004722
 L0000475e           movem.w batman_xy_offset,d0-d1
 L00004764           add.w   L0000631a,d0
 L00004768           sub.w   L0000631c,d1
@@ -3330,27 +3349,35 @@ L00004772           tst.w   batman_sprite1_id           ; L000062ee
 L00004776           bpl.b   L0000477a
 L00004778           subq.w  #$07,d0
 L0000477a           movem.w d0-d1,(a6)
-L0000477e           lea.l   L00003a8e,a4
-L00004782           moveq   #$09,d6
-L00004784           move.w  (a4),d2
-L00004786           subq.w  #$02,d2
-L00004788           bmi.b   L000047a4
-L0000478a           move.w  $000e(a4),d2
-L0000478e           sub.w   d0,d2
-L00004790           addq.w  #$04,d2
-L00004792           cmp.w   #$0008,d2
-L00004796           bcc.b   L000047a4
-L00004798           cmp.w   $0010(a4),d1
-L0000479c           bpl.b   L000047a4
-L0000479e           cmp.w   $0012(a4),d1
-L000047a2           bpl.b   L000047ae
-L000047a4           lea.l   -$0016(a4),a4
-L000047a8           dbf.w   d6,L00004784
-L000047ac           rts
 
+                    ; active actor collision?
+                    ; step through active actor list backwards
+actor_projectile_collision_check                            ; original address L0000477e
+                    lea.l   last_active_actor,a4            ; L00003a8e,a4 ; last active actor list
+                    moveq   #$09,d6                         ; loop counter 10
+.loop               ; L00004786    
+                    move.w  (a4),d2
+                    subq.w  #$02,d2                         ; actor 01, not collided with
+                    bmi.b   .next_actor                     ; if actor 00 (free entry) or 01 (batman?) then skip
+                    move.w  $000e(a4),d2                    ; offset 14 (actor x)
+                    sub.w   d0,d2                           ; d2 = projectile x - actor x
+                    addq.w  #$04,d2                         ; add boundary (8 pixels?)
+                    cmp.w   #$0008,d2                       ; test projectile in 8 pixels
+                    bcc.b   .next_actor                     ; L000047a4
+                    cmp.w   $0010(a4),d1                    ; offset 16 (actor y - top)
+                    bpl.b   .next_actor                     ; actor is further down screen - L000047a4
+                    cmp.w   $0012(a4),d1                    ; offset 18 (actor y - bottom)
+                    bpl.b   projectile_hit_actor            ; if bottom of actor is futher down screen
+.next_actor         ; L000047a4
+                    lea.l   -ACTORLIST_STRUCT_SIZE(a4),a4   ; Check next actor  -$0016(a4),a4           ; sub 22 bytes from a4
+                    dbf.w   d6,.loop                        ; loop 10 times
+                    rts
+
+                    ; ---------- actor collided with projectile -----------
+projectile_hit_actor
 L000047ae           move.w  #$0001,(a4)
 L000047b2           move.w  #$fffc,$000a(a4)
-L000047b8           bsr.w   L00004722
+L000047b8           bsr.w   remove_projectile               ; L00004722
 L000047bc           moveq   #SFX_GUYHIT,d0
 L000047be           jmp     AUDIO_PLAYER_INIT_SFX
                     ; use rts in audio player to return
@@ -3366,7 +3393,7 @@ L000047d6           bpl.b   L000047da
 L000047d8           addq.w  #$01,d2
 L000047da           add.w   d2,d1
 L000047dc           cmp.w   #$0060,d1
-L000047e0           bpl.w   L00004722
+L000047e0           bpl.w   remove_projectile           ; L00004722
 L000047e4           movem.w d0-d1,(a6)
 L000047e8           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000047ec           cmp.b   #$17,d2
@@ -3399,7 +3426,7 @@ L00004834           bpl.b   L00004838
 L00004836           addq.w  #$01,d2
 L00004838           add.w   d2,d1
 L0000483a           cmp.w   #$0060,d1
-L0000483e           bpl.w   L00004722
+L0000483e           bpl.w   remove_projectile               ; L00004722
 L00004842           bra.b   L000047e4
 
 
@@ -3419,12 +3446,13 @@ L00004864           rts
                     ; addresses for Projectile processing JMP Table
                     ; referenced by draw_projectiles
                     ; modified for 32 bit addresses -  24 entries
+projectile_jmp_table        ; original address L00004866
 L00004866           dc.l    L00004758               ; batman grappling hook
                     dc.l    L00004728               ; batman fire right
                     dc.l    L00004740               ; batman fire left
                     dc.l    L00004740               ; batman fire left
-                    dc.l    L00004722               ; clr.w   -$0002(a6), RTS
-                    dc.l    L00004722               ; clr.w   -$0002(a6), RTS
+                    dc.l    remove_projectile       ; L00004722               ; clr.w   -$0002(a6), RTS
+                    dc.l    remove_projectile       ; L00004722               ; clr.w   -$0002(a6), RTS
                     dc.l    L00004718               ; Bad Guy Shooting
                     dc.l    L0000470c               ; Bad Guy Shooting
                     dc.l    L000046f8               ; Bad Guy Shooting
