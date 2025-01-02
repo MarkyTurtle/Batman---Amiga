@@ -403,6 +403,11 @@ _DEBUG_COLOURS
             bne.s   _DEBUG_COLOURS
             rts
 
+_MOUSE_WAIT
+            btst    #6,$bfe001
+            bne.s   _MOUSE_WAIT
+            rts
+
 
 original_start:                                             ; original address $2FFC
                     dc.l    $00003000                       ; long word of start address
@@ -1666,7 +1671,9 @@ L00003aa4
                     dc.b    'AXIS '                                     ; $41, $58, $49, $53, $20
                     dc.b    'CHEMICAL '                                 ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
                     dc.b    'FACTORY'                                   ; $46, $41, $43, $54, $4f, $52, $59
-                    dc.b    $00                                         ; Line Terminator
+                    dc.b    $00,$ff                                     ; Line Terminator
+
+text_mouse_button   ; additional debug text             
                     dc.b    $70,$08
                     dc.b    'PRESS LEFT MOUSE BUTTON'
                     dc.b    $00,$ff                                     ; Message Terminator
@@ -1712,7 +1719,7 @@ initialise_game                                                     ; original a
 
                     ; restart point after batman dies
 restart_level                                                       ; original address L00003b02
-                    clr.w   L00006318
+                    clr.w   grappling_hook_height                   ; L00006318
                     clr.l   frame_counter_and_target_counter
                     bsr.w   clear_display_memory
 
@@ -1845,6 +1852,17 @@ display_axis_chemical_factory                                       ; original a
 
                     ;JSR     _DEBUG_COLOURS
 
+                    ; --------- pause for 1 second --------
+one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
+                    bsr.w   wait_for_frame_count
+
+                    ; display press mouse button
+                    lea.l   text_axis_chemicals,a0
+                    bsr.w   large_text_plotter 
+                    lea.l   text_mouse_button,a0
+                    bsr.w   large_text_plotter
+                    bsr.w   double_buffer_playfield  
+
                     ; -------- initialise back buffer ------        ; original address L00003bce
 init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
                     bsr.w   copy_offscreen_to_backbuffer            ; copy initial level background gfx to back-buffer                              
@@ -1854,13 +1872,7 @@ init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initi
                     ; -------- draw player in at point -------
 draw_player         bsr.w   draw_batman_and_rope
 
-                    JSR     _DEBUG_COLOURS
-
-                    ; --------- pause for 1 second --------
-one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
-                    bsr.w   wait_for_frame_count
-
-                    ;JSR     _DEBUG_COLOURS
+                    JSR     _MOUSE_WAIT
 
                     ; --------- start music (if selected) ----------
 set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
@@ -2426,7 +2438,7 @@ L00003f5c           sub.w   batman_x_offset,d0
 L00003f60           addq.w  #$06,d0
 L00003f62           cmp.w   #$000d,d0
 L00003f66           bcc.b   L00003fa6
-L00003f68           sub.w   L000062f0,d1
+L00003f68           sub.w   batman_y_bottom,d1              ; L000062f0,d1
 L00003f6c           subq.w  #$06,d1
 L00003f6e           bmi.b   L00003fa6
 L00003f70           sub.w   batman_y_offset,d2
@@ -2440,7 +2452,7 @@ L00003f82           jsr     AUDIO_PLAYER_INIT_SFX
 L00003f88           move.w  #$fffe,$000a(a6)
 L00003f8e           tst.w   L000062fa
 L00003f92           bmi.b   L00003fa6
-L00003f94           tst.w   L00006318
+L00003f94           tst.w   grappling_hook_height           ; L00006318
 L00003f98           beq.b   L00003fa0
 L00003f9a           tst.w   L000062f4
 L00003f9e           bne.b   L00003fa6
@@ -2459,7 +2471,7 @@ skip_to_next_actor  ; increment data struct ptr to next actor           ; origin
 
 L00003fb2           add.w   #$0002,(a6)
 L00003fb6           move.w  batman_x_offset,d2
-L00003fbc           move.w  L000062f0,d3
+L00003fbc           move.w  batman_y_bottom,d1              ; L000062f0,d3
 L00003fc0           add.w   #$0015,d3
 L00003fc4           sub.w   d1,d3
 L00003fc6           asl.w   #$03,d3
@@ -2833,7 +2845,7 @@ L0000435e           cmp.w   #$0002,d2
 L00004362           bcc.b   L00004374
 L00004364           move.w  $0012(a6),d2
 L00004368           addq.w  #$04,d2
-L0000436a           sub.w   L000062f0,d2
+L0000436a           sub.w   batman_y_bottom,d2              ; L000062f0,d2
 L0000436e           bpl.b   L00004374
 L00004370           addq.w  #$02,$000a(a6)
 
@@ -2911,12 +2923,12 @@ L00004408           rts
 
 L0000440a           move.w  #$ffff,$0008(a6)
 L00004410           moveq   #$06,d2
-L00004412           cmp.w   L000062f0,d1
+L00004412           cmp.w   batman_y_bottom,d1              ; L000062f0,d1
 L00004416           bmi.b   L00004428
 L00004418           moveq   #$01,d2
 L0000441a           move.w  $0012(a6),d3
 L0000441e           addq.w  #$04,d3
-L00004420           cmp.w   L000062f0,d3
+L00004420           cmp.w   batman_y_bottom,d2              ; L000062f0,d3
 L00004424           bpl.b   L00004428
 L00004426           addq.w  #$02,d2
 L00004428           move.w  d2,$000a(a6)
@@ -3239,30 +3251,69 @@ update_projectiles  ; original address L00004658
                     rts
 
 
-badguy_shooting
-L00004686           movem.w d0-d1,(a6)
-L0000468a           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L0000468e           cmp.b   #$17,d2
-L00004692           bcs.b   L000046ba
-L00004694           sub.w   batman_x_offset,d0
-L00004698           addq.w  #$04,d0
-L0000469a           cmp.w   #$0009,d0
-L0000469e           bcc.b   exit_badguy_shooting            ; L000046c0
-L000046a0           cmp.w   batman_y_offset,d1
-L000046a4           bpl.b   exit_badguy_shooting            ; L000046c0
-L000046a6           cmp.w   L000062f0,d1
-L000046aa           bmi.b   exit_badguy_shooting            ; L000046c0
-batman_shot
-L000046ac           moveq   #$01,d6                         ; Value of Energy to Lose (1 of 48)
-L000046ae           bsr.w   batman_lose_energy
-L000046b2           moveq   #SFX_GUYHIT,d0
-L000046b4           jsr     AUDIO_PLAYER_INIT_SFX
-L000046ba           move.w  #$0004,-$0002(a6)
+
+
+                    ; badguy shooting - common code
+                    ; executed after the projectile x & y
+                    ; has been updated and screen boundary checks
+                    ; have passed.
+                    ;       
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting     ; L00004686
+                    movem.w d0-d1,(a6)
+                    bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
+                    cmp.b   #$17,d2                         ; bullet hit wall?
+                    bcs.b   end_bullet                      ; .. yes
+check_batman_collision ; L00004694
+                    sub.w   batman_x_offset,d0              ; .. no
+                    addq.w  #$04,d0                         ; 8 pixel width hit box?
+                    cmp.w   #$0009,d0                       ; if not within 8 pixels, exit
+                    bcc.b   exit_badguy_shooting            ; L000046c0
+                    cmp.w   batman_y_offset,d1              ; batman_y_top?                
+                    bpl.b   exit_badguy_shooting            ; L000046c0
+                    cmp.w   batman_y_bottom,d1              ; L000062f0,d1                    ; batman_y_bottom?
+                    bmi.b   exit_badguy_shooting            ; L000046c0
+batman_shot         ; L000046ac
+                    moveq   #$01,d6                         ; Value of Energy to Lose (1 of 48)
+                    bsr.w   batman_lose_energy
+                    moveq   #SFX_GUYHIT,d0
+                    jsr     AUDIO_PLAYER_INIT_SFX
+end_bullet          ; L000046ba
+                    move.w  #$0004,-$0002(a6)               ; hit wall or bataman
+                                                            ; update handler id
+                                                            ; display ricochet, etc?
 exit_badguy_shooting   
 L000046c0           rts
 
 
 
+
+                    ; badguy shooting left & up - diagonal
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting_left_up
 L000046c2           subq.w  #$03,d0
 L000046c4           cmp.w   #$fff6,d0
 L000046c8           bmi.b   remove_projectile               ; L00004722
@@ -3271,6 +3322,22 @@ L000046cc           cmp.w   #$0058,d1
 L000046d0           bcs.b   badguy_shooting                 ; L00004686
 L000046d2           bra.b   remove_projectile               ; L00004722
 
+
+                    ; badguy shooting right & up - diagonal
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting_right_up
 L000046d4           addq.w  #$03,d0
 L000046d6           cmp.w   #$00a8,d0
 L000046da           bpl.b   remove_projectile               ; L00004722
@@ -3279,6 +3346,22 @@ L000046de           cmp.w   #$0058,d1
 L000046e2           bcs.b   badguy_shooting                 ; L00004686
 L000046e4           bra.b   remove_projectile               ; L00004722
 
+
+                    ; badguy shooting left & down - diagonal
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting_left_down
 L000046e6           subq.w  #$03,d0
 L000046e8           cmp.w   #$fff6,d0
 L000046ec           bmi.b   remove_projectile               ; L00004722
@@ -3287,6 +3370,22 @@ L000046f0           cmp.w   #$0058,d1
 L000046f4           bcs.b   badguy_shooting                 ; L00004686
 L000046f6           bra.b   remove_projectile               ; L00004722
 
+
+                    ; badguy shooting right & down - diagonal
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting_right_down
 L000046f8           addq.w  #$03,d0
 L000046fa           cmp.w   #$00a8,d0
 L000046fe           bpl.b   remove_projectile               ; L00004722
@@ -3295,14 +3394,46 @@ L00004702           cmp.w   #$0058,d1
 L00004706           bcs.w   badguy_shooting                 ; L00004686
 L0000470a           bra.b   remove_projectile               ; L00004722
 
+                    ; badguy shooting left
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting_left
 L0000470c           subq.w  #$05,d0
-L0000470e           cmp.w   #$fff6,d0
-L00004712           bpl.w   badguy_shooting                 ; L00004686
-L00004716           bra.b   remove_projectile               ; L00004722
+L0000470e           cmp.w   #$fff6,d0                       ; -10 (-20)
+L00004712           bpl.w   badguy_shooting                 ; if on screen
+L00004716           bra.b   remove_projectile               ; else, remove projectile
 
-L00004718           addq.w  #$05,d0
-L0000471a           cmp.w   #$00a8,d0
-L0000471e           bmi.w   badguy_shooting                 ; L00004686
+
+                    ; badguy shooting right
+                    ;
+                    ; PROJECTILE HANDLER 
+                    ;   referenced from: projectile_jmp_table
+                    ;
+                    ; d0.w = X
+                    ; d1.w = Y
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+badguy_shooting_right
+L00004718           addq.w  #$05,d0                         ; move projectile X to right
+L0000471a           cmp.w   #$00a8,d0                       ; 168 (336)
+L0000471e           bmi.w   badguy_shooting                 ; if on screen 
+                                                            ; else, remove projectile 
 
                     ; ---------------- remove projectile -----------------
                     ; IN:-
@@ -3367,13 +3498,20 @@ batarang_left       ; original address L00004740
                     bra.b   remove_projectile                       ; if hit wall - L00004722
 
 
+
                     ; ------------- batman grappling hook ---------------
+                    ; Update grappling hook X,Y and whether it has hit
+                    ; any actor to kill any bad guys.
+                    ; This routine does not manage 'batman state', or
+                    ; batman attaching and/or swinging from the rope etc. 
+                    ; It is concerned only with the hook part used as a 
+                    ; projectile (i.e. its travel and collision with actors)
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
                     ;
-                    ; d0.w = X
-                    ; d1.w = Y
+                    ; d0.w = X - Current
+                    ; d1.w = Y - Current
                     ; d2.l = #$00000000
                     ; d6.w = index into projectile_list
                     ; d7.w = projectile loop counter
@@ -3381,17 +3519,18 @@ batarang_left       ; original address L00004740
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-L00004758           move.w  L00006318,d0                ; batman grappling hook
-L0000475c           beq.b   remove_projectile           ; L00004722
-L0000475e           movem.w batman_xy_offset,d0-d1
-L00004764           add.w   L0000631a,d0
-L00004768           sub.w   L0000631c,d1
-L0000476c           sub.w   #$000c,d1
-L00004770           addq.w  #$05,d0
-L00004772           tst.w   batman_sprite1_id           ; L000062ee
-L00004776           bpl.b   L0000477a
-L00004778           subq.w  #$07,d0
-L0000477a           movem.w d0-d1,(a6)
+batman_grappling_hook   ; original address L00004758
+                    move.w  grappling_hook_height,d0    ; height 
+                    beq.b   remove_projectile           ; height = 0, then remove from game
+                    movem.w batman_xy_offset,d0-d1      ; get batman x,y
+                    add.w   L0000631a,d0                ; maybe grappling hook Y offset to grappling hook height
+                    sub.w   L0000631c,d1                ; maybe grappling hook X
+                    sub.w   #$000c,d1                   ; 12
+                    addq.w  #$05,d0                     ; 5
+                    tst.w   batman_sprite1_id           ; L000062ee
+                    bpl.b   .skip_sub_height            ; either check facing direction,
+                    subq.w  #$07,d0                     ;  ... or modify grappling hook height
+.skip_sub_height    movem.w d0-d1,(a6)                  ; store updated projectile height
                     ; falls through to actor collision
                     ; can be used to kill bad guys
 
@@ -3452,10 +3591,10 @@ L000047f8           cmp.w   #$0007,d0
 L000047fc           bcc.b   L00004820
 L000047fe           cmp.w   batman_y_offset,d1
 L00004802           bpl.b   L00004820
-L00004804           cmp.w   L000062f0,d1
+L00004804           cmp.w   batman_y_bottom,d1              ; L000062f0,d1
 L00004808           bmi.b   L00004820
-L0000480a           moveq   #$06,d6
-L0000480c           bsr.w   L00004ccc
+L0000480a           moveq   #$06,d6                         ; energy to lose
+L0000480c           bsr.w   batman_lose_energy              ;L00004ccc
 L00004810           movem.w (a6),d0-d1
 L00004814           move.w  #$000e,-$0002(a6)
 L0000481a           moveq   #SFX_EXPLOSION,d2
@@ -3495,18 +3634,18 @@ L00004864           rts
                     ; referenced by draw_projectiles
                     ; modified for 32 bit addresses -  24 entries
 projectile_jmp_table        ; original address L00004866
-L00004866           dc.l    L00004758               ; batman grappling hook
-                    dc.l    batarang_right          ; L00004728               ; batman fire right
-                    dc.l    batarang_left           ; L00004740               ; batman fire left
-                    dc.l    batarang_left           ; L00004740               ; batman fire left
-                    dc.l    remove_projectile       ; L00004722               ; clr.w   -$0002(a6), RTS
-                    dc.l    remove_projectile       ; L00004722               ; clr.w   -$0002(a6), RTS
-                    dc.l    L00004718               ; Bad Guy Shooting
-                    dc.l    L0000470c               ; Bad Guy Shooting
-                    dc.l    L000046f8               ; Bad Guy Shooting
-                    dc.l    L000046e6               ; Bad Guy Shooting
-                    dc.l    L000046d4               ; Bad Guy Shooting
-                    dc.l    L000046c2               ; Bad Guy Shooting
+L00004866           dc.l    batman_grappling_hook       ; L00004758 ; batman grappling hook
+                    dc.l    batarang_right              ; L00004728 ; batman fire right
+                    dc.l    batarang_left               ; L00004740 ; batman fire left
+                    dc.l    batarang_left               ; L00004740 ; batman fire left
+                    dc.l    remove_projectile           ; L00004722 ; clr.w   -$0002(a6), RTS
+                    dc.l    remove_projectile           ; L00004722 ; clr.w   -$0002(a6), RTS
+                    dc.l    badguy_shooting_right       ; L00004718 ; -> Bad Guy Shooting
+                    dc.l    badguy_shooting_left        ; L0000470c ; <- Bad Guy Shooting
+                    dc.l    badguy_shooting_right_down  ; L000046f8 ; \ Guy Shooting
+                    dc.l    badguy_shooting_left_down   ; L000046e6 ; / Bad Guy Shooting
+                    dc.l    badguy_shooting_right_up    ; L000046d4 ; / Bad Guy Shooting
+                    dc.l    badguy_shooting_left_up     ; L000046c2 ; \ Bad Guy Shooting
                     dc.l    L000047c4               ; Grenade Right
                     dc.l    L00004822               ; Grenade Left
                     dc.l    L00004844               ; runs while grenade explosion is displayed?
@@ -4219,13 +4358,13 @@ L00004cc8           dc.l    cmd_nop                     ; 1     | 1     | 1     
                     ;   d6.w - amount of energy to lose.
                     ;
 batman_lose_energy                                                  ; original address L00004ccc
-L00004ccc           tst.b   PANEL_STATUS_1                          ; Test if Time UP, Life Lost, No Lives
-L00004cd2           bne.b   exit_rts                                ; exit if 'Timer Expired', 'Life Lost', 'No Lives Remaining'
+                    tst.b   PANEL_STATUS_1                          ; Test if Time UP, Life Lost, No Lives
+                    bne.b   exit_rts                                ; exit if 'Timer Expired', 'Life Lost', 'No Lives Remaining'
 
-L00004cd4           movem.l d0-d7/a5-a6,-(a7)
-L00004cd8           move.w  d6,d0
-L00004cda           jsr     PANEL_LOSE_ENERGY                       ; Panel - Lose Energy (D0.w) - $0007c870
-L00004ce0           movem.l (a7)+,d0-d7/a5-a6
+                    movem.l d0-d7/a5-a6,-(a7)
+                    move.w  d6,d0
+                    jsr     PANEL_LOSE_ENERGY                       ; Panel - Lose Energy (D0.w) - $0007c870
+                    movem.l (a7)+,d0-d7/a5-a6
                     ; falls though to updating state below
 
 
@@ -4292,13 +4431,13 @@ L00004d4c           bne.b   exit_rts                        ; L00004d36
 L00004d4e           move.l  #L00005308,gl_jsr_address       ;L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00004d54           bra.b   L00004d7a
 
-L00004d56           tst.w   L00006318
+L00004d56           tst.w   grappling_hook_height           ; L00006318
 L00004d5a           beq.b   L00004d60
 L00004d5c           bsr.w   L000051b0
 L00004d60           subq.w  #$01,L00006306
 L00004d64           bne.b   exit_rts                                ; L00004d36
 L00004d66           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00004d6c           tst.w   L00006318
+L00004d6c           tst.w   grappling_hook_height                   ; L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
@@ -4307,7 +4446,7 @@ L00004d80           beq.b   exit_rts                                ; L00004d36
 
                     ; lose a life - audio & animation?
 L00004d82           jsr     AUDIO_PLAYER_SILENCE              
-L00004d88           clr.w   L00006318
+L00004d88           clr.w   grappling_hook_height                               ; L00006318
 L00004d8c           moveq   #$03,d0                                             ; song/sound number - 03 = player life lost
 L00004d8e           jsr     AUDIO_PLAYER_INIT_SONG            
 L00004d94           move.l  #L00004da2,gl_jsr_address           
@@ -4390,7 +4529,7 @@ L00004e3a            moveq   #$10,d3                    ; CMD16 - Fire - No Dire
 L00004e3c            tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - (Clock Timer Expired, No Lives, Life Lost bits)
 L00004e42            bne.b   L00004e60
 
-L00004e44            lea.l   L00006318,a0
+L00004e44            lea.l   grappling_hook_height,a0   ; L00006318,a0
 L00004e48            move.w  (a0),d2
 L00004e4a            cmp.w   #$0050,d2                  ; compare 80 with d2
 L00004e4e            bcc.b   L00004e60                  ;   if d2 > 80 jmp $4e60
@@ -4414,7 +4553,7 @@ L00004e5a            move.l  #L00004e64,gl_jsr_address  ; L00003c90        ; Set
 L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) Fire no Direction
 
                     ; Updated Self Modified JSR (game_loop) when ($00006306).w is zero
-L00004e64            lea.l   L00006318,a0                
+L00004e64            lea.l   grappling_hook_height,a0       ; L00006318,a0                
 L00004e68            move.w  (a0),d5
 L00004e6a            move.b  player_input_command,d4        ; L00006308,d4
 L00004e6e            btst.l  #PLAYER_INPUT_UP,d4
@@ -4513,7 +4652,7 @@ L00004f8c            rts
 
 L00004f8e           tst.w   d4
 L00004f90           bmi.b   L00004f9a
-L00004f92           subq.w  #$02,L00006318
+L00004f92           subq.w  #$02,grappling_hook_height              ; L00006318
 L00004f96           bra.w   L00004f1a
 
 L00004f9a           movem.w d0-d7,-(a7)
@@ -4536,7 +4675,7 @@ L00004fc6           smi.b   d4
 L00004fc8           asl.w   #$02,d4
 L00004fca           addq.w  #$02,d4
 L00004fcc           movem.w d4-d5,L000062f4
-L00004fd2           clr.w   L00006318
+L00004fd2           clr.w   grappling_hook_height               ; L00006318
 L00004fd6           movem.w batman_xy_offset,d0-d1
 L00004fdc           bra.w   L00005464
 
@@ -5175,7 +5314,7 @@ get_map_tile_at_display_offset_d0_d1                        ; original address
                     ;
 draw_batman_and_rope  ; original address L000055c4
                     ;jmp     draw_batman_sprite
-                    move.w  L00006318,d2                ; grappling hook distance/height
+                    move.w  grappling_hook_height,d2    ; L00006318,d2 ; grappling hook distance/height
                     beq.w   draw_batman_sprite          ; L000056a6
                     movem.w batman_xy_offset,d0-d1
                     sub.w   #$000c,d1
@@ -5269,7 +5408,7 @@ draw_batman_sprite  ; original address L000056a6
                     add.w   d3,d3                                       ; Y co-ord * 2
                     sub.b   -2(a0,d4.W),d3                              ; modify Y co-ord
                     asr.w   #$01,d3                                     ; divide y by 2 (X & Y stored as halved values)
-                    move.w  d3,L000062f0                                ; store update Y co-ord
+                    move.w  d3,batman_y_bottom                          ; L000062f0                                ; store update Y co-ord
                     bsr.b   draw_sprite                                 ; Draw Batman Part - L000056f4
 
                     ; draw second Batman Sprite ; L000056ce
@@ -6102,7 +6241,7 @@ L00005b90           jsr     AUDIO_PLAYER_INIT_SFX_1
 L00005b96           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 
 L00005b9e           move.l  #cmd_nop,gl_jsr_address                 ; Set game_loop Self Modifying Code JSR 
 L00005ba4           clr.w   L000062fa
-L00005ba8           clr.w   L00006318
+L00005ba8           clr.w   grappling_hook_height                   ; L00006318
 L00005bac           move.w  $0004(a5),d0                            ; $00bfd104,d0
 L00005bb0           cmp.w   #$00d4,d0
 L00005bb4           bcs.b   L00005bd2
@@ -6181,7 +6320,7 @@ L00005c58           cmp.w   #$0016,d3
 L00005c5c           bcc.b   L00005c40
 L00005c5e           cmp.w   d1,d4
 L00005c60           bmi.b   L00005c40
-L00005c62           cmp.w   L000062f0,d1
+L00005c62           cmp.w   batman_y_bottom,d1              ; L000062f0,d1
 L00005c66           bmi.b   L00005c40
 L00005c68           moveq   #$03,d6                         ; Value of Energy to Lose (3 of 48)
 L00005c6a           bra.w   batman_lose_energy              ; L00004ccc
@@ -6233,7 +6372,7 @@ L00005cde           sub.w   d0,d3
 L00005ce0           addq.w  #$03,d3
 L00005ce2           cmp.w   #$0007,d3
 L00005ce6           bcc.w   L000045bc
-L00005cea           cmp.w   L000062f0,d1
+L00005cea           cmp.w   batman_y_bottom,d1                      ; L000062f0,d1
 L00005cee           bmi.w   L000045bc
 L00005cf2           cmp.w   batman_y_offset,d1
 L00005cf6           bpl.w   L000045bc
@@ -6311,7 +6450,7 @@ L00005d8c           subq.w  #$01,d2
 L00005d8e           bne.w   L00005d02
 L00005d92           move.l  #cmd_nop,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005d98           move.w  #$0021,(a5)
-L00005d9c           clr.w   L00006318
+L00005d9c           clr.w   grappling_hook_height                   ; L00006318
 L00005da0           move.w  #$ffff,L000062fa
 L00005da6           move.b  #PANEL_ST1_VAL_TIMER_EXPIRED,PANEL_STATUS_1    ; Set TIMER EXPIRED 
 L00005dae           rts
@@ -6508,7 +6647,7 @@ L00005f2c           move.b  #$4f,$03(a0,d3.W)
 L00005f32           bsr.w   L00005e98
 L00005f36           bcc.b   actor_cmd_28                ; L00005f42
 L00005f38           move.l  #L000053d6,gl_jsr_address           ; L00003c90 ; Set Self Modifying Code JSR in game_loop
-L00005f3e           clr.w   L00006318
+L00005f3e           clr.w   grappling_hook_height       ; L00006318
 
 
                     ; a6 = actor list struct ptr
@@ -6697,7 +6836,8 @@ L000062ec           dc.w $0002                          ; batman sprite id 2 (0 
 batman_sprite1_id                                       ; original address L000062ee
 L000062ee           dc.w $0001                          ; batman sprite id 1 (0 = do not display 1,2,3) (head)
 
-L000062f0           dc.w $0000                          ; batman (some kind of updated Y co-ordinate? set in draw_batman_and_rope routine)
+batman_y_bottom                                         ; original address L000062f0
+L000062f0           dc.w $0000                          ; batman y bottom co-ord, used for bullet collision (set in draw_batman_and_rope routine)
                     
 
 L000062f2           dc.w $0000
