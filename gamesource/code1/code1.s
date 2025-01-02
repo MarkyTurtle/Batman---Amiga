@@ -1519,7 +1519,7 @@ debug_print_word_value                                                      ; or
                     ;
                     ;   Offset  |    Descripton
                     ;   ----------------------
-                    ;   0-1     | Actor Id/Handler Id
+                    ;   0-1     | Actor Id/Status - $0001 = killed
                     ;   2-3     | Actor X
                     ;   4-5     | Actor Y
                     ;   8
@@ -1530,6 +1530,7 @@ debug_print_word_value                                                      ; or
                     ;   20-23   | (long updated from word) Address of actor data structure
                     ;
                     ; 
+ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
 ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
 ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
@@ -1648,7 +1649,7 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.l    $0000           ; 16 bit address of actor data structure
-last_active_actor
+last_active_actor   ; original address L00003a8e
 L00003a8e           dc.w    $0000
                     dc.w    $00a0
                     dc.w    $0038
@@ -3159,44 +3160,56 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
                     ; Draw Projectiles (bombs, bullets, batarang)
                     ;----------------------------------------------------------------------------------------------
                     ; draws the projectiles on the screen 
+                    ;
                     ;  - bombs
                     ;  - bullets
                     ;  - player's batarang 
                     ;  - end of bat-rope
                     ;
                     ; L00004894 - 8 byte structure (20 active projectiles?)
+                    ;               Handler Index, X Co-ord, Y Co-ord, Grenade Acceleration
+                    ;
+                    ; Code Checked 2/1/2025
                     ;
 draw_projectiles    ; original address L000045fe
-L000045fe           lea.l   projectile_jmp_table,a5     ; L00004866,a5
-                    lea.l   projectile_list,a6
-                    moveq   #$13,d7                     ; d7 = 19 + 1 - counter
-.loop               ; original address L00004608
-                    move.w  (a6)+,d2                    ; get 2 bytes - active projectile?
-                    beq.b   .skip_to_next               ; if d2 == 0 then skip_to_next - L00004636
+                    ;lea.l   projectile_jmp_table,a5         ; Unused here.
+                    lea.l   projectile_list,a6              ; (Handler Index, X, Y, Grenade Acceleration)
+                    moveq   #$13,d7                         ; d7 = 19 + 1 - counter (list of 20 entries)
 
-                    movem.w (a6),d0-d1              ; get next 4 bytes from data struct.
-                    move.l  a6,-(a7)                ; store data ptr - a6   
-                    move.w  d7,-(a7)                ; store counter
-                    btst.l  #$000f,d2               ;   test is d2 -ve?
-                    beq.b   .is_pos_01              ; L00004622               ;     is +ve then jmp L00004622
-.is_neg_01                                          ;   else -ve
-                    ext.w   d2                      ;     sign extend byte to word
-                    move.w  d2,-$0002(a6)           ;     overwrite word back in data structure
-                    moveq   #$04,d2                 ;     set d2 = #$04
-.is_pos_01
-                    ror.w   #$01,d2                 ;   rotate bits right by 1
-                    bpl.b   .not_neg_02             ;   L0000462a               ;   test is d2 +ve                                                  
-                    or.w    #$e000,d2               ;     is -ve set top 3 bits.
-.not_neg_02
-                    add.w   #$003b,d2               ;     is +ve, add 59 to d2
-                    bsr.w   draw_sprite             ; Draw projectile sprite - L000056f4
-                                                    ; bullets, bombs, batarang, grappling hook
-                    move.w  (a7)+,d7                ; restore counter - d7
-                    movea.l (a7)+,a6                ; restore data ptr - a6
-.skip_to_next
-                    addq.w  #$06,a6                 ; a6 + 6 (start next structure in list)     
-                    dbf.w   d7,.loop                ; L00004608
+.loop               ; L00004608
+                    move.w  (a6)+,d2                        ; d2 = handler index (0 = unused/disabled)
+                    beq.b   .skip_to_next                   ; if disabled then, skip_to_next
+
+                    movem.w (a6),d0-d1                      ; d0,d1 = projectile X, Y
+                    move.l  a6,-(a7)                        ; stash list ptr on stack for later.   
+                    move.w  d7,-(a7)                        ; stash loop counter on stack for later.
+                    btst.l  #$000f,d2                       ;   test sign bit 15 of handler index.
+                    beq.b   .set_left_right                 ; if >= 0 then jmp set left/right facing
+
+.negative_handler_index ; L0000461a                         ; else handler index < 0 then ...
+                    ext.w   d2                              ;       make word +ve again
+                    move.w  d2,-$0002(a6)                   ;       store in projectile handler
+                    moveq   #$04,d2                         ;       set sprite index to #$04
+
+.set_left_right     ; L00004622
+                    ror.w   #$01,d2                         ;  divide by 2 and set sign bit if odd
+                    bpl.b   .draw_sprite                    ;  test d2 is >= 0                                                    
+                    or.w    #$e000,d2                       ;  if < 0 then set sprite direction left facing
+
+.draw_sprite        ; L0000462A
+                    add.w   #$003b,d2                       ; Add base projectile sprite id
+                    bsr.w   draw_sprite                     ; Draw projectile sprite
+
+                    move.w  (a7)+,d7                        ; restore counter - d7
+                    movea.l (a7)+,a6                        ; restore data ptr - a6
+
+.skip_to_next       ; L00004636
+                    add.l   #PROJECTILE_LISTITEM_SIZE-2,a6  ; a6 = start next structure in list  (a6 + 6)    
+                    dbf.w   d7,.loop                        
                     rts
+
+
+
 
 
                     ; ---------------- find empty projectile entry ------------------
@@ -3209,17 +3222,21 @@ L000045fe           lea.l   projectile_jmp_table,a5     ; L00004866,a5
                     ;   a0.l = address of first empty entry in the list
                     ;           or the address of the end of the list if the list is full.
                     ;
-get_empty_projectile
-L0000463e           lea.l   projectile_list,a0      
-L00004642           moveq   #$13,d7                 ; loop counter (20 times)
-next_projectile
-L00004644           tst.w   (a0)                    ; test projectile entry
-L00004646           beq.b   L00004656               ; if end of list then exit
-L00004648           lea.l   $0008(a0),a0            ; skip to next projectile entry in the list
-L0000464c           dbf.w   d7,next_projectile      ; L00004644
+                    ; Code Checked 2/1/2025
+                    ;
+get_empty_projectile    ; original address L0000463e
+                    lea.l   projectile_list,a0      
+                    moveq   #$13,d7                 ; loop counter (20 times)
+.next_projectile     ; L00004644
+                    tst.w   (a0)                    ; test projectile entry
+                    beq.b   .exit                   ; if end of list then exit
+                    lea.l   $0008(a0),a0            ; skip to next projectile entry in the list
+                    dbf.w   d7,.next_projectile     ; L00004644
+.not_found          ; L00004650
+                    movea.l #$fffffff8,a0           ; a0 = ptr to last list entry.
+.exit               ; L00004656
+                    rts
 
-L00004650           movea.l #$fffffff8,a0           ; a0 = ptr to last list entry.
-L00004656           rts
 
 
 
@@ -3230,24 +3247,27 @@ L00004656           rts
                     ; update projectiles on the level, including the player's projectiles
                     ; it does not draw them..
                     ;
+                    ; Code Checked: 2/1/2025
+                    ;
 update_projectiles  ; original address L00004658
-                    lea.l   projectile_jmp_table,a5     ; L00004866,a5
-                    lea.l   projectile_list,a6          ; L00004894,a6
-                    moveq   #$13,d7                     ; 19 + 1 - loop counter
-.update_loop                                            ; original address L0004662
-                    move.w  (a6)+,d6                    ; d6 = 1 based index into address jmp table L00004866
+                    lea.l   projectile_jmp_table,a5
+                    lea.l   projectile_list,a6                  ; 'active' projectiles list
+                    moveq   #$13,d7                             ; 19 + 1 - loop counter
+.update_loop        ; L00004662
+                    move.w  (a6)+,d6                            ; d6 = 1 based 'handler' index into address jmp table L00004866
                     beq.b   .skip_to_next
-                    movem.w (a6),d0-d1
-                    sub.w   L0000630e,d0
-                    sub.w   vertical_scroll_increments,d1           ; L00006310,d1
-                    asl.w   #$02,d6                 ; multiply d6 * 4 (modified address table to 32 bit addresses)
-                    clr.l   d2                      ; clear d2
-                    movea.l d2,a0                   ; clear a0
-                    movea.l -$4(a5,d6.W),a0         ; $fe(a5,d6.W),a0 (modified address table to 32 bit addresses)
+.do_projectile      ; L00004666
+                    movem.w (a6),d0-d1                          ; d0,d1 = X, Y
+                    sub.w   L0000630e,d0                        ; sub X scroll value?
+                    sub.w   vertical_scroll_increments,d1       ; sub Y scroll value 
+                    asl.w   #$02,d6                             ; modified address table to 32 bit addresses, original code 'asl.w #$01,d6'
+                    clr.l   d2                                  ; clear d2
+                    movea.l d2,a0                               ; clear a0
+                    movea.l -$4(a5,d6.W),a0                     ; modified address table to 32 bit addresses, original code 'movea.w $fe(a5,d6.W),a0' 
                     jsr     (a0)
-.skip_to_next                                       ; original address L0000467e
-                    addq.w  #$06,a6                 ; addaq.w
-                    dbf.w   d7,.update_loop         ; L00004662
+.skip_to_next       ;  L0000467e
+                    addq.w  #$06,a6                             ; increase ptr 6 + 2 (8 bytes structure)
+                    dbf.w   d7,.update_loop
                     rts
 
 
@@ -3270,36 +3290,38 @@ update_projectiles  ; original address L00004658
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
+                    ; Code Checked 2/1/2025
+                    ;
 badguy_shooting     ; L00004686
-                    movem.w d0-d1,(a6)
-                    bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-                    cmp.b   #$17,d2                         ; bullet hit wall?
-                    bcs.b   end_bullet                      ; .. yes
-check_batman_collision ; L00004694
-                    sub.w   batman_x_offset,d0              ; .. no
-                    addq.w  #$04,d0                         ; 8 pixel width hit box?
-                    cmp.w   #$0009,d0                       ; if not within 8 pixels, exit
-                    bcc.b   exit_badguy_shooting            ; L000046c0
-                    cmp.w   batman_y_offset,d1              ; batman_y_top?                
-                    bpl.b   exit_badguy_shooting            ; L000046c0
-                    cmp.w   batman_y_bottom,d1              ; L000062f0,d1                    ; batman_y_bottom?
-                    bmi.b   exit_badguy_shooting            ; L000046c0
+                    movem.w d0-d1,(a6)                              ; store updated X,Y co-ords
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
+                    cmp.b   #$17,d2                                 ; bullet hit wall?
+                    bcs.b   end_bullet                              ; .. yes, then set end bullet handler id
+check_batman_collision ; L00004694                                  ; .. no
+                    sub.w   batman_x_offset,d0                      ; .. no
+                    addq.w  #$04,d0                                 ; 8 pixel width hit box?
+                    cmp.w   #$0009,d0                               ; if not within 8 pixels, exit
+                    bcc.b   exit_badguy_shooting
+                    cmp.w   batman_y_offset,d1                      ; test batman_y_top?                
+                    bpl.b   exit_badguy_shooting
+                    cmp.w   batman_y_bottom,d1                      ; test batman_y_bottom?
+                    bmi.b   exit_badguy_shooting
 batman_shot         ; L000046ac
-                    moveq   #$01,d6                         ; Value of Energy to Lose (1 of 48)
+                    moveq   #$01,d6                                 ; Energy to lose value
                     bsr.w   batman_lose_energy
                     moveq   #SFX_GUYHIT,d0
                     jsr     AUDIO_PLAYER_INIT_SFX
 end_bullet          ; L000046ba
-                    move.w  #$0004,-$0002(a6)               ; hit wall or bataman
-                                                            ; update handler id
-                                                            ; display ricochet, etc?
-exit_badguy_shooting   
-L000046c0           rts
+                    move.w  #$0004,-$0002(a6)                       ; update handler id to display ricochet, etc?
+exit_badguy_shooting ; L000046c0 
+                    rts
 
 
 
 
-                    ; badguy shooting left & up - diagonal
+                    ; ----------- badguy shooting left & up - diagonal ----------
+                    ; Update X,Y co-ords, check bullet on screen and remove if not.
+                    ; Perform common code if on screen.
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
@@ -3313,17 +3335,21 @@ L000046c0           rts
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting_left_up
-L000046c2           subq.w  #$03,d0
-L000046c4           cmp.w   #$fff6,d0
-L000046c8           bmi.b   remove_projectile               ; L00004722
-L000046ca           subq.w  #$03,d1
-L000046cc           cmp.w   #$0058,d1
-L000046d0           bcs.b   badguy_shooting                 ; L00004686
-L000046d2           bra.b   remove_projectile               ; L00004722
+                    ; Code Checked 2/1/2025
+                    ;
+badguy_shooting_left_up     ; original address L000046c2
+                    subq.w  #$03,d0                         ; update X co-ord
+                    cmp.w   #$fff6,d0                       ; compare left screen edge -10 (-20)
+                    bmi.b   remove_projectile               ; if offscreen, then remove
+
+                    subq.w  #$03,d1                         ; update Y co-ord
+                    cmp.w   #$0058,d1                       ; compare #$0058 - 88 (176)
+                    bcs.b   badguy_shooting                 ; if onscreen, then do common code
+                    bra.b   remove_projectile               ; else, remove
 
 
-                    ; badguy shooting right & up - diagonal
+
+                    ; ---------- badguy shooting right & up - diagonal ----------
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
@@ -3337,17 +3363,21 @@ L000046d2           bra.b   remove_projectile               ; L00004722
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting_right_up
-L000046d4           addq.w  #$03,d0
-L000046d6           cmp.w   #$00a8,d0
-L000046da           bpl.b   remove_projectile               ; L00004722
-L000046dc           subq.w  #$03,d1
-L000046de           cmp.w   #$0058,d1
-L000046e2           bcs.b   badguy_shooting                 ; L00004686
-L000046e4           bra.b   remove_projectile               ; L00004722
+                    ; Code Checked 2/1/2025
+                    ;
+badguy_shooting_right_up    ; original address L000046d4
+                    addq.w  #$03,d0                         ; update X co-ord
+                    cmp.w   #$00a8,d0                       ; compare right screen edge - #$a8 168 (336)
+                    bpl.b   remove_projectile               ; if offscreen, then remove
+
+                    subq.w  #$03,d1                         ; update Y co-ord
+                    cmp.w   #$0058,d1                       ; compare #$58 - 88 (176)
+                    bcs.b   badguy_shooting                 ; if onscreem, then do common code
+                    bra.b   remove_projectile               ; else, remove
 
 
-                    ; badguy shooting left & down - diagonal
+
+                    ; --------- badguy shooting left & down - diagonal ----------
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
@@ -3361,17 +3391,22 @@ L000046e4           bra.b   remove_projectile               ; L00004722
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting_left_down
-L000046e6           subq.w  #$03,d0
-L000046e8           cmp.w   #$fff6,d0
-L000046ec           bmi.b   remove_projectile               ; L00004722
-L000046ee           addq.w  #$03,d1
-L000046f0           cmp.w   #$0058,d1
-L000046f4           bcs.b   badguy_shooting                 ; L00004686
-L000046f6           bra.b   remove_projectile               ; L00004722
+                    ; Code Checked 2/1/2-15
+                    ;
+badguy_shooting_left_down       ; original address L000046e6
+                    subq.w  #$03,d0                         ; update X co-ord
+                    cmp.w   #$fff6,d0                       ; compare left edge -10 (-20)
+                    bmi.b   remove_projectile               ; if offscreen, then remove
+
+                    addq.w  #$03,d1                         ; update Y co-ord
+                    cmp.w   #$0058,d1                       ; compare #$58 - 88 (176)
+                    bcs.b   badguy_shooting                 ; if onscreen, then do common code
+                    bra.b   remove_projectile               ; else, remove
 
 
-                    ; badguy shooting right & down - diagonal
+
+
+                    ; ---------- badguy shooting right & down - diagonal ----------
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
@@ -3385,16 +3420,21 @@ L000046f6           bra.b   remove_projectile               ; L00004722
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting_right_down
-L000046f8           addq.w  #$03,d0
-L000046fa           cmp.w   #$00a8,d0
-L000046fe           bpl.b   remove_projectile               ; L00004722
-L00004700           addq.w  #$03,d1
-L00004702           cmp.w   #$0058,d1
-L00004706           bcs.w   badguy_shooting                 ; L00004686
-L0000470a           bra.b   remove_projectile               ; L00004722
+                    ; Code Checked 2/1/2025
+                    ;
+badguy_shooting_right_down  ; original address L000046f8
+                    addq.w  #$03,d0                         ; update X co-ord
+                    cmp.w   #$00a8,d0                       ; compare right screen edge - #$a8 168 (336)
+                    bpl.b   remove_projectile               ; if offscreen, then remove
 
-                    ; badguy shooting left
+                    addq.w  #$03,d1                         ; update Y co-ord
+                    cmp.w   #$0058,d1                       ; compare #$58 - 88 (176)
+                    bcs.w   badguy_shooting                 ; if onscreen, then do common code
+                    bra.b   remove_projectile               ; else, remove
+
+
+
+                    ; ---------- badguy shooting left ----------
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
@@ -3408,14 +3448,17 @@ L0000470a           bra.b   remove_projectile               ; L00004722
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting_left
-L0000470c           subq.w  #$05,d0
-L0000470e           cmp.w   #$fff6,d0                       ; -10 (-20)
-L00004712           bpl.w   badguy_shooting                 ; if on screen
-L00004716           bra.b   remove_projectile               ; else, remove projectile
+                    ; Code Checked 2/1/2-15
+                    ;
+badguy_shooting_left    ; original address L0000470c
+                    subq.w  #$05,d0                         ; update X co-ord
+                    cmp.w   #$fff6,d0                       ; compare left edge -10 (-20)
+                    bpl.w   badguy_shooting                 ; if onscreen
+                    bra.b   remove_projectile               ; else, remove projectile
 
 
-                    ; badguy shooting right
+
+                    ; ---------- badguy shooting right ----------
                     ;
                     ; PROJECTILE HANDLER 
                     ;   referenced from: projectile_jmp_table
@@ -3429,19 +3472,36 @@ L00004716           bra.b   remove_projectile               ; else, remove proje
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting_right
-L00004718           addq.w  #$05,d0                         ; move projectile X to right
-L0000471a           cmp.w   #$00a8,d0                       ; 168 (336)
-L0000471e           bmi.w   badguy_shooting                 ; if on screen 
-                                                            ; else, remove projectile 
+                    ; Code Checked 2/1/2015
+                    ;
+badguy_shooting_right   ; original address L00004718
+                    addq.w  #$05,d0                         ; update X co-ord
+                    cmp.w   #$00a8,d0                       ; compare right screen edge - #$a8 168 (336)
+                    bmi.w   badguy_shooting                 ; if on screen 
+                                                            ; else, fall through to remove_projectile 
+
+
+
+
+
+
+        ;------------------------------------------------------------------------------------------------------
+        ; Projectile Handling Code & Data
+        ;------------------------------------------------------------------------------------------------------
+        ; Code Checked 2/1/2025
+        ;------------------------------------------------------------------------------------------------------
+        
+
 
                     ; ---------------- remove projectile -----------------
                     ; IN:-
                     ;   a6.l = Projectile List Entry +2
-remove_projectile                                           ; original address L00004722
-L00004722           clr.w   -$0002(a6)                      ; remove projjectile Id from projectile list
-L00004726           rts
-
+                    ;
+                    ; Code Checked 2/1/2-15
+                    ;
+remove_projectile   ; original address L00004722
+                    clr.w   -$0002(a6)                      ; remove projectile Id from projectile list (make inactive)
+                    rts
 
 
 
@@ -3460,16 +3520,20 @@ L00004726           rts
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
+                    ; Code Checked 2/1/2015
+                    ;
 batarang_right      ; original address L00004728
                     addq.w  #$04,d0                                     ; increment X co-ord
                     cmp.w   #$00a8,d0                                   ; compare 168 (336)
-                    bpl.b   remove_projectile                           ; remove if > pixel 336
+                    bpl.b   remove_projectile                           ; if offscreen, remove 
+                    ; LO00004730
                     bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
                     cmp.b   #$17,d2                                     ; compare with wall tile(s)
-                    movem.w d0-d1,(a6)
-                    bcc.b   actor_projectile_collision_check            ; not a wall tile, check actor collision
-                    bra.b   remove_projectile                           ; modified to bra from bcs - L00004722
-                    ;bcs.b   remove_projectile                          ; L00004722
+                    movem.w d0-d1,(a6)                                  ; store updated x, y
+                    bcc.b   actor_projectile_collision_handler          ; if not a wall tile, check actor collision
+                    bra.b   remove_projectile                           ; else, is wall tile so remove
+                    ;bcs.b   remove_projectile                          ; L00004722 - original code
+
 
 
                     ; ------------------ batarang fire left ----------------
@@ -3487,15 +3551,18 @@ batarang_right      ; original address L00004728
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
+                    ; Code Checked 2/1/2015
+                    ;
 batarang_left       ; original address L00004740
                     subq.w  #$04,d0                                 ; decrement X co-ord               
-                    cmp.w   #$fff6,d0                               ; -10
-                    bmi.b   remove_projectile                       ; off screen so remove - L00004722
+                    cmp.w   #$fff6,d0                               ; compare left edge -10 (-20)
+                    bmi.b   remove_projectile                       ; if offscreen then remove
+                    ; L00004748
                     bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
-                    cmp.b   #$17,d2                         
+                    cmp.b   #$17,d2                                 ; compare with wall tile      
                     movem.w d0-d1,(a6)                              ; store updated x,y co-ords
-                    bcc.b   actor_projectile_collision_check        ; if not wall tile, check active actor colliisions
-                    bra.b   remove_projectile                       ; if hit wall - L00004722
+                    bcc.b   actor_projectile_collision_handler      ; if not wall tile, check active actor colliisions
+                    bra.b   remove_projectile                       ; else, is wall tile so remove
 
 
 
@@ -3519,259 +3586,349 @@ batarang_left       ; original address L00004740
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
+                    ; Code Checked 2/1/2015
+                    ;
 batman_grappling_hook   ; original address L00004758
-                    move.w  grappling_hook_height,d0    ; height 
+                    move.w  grappling_hook_height,d0
                     beq.b   remove_projectile           ; height = 0, then remove from game
+
                     movem.w batman_xy_offset,d0-d1      ; get batman x,y
-                    add.w   L0000631a,d0                ; maybe grappling hook Y offset to grappling hook height
-                    sub.w   L0000631c,d1                ; maybe grappling hook X
-                    sub.w   #$000c,d1                   ; 12
-                    addq.w  #$05,d0                     ; 5
-                    tst.w   batman_sprite1_id           ; L000062ee
-                    bpl.b   .skip_sub_height            ; either check facing direction,
-                    subq.w  #$07,d0                     ;  ... or modify grappling hook height
-.skip_sub_height    movem.w d0-d1,(a6)                  ; store updated projectile height
+                    add.w   L0000631a,d0                ; maybe grappling hook X offset from batman
+                    sub.w   L0000631c,d1                ; maybe grappling hook Y offset from batman
+                    sub.w   #$000c,d1                   ; subtract constant value 12 from Y
+                    addq.w  #$05,d0                     ; add constant value 5 to X
+                    tst.w   batman_sprite1_id           ; test facing left/right (negative = left)
+                    bpl.b   .is_facing_right            ; if facing right, skip X modification
+.is_facing_left     ; L00004778
+                    subq.w  #$07,d0                     ;  ...else, if facing left then modify grappling hook X
+.is_facing_right    ; L0000477A
+                    movem.w d0-d1,(a6)                  ; store updated projectile height
                     ; falls through to actor collision
                     ; can be used to kill bad guys
 
 
-                    ; active actor collision?
-                    ; step through active actor list backwards
-actor_projectile_collision_check                            ; original address L0000477e
+
+
+                    ; ------------- actor to projectile collision check -----------
+                    ; Tests and if necessary handles the collision between the
+                    ; batman's bat-a-rang projectile and an enemy actor.
+                    ; It steps through active actor list backwards, maybe an optimisation
+                    ; thinking that the most recently added actor is most likley to
+                    ; be hit first?
+                    ;
+                    ; d0.w = X - Current
+                    ; d1.w = Y - Current
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+                    ; Code Checked 2/1/2015
+                    ;
+actor_projectile_collision_handler                          ; original address L0000477e
                     lea.l   last_active_actor,a4            ; L00003a8e,a4 ; last active actor list
-                    moveq   #$09,d6                         ; loop counter 10
-.loop               ; L00004786    
-                    move.w  (a4),d2
-                    subq.w  #$02,d2                         ; actor 01, not collided with
+                    moveq   #$09,d6                         ; loop counter 10 (max active actors)
+.loop               ; L00004784    
+                    move.w  (a4),d2                         ; d2 = handler id/actor id
+                    subq.w  #$02,d2                         ; actor 01 & 00, not collided with
                     bmi.b   .next_actor                     ; if actor 00 (free entry) or 01 (batman?) then skip
-                    move.w  ACTORSTRUCT_X_CENTRE(a4),d2     ; offset 1$000e (actor x)
+
+                    move.w  ACTORSTRUCT_X_CENTRE(a4),d2     ; offset 1$000e (actor x) maybe actor left X
                     sub.w   d0,d2                           ; d2 = projectile x - actor x
-                    addq.w  #$04,d2                         ; add boundary (8 pixels?)
+                    addq.w  #$04,d2                         ; add x boundary box (8 pixels?)
                     cmp.w   #$0008,d2                       ; test projectile in 8 pixels
                     bcc.b   .next_actor                     ; L000047a4
+
                     cmp.w   ACTORSTRUCT_Y_TOP(a4),d1        ; offset $0010 (actor y - top)
                     bpl.b   .next_actor                     ; actor is further down screen - L000047a4
+
                     cmp.w   ACTORSTRUCT_Y_BOTTOM(a4),d1                    ; offset $0012 (actor y - bottom)
                     bpl.b   projectile_hit_actor            ; if bottom of actor is futher down screen
 .next_actor         ; L000047a4
-                    lea.l   -ACTORLIST_STRUCT_SIZE(a4),a4   ; Check next actor  -$0016(a4),a4           ; sub 22 bytes from a4
+                    lea.l   -ACTORLIST_STRUCT_SIZE(a4),a4   ; Check next actor, original was -$0016(a4),a4
                     dbf.w   d6,.loop                        ; loop 10 times
                     rts
+
+
 
                     ; ---------- actor collided with projectile -----------
                     ; Batman's bat-a-rang projectile has hit an actor.
                     ; This routine sets the handler index to $0001 (a4)
+                    ;
+                    ; IN:
+                    ;   a4.l = Actor Structure
+                    ;
+                    ; Code Checked 2/1/2015
+                    ;
 projectile_hit_actor        ; original address L000047ae
-                    move.w  #$0001,(a4)                     ; handler id = 1
-                    move.w  #$fffc,$000a(a4)                ; -4 offset 10
-                    bsr.w   remove_projectile               ; remove projectile from list - L00004722
+                    move.w  #$0001,ACTORSTRUCT_STATUS(a4)           ; set actor killed status?
+                    move.w  #$fffc,$000a(a4)                        ; -4 offset 10
+                    bsr.w   remove_projectile                       ; remove projectile
                     moveq   #SFX_GUYHIT,d0
                     jmp     AUDIO_PLAYER_INIT_SFX
                     ; use rts in audio player to return
 
 
-L000047c4           addq.w  #$02,d0                     ; badguy - grenade right
-L000047c6           move.w  $0004(a6),d2
-L000047ca           cmp.w   #$0028,d2
-L000047ce           bpl.b   L000047d4
-L000047d0           addq.w  #$01,$0004(a6)
-L000047d4           asr.w   #$02,d2
-L000047d6           bpl.b   L000047da
-L000047d8           addq.w  #$01,d2
-L000047da           add.w   d2,d1
-L000047dc           cmp.w   #$0060,d1
-L000047e0           bpl.w   remove_projectile           ; L00004722
-L000047e4           movem.w d0-d1,(a6)
-L000047e8           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L000047ec           cmp.b   #$17,d2
-L000047f0           bcs.b   L00004814
-L000047f2           sub.w   batman_x_offset,d0
-L000047f6           addq.w  #$03,d0
-L000047f8           cmp.w   #$0007,d0
-L000047fc           bcc.b   L00004820
-L000047fe           cmp.w   batman_y_offset,d1
-L00004802           bpl.b   L00004820
-L00004804           cmp.w   batman_y_bottom,d1              ; L000062f0,d1
-L00004808           bmi.b   L00004820
-L0000480a           moveq   #$06,d6                         ; energy to lose
-L0000480c           bsr.w   batman_lose_energy              ;L00004ccc
-L00004810           movem.w (a6),d0-d1
-L00004814           move.w  #$000e,-$0002(a6)
-L0000481a           moveq   #SFX_EXPLOSION,d2
-L0000481c           bra.w   play_proximity_sfx              ; play sfx if d0 > 160 & d1 >89 
-L00004820           rts
 
 
-
-L00004822           subq.w  #$02,d0                         ; bad guy - grenade left
-L00004824           move.w  $0004(a6),d2
-L00004828           cmp.w   #$0028,d2
-L0000482c           bpl.b   L00004832
-L0000482e           addq.w  #$01,$0004(a6)
-L00004832           asr.w   #$02,d2
-L00004834           bpl.b   L00004838
-L00004836           addq.w  #$01,d2
-L00004838           add.w   d2,d1
-L0000483a           cmp.w   #$0060,d1
-L0000483e           bpl.w   remove_projectile               ; L00004722
-L00004842           bra.b   L000047e4
-
-
-L00004844           movem.w d0-d1,(a6)
-L00004848           btst.b  #$0000,playfield_swap_count+1   ; test even/odd playfield buffer swap value
-L0000484e           bne.b   L00004864
-L00004850           move.w  -$0002(a6),d2                   ; get projectile handler index
-L00004854           addq.w  #$01,d2                         ; increment projectile handler index
-L00004856           cmp.w   #$0018,d2                       ; compare 24 with projectile handler index
-L0000485a           bne.w   L00004860
-L0000485e           clr.w   d2                              ; clear projectile handler index
-L00004860           move.w  d2,-$0002(a6)                   ; store handler index
-L00004864           rts
-
-
-
-                    ; addresses for Projectile processing JMP Table
-                    ; referenced by draw_projectiles
-                    ; modified for 32 bit addresses -  24 entries
-projectile_jmp_table        ; original address L00004866
-L00004866           dc.l    batman_grappling_hook       ; L00004758 ; batman grappling hook
-                    dc.l    batarang_right              ; L00004728 ; batman fire right
-                    dc.l    batarang_left               ; L00004740 ; batman fire left
-                    dc.l    batarang_left               ; L00004740 ; batman fire left
-                    dc.l    remove_projectile           ; L00004722 ; clr.w   -$0002(a6), RTS
-                    dc.l    remove_projectile           ; L00004722 ; clr.w   -$0002(a6), RTS
-                    dc.l    badguy_shooting_right       ; L00004718 ; -> Bad Guy Shooting
-                    dc.l    badguy_shooting_left        ; L0000470c ; <- Bad Guy Shooting
-                    dc.l    badguy_shooting_right_down  ; L000046f8 ; \ Guy Shooting
-                    dc.l    badguy_shooting_left_down   ; L000046e6 ; / Bad Guy Shooting
-                    dc.l    badguy_shooting_right_up    ; L000046d4 ; / Bad Guy Shooting
-                    dc.l    badguy_shooting_left_up     ; L000046c2 ; \ Bad Guy Shooting
-                    dc.l    L000047c4               ; Grenade Right
-                    dc.l    L00004822               ; Grenade Left
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-                    dc.l    L00004844               ; runs while grenade explosion is displayed?
-
-                    ; original data (16 bit address pointers) - 24 entries
-;L00004866           dc.w    $4758, $4728, $4740, $4740, $4722, $4722, $4718, $470c
-;                    dc.w    $46f8, $46e6, $46d4, $46c2, $47c4, $4822, $4844, $4844
-;                    dc.w    $4844, $4844, $4844, $4844, $4844, $4844, $4844, $4844
-
-
-                    ; referenced by L0000463e
-                    ; referenced by update_projectiles
-                    ; referenced by draw_projectiles
-                    ; referenced & (40 longs cleared) during game_start / level initialisation 
-                    ; 4 word structure.
+                    ; --------------- bad guy grenade right ---------------
+                    ; handle bad guy grenade thrown to the right.
+                    ; update X, Y and check for off bottom of the screen
                     ;
-projectile_list                             ; original address L00004894
-L00004894           
-.entry_01           dc.w    $0000           ; Jmp Table Index (1-24)
-                    dc.w    $0000           ; D0 - Parameter 1
-                    dc.w    $0000           ; D1 - Parameter 2
-                    dc.w    $0000           ; Unused
+                    ; d0.w = X - Current
+                    ; d1.w = Y - Current
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+                    ; Code Checked 2/1/2015
+                    ;                  
+badguy_grenade_right    ; original address L000047c4
+                    addq.w  #$02,d0                             ; update X co-ord
+                    move.w  $0004(a6),d2                        ; d2 = grenade value 
+                    cmp.w   #$0028,d2                           ; test value with 40
+                    bpl.b   .clamp_at_40                        ; if value >= 40 then clamp value
+.increment_value    ; L000047d0
+                    addq.w  #$01,$0004(a6)                      ; else, increment value
+.clamp_at_40        ; L000047d4
+                    asr.w   #$02,d2                             ; divide by 4
+                    bpl.b   .is_positive
+.is_negative        ; L000047d8
+                    addq.w  #$01,d2
+.is_positive        ; L000047da
+L000047da           add.w   d2,d1                               ; update projectile Y co-ord
+                    ; L000047dc
+L000047dc           cmp.w   #$0060,d1                           ; compare 96 (192) with Y co-ord
+L000047e0           bpl.w   remove_projectile                   ; if greneade Y > 192 then remove
+                    ; fall through to common processing
 
-.entry_02           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_03           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_04           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    ; --------------- bad guy grenade common ---------------
+                    ; common code for bad guy grenade when thrown left and right.
+                    ; test for grenade collision with batman. 
+                    ; If so, deplete energy level & explode the grenade & play SFX.
+                    ;
+                    ; test for collision with wall, if so then explode the grenade & play SFX.
+                    ;
+                    ; d0.w = X - Current
+                    ; d1.w = Y - Current
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+                    ; Code Checked 2/1/2015
+                    ; 
+badguy_grenade_common   ; original address L000047e4
+                    movem.w d0-d1,(a6)                                  ; store X, Y
+                    bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
+                    cmp.b   #$17,d2                                     ; check wall tile
+                    bcs.b   .hit_wall
+                    ; L000047f2 - check X collision
+.test_x_collision   sub.w   batman_x_offset,d0                          ; get x distance
+                    addq.w  #$03,d0                                     ; add constant to x distance
+                    cmp.w   #$0007,d0
+                    bcc.b   .exit                                       ; grenade not in X range
+                    ; L000047fe - check Y collision
+.test_y_collision   cmp.w   batman_y_offset,d1                          ; get y distance
+                    bpl.b   .exit                                       ; L00004820
+                    cmp.w   batman_y_bottom,d1                          ; L000062f0,d1
+                    bmi.b   .exit                                       ; L00004820
+.batman_hit         ; L0000480a - batman hit
+                    moveq   #$06,d6                                     ; energy to lose
+                    bsr.w   batman_lose_energy
+                    movem.w (a6),d0-d1                                  ; d0,d1 = x,y
+.hit_wall
+                    move.w  #$000e,-$0002(a6)                           ; update handler id = 14
+                    moveq   #SFX_EXPLOSION,d2
+                    bra.w   play_proximity_sfx                          ; play sfx if d0 > 160 & d1 >89 
+.exit               ; L00004820
+                    rts
 
-.entry_05           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_06           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_07           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    ; --------------- bad guy grenade left ---------------
+                    ; handle bad guy grenade thrown to the left.
+                    ; update X, Y and check for off bottom of the screen
+                    ;
+                    ; d0.w = X - Current
+                    ; d1.w = Y - Current
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+                    ; Code Checked 2/1/2015
+                    ; 
+badguy_grenade_left     ; original address L00004822
+                    subq.w  #$02,d0                         ; update X co-ord
+                    move.w  $0004(a6),d2                    ; d2 = grenade value
+                    cmp.w   #$0028,d2                       ; test value with 40
+                    bpl.b   .clamp_at_40                    ; if value >= 40 then clamp value
+.increment_value    ; L0000482e
+                    addq.w  #$01,$0004(a6)
+.clamp_at_40        ; L00004832  
+                    asr.w   #$02,d2                         ; divide by 4
+                    bpl.b   .is_positive 
+.is_negative        ; L00004836 
+                    addq.w  #$01,d2
+.is_positive        ; L00004838
+                    add.w   d2,d1                           ; update projectile Y co-ord
+                    ; L0000483a
+                    cmp.w   #$0060,d1                       ; compare 96 (192) with Y co-ord
+                    bpl.w   remove_projectile               ; if greneade Y > 192 then remove
+                    bra.b   badguy_grenade_common           ; else, do common grenade processing - L000047e4
 
-.entry_08           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_09           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_10           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_11           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    ; --------------- grenade explosion effect -----------------
+                    ; Effect #14 is set to be executed after a grenade explodes.
+                    ; Cycles through the handlers from 14-24 (10 handlers).
+                    ; All handlers point to this routine.
+                    ; When the last hander is executed, then the projectile is
+                    ; removed from the list.  It's just a delay for the
+                    ; grenade explosion, a bit of a hack, instead of holding
+                    ; a couter value (which could be done in offset 6 of the struct (a6)
+                    ;
+                    ; d0.w = X - Current
+                    ; d1.w = Y - Current
+                    ; d2.l = #$00000000
+                    ; d6.w = index into projectile_list
+                    ; d7.w = projectile loop counter
+                    ; a0.l = routine address
+                    ; a5.l = projectile_jmp_table
+                    ; a6.l = projectile_list entry + 2
+                    ;
+                    ; Code Checked 2/1/2015
+                    ; 
+grenade_explosion_effect
+                    movem.w d0-d1,(a6)                      ; store x,y
+                    btst.b  #$0000,playfield_swap_count+1   ; test even/odd playfield buffer swap value
+                    bne.b   .exit                           ; L00004864
+.is_25hz            ; L00004850 - process only on even frame counts
+                    move.w  -$0002(a6),d2                   ; get projectile handler index Id
+                    addq.w  #$01,d2                         ; increment projectile handler index Id
+                    cmp.w   #$0018,d2                       ; compare 24 with last projectile handler index
+                    bne.w   .store_handler
+                    clr.w   d2                              ; clear handler index Id (disable/remove projectile)
+.store_handler      ; L00004860                             ; clear projectile handler index - remove projectile
+                    move.w  d2,-$0002(a6)                   ; store handler index
+.exit               ; L00004864
+                    rts
 
-.entry_12           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_13           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_14           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_15           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_16           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    ; ------------------- projectile handler jump table -------------------------
+                    ; Used by the update_projectiles routine, along with the handler/index id
+                    ; stored in the projectile_list entry to execute code to handle the 
+                    ; lifetime of the projectile, i.e. flight, collision, deactivation.
+                    ;
+                    ; Entries 5 & 6 - used to remove projectiles on next execution.
+                    ;
+                    ; The handler entries alternate odd/even, the handler index id is used
+                    ; to decide on left/right sprites to draw in the 'draw_projectiles' 
+                    ; routine. A hidden aspect of the draw routine which may or may not
+                    ; have any impact to the game, as i'm not sure whether the projectiles
+                    ; have different GFX for left/right facing items.
+                    ;
+                    ; Code Checked 2/1/2025
+                    ;
+projectile_jmp_table        ; original address L00004866
+                    dc.l    batman_grappling_hook       ; 01 - L00004758 ; batman grappling hook
+                    dc.l    batarang_right              ; 02 - L00004728 ; batman fire right
+                    dc.l    batarang_right              ; 03 - L00004740 ; batman fire left
+                    dc.l    batarang_left               ; 04 - L00004740 ; batman fire left
+                    dc.l    remove_projectile           ; 05 - L00004722 ; remove projectile
+                    dc.l    remove_projectile           ; 06 - L00004722 ; remove projectile
+                    dc.l    badguy_shooting_right       ; 07 - L00004718 ; -> Bad Guy Shooting
+                    dc.l    badguy_shooting_left        ; 08 - L0000470c ; <- Bad Guy Shooting
+                    dc.l    badguy_shooting_right_down  ; 09 - L000046f8 ; \ Guy Shooting
+                    dc.l    badguy_shooting_left_down   ; 10 - L000046e6 ; / Bad Guy Shooting
+                    dc.l    badguy_shooting_right_up    ; 11 - L000046d4 ; / Bad Guy Shooting
+                    dc.l    badguy_shooting_left_up     ; 12 - L000046c2 ; \ Bad Guy Shooting
+                    dc.l    badguy_grenade_right        ; 13 - L000047c4 ; Grenade Right
+                    dc.l    badguy_grenade_left         ; 14 - L00004822 ; Grenade Left
+                    dc.l    grenade_explosion_effect    ; 15 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 16 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 17 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 18 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 19 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 20 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 21 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 22 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 23 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 24 - L00004844 ; runs while grenade explosion is displayed?
 
-.entry_17           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
 
-.entry_18           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+                    ; ------------------------------ projectile list ----------------------------------
+                    ; Active projectile list, i.e. bullets, grenades, bat-grappling hook, bat-a-rang.
+                    ; Each entry is a 4 word structure and there are 20 entries, allowing a max of
+                    ; 20 active projectiles on the screen at anytime.
+                    ;
+                    ;   Offset  | Length    | Description
+                    ;       0   |   2 bytes | projectile_jmp_table handler number (0 = disabled)
+                    ;       2   |   2 bytes | projectile X co-ord
+                    ;       4   |   2 bytes | projectile Y co-ord
+                    ;       6   |   2 bytes | parameter data (used for grenade acceleration factor)
+                    ;
+                    ; Code Checked 2/1/2025
+                    ;
 
-.entry_19           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+PROJECTILE_LISTITEM_SIZE    EQU $8                  ; 8 byte structure size
+PROJECTILE_LISTITEM_HANDLER EQU $0                  ; Projectile Handler Index
+PROJECTILE_LISTITEM_X       EQU $2                  ; Projectile X co-ord
+PROJECTILE_LISTITEM_Y       EQU $4                  ; Projectile Y co-ord
+PROJECTILE_LISTITEM_PARAM   EQU $6                  ; additional param (used for grenade acceleration)
 
-.entry_20           dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
-                    dc.w    $0000
+projectile_list                             ; original address L00004894           
+.entry_01           dc.w    $0000,$0000,$0000,$0000
+.entry_02           dc.w    $0000,$0000,$0000,$0000
+.entry_03           dc.w    $0000,$0000,$0000,$0000
+.entry_04           dc.w    $0000,$0000,$0000,$0000
+.entry_05           dc.w    $0000,$0000,$0000,$0000
+.entry_06           dc.w    $0000,$0000,$0000,$0000
+.entry_07           dc.w    $0000,$0000,$0000,$0000
+.entry_08           dc.w    $0000,$0000,$0000,$0000
+.entry_09           dc.w    $0000,$0000,$0000,$0000
+.entry_10           dc.w    $0000,$0000,$0000,$0000
+.entry_11           dc.w    $0000,$0000,$0000,$0000
+.entry_12           dc.w    $0000,$0000,$0000,$0000
+.entry_13           dc.w    $0000,$0000,$0000,$0000
+.entry_14           dc.w    $0000,$0000,$0000,$0000
+.entry_15           dc.w    $0000,$0000,$0000,$0000
+.entry_16           dc.w    $0000,$0000,$0000,$0000
+.entry_17           dc.w    $0000,$0000,$0000,$0000
+.entry_18           dc.w    $0000,$0000,$0000,$0000
+.entry_19           dc.w    $0000,$0000,$0000,$0000
+.entry_20           dc.w    $0000,$0000,$0000,$0000
+
+
+
+        ;------------------------------------------------------------------------------------------------------
+        ; END OF - Projectile Handling Code & Data
+        ;------------------------------------------------------------------------------------------------------
+        ; Code Checked 2/1/2025
+        ;------------------------------------------------------------------------------------------------------
+        
+
+
+
+
+
+
 
 
 
@@ -5289,7 +5446,7 @@ L0000559e           rts
                     ; OUT:
                     ;   - D2.b = Tile Value
                     ;
-get_map_tile_at_display_offset_d0_d1                        ; original address
+get_map_tile_at_display_offset_d0_d1  ; original address L00055a0
                     movem.w scroll_window_xy_coords,d2-d3   ; get display window co-ords
                     add.w   d0,d2                           ; add offset to window X co-ord
                     add.w   d1,d3                           ; add offset to window Y co-ord
@@ -6904,7 +7061,7 @@ offscreen_y_coord                                   ; original address L00006312
 
 L00006314           dc.w $0000
 L00006316           dc.w $0000
-grappling_hook_height
+grappling_hook_height                               ; original address L00006318
 L00006318           dc.w $0000                      ; length/height of grappling hook rope.
 L0000631a           dc.w $0000 
 L0000631c           dc.w $0034
