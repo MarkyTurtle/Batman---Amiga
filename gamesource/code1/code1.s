@@ -5161,10 +5161,10 @@ player_input_cmd_right      ; original address L00005246
                     subq.w  #$05,d0                                 ; d0 (x offset), already incremented by 4, decrement by further 5 (-1)
                     bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value (tile by feet?)
                     sub.b   #$79,d2                                 ; #$79 (121)
-                    cmp.b   #$0d,d2                                 ; check d2 in range 121 - 134
-                    bcc.w   set_player_state_falling                ; L0000545a                               ; if in range then (maybe falling?)
+                    cmp.b   #$0d,d2                                 ; check tile is >= 134
+                    bcc.w   set_player_state_falling                ; if in range then (maybe falling?)
 
-                    ; L0000526c
+                    ; L0000526c - tile 121-133
                     ; update batman walk sprite animation
                     ; uses scroll position to choose animation
 .set_animation      ; frame
@@ -5254,13 +5254,29 @@ L000052e8           move.w  #$e001,(a0)
 L000052ec           rts 
 
 
-L000052ee           add.w   d5,d3
-L000052f0           move.b  $00(a0,d3.W),d2                         ; $00000d13 [d6],d2
-L000052f4           sub.b   #$79,d2
-L000052f8           cmp.b   #$0d,d2
-L000052fc           bcc.w   L00005368                               ; bcc.b
-L000052fe           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005304           bra.w   player_move_commands                    ; L00004c3e
+
+                    ; ------------------- exit climbing state ---------------------
+                    ; Looks like code to return to normal joystick input handling.
+                    ;
+                    ; Not sure what the tile check 134 and the jump back into 
+                    ; climbing code is doing. Look 'hacky' wish i knew what tile 134 was...
+                    ;
+                    ; IN:
+                    ;   d5.w - +ve = Exit Right, -ve = Exit Left
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+exit_climbing_state ; original address L000052ee
+                    add.w   d5,d3
+                    move.b  $00(a0,d3.W),d2                         ; Get map tile to left/right of batman
+                    sub.b   #$79,d2                                 ; 121
+                    cmp.b   #$0d,d2                                 ; if tile in range >= 134
+                    bcc.w   L00005368                               ; if tile >= 134, return to climbing? (Does this even execute? looks dodgy)
+                    ; return to normal joystick movement state.
+                    ; back on a platform.
+                    ; L000052fe - Tile 121-133
+                    move.l  #player_move_commands,gl_jsr_address    ; return to normal joystick handler
+                    bra.w   player_move_commands                    ; call normal joystick handler.
 
 
 
@@ -5275,72 +5291,115 @@ L00005304           bra.w   player_move_commands                    ; L00004c3e
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
+                    ; Code Check 3/1/2025
+                    ;
 state_climbing_stairs  ; original address L00005308
-L00005308           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
-L0000530e           bne.w   set_player_state_falling                ; L0000545a
-L00005312           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
-L00005318           bne.b   L000052ec
-L0000531a           clr.w   d4
-L0000531c           move.b  player_input_command,d4                 ; L00006308,d4
-L00005320           move.w  scroll_window_y_coord,d2                ; L000067be,d2
-L00005324           add.w   d1,d2
-L00005326           and.w   #$0007,d2
-L0000532a           beq.b   L0000534e
-L0000532c           btst.l  #PLAYER_INPUT_DOWN,d4
-L00005330           beq.b   L0000533a
-L00005332           addq.w  #$01,d1
-L00005334           move.w  #$0028,target_window_y_offset           ; L000067c6
-L0000533a           btst.l  #PLAYER_INPUT_UP,d4
-L0000533e           beq.b   L00005348
-L00005340           subq.w  #$01,d1
-L00005342           move.w  #$0048,target_window_y_offset           ; L000067c6
-L00005348           move.w  d1,batman_y_offset
-L0000534c           bra.b   L000053a6
-L0000534e           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L00005352           move.w  d4,d5
-L00005354           and.b   #$03,d5
-L00005358           move.b  d5,player_input_command                 ; L00006308
-L0000535c           moveq   #$01,d5
-L0000535e           asr.w   #$01,d4
-L00005360           bcs.w   L000052ee                               ; exit climb ladder state 
-L00005362           MOVE.L  #$ffffffff,D5
-L00005364           asr.w   #$01,d4
-L00005366           bcs.w   L000052ee                               ; exit climb ladder state
-L00005368           asr.w   #$01,d4
-L0000536a           bcc.b   L00005380
-L0000536c           move.w  #$0028,target_window_y_offset           ; L000067c6
-L00005372           cmp.b   #$85,d2
-L00005376           bcs.w   L000053ce
-L0000537a           addq.w  #$01,batman_y_offset
-L0000537e           bra.b   L000053a6
-L00005380           asr.w   #$01,d4
-L00005382           bcc.b   L000053cc
-L00005384           move.w  #$0048,target_window_y_offset           ; L000067c6
-L0000538a           move.w  MAPGR_BASE,d5           ; MAPGR.IFF (value = $00c0)
-L00005390           sub.w   d5,d3
-L00005392           sub.w   d5,d3
-L00005394           sub.w   d5,d3
-L00005396           move.b  $00(a0,d3.W),d2         ; $00000d13 [d6],d2
-L0000539a           cmp.b   #$85,d2
-L0000539e           bcs.b   L000053ce
-L000053a0           subq.w  #$01,d1
-L000053a2           move.w  d1,batman_y_offset
-L000053a6           move.w  scroll_window_y_coord,d2            ; L000067be,d2
-L000053aa           add.w   batman_y_offset,d2
-L000053ae           addq.w  #$02,d2
-L000053b0           not.w   d2
-L000053b2           and.w   #$0007,d2
-L000053b6           bclr.l  #$0002,d2
-L000053ba           beq.b   L000053c0
-L000053bc           add.w   #$e000,d2
-L000053c0           add.w   #$0020,d2
-L000053c4           lea.l   batman_sprite3_id,a0     ; L000062ea,a0
-L000053c8           clr.l   (a0)+
-L000053ca           move.w  d2,(a0)
-L000053cc           rts 
+                    btst.b  #PLAYER_INPUT_FIRE,player_input_command 
+                    bne.w   set_player_state_falling                    ; Fire button pressed
 
+                    ; L00005312 - check 25hz
+                    btst.b  #$0000,playfield_swap_count+1               ; test even/odd playfield buffer swap value
+                    bne     L000052ec                                   ; exit (25hz) L000052ec
+                    
+                    ; L0000531a - check if on tile boundary
+                    clr.w   d4
+                    move.b  player_input_command,d4                     ; L00006308,d4
+                    move.w  scroll_window_y_coord,d2                    ; L000067be,d2
+                    add.w   d1,d2                                       ; add batman y offset to scroll y
+                    and.w   #$0007,d2                                   ; d2 = soft scroll value (0-7)
+                    beq.b   on_tile_boundary                            ; on 16 pixel boundary, check left/right
+
+climb_through_tile  ; L0000532c - climbing through a tile
+                    btst.l  #PLAYER_INPUT_DOWN,d4
+                    beq.b   L0000533a
+.climb_down_in_tile                    
+                    addq.w  #$01,d1                                     ; increment batman Y
+                    move.w  #$0028,target_window_y_offset               ; show more level below batman
+
+                    ; L0000533a - 
+L0000533a           btst.l  #PLAYER_INPUT_UP,d4
+                    beq.b   L00005348
+.climb_up_in_tile
+                    subq.w  #$01,d1                                     ; decrement batman Y
+                    move.w  #$0048,target_window_y_offset               ; show more level above batman
+
+                    ; L00005348 - store updated Y position
+L00005348           move.w  d1,batman_y_offset
+                    bra.b   L000053a6
+                    ;----------------------
+
+on_tile_boundary    ; L0000534e
+                    bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
+                    move.w  d4,d5                                       ; copy player input command
+                    and.b   #$03,d5                                     ; mask all but bits 0 & 1 (LEFT/RIGHT)
+                    move.b  d5,player_input_command                     ; L00006308
+
+                    moveq   #$01,d5                                     ; +1 (check tile to right)
+                    asr.w   #$01,d4                                     ; c = 1 if input = right
+                    bcs.w   exit_climbing_state                         ; if right then, exit climb ladder state 
+
+                    ; L00005362
+                    MOVE.L  #$ffffffff,D5                               ; -1 (check tile to left)
+L00005368           asr.w   #$01,d4                                     ; c = 1 if input = left
+                    bcs.w   exit_climbing_state                         ; if left then, exit climb ladder state
+
+                    asr.w   #$01,d4                                     ; c = 1 if input = up
+                    bcc.b   climb_up                                    ; if down then, climb up
+
+climb_down          ; L0000536c
+                    move.w  #$0028,target_window_y_offset               ; L000067c6
+                    cmp.b   #$85,d2                                     ; compare tile value 133
+                    bcs.w   set_player_move_commands_state              ; if tile < 133, return to joystick control state
+
+                    ; L0000537a - climb down 2 pixels -tile >=134
+                    addq.w  #$01,batman_y_offset
+                    bra.b   L000053a6
+
+climb_up            ; L00005380
+                    asr.w   #$01,d4                                     ; c = 1 if input is up
+                    bcc.b   exit_L000053cc                              ; L000053cc
+
+                    ; L00005384
+                    move.w  #$0048,target_window_y_offset               ; move window to show level above batman
+                    move.w  MAPGR_BASE,d5                               ; d5 = map width from MAPGR.IFF (value = $00c0)
+                    sub.w   d5,d3
+                    sub.w   d5,d3
+                    sub.w   d5,d3                                       ; offset up 3 tiles? (tile above batman's head?)
+                    ; L00005396
+                    move.b  $00(a0,d3.W),d2                             ; get tile above batman's head
+                    cmp.b   #$85,d2                                     ; compare tile value 133
+                    bcs.b   set_player_move_commands_state              ; if tile < 133 return to normal joystick control state
+
+                    ; L000053a0
+                    subq.w  #$01,d1                                     ; climb ladder (2 pixels)
+                    move.w  d1,batman_y_offset                          ; store new Y position
+
+                    ; L000053a6 - set sprite animation for climbing
+L000053a6           move.w  scroll_window_y_coord,d2                    ; L000067be,d2
+                    add.w   batman_y_offset,d2
+                    addq.w  #$02,d2
+                    not.w   d2
+                    and.w   #$0007,d2
+                    bclr.l  #$0002,d2
+                    beq.b   L000053c0
+                    
+                    add.w   #$e000,d2                                   ; alternate left/right sprite image
+                    ; L000053c0 
+L000053c0           add.w   #$0020,d2                                   ; add base sprite id for climbing
+                    lea.l   batman_sprite3_id,a0                        ; 1st sprite id
+                    clr.l   (a0)+                                       ; clear sprite ids 3 & 2
+                    move.w  d2,(a0)                                     ; set sprite 1 id
+
+exit_L000053cc      ; L000053cc
+                    rts 
+
+
+
+
+set_player_move_commands_state
 L000053ce           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000053d4           rts
+
 
 
 input_fire_down
@@ -5438,7 +5497,7 @@ L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
                     ;
-set_player_state_falling
+set_player_state_falling    ; original address L0000545a
 L0000545a           movem.w batman_xy_offset,d0-d1                  ; d0,d1 = batman X,Y
 L00005460           clr.l   L000062f4
 L00005464           move.w  batman_y_offset,target_window_y_offset  ; set batman Y as target for centre window
