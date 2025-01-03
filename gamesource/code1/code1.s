@@ -1814,7 +1814,7 @@ L00003b8c           lea.l   actors_list,a0                          ; L000039c8,
 
                     ; ------ Set initial batman sprite ids -----    ; original address L00003b98
 init_batman_sprites clr.w   batman_sprite1_id
-                    lea.l   batman_sprite_anim_02,a0                ; L000063d3,a0
+                    lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
                     bsr.w   set_batman_sprites
 
 
@@ -4563,7 +4563,7 @@ L00004d0a                           beq.b   L00004d1c
 L00004d0c                               cmp.l   d2,d3
 L00004d0e                               beq.b   L00004d1c
 
-L00004d10                                   lea.l   batman_sprite_anim_05,a0                ; L00005457,a0
+L00004d10                                   lea.l   batman_sprite_fall_Landing,a0                ; L00005457,a0
 L00004d14                                   bsr.w   set_batman_sprites
 L00004d18                                   move.l  #L00004d56,d3                           ; Address
 
@@ -4612,6 +4612,7 @@ L00004d7a           tst.b   PANEL_STATUS_1                              ; Panel 
 L00004d80           beq.b   exit_rts                                    ; L00004d36
 
                     ; lose a life - audio & animation?
+set_state_player_life_lost
 L00004d82           jsr     AUDIO_PLAYER_SILENCE              
 L00004d88           clr.w   grappling_hook_height                               ; L00006318
 L00004d8c           moveq   #$03,d0                                             ; song/sound number - 03 = player life lost
@@ -4881,7 +4882,7 @@ L00005036           move.b  player_input_command,d4                 ; L00006308,
 L0000503c           bne.w   L0000504e
 L00005040           subq.w  #$01,L000062f2
 L00005044           bne.b   L00005034
-L00005046           lea.l   batman_sprite_anim_02,a0                ; L000063d3,a0
+L00005046           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
 L0000504a           bra.w   set_batman_sprites                      ; L00004538
 
 L0000504e           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
@@ -5024,7 +5025,7 @@ L000051c8           bls.b   L000051ce
 L000051ca           bra.w   L000050aa
 L000051ce           clr.w   $0004(a0)
 L000051d2           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L000051d8           lea.l   batman_sprite_anim_02,a0                ; L000063d3,a0
+L000051d8           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
 L000051dc           bra.w   set_batman_sprites
 L000051e0           rts 
 
@@ -5471,7 +5472,7 @@ L00005428           rts
                     ; reset self modified code JSR to default routine.
 set_default_gl_jsr
 L0000542a           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005430           lea.l   batman_sprite_anim_02,a0                ; L000063d3,a0
+L00005430           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
 L00005434           bra.w   set_batman_sprites
 
 
@@ -5506,6 +5507,7 @@ batman_sprite_anim_06
 batman_sprite_falling                                       ; original address L00005454
 L00005454           dc.b    $0d,$01,$01                     ; 13, 14, 15
 batman_sprite_anim_05
+batman_sprite_fall_Landing
 L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
 
 
@@ -5544,70 +5546,72 @@ L00005464           move.w  batman_y_offset,target_window_y_offset  ; set batman
                     ;   d0.w - batman_x_offset
                     ;   d1.w - batman_y_offset
                     ;
+                    ; Code Checked 3/1/2025
+                    ;
 player_state_falling    ; original address L00005482
-L00005482           movem.w batman_swing_fall_speed,d4-d5        ; L000062f4,d4-d5         ; maybe fall speed/distance
-L00005488           move.w  d4,L0000630e
-L0000548c           beq.b   L000054cc
+                    movem.w batman_swing_fall_speed,d4-d5        ; L000062f4,d4-d5         ; maybe fall speed/distance
+                    move.w  d4,L0000630e
+                    beq.b   .L000054cc
 
-L0000548e           sub.w   #$0010,d1               ; subtract 16 from player Y
-L00005492           subq.w  #$04,d0                 ; subtract 4 from player X
-L00005494           add.w   d4,d0                   ; add offset to player X
-L00005496           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
+                    ; L0000548e
+                    sub.w   #$0010,d1               ; subtract 16 from player Y
+                    subq.w  #$04,d0                 ; subtract 4 from player X
+                    add.w   d4,d0                   ; add offset to player X
+                    bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
                     ; d2 = tile id
                     ; a0.l = tilemap ptr
                     ; d3.w = index into tile map
-L0000549a           movem.w batman_xy_offset,d0-d1
-L000054a0           moveq   #$01,d7                 ; loop counter
+                    movem.w batman_xy_offset,d0-d1
+                    moveq   #$01,d7                 ; loop counter
                     ; check for block of 4 wall tiles
                     ; if is wall tile then jmp L000054c8
-L000054a2           cmp.b   #$17,d2                 ; test wall tile
-L000054a6           bcs.b   L000054c8               ; is wall tile?
+.L000054a2          cmp.b   #$17,d2                 ; test wall tile
+                    bcs.b   .L000054c8               ; is wall tile?
 
-L000054a8           move.b  $01(a0,d3.w),d2         ; check nnext map tile
-L000054ac           cmp.b   #$17,d2                 ; test wall tile
-L000054b0           bcs.b   L000054c8               ; is wall tile
+                    ; L000054a8
+                    move.b  $01(a0,d3.w),d2         ; check nnext map tile
+                    cmp.b   #$17,d2                 ; test wall tile
+                    bcs.b   .L000054c8               ; is wall tile
 
-L000054b2           add.w   MAPGR_BASE,d3           ; add map width (value = $00c0)
-L000054b8           move.b  $00(a0,d3.w),d2         ; get tile 1 line down in d2
-L000054bc           dbf.w   d7,L000054a2
+                    ; L000054b2
+                    add.w   MAPGR_BASE,d3           ; add map width (value = $00c0)
+                    move.b  $00(a0,d3.w),d2         ; get tile 1 line down in d2
+                    dbf.w   d7,.L000054a2
                     ; end of wall tile loop ttest
 
-                    ; do fall/swing x-axis
-L000054c0           add.w   d0,d4                   ; add fall x speed to batman x pos
-L000054c2           move.w  d4,batman_x_offset
-L000054c6           bra.b   L000054cc
+                    ; L000054c0 - do fall/swing x-axis
+                    add.w   d0,d4                   ; add fall x speed to batman x pos
+                    move.w  d4,batman_x_offset
+                    bra.b   .L000054cc
 
-L000054c8           clr.w   batman_swing_speed      ; L000062f4               ; fall speed/distance?
+                    ; L000054c8
+.L000054c8          clr.w   batman_swing_speed      ; L000062f4               ; fall speed/distance?
 
-                    ; do fall/swing y-axis
-L000054cc           cmp.w   #$0010,d5
-L000054d0           bpl.b   L000054d4               ; clamp fall speed to 16
-L000054d2           addq.w  #$01,d5                 ; else. increment fall speed
-L000054d4           move.w  d5,batman_fall_speed    ; L000062f6
+                    ; L000054cc - do fall y-axis
+.L000054cc          cmp.w   #$0010,d5
+                    bpl.b   .L000054d4               ; clamp fall speed to 16
+                    addq.w  #$01,d5                 ; else. increment fall speed
+.L000054d4          move.w  d5,batman_fall_speed    ; L000062f6
+                    ; L000054d8
+                    asr.w   #$02,d5                 ; divide fall speed by 4
+                    add.w   d5,d1                   ; add fall speed to batman Y position
+                    move.w  d1,batman_y_offset      ; store new batman Y position
+                    btst.l  #$000f,d1               ; test sign bit of Y position
+                    beq.b   .L000054e8
+                    rts                             ; d1 is negative, then exit?
 
-L000054d8           asr.w   #$02,d5                 ; divide fall speed by 4
-L000054da           add.w   d5,d1                   ; add fall speed to batman Y position
-L000054dc           move.w  d1,batman_y_offset      ; store new batman Y position
-L000054e0           btst.l  #$000f,d1               ; test sign bit of Y position
-L000054e4           beq.b   L000054e8
-L000054e6           rts                             ; d1 is negative, then exit?
-
-
-
-
-
-L000054e8           bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
-L000054ec           cmp.b   #$17,d2                                 ; test tile value
-L000054f0           bcc.b   L000054fe                               ; if not wall, 
+.L000054e8          bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
+                    cmp.b   #$17,d2                                 ; test tile value
+                    bcc.b   .L000054fe                               ; if not wall, 
  
                     ; L000054f2 - Is Wall?
-L000054f2           subq.w  #$07,batman_y_offset                    ; move up 14 pixels
-L000054f6           movem.w batman_xy_offset,d0-d1                  ; get X,Y
-L000054fc           bra.w   player_state_falling                    ; re-try player falling
+                    subq.w  #$07,batman_y_offset                    ; move up 14 pixels
+                    movem.w batman_xy_offset,d0-d1                  ; get X,Y
+                    bra.w   player_state_falling                    ; re-try player falling
                     ; ---------------------------
 
-L000054fe           sub.b   #$79,d2                     ; subtract 121 from tile id
-L00005502           cmp.b   #$0d,d2                     ; compare tile with 134
+.L000054fe          sub.b   #$79,d2                     ; subtract 121 from tile id
+                    cmp.b   #$0d,d2                     ; compare tile with 134 (platform)
 
                     ; L00005506 - self modified 'nop' or 'or.b d0,d0'
                     ; when 'nop' ccr is not altered for tile test above. (falling off platform)
@@ -5617,56 +5621,80 @@ L00005502           cmp.b   #$0d,d2                     ; compare tile with 134
 L00005506           nop                                             ; #$8000 = or.b d0,d0
 
                     ; L00005508 - save status register
-L00005508           move.w  sr,d6                       ; store all SR & CCR bits
-L0000550a           add.w   batman_fall_distance,d5     ; add value fall distance to fall speed
-L0000550e           move.w  d5,batman_fall_distance     ; store new fall distance
-L00005512           cmp.w   #$0008,d5
-L00005516           bcs.b   L0000551e                   ; if not fallen 16 pixels, continue
-L00005518           move.w  #$4e71,L00005506            ; else, re-insert 'nop' above to enable platform collisions again
+                    move.w  sr,d6                       ; store all SR & CCR bits
+                    add.w   batman_fall_distance,d5     ; add value fall distance to fall speed
+                    move.w  d5,batman_fall_distance     ; store new fall distance
+                    cmp.w   #$0008,d5
+                    bcs.b   .L0000551e                   ; if not fallen 16 pixels, continue
+                    move.w  #$4e71,L00005506            ; else, re-insert 'nop' above to enable platform collisions again
                     ; L0000551e - restore status register
-L0000551e           move.w  d6,sr               ; restore all SR & CCR bits
+.L0000551e          move.w  d6,sr               ; restore all SR & CCR bits
 
                     ; ccr either tile compare, or value of d0.
-L00005520           bcc.b   L000054e6           ; if tile is >= 134 and 'nop'
+                    bcc.b   .exit               ; if tile is >= 134 and 'nop', then exit
 
-L00005522           move.w  #$0028,target_window_y_offset       ; L000067c6
-L00005528           lea.l   batman_sprite_anim_05,a0            ; L00005457,a0
-L0000552c           bsr.w   set_batman_sprites                  
-L00005530           move.l  #$0000555a,gl_jsr_address           ; Set game_loop Self Modified Command JSR
-L00005538           clr.w   batman_fall_speed                   ; L000062f6
-L0000553c           move.w  #$0001,L000062fa
-L00005542           move.w  #$0002,L000062f2
-L00005548           move.w  scroll_window_y_coord,d0            ; L000067be,d0
-L0000554c           add.w   d1,d0
-L0000554e           and.w   #$0007,d0
-L00005552           sub.w   d0,d1
-L00005554           move.w  d1,batman_y_offset
-L00005558           rts
+                    ; tile is 121-134 (platform?)
+                    ; landing on platform/floor
+                    ; L00005522
+                    move.w  #$0028,target_window_y_offset       ; scroll window to show level below
+                    lea.l   batman_sprite_fall_Landing,a0            ; L00005457,a0
+                    bsr.w   set_batman_sprites      
+
+                    ; L00005530 - batman landing (end falling?)
+                    move.l  #player_state_fall_landing,gl_jsr_address           ; Set game_loop Self Modified Command JSR
+                    clr.w   batman_fall_speed                   ; L000062f6
+                    move.w  #$0001,L000062fa
+                    move.w  #$0002,L000062f2
+                    move.w  scroll_window_y_coord,d0 
+                    add.w   d1,d0                       ; window y + batman y offset
+                    and.w   #$0007,d0                   ; d0 = window soft scroll
+                    sub.w   d0,d1                       ; subtract soft scroll
+                    move.w  d1,batman_y_offset          ; set batman y offset to tile boundary?
+.exit               rts
 
 
 
 
-                    ; Called from GameLoop - Self Modifying code.
-L0000555a           subq.w  #$01,L000062f2
-L0000555e           bne.b   exit_routine
+                    ; ------------------- player state falling --------------------
+                    ; The state is set when batmman is landing on a platform after
+                    ; falling from above.
+                    ;
+                    ; IN:- 
+                    ;   d0.w - batman_x_offset
+                    ;   d1.w - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_state_fall_landing   ; original address L0000555a
+                    subq.w  #$01,L000062f2
+                    bne.b   .exit_routine
+ 
+                    ; L00005560 - test timer, life lost, no energy
+.test_liife_lost    tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
+                    bne.w   set_state_player_life_lost              ; player dead?
 
-L00005560           tst.b   PANEL_STATUS_1                                  ; Panel - Status Byte 1 - $0007c874
-L00005566           bne.w   L00004d82
+                    ; L0000556a - reset state to joystick control state
+.reset_control_state
+                    move.l  #player_move_commands,gl_jsr_address            ; Set game_loop Self Modified Code JSR
+                    lea.l   batman_sprite_anim_standing,a0                        ; L000063d3,a0
 
-L0000556a           move.l  #player_move_commands,gl_jsr_address            ; Set game_loop Self Modified Code JSR
-L00005572           lea.l   batman_sprite_anim_02,a0                        ; L000063d3,a0
-L00005576           cmp.w   #$0050,batman_fall_distance
-L0000557c           bmi.w   set_batman_sprites                              ; a0 = 3 sprite array
+                    ; L00005576 - test fall distance
+.test_fall_distance cmp.w   #$0050,batman_fall_distance                     ; 80 = max fall distance
+                    bmi.w   set_batman_sprites                              ; a0 = 3 sprite array
+                    ; use rts in set_batman_sprites to exit
+
                     ; L00005580 - batman fell too far
-L00005580           moveq   #$5a,d6                                         ; Value of Energy to Lose (90) - DEAD! (max is 48?)
-L00005582           bsr.w   batman_lose_energy
-L00005586           move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1         ; Set - LIFE LOST
-L0000558e           btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2          ; Check - CHEAT ACTIVE
-L00005596           bne.b   exit_routine                                    ; L0000559e
-L00005598           jmp     PANEL_LOSE_LIFE                                 ; Panel - Lose a Life - $0007c862
+.fell_too_far       moveq   #$5a,d6                                         ; Value of Energy to Lose (90) - DEAD! (max is 48?)
+                    bsr.w   batman_lose_energy
+                    move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1         ; Set - LIFE LOST
+                    btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2          ; Check - CHEAT ACTIVE
+                    bne.b   .exit_routine                                   ; if cheat active, skip lose a life
+                    
+                    jmp     PANEL_LOSE_LIFE                                 ; Panel - Lose a Life - $0007c862
                     ; never return (use panel rts)
-exit_routine
-L0000559e           rts
+
+.exit_routine       ; L0000559e
+                    rts
 
 
 
@@ -7245,12 +7273,14 @@ L000062f0           dc.w $0000                          ; batman y bottom co-ord
 
 L000062f2           dc.w $0000
 
-; two values go hand-in-hand (used by player falling state)
+
 batman_swing_fall_speed     ; original address L000062f4 - used when accessing both
 batman_swing_speed          ; original address L000062f4
 L000062f4           dc.w $0000
+
 batman_fall_speed           ; original address L000062f6
 L000062f6           dc.w $0000                          ; current fall speed of batman (max 16)
+
 
 batman_fall_distance        ; original address L000062f8
 L000062f8           dc.w $0000                          ; tracks distance fallen
@@ -7358,6 +7388,7 @@ batman_sprite_anim_01                                       ; sprite ids - origi
                      dc.b $30,$D2,$04                        ; 48, 02, 06
 
 batman_sprite_anim_02                                       ; sprite ids - original address L000063d3
+batman_sprite_anim_standing                                 ; sprite ids - original address L000063d3
                     dc.b $01,$02,$07                        ; 01, 03, 10
 
 batman_sprite_anim_03                                       ; sprite ids - original address L000063d6
