@@ -3843,13 +3843,15 @@ grenade_explosion_effect
                     ; routine. A hidden aspect of the draw routine which may or may not
                     ; have any impact to the game, as i'm not sure whether the projectiles
                     ; have different GFX for left/right facing items.
+                    ; The Batman Bat-a-rang left/right lookups do-not conform to this,
+                    ; maybe a bug or maybe intensional.
                     ;
                     ; Code Checked 2/1/2025
                     ;
 projectile_jmp_table        ; original address L00004866
                     dc.l    batman_grappling_hook       ; 01 - L00004758 ; batman grappling hook
                     dc.l    batarang_right              ; 02 - L00004728 ; batman fire right
-                    dc.l    batarang_right              ; 03 - L00004740 ; batman fire left
+                    dc.l    batarang_left               ; 03 - L00004740 ; batman fire left
                     dc.l    batarang_left               ; 04 - L00004740 ; batman fire left
                     dc.l    remove_projectile           ; 05 - L00004722 ; remove projectile
                     dc.l    remove_projectile           ; 06 - L00004722 ; remove projectile
