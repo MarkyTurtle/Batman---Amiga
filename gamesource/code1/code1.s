@@ -511,7 +511,6 @@ initialise_system
                     move.b  #$93,$00bfdd00                  ; CIAB - ICR - Enable FLG & Timer A & B Interrupts
                     move.w  #$e078,$00dff09a                ; INTENA - Enable - EXTER (disk sync), BLIT, VERTB, COPER, PORTS (keyboard & Timers)                
                                                             ;        - Level 2,3,6
-                    ;JSR     _DEBUG_COLOURS
 
                     ; start initialising the game           ; original address $0000317a
                     jsr     PANEL_INIT_LIVES                ; Panel - Initialise Player Lives - $0007c838
@@ -525,8 +524,6 @@ initialise_system
                     lea.l   copper_list,a0                  ; L000031c8,a0
                     bsr.w   reset_display                   ; reset display (320x218) 4 bitplanes - L0000368a
                     bsr.w   double_buffer_playfield         ; L000036fa
-
-                    ;JSR     _DEBUG_COLOURS
 
                     bra.w   initialise_game                      ; L00003ae4
 
@@ -1667,7 +1664,7 @@ L00003a8e           dc.w    $0000
 text_axis_chemicals
 L00003aa4           
                     dc.b    $30,$09
-                    dc.b    'TEST BUILD 31/12/2024',$00
+                    dc.b    'TEST BUILD 03/12/2025',$00
                     dc.b    $50, $09                                    ; raster line (Y), byte offset (X)
                     dc.b    'AXIS '                                     ; $41, $58, $49, $53, $20
                     dc.b    'CHEMICAL '                                 ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
@@ -1712,7 +1709,6 @@ initialise_game                                                     ; original a
                     bsr.w   double_buffer_playfield 
 
                     bsr.w   preprocess_data
-                    ;JSR     _DEBUG_COLOURS
 
                     jsr     AUDIO_PLAYER_INIT
                     clr.w   level_spawn_point_index                 ; start at beginning of the level - L000062fc
@@ -1729,8 +1725,6 @@ restart_level                                                       ; original a
                     jsr     PANEL_INIT_ENERGY
 
                     bsr.w   panel_fade_in
-
-                    ;JSR     _DEBUG_COLOURS
 
 
                     ; ------------ modify level tile map ------------
@@ -1767,7 +1761,6 @@ update_level_data
                     move.l  #$00005fc4,L00005f64                    ; reset ptr to default (no update data - all 0 values)
 
 
-                    ;JSR     _DEBUG_COLOURS
 
                     ; clear 40 longs (160 bytes)
                     ; data referenced by projectiles
@@ -1777,30 +1770,25 @@ clear_projectile_data                                               ; original a
 .loop               clr.l   (a0)+                   
                     dbf.w   d7,.loop
 
-                    ;JSR     _DEBUG_COLOURS
 
 
                     ; ------------ reset actors/triggers -------------
                     ; clear MSB flag of each data structure
                                                                     ; original address L00003b64
 clear_msb           lea.l   trigger_definitions_list,a0             ; L0000642e,a0                
-.loop               bclr.b  #$0007,(a0)                             ; clear MSB (enable/disable flag?)
+.loop1               bclr.b  #$0007,(a0)                            ; clear MSB (enable/disable flag?)
                     move.w  $0004(a0),d0                            ; count of data entries and/or offset to next structure, word at 4(a0) 
                     mulu.w  #$0006,d0                               ; size of each data entry (6 bytes)
                     lea.l   $06(a0,d0.w),a0                         ; increment pointer to next actor definition
-                    cmp.l   #end_of_trigger_list,a0                  ; check if end of list
-                    bcs.b   .loop                                   ; loop until end of list.
+                    cmp.l   #end_of_trigger_list,a0                 ; check if end of list
+                    bcs.b   .loop1                                  ; loop until end of list.
 
-
-                    ;JSR     _DEBUG_COLOURS
-
-
-;                    ; clear MSB flag of each data structure
-L00003b7e                                                           ; original address                    
-.loop               bclr.b  #$0007,$0004(a0)
+                    ; clear MSB flag of each data structure
+                    ; original address L00003b7e                 
+.loop2              bclr.b  #$0007,$0004(a0)
                     addq.w  #$06,a0                                 ; start of next data structure
                     cmp.l   #end_of_actors,a0
-                    bcs.b   .loop
+                    bcs.b   .loop2
 
 
 
@@ -1811,7 +1799,7 @@ L00003b8c           lea.l   actors_list,a0                          ; L000039c8,
                     clr.w   (a0)+
                     dbf.w   d7,.loop
 
-                    ;JSR     _DEBUG_COLOURS
+
 
                     ; ------ Set initial batman sprite ids -----    ; original address L00003b98
 init_batman_sprites clr.w   batman_sprite1_id
@@ -1843,7 +1831,6 @@ set_player_defaults
 
 
                     
-                    ;JSR     _DEBUG_COLOURS
 
                     ; ---------- display level title -------
 display_axis_chemical_factory                                       ; original address L00003bc2
@@ -1851,13 +1838,13 @@ display_axis_chemical_factory                                       ; original a
                     bsr.w   large_text_plotter
                     bsr.w   double_buffer_playfield   
 
-                    ;JSR     _DEBUG_COLOURS
+ 
 
                     ; --------- pause for 1 second --------
 one_second_wait     moveq   #$32,d0                                 ; 50 frame wait
                     bsr.w   wait_for_frame_count
 
-                    ; display press mouse button
+                    ; ----------- display press mouse button -------
                     lea.l   text_axis_chemicals,a0
                     bsr.w   large_text_plotter 
                     lea.l   text_mouse_button,a0
@@ -1868,12 +1855,15 @@ one_second_wait     moveq   #$32,d0                                 ; 50 frame w
 init_back_buffer    bsr.w   initialise_offscreen_buffer             ; draw initial background gfx to offscreen buffer
                     bsr.w   copy_offscreen_to_backbuffer            ; copy initial level background gfx to back-buffer                              
 
-                    ;JSR     _DEBUG_COLOURS
-
                     ; -------- draw player in at point -------
 draw_player         bsr.w   draw_batman_and_rope
 
+
+
+                    ; ------- wait for mouse click ---------
                     JSR     _MOUSE_WAIT
+
+
 
                     ; --------- start music (if selected) ----------
 set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - Status 2 Bytes - bit #$0000 of $0007c875 
@@ -1888,7 +1878,7 @@ set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - St
                     bsr.w   screen_wipe_to_backbuffer
                     clr.l   frame_counter_and_target_counter
 
-                    ;JSR     _DEBUG_COLOURS
+
 
 
 
@@ -1897,7 +1887,7 @@ set_music_sfx       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; Panel - St
                     ; Game Loop
                     ;
                     ; -----------------------------------------------------------------------------------------------------------
-game_loop                                                               ; original address $00003bfa
+game_loop           ; original address $00003bfa
 
 
                     ; ---------- Start Key press checks -----------
@@ -1997,12 +1987,12 @@ do_system_updates
                     bsr.w   scroll_offscreen_buffer                 ; L00004936 ; Scroll Background Window GFX in Offscreen Scroll Buffer 
                     bsr.w   update_score_by_level_progress          ; L00003dd4 ; Update Score based upon progress from left to right through the level.
                     
-                    ;bsr.w   trigger_new_actors                      ; L00003dfe ; Trigger new actors when in range.
+                    bsr.w   trigger_new_actors                      ; L00003dfe ; Trigger new actors when in range.
 
                     bsr.w   copy_offscreen_to_backbuffer            ; L00004b62 ; Copy Off-Screen Background GFX to Back-Buffer
                     bsr.w   draw_batman_and_rope                    ; L000055c4 ; Draw Batman and Rope Swing
                     
-                    ;bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
+                    bsr.w   update_active_actors                    ; L00003ee6 ; Update Level Actors 02
                     
                     bsr.w   update_projectiles                      ; L00004658 ; Update Projectiles (Bombs, Bullets, Batarang)
                     bsr.w   draw_projectiles                        ; L000045fe ; Draw Projectiles (Bombs, Buttles, Batarang)            
@@ -4465,34 +4455,41 @@ blit_src_to_dest                                                        ; origin
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ; 
-player_move_commands                                                ; original address $00004c3e
+                    ; Code Checked 3/1/2025
+                    ;
+player_move_commands    ; original address $00004c3e
                     clr.w   d2
-                    move.b  player_input_command,d2                 ; play joystick input bits
-                    asl.w   #$02,d2
+                    move.b  player_input_command,d2                 ; player joystick input bits
+                    asl.w   #$02,d2                                 ; convert value to table index (long word)
                     movea.l player_input_cmd_table(pc,d2.W),a0      ; get input command address.
                     jmp (a0)                                        ; execute input command
                     ; each command ends with an RTS that returns to caller.
 
-                    ; Jump Table (for above) - 32 Commands
-                    ; jump table index is the value held in player_input_command byte
-player_input_cmd_table                                  ; original address $00004c4c
-                                                        ; Fire  | Up    | Down  | Left  | Right |
-L00004c4c           dc.l    cmd_nop                     ; 0     | 0     | 0     | 0     | 0     | - CMD00 - NOP - (no input)
+                    ; ------------- player input jump table ------------
+                    ; the player_input_command byte is used as an index
+                    ; into the table to execute the command associated
+                    ; with the jotstick input.
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_table  
+                    ; original address $00004c4c        ; Fire  | Up    | Down  | Left  | Right |
+L00004c4c           dc.l    player_input_cmd_nop        ; 0     | 0     | 0     | 0     | 0     | - CMD00 - $00005290 - NOP - (no input)
 L00004c50           dc.l    input_right                 ; 0     | 0     | 0     | 0     | 1     | - CMD01 - $00005246 - Batman Right
 L00004c54           dc.l    input_left                  ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Left
-L00004c58           dc.l    cmd_nop                     ; 0     | 0     | 0     | 1     | 1     | - CMD03 - NOP - (input left and right)
+L00004c58           dc.l    player_input_cmd_nop        ; 0     | 0     | 0     | 1     | 1     | - CMD03 - $00005290 - NOP - (input left and right)
 L00004c5c           dc.l    input_down                  ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
 L00004c60           dc.l    input_down_right            ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Right
 L00004c64           dc.l    input_down_left             ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Left
-L00004c68           dc.l    cmd_nop                     ; 0     | 0     | 1     | 1     | 1     | - CMD07 - NOP - (input down, left & right)
+L00004c68           dc.l    player_input_cmd_nop        ; 0     | 0     | 1     | 1     | 1     | - CMD07 - $00005290 - NOP - (input down, left & right)
 L00004c6c           dc.l    input_up                    ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
 L00004c70           dc.l    input_up_right              ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
 L00004c74           dc.l    input_up_left               ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Left
-L00004c78           dc.l    cmd_nop                     ; 0     | 1     | 0     | 1     | 1     | - CMD11 - NOP - (input up, left & right)
-L00004c7c           dc.l    cmd_nop                     ; 0     | 1     | 1     | 0     | 0     | - CMD12 - NOP - (input up, & down)
-L00004c80           dc.l    cmd_nop                     ; 0     | 1     | 1     | 0     | 1     | - CMD13 - NOP - (input up, down & right)
-L00004c84           dc.l    cmd_nop                     ; 0     | 1     | 1     | 1     | 0     | - CMD14 - NOP - (input up, down & left)
-L00004c88           dc.l    cmd_nop                     ; 0     | 1     | 1     | 1     | 1     | - CMD15 - NOP - (input up, down, left & right)
+L00004c78           dc.l    player_input_cmd_nop        ; 0     | 1     | 0     | 1     | 1     | - CMD11 - $00005290 - NOP - (input up, left & right)
+L00004c7c           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 0     | 0     | - CMD12 - $00005290 - NOP - (input up, & down)
+L00004c80           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 0     | 1     | - CMD13 - $00005290 - NOP - (input up, down & right)
+L00004c84           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 1     | 0     | - CMD14 - $00005290 - NOP - (input up, down & left)
+L00004c88           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 1     | 1     | - CMD15 - $00005290 - NOP - (input up, down, left & right)
 L00004c8c           dc.l    input_fire                  ; 1     | 0     | 0     | 0     | 0     | - CMD16 - $00004fe0 - Fire
 L00004c90           dc.l    input_fire                  ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Right
 L00004c94           dc.l    input_fire                  ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Left
@@ -4504,11 +4501,11 @@ L00004ca8           dc.l    input_fire_down             ; 1     | 0     | 1     
 L00004cac           dc.l    input_fire_up               ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
 L00004cb0           dc.l    input_fire_up_right         ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Right
 L00004cb4           dc.l    input_fire_up_left          ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Left
-L00004cb8           dc.l    cmd_nop                     ; 1     | 1     | 0     | 1     | 1     | - CMD27 - NOP - (input fire, up, left & right)
-L00004cbc           dc.l    cmd_nop                     ; 1     | 1     | 1     | 0     | 0     | - CMD28 - NOP - (input fire, up & down)
-L00004cc0           dc.l    cmd_nop                     ; 1     | 1     | 1     | 0     | 1     | - CMD29 - NOP - (input fire, up, down & right)
-L00004cc4           dc.l    cmd_nop                     ; 1     | 1     | 1     | 1     | 0     | - CMD30 - NOP - (input fire, up, down & left)
-L00004cc8           dc.l    cmd_nop                     ; 1     | 1     | 1     | 1     | 1     | - CMD31 - NOP - (input firem up, down, left & right)
+L00004cb8           dc.l    player_input_cmd_nop        ; 1     | 1     | 0     | 1     | 1     | - CMD27 - $00005290 - NOP - (input fire, up, left & right)
+L00004cbc           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 0     | 0     | - CMD28 - $00005290 - NOP - (input fire, up & down)
+L00004cc0           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 0     | 1     | - CMD29 - $00005290 - NOP - (input fire, up, down & right)
+L00004cc4           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 1     | 0     | - CMD30 - $00005290 - NOP - (input fire, up, down & left)
+L00004cc8           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 1     | 1     | - CMD31 - $00005290 - NOP - (input firem up, down, left & right)
 
 
 
@@ -5120,8 +5117,16 @@ L0000528a           move.w  d0,(a0)+                        ; set sprite 2 (arms
 L0000528c           move.w  #$0001,(a0)                     ; set head anim
 cmd_exit
 
-cmd_nop
-L00005290           rts                      
+
+                    ; ----------- player_move_commands - input NOP -------------
+                    ; Called by player_move_commands default input routine.
+                    ; performs a op-operation for unexpected input values.
+                    ; Also called as a quick exit from other routines.
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_nop    ; original address L00005290
+                    rts                      
 
 
 input_down_left
@@ -5137,7 +5142,7 @@ L0000529c           subq.w  #$05,d0                 ; Jump Table CMD2
 L0000529e           subq.w  #$02,d1
 L000052a0           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000052a4           cmp.b   #$17,d2
-L000052a8           bcs.b   cmd_nop                                     ; L00005290
+L000052a8           bcs.b   player_input_cmd_nop                        ; L00005290
 L000052aa           subq.w  #$01,batman_x_offset
 L000052ae           addq.w  #$07,d1
 L000052b0           addq.w  #$05,d0
@@ -5469,7 +5474,6 @@ get_map_tile_at_display_offset_d0_d1  ; original address L00055a0
                     ; -- Draw Batman and Rope
                     ;------------------------------------------------------------------------------------------
                     ; This routine draws the Batman Player and the Rope Swing
-                    ; Status: Checked
                     ;
 draw_batman_and_rope  ; original address L000055c4
                     ;jmp     draw_batman_sprite
@@ -6274,7 +6278,7 @@ L00005a98           dc.w    $0000
                     ;   a6 = L000039c8  - 
 actor_handler_table                                         ; original address L00005a9a
                                                             ; index | offset    | Description
-L00005a9a           dc.l    cmd_nop                         ;   0   |    0      |                        original 16 bit value $5290
+L00005a9a           dc.l    actor_cmd_nop                   ;   0   |    0      |                        original 16 bit value $5290
                     dc.l    actor_cmd_01                    ;   1   |    4      |                        original 16 bit value $45ce
                     dc.l    actor_cmd_02                    ;   2   |    8      |                        original 16 bit value $410a
                     dc.l    actor_cmd_03                    ;   3   |    12     |                        original 16 bit value $405e
@@ -6282,10 +6286,10 @@ L00005a9a           dc.l    cmd_nop                         ;   0   |    0      
                     dc.l    actor_cmd_05                    ;   5   |    20     |                        original 16 bit value $400c
                     dc.l    actor_cmd_06                    ;   6   |    24     |                        original 16 bit value $40f0
                     dc.l    actor_cmd_07                    ;   7   |    28     |                        original 16 bit value $4044
-                    dc.l    cmd_nop                         ;   8   |    32     |                        original 16 bit value $5290
-                    dc.l    cmd_nop                         ;   9   |    36     |                        original 16 bit value $5290
-                    dc.l    cmd_nop                         ;   10  |    40     |                        original 16 bit value $5290
-                    dc.l    cmd_nop                         ;   11  |    44     |                        original 16 bit value $5290
+                    dc.l    actor_cmd_nop                   ;   8   |    32     |                        original 16 bit value $5290
+                    dc.l    actor_cmd_nop                   ;   9   |    36     |                        original 16 bit value $5290
+                    dc.l    actor_cmd_nop                   ;   10  |    40     |                        original 16 bit value $5290
+                    dc.l    actor_cmd_nop                   ;   11  |    44     |                        original 16 bit value $5290
                     dc.l    actor_cmd_12                    ;   12  |    48     |                        original 16 bit value $43a0
                     dc.l    actor_cmd_13                    ;   13  |    52     |                        original 16 bit value $4380
                     dc.l    actor_cmd_14                    ;   14  |    56     |                        original 16 bit value $41a2
@@ -6312,6 +6316,17 @@ L00005a9a           dc.l    cmd_nop                         ;   0   |    0      
                     dc.l    set_player_spawn_point_2        ;   35  |    140    |                        original 16 bit value $5aee
                     dc.l    set_player_spawn_point_3        ;   36  |    144    |                        original 16 bit value $5af8
 
+
+
+                    ; --------------- actor command nop -----------------------
+                    ; Actor command - no operation, does nothing.
+                    ; command added as extra code because this was previously
+                    ; sharing the player_input_cmd_nop code.
+                    ; It just aids readability to create an actor nop verison
+                    ;
+actor_cmd_nop       
+                    rts
+                    
 
                     ; a6 = L000039c8 - actors_list
 set_player_spawn_point_1                                                ; original address L00005ae4
@@ -6398,7 +6413,7 @@ L00005b8c           subq.w  #$01,d2
 L00005b8e           bne.b   L00005b8a                               ; jmp to rts above
 L00005b90           jsr     AUDIO_PLAYER_INIT_SFX_1
 L00005b96           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 
-L00005b9e           move.l  #cmd_nop,gl_jsr_address                 ; Set game_loop Self Modifying Code JSR 
+L00005b9e           move.l  #player_input_cmd_nop,gl_jsr_address    ; Set game_loop Self Modifying Code JSR 
 L00005ba4           clr.w   L000062fa
 L00005ba8           clr.w   grappling_hook_height                   ; L00006318
 L00005bac           move.w  $0004(a5),d0                            ; $00bfd104,d0
@@ -6607,7 +6622,7 @@ L00005d88           move.w  (a5),d2
 L00005d8a           beq.b   L00005d82
 L00005d8c           subq.w  #$01,d2
 L00005d8e           bne.w   L00005d02
-L00005d92           move.l  #cmd_nop,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code JSR in game_loop
+L00005d92           move.l  #player_input_cmd_nop,gl_jsr_address    ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005d98           move.w  #$0021,(a5)
 L00005d9c           clr.w   grappling_hook_height                   ; L00006318
 L00005da0           move.w  #$ffff,L000062fa
