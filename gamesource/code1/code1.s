@@ -4042,9 +4042,9 @@ scroll_display_window_up    ; original address L000049d4
                     ; ------- do horizontal scroll -------
 do_horizontal_scroll    ; original address L000049ec
                     move.w  batman_x_offset,d0                          ; last batman X position scroll value
-                    sub.w   L000067c8,d0                                ; current X scroll value
+                    sub.w   target_window_x_offset,d0                   ; L000067c8,d0  ; current X scroll value
                     move.w  d0,L0000630e                                ; amount of scroll
-                    beq.w   .exit_horizontal_scroll                      ; no horizontal scroll.
+                    beq.w   .exit_horizontal_scroll                     ; no horizontal scroll.
 
                     move.w  scroll_window_x_coord,d1                    ; d1 = current window X
 
@@ -4070,7 +4070,7 @@ do_horizontal_scroll    ; original address L000049ec
                     exg.l   d1,d0
 
 .cont_horiz_scroll  ; calc amount of horizontal scroll                  ; original address L00004a1c
-                    add.w   L000067c8,d0
+                    add.w   target_window_x_offset,d0                   ; L000067c8,d0
                     move.w  d0,batman_x_offset
                     move.w  d1,scroll_window_x_coord                    ; update scroll window X coord
                     move.w  d1,d3
@@ -4473,39 +4473,39 @@ player_move_commands    ; original address $00004c3e
                     ; Code Checked 3/1/2025
                     ;
 player_input_cmd_table  
-                    ; original address $00004c4c        ; Fire  | Up    | Down  | Left  | Right |
-L00004c4c           dc.l    player_input_cmd_nop        ; 0     | 0     | 0     | 0     | 0     | - CMD00 - $00005290 - NOP - (no input)
-L00004c50           dc.l    input_right                 ; 0     | 0     | 0     | 0     | 1     | - CMD01 - $00005246 - Batman Right
-L00004c54           dc.l    input_left                  ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Left
-L00004c58           dc.l    player_input_cmd_nop        ; 0     | 0     | 0     | 1     | 1     | - CMD03 - $00005290 - NOP - (input left and right)
-L00004c5c           dc.l    input_down                  ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
-L00004c60           dc.l    input_down_right            ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Right
-L00004c64           dc.l    input_down_left             ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Left
-L00004c68           dc.l    player_input_cmd_nop        ; 0     | 0     | 1     | 1     | 1     | - CMD07 - $00005290 - NOP - (input down, left & right)
-L00004c6c           dc.l    input_up                    ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
-L00004c70           dc.l    input_up_right              ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
-L00004c74           dc.l    input_up_left               ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Left
-L00004c78           dc.l    player_input_cmd_nop        ; 0     | 1     | 0     | 1     | 1     | - CMD11 - $00005290 - NOP - (input up, left & right)
-L00004c7c           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 0     | 0     | - CMD12 - $00005290 - NOP - (input up, & down)
-L00004c80           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 0     | 1     | - CMD13 - $00005290 - NOP - (input up, down & right)
-L00004c84           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 1     | 0     | - CMD14 - $00005290 - NOP - (input up, down & left)
-L00004c88           dc.l    player_input_cmd_nop        ; 0     | 1     | 1     | 1     | 1     | - CMD15 - $00005290 - NOP - (input up, down, left & right)
-L00004c8c           dc.l    input_fire                  ; 1     | 0     | 0     | 0     | 0     | - CMD16 - $00004fe0 - Fire
-L00004c90           dc.l    input_fire                  ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Right
-L00004c94           dc.l    input_fire                  ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Left
-L00004c98           dc.l    input_fire                  ; 1     | 0     | 0     | 1     | 1     | - CMD19 - $00004fe0 - Fire + Left + Right
-L00004c9c           dc.l    input_fire_down             ; 1     | 0     | 1     | 0     | 0     | - CMD20 - $000053d6 - Fire + Down
-L00004ca0           dc.l    input_fire_down             ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Right
-L00004ca4           dc.l    input_fire_down             ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Left
-L00004ca8           dc.l    input_fire_down             ; 1     | 0     | 1     | 1     | 1     | - CMD23 - $000053d6 - Fire + Down + Left + Right
-L00004cac           dc.l    input_fire_up               ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
-L00004cb0           dc.l    input_fire_up_right         ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Right
-L00004cb4           dc.l    input_fire_up_left          ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Left
-L00004cb8           dc.l    player_input_cmd_nop        ; 1     | 1     | 0     | 1     | 1     | - CMD27 - $00005290 - NOP - (input fire, up, left & right)
-L00004cbc           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 0     | 0     | - CMD28 - $00005290 - NOP - (input fire, up & down)
-L00004cc0           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 0     | 1     | - CMD29 - $00005290 - NOP - (input fire, up, down & right)
-L00004cc4           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 1     | 0     | - CMD30 - $00005290 - NOP - (input fire, up, down & left)
-L00004cc8           dc.l    player_input_cmd_nop        ; 1     | 1     | 1     | 1     | 1     | - CMD31 - $00005290 - NOP - (input firem up, down, left & right)
+                    ; original address $00004c4c            ; Fire  | Up    | Down  | Left  | Right |
+L00004c4c           dc.l    player_input_cmd_nop            ; 0     | 0     | 0     | 0     | 0     | - CMD00 - $00005290 - NOP - (no input)
+L00004c50           dc.l    player_input_cmd_right          ; 0     | 0     | 0     | 0     | 1     | - CMD01 - $00005246 - Batman Right
+L00004c54           dc.l    input_left                      ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Left
+L00004c58           dc.l    player_input_cmd_nop            ; 0     | 0     | 0     | 1     | 1     | - CMD03 - $00005290 - NOP - (input left and right)
+L00004c5c           dc.l    input_down                      ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
+L00004c60           dc.l    player_input_cmd_down_right     ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Right
+L00004c64           dc.l    input_down_left                 ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Left
+L00004c68           dc.l    player_input_cmd_nop            ; 0     | 0     | 1     | 1     | 1     | - CMD07 - $00005290 - NOP - (input down, left & right)
+L00004c6c           dc.l    input_up                        ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
+L00004c70           dc.l    input_up_right                  ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
+L00004c74           dc.l    input_up_left                   ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Left
+L00004c78           dc.l    player_input_cmd_nop            ; 0     | 1     | 0     | 1     | 1     | - CMD11 - $00005290 - NOP - (input up, left & right)
+L00004c7c           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 0     | 0     | - CMD12 - $00005290 - NOP - (input up, & down)
+L00004c80           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 0     | 1     | - CMD13 - $00005290 - NOP - (input up, down & right)
+L00004c84           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 1     | 0     | - CMD14 - $00005290 - NOP - (input up, down & left)
+L00004c88           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 1     | 1     | - CMD15 - $00005290 - NOP - (input up, down, left & right)
+L00004c8c           dc.l    input_fire                      ; 1     | 0     | 0     | 0     | 0     | - CMD16 - $00004fe0 - Fire
+L00004c90           dc.l    input_fire                      ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Right
+L00004c94           dc.l    input_fire                      ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Left
+L00004c98           dc.l    input_fire                      ; 1     | 0     | 0     | 1     | 1     | - CMD19 - $00004fe0 - Fire + Left + Right
+L00004c9c           dc.l    input_fire_down                 ; 1     | 0     | 1     | 0     | 0     | - CMD20 - $000053d6 - Fire + Down
+L00004ca0           dc.l    input_fire_down                 ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Right
+L00004ca4           dc.l    input_fire_down                 ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Left
+L00004ca8           dc.l    input_fire_down                 ; 1     | 0     | 1     | 1     | 1     | - CMD23 - $000053d6 - Fire + Down + Left + Right
+L00004cac           dc.l    input_fire_up                   ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
+L00004cb0           dc.l    input_fire_up_right             ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Right
+L00004cb4           dc.l    input_fire_up_left              ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Left
+L00004cb8           dc.l    player_input_cmd_nop            ; 1     | 1     | 0     | 1     | 1     | - CMD27 - $00005290 - NOP - (input fire, up, left & right)
+L00004cbc           dc.l    player_input_cmd_nop            ; 1     | 1     | 1     | 0     | 0     | - CMD28 - $00005290 - NOP - (input fire, up & down)
+L00004cc0           dc.l    player_input_cmd_nop            ; 1     | 1     | 1     | 0     | 1     | - CMD29 - $00005290 - NOP - (input fire, up, down & right)
+L00004cc4           dc.l    player_input_cmd_nop            ; 1     | 1     | 1     | 1     | 0     | - CMD30 - $00005290 - NOP - (input fire, up, down & left)
+L00004cc8           dc.l    player_input_cmd_nop            ; 1     | 1     | 1     | 1     | 1     | - CMD31 - $00005290 - NOP - (input firem up, down, left & right)
 
 
 
@@ -4546,7 +4546,7 @@ L00004cfc                       cmp.l   #L00005058,d2                           
 L00004d00                       beq.b   L00004d38
 
 L00004d02                           move.l  #L00004d48,d3                           ; Address
-L00004d06                           cmp.l   #L00005308,d2                           ; Address
+L00004d06                           cmp.l   #state_climbing_stairs,d2                 ; Address
 L00004d0a                           beq.b   L00004d1c
 
 L00004d0c                               cmp.l   d2,d3
@@ -4583,22 +4583,22 @@ L00004d46           rts
 
 
 L00004d48           subq.w  #$01,L00006306
-L00004d4c           bne.b   exit_rts                        ; L00004d36
-L00004d4e           move.l  #L00005308,gl_jsr_address       ;L00003c90 ; Set Self Modifying Code JSR in game_loop
+L00004d4c           bne.b   exit_rts                                    ; L00004d36
+L00004d4e           move.l  #state_climbing_stairs,gl_jsr_address         ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00004d54           bra.b   L00004d7a
 
-L00004d56           tst.w   grappling_hook_height           ; L00006318
+L00004d56           tst.w   grappling_hook_height                       ; L00006318
 L00004d5a           beq.b   L00004d60
 L00004d5c           bsr.w   L000051b0
 L00004d60           subq.w  #$01,L00006306
-L00004d64           bne.b   exit_rts                                ; L00004d36
-L00004d66           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00004d6c           tst.w   grappling_hook_height                   ; L00006318
+L00004d64           bne.b   exit_rts                                    ; L00004d36
+L00004d66           move.l  #player_move_commands,gl_jsr_address        ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+L00004d6c           tst.w   grappling_hook_height                       ; L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
 L00004d76           bsr.w   L00005430
-L00004d7a           tst.b   PANEL_STATUS_1              ; Panel - Status Byte 1 - $0007c874
-L00004d80           beq.b   exit_rts                                ; L00004d36
+L00004d7a           tst.b   PANEL_STATUS_1                              ; Panel - Status Byte 1 - $0007c874
+L00004d80           beq.b   exit_rts                                    ; L00004d36
 
                     ; lose a life - audio & animation?
 L00004d82           jsr     AUDIO_PLAYER_SILENCE              
@@ -4709,20 +4709,20 @@ L00004e5a            move.l  #L00004e64,gl_jsr_address  ; L00003c90        ; Set
 L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) Fire no Direction
 
                     ; Updated Self Modified JSR (game_loop) when ($00006306).w is zero
-L00004e64            lea.l   grappling_hook_height,a0       ; L00006318,a0                
+L00004e64            lea.l   grappling_hook_height,a0               ; L00006318,a0                
 L00004e68            move.w  (a0),d5
-L00004e6a            move.b  player_input_command,d4        ; L00006308,d4
+L00004e6a            move.b  player_input_command,d4                ; L00006308,d4
 L00004e6e            btst.l  #PLAYER_INPUT_UP,d4
 L00004e72            beq.b   L00004ea8
-L00004e74            move.w  #$0048,L000067c6
+L00004e74            move.w  #$0048,target_window_y_offset          ; L000067c6
 L00004e7a            subq.w  #$01,d5
 L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
-L00004e80            move.l  #L00005058,gl_jsr_address      ; L00003c90 ; Self modified code JSR game_loop
+L00004e80            move.l  #L00005058,gl_jsr_address              ; L00003c90 ; Self modified code JSR game_loop
 L00004e86            move.w  #$0005,L000062f2
-L00004e8c            move.l  #L00006426,batman_sprite_anim_ptr   ; modified to long pointer L00006326
+L00004e8c            move.l  #L00006426,batman_sprite_anim_ptr      ; modified to long pointer L00006326
 L00004e92            move.w  d1,d2
-L00004e94            add.w   scroll_window_y_coord,d2       ; L000067be,d2
+L00004e94            add.w   scroll_window_y_coord,d2               ; L000067be,d2
 L00004e98            subq.w  #$02,d2
 L00004e9a            and.w   #$0007,d2
 L00004e9e            sub.w   d2,d1
@@ -4733,7 +4733,7 @@ L00004ea4            rts
 L00004ea6            move.w  d5,(a0) 
 L00004ea8            btst.l  #PLAYER_INPUT_DOWN,d4
 L00004eac            beq.w   L00004ec0
-L00004eb0            move.w  #$0028,L000067c6
+L00004eb0            move.w  #$0028,target_window_y_offset          ; L000067c6
 L00004eb6            addq.w  #$01,d5
 L00004eb8            cmp.w   #$0050,d5
 L00004ebc            bcc.b   L00004ec0
@@ -4951,7 +4951,7 @@ L000050f6           bra.b   L000050fa
                     ; ---------- batrope up - Jump Table CMD11 -----------
 input_fire_up                                                       ; original address L000050f8
 L000050f8           clr.w   d0                                      ; d0 = 0
-L000050fa           move.w  #$0048,L000067c6
+L000050fa           move.w  #$0048,target_window_y_offset           ; L000067c6
 L00005100           lea.l   $6314,a0
 L00005104           move.w  d0,(a0)+
 L00005106           clr.l   (a0)+
@@ -5018,16 +5018,38 @@ L000051dc           bra.w   set_batman_sprites
 L000051e0           rts 
 
 
-L000051e2           move.w  #$0028,L000067c6
-L000051e8           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                    ; updated_batman_distance_walked
-L000051ec           add.w   d0,d2
-L000051ee           and.w   #$0007,d2
-L000051f2           subq.w  #$04,d2
-L000051f4           bne.b   L000051e0
-L000051f6           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L000051fa           cmp.b   #$85,d2
-L000051fe           bcs.b   L000051e0
-L00005200           bra.b   L0000522e
+
+
+                    ; ----------------------- check climb down --------------------
+                    ; This routine checks whether batman is on the top of a ladder or
+                    ; stairwell and if so, changes the state for the player input.
+                    ;
+                    ; called from:
+                    ;           player_input_cmd_down
+                    ;           player_input_cmd_down_right
+                    ;           player_input_cmd_down_left
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_check_climb_down ; original address L000051e2
+                    move.w  #$0028,target_window_y_offset           ; move batman up in display window (show more bottom)
+                    move.w  scroll_window_x_coord,d2                ; 
+                    add.w   d0,d2                                   ; get batman x co-ord in world
+                    and.w   #$0007,d2                               ; get soft scroll value low 3 bits (0-7)
+                    subq.w  #$04,d2                                 
+                    bne.b   .exit                                   ; if batman not halfway across tile, then exit
+                    ; L000051f6 - check tile at batman position
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
+                    cmp.b   #$85,d2                                 ; test tile at batman location                              
+                    bcs.b   .exit                                   ; tile <= 133
+                    bra.b   set_player_state_climbing               ; tile >= 134
+.exit               rts                                             ; added for readability L000051e0
+
+
 
 
                     ; IN:-
@@ -5041,7 +5063,7 @@ L00005204           bra.w   L00005430
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-L00005208           move.w  #$0048,L000067c6
+L00005208           move.w  #$0048,target_window_y_offset           ; L000067c6
 L0000520e           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                            ; updated_batman_distance_walked
 L00005212           add.w   d0,d2
 L00005214           and.w   #$0007,d2
@@ -5052,70 +5074,125 @@ L00005220           bsr.w   get_map_tile_at_display_offset_d0_d1    ; d2.b = til
 L00005224           add.w   #$000c,d1
 L00005228           cmp.b   #$85,d2
 L0000522c           bcs.b   L000051e0
-                    ; probably on stairs (mask left & right input)
-                    ; and change batman movement - self modified code address to $5308
-L0000522e           addq.w  #$04,a7                                 ; manipulate the stack? remove last return address?
-L00005230           and.b   #$0c,player_input_command               ; L00006308 - mask bits leaving up and down flags
-L00005236           move.l  #L00005308,gl_jsr_address               ; L00003c90 ; Self Modified Code JSR - game_loop
-L0000523c           bra.w   L00005308
+                    ; fall through to change player state below
 
 
 
+
+                    ; --------------------- set player state climbing --------------------
+                    ; Change player state to climbing (ladder or stairs) in game_loop
+                    ;
+                    ; Manipulates the stack, so that the caller returns and does not
+                    ; proceed to call standard player_input_down processing
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+set_player_state_climbing   ; original address L0000522e
+                    addq.w  #$04,a7                                 ; manipulate the stack. remove last return address to prevent default processing.
+                    and.b   #$0c,player_input_command               ; mask input bits leaving up and down state flags
+                    move.l  #state_climbing_stairs,gl_jsr_address     ; Update game_loop player state processing
+                    bra.w   state_climbing_stairs                     ; do climb stairs
+
+
+
+
+
+
+                    ; -------------------- player input command - down right --------------------
+                    ; Command to execute when joystick input is set to diagaonal 'down-right'
+                    ;
+                    ;
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-input_down_right
-L00005240           bsr.b   L000051e2               ; jmp table CMD4
-L00005242           bra.b   input_right             ; L00005246 
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_down_right ; original address L00005240
+                    bsr.b   player_check_climb_down                 ; L000051e2
+                        ; if on a ladder then manipulates stack to return to caller
+                        ; does not execute the following code.
+                    bra.b   player_input_cmd_right                  ; perform common move right processing
+
+
+
 
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
 input_up_right
 L00005244           bsr.b   L00005208               ; jmp table CMD7
+                    ; perform common move right processing
+                    ; falls through to player_input_cmd_right below
 
-                    ;------------------- input right --------------------------------------
-                    ; checks tile to batman's right, if wall (tile > 23) then exit.
+
+
+
+                    ; ------------------- player input command right ------------------------
+                    ; Command to walk batman to the right, when joystick right is selected.
+                    ;
+                    ; Checks tile to batman's right, if wall (tile > 23) then exit.
                     ; otherwise move 1 unit to right (2 pixels) and check if now falling.
                     ; if not falling the set sprite walk right animation.
-                    ;   - a bit contrived from batman's workd x co-ordinate to choose
+                    ;   - animation is selected from batman's x co-ordinate to choose
                     ;     animation frames for legs (sprite 3) and body (sprite 2)
                     ;     the head sprite is always set to id = 1 (sprite 1)
                     ;
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-input_right
-L00005246           addq.w  #$04,d0                         ; add 4 to batman_x_offset
-L00005248           subq.w  #$02,d1                         ; sub 2 from batman_y_offset
-L0000524a           bsr.w   get_map_tile_at_display_offset_d0_d1 ; get tile 8 pixels to batman's right, middle, out: d2.b = tile value
-L0000524e           cmp.b   #$17,d2
-L00005252           bcs.b   cmd_exit                        ; if tile > 23 then exit (wall I guess - can't move)
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_right      ; original address L00005246
 
-                    ; update batman x offset
-L00005254           addq.w  #$01,batman_x_offset            ; increment batman x offset by 1
-L00005258           addq.w  #$07,d1                         ; d1 (y offset), already decremented by 2, increment by further 7 (+5)
-L0000525a           subq.w  #$05,d0                         ; d0 (x offset), already incremented by 4, decrement by further 5 (-1)
-L0000525c           bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value (tile by feet?)
-L00005260           sub.b   #$79,d2
-L00005264           cmp.b   #$0d,d2                         ; check d2 in range #$79 - #$86
-L00005268           bcc.w   L0000545a                       ; if in range thenn (maybe falling?)
+.wall_collider      ; test wall collision
+                    addq.w  #$04,d0                                 ; add 4 to batman_x_offset
+                    subq.w  #$02,d1                                 ; sub 2 from batman_y_offset
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; get tile 8 pixels to batman's right, middle, out: d2.b = tile value
+                    cmp.b   #$17,d2
+                    bcs.b   .exit                                   ; if tile > 23 then exit (wall I guess - can't move)
 
+.update_x_pos       ; move batman to right (2 pixels)
+                    addq.w  #$01,batman_x_offset                    ; increment batman x offset by 1
+
+.platform_collider  ; L00005258 - test platform collison (14 pixels below)
+                    addq.w  #$07,d1                                 ; d1 (y offset), already decremented by 2, increment by further 7 (+5)
+                    subq.w  #$05,d0                                 ; d0 (x offset), already incremented by 4, decrement by further 5 (-1)
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value (tile by feet?)
+                    sub.b   #$79,d2                                 ; #$79 (121)
+                    cmp.b   #$0d,d2                                 ; check d2 in range 121 - 134
+                    bcc.w   L0000545a                               ; if in range then (maybe falling?)
+
+                    ; L0000526c
                     ; update batman walk sprite animation
-L0000526c           lea.l   batman_sprite3_id,a0            ; L000062ea,a0
-L00005270           add.w   scroll_window_x_coord,d0        ; d0 = world x co-ord
-L00005274           lsr.w   #$01,d0                         ; divide window x co-ord by 2 (already divied by 2, now divided by 4)
-L00005276           and.w   #$0007,d0                       ; take value 0-7 (resolution 4 pixels)
-L0000527a           addq.w  #$05,d0                         ; 5 base value for sprite animation (legs?)                        
-L0000527c           move.w  d0,(a0)+                        ; set sprite id value (range 5 - 13 decimal)
-L0000527e           and.w   #$0006,d0                       ; mask all but range 2-6 (resolution of 2)
-L00005282           lsr.w   #$01,d0                         ; range 0 - 3
-L00005284           bne.b   L00005288
-L00005286           moveq   #$02,d0                         ; set default value of #$02 
-L00005288           addq.w  #$01,d0
-L0000528a           move.w  d0,(a0)+                        ; set sprite 2 (arms/body anim)
-L0000528c           move.w  #$0001,(a0)                     ; set head anim
-cmd_exit
+                    ; uses scroll position to choose animation
+.set_animation      ; frame
+                    lea.l   batman_sprite3_id,a0                    ; L000062ea,a0
+                    add.w   scroll_window_x_coord,d0                ; d0 = world x co-ord
+                    lsr.w   #$01,d0                                 ; divide window x co-ord by 2 (already divied by 2, now divided by 4)
+                    and.w   #$0007,d0                               ; take value 0-7 (resolution 4 pixels)
+                    addq.w  #$05,d0                                 ; 5 base value for sprite animation (legs?)                        
+.set_sprite3        move.w  d0,(a0)+                                ; set sprite id value (range 5 - 13 decimal)
+
+                    ; L0000527e - sprite 2 - batman arms
+                    and.w   #$0006,d0                               ; animate arms at half speed to legs.
+                    lsr.w   #$01,d0                                 ; convert into range 0 - 3
+                    bne.b   .inc_sprite2
+
+.rst_sprite2        moveq   #$02,d0                                 ; reset arms  animation frame to #$02 
+
+.inc_sprite2        ; L00005288
+                    addq.w  #$01,d0                                 ; increment arms animation
+.set_sprite2        move.w  d0,(a0)+                                ; set sprite 2 (arms/body anim)
+
+                    ; batman head
+.set_sprite1        move.w  #$0001,(a0)                             ; set head spprite frame
+
+                    ; L00005290
+.exit               rts                                             ; added for readability
+
+
 
 
                     ; ----------- player_move_commands - input NOP -------------
@@ -5129,12 +5206,22 @@ player_input_cmd_nop    ; original address L00005290
                     rts                      
 
 
+
+
+
+
 input_down_left
-L00005292           bsr.w   L000051e2               ; Jump Table CMD5
-L00005296           bra.w   input_left              ; L0000592c     ; bra.b 
+L00005292           bsr.w   player_check_climb_down             ; L000051e2
+                        ; if on a ladder then manipulates stack to return to caller
+                        ; does not execute the following code. 
+L00005296           bra.w   input_left                          ; L0000592c 
+
+
 
 input_up_left
 L00005298           bsr.w   L00005208               ; Jump Table CMD8
+
+
 
 
 input_left
@@ -5176,12 +5263,15 @@ L000052fe           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 
 L00005304           bra.w   player_move_commands                    ; L00004c3e
 
 
+
+
+
                     ; ----------------- batman climb stairs -------------------
                     ; inserted into game loop self modified code for batman
                     ; control state updates.
                     ; state is entered via the up/down input command handlers
                     ;
-batman_climb_stairs
+state_climbing_stairs  ; original address L00005308
 L00005308           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
 L0000530e           bne.w   L0000545a
 L00005312           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
@@ -5195,11 +5285,11 @@ L0000532a           beq.b   L0000534e
 L0000532c           btst.l  #PLAYER_INPUT_DOWN,d4
 L00005330           beq.b   L0000533a
 L00005332           addq.w  #$01,d1
-L00005334           move.w  #$0028,L000067c6
+L00005334           move.w  #$0028,target_window_y_offset           ; L000067c6
 L0000533a           btst.l  #PLAYER_INPUT_UP,d4
 L0000533e           beq.b   L00005348
 L00005340           subq.w  #$01,d1
-L00005342           move.w  #$0048,L000067c6
+L00005342           move.w  #$0048,target_window_y_offset           ; L000067c6
 L00005348           move.w  d1,batman_y_offset
 L0000534c           bra.b   L000053a6
 L0000534e           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
@@ -5214,14 +5304,14 @@ L00005364           asr.w   #$01,d4
 L00005366           bcs.w   L000052ee                               ; exit climb ladder state
 L00005368           asr.w   #$01,d4
 L0000536a           bcc.b   L00005380
-L0000536c           move.w  #$0028,L000067c6
+L0000536c           move.w  #$0028,target_window_y_offset           ; L000067c6
 L00005372           cmp.b   #$85,d2
 L00005376           bcs.w   L000053ce
 L0000537a           addq.w  #$01,batman_y_offset
 L0000537e           bra.b   L000053a6
 L00005380           asr.w   #$01,d4
 L00005382           bcc.b   L000053cc
-L00005384           move.w  #$0048,L000067c6
+L00005384           move.w  #$0048,target_window_y_offset           ; L000067c6
 L0000538a           move.w  MAPGR_BASE,d5           ; MAPGR.IFF (value = $00c0)
 L00005390           sub.w   d5,d3
 L00005392           sub.w   d5,d3
@@ -5259,8 +5349,11 @@ L000053ea            move.w  #$8000,L00005506
 L000053f0            bra.w   L0000545a
 
 
+
 input_down
-L000053f4           bsr.w   L000051e2                               ; Jump table CMD3
+L000053f4           bsr.w   player_check_climb_down                 ; L000051e2
+                        ; if on a ladder then manipulates stack to return to caller
+                        ; does not execute the following code.
 L000053f8           lea.l   batman_sprite_anim_03,a0                ; L000063d6,a0
 L000053fc           bsr.b   set_batman_sprites
 L000053fe           move.l  #L00005406,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code - game_loop JSR
@@ -5334,7 +5427,7 @@ L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
                     ; -------- batman falling between platform? -----------
 L0000545a           movem.w batman_xy_offset,d0-d1
 L00005460           clr.l   L000062f4
-L00005464           move.w  batman_y_offset,L000067c6
+L00005464           move.w  batman_y_offset,target_window_y_offset  ; L000067c6
 L0000546a           lea.l   L00005454(pc),a0                        ; 3 sprite id array
 L0000546e           bsr.w   set_batman_sprites
 L00005472           move.l  #L00005482,gl_jsr_address               ; Set game_loop Self Modifying Code JSR 
@@ -5401,7 +5494,7 @@ L00005516           bcs.b   L0000551e
 L00005518           move.w  #$4e71,L00005506
 L0000551e           move.w  d6,sr
 L00005520           bcc.b   L000054e6
-L00005522           move.w  #$0028,L000067c6
+L00005522           move.w  #$0028,target_window_y_offset       ; L000067c6
 L00005528           lea.l   batman_sprite_anim_05,a0            ; L00005457,a0
 L0000552c           bsr.w   set_batman_sprites                  
 L00005530           move.l  #$0000555a,gl_jsr_address           ; Set game_loop Self Modified Command JSR
@@ -6428,12 +6521,12 @@ L00005bcc           jmp     AUDIO_PLAYER_INIT_SFX
                     ; uses rts in audio player
 
 
-L00005bd2           subq.w  #$01,L000067c8
+L00005bd2           subq.w  #$01,target_window_x_offset             ; L000067c8
 L00005bd6           sub.w   #$0018,d0
 L00005bda           sub.w   scroll_window_y_coord,d0                ; L000067be,d0
 L00005bde           neg.w   d0
 L00005be0           add.w   batman_y_offset,d0
-L00005be4           move.w  d0,L000067c6
+L00005be4           move.w  d0,target_window_y_offset               ; L000067c6
 L00005be8           rts
 
 
@@ -6651,7 +6744,7 @@ L00005dc0               sub.w   d0,d2
 L00005dc2               cmp.w   #$fffd,d2
 L00005dc6               bcc.b   L00005dca
 L00005dc8                   move.l  #$fffffffe,D2
-L00005dca               add.w   d2,L000067c8
+L00005dca               add.w   d2,target_window_x_offset           ; L000067c8
 
                     ; check level complete
 L00005dce           cmp.w   #$0048,d1                       ; d1.w - maybe sprite Y co-ord  
@@ -6666,7 +6759,7 @@ L00005de4           asr.w   #$01,d3
 L00005de6           add.w   d3,$0004(a6)
 L00005dea           moveq   #$18,d2
 L00005dec           sub.w   d1,d2
-L00005dee           add.w   d2,L000067c6
+L00005dee           add.w   d2,target_window_y_offset       ; L000067c6
 L00005df2           moveq   #$06,d2
 L00005df4           cmp.w   #$0004,d3
 L00005df8           bmi.b   L00005e10
@@ -6771,7 +6864,7 @@ L00005eb6           rts
 actor_cmd_26
 L00005eb8           bsr.b   L00005e98
 L00005eba           bcc.b   L00005eca
-L00005ebc           move.w  #$0018,L000067c6
+L00005ebc           move.w  #$0018,target_window_y_offset       ; L000067c6
 L00005ec2           addq.w  #$01,(a6)
 L00005ec4           move.w  #$0020,$0008(a6)
 L00005eca           rts  
@@ -7276,8 +7369,8 @@ default_level_parameters                                    ; original address L
                     dc.w $0000                              ; scroll_window_max_x_coord
                     dc.w $0050                              ; default L000067c2 - batman_x_offset
                     dc.w $0048                              ; default L000067c4 - batman_y_offset
-                    dc.w $0048                              ; default L000067c6
-                    dc.w $0050                              ; default L000067c8
+                    dc.w $0048                              ; default L000067c6 - target_window_y_offset
+                    dc.w $0050                              ; default L000067c8 - target_window_x_offset
 
 
                     ; ---------- Halfway Spawn Point level parameters ----------
@@ -7287,8 +7380,8 @@ halfway_spawn_point_parameters                              ; original address L
                     dc.w $0200                              ; scroll_window_max_x_coord
                     dc.w $0050                              ; default L000067c2 - batman_x_offset
                     dc.w $0038                              ; default L000067c4 - batman_y_offset
-                    dc.w $0038                              ; default L000067c6
-                    dc.w $0050                              ; default L000067c8
+                    dc.w $0038                              ; default L000067c6 - target_window_y_offset
+                    dc.w $0050                              ; default L000067c8 - target_window_x_offset
 
 
 
@@ -7311,8 +7404,13 @@ batman_x_offset                             ; original address L000067c2
 L000067c2           dc.w $0050              ; batman offset X co-ordinate (from window X co-ord)
 batman_y_offset                             ; original address L000067c4
 L000067c4           dc.w $0048              ; batman offset Y co-ordinate (from window Y co-ord)
-L000067c6           dc.w $0048
-L000067c8           dc.w $0050
+
+
+target_window_y_offset                      ; original address L000067c6              
+L000067c6           dc.w $0048              ; I think this is a target y offset for batman in the window (allows window to scroll around batman to show more of the level above/below)
+
+target_window_x_offset                      ; original address L000067c8 
+L000067c8           dc.w $0050              ; I think this is a target x offset for batmin in the window (allows window to scroll around batman to show more of the level left/right)
 
 
 
