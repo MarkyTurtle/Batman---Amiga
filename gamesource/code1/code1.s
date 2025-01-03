@@ -471,6 +471,18 @@ initialise_system
                     move.b  #$ff,$00bfd100                  ; CIAB-PRB - PORT B (Disk ctrl) deselect all (active low)
                     move.b  #$ff,$00bfd300                  ; CIAB-DDRB - PORT B dir = all pins/lines = output
 
+                    ; ------ enter supervisor mode -------
+.enter_supervisor   LEA.L   .supervisor_trap(PC),A0                     ; A0 = address of supervisor trap $00001F58
+                    MOVE.L  A0,$00000080                                ; Set TRAP 0 vector
+                    MOVEA.L A7,A0                                       ; store stack pointer
+                    TRAP    #$00000000                                  ; do the trap (jmp to next instruction in supervisor mode)
+                                                                        ; this trap never returns.
+                    ; enter supervisor mode
+                    ; D0.l = $00000000
+.supervisor_trap                                                    ; original address $00001F58
+                    MOVEA.L A0,A7                                       ; restore the stack (i.e. rts return address etc)
+                    ; ------ enter supervisor mode -------
+
 
                     ; set stack address
                     lea.l   STACK_ADDRESS,a7                ; External Address - Stack = $0005a36c
@@ -5082,6 +5094,11 @@ L0000522c           bcs.b   L000051e0
                     ; --------------------- set player state climbing --------------------
                     ; Change player state to climbing (ladder or stairs) in game_loop
                     ;
+                    ; 1) Occurs when at bottom of ladder and start to climb.
+                    ;    Also Occurs when climbed to top of ladder and up is pushed.
+                    ; 2) Occirs when at top of ladder and start to descend.
+                    ;    DOESN'T Occur when descened to bottom of ladder and down is pushed.
+                    ;
                     ; Manipulates the stack, so that the caller returns and does not
                     ; proceed to call standard player_input_down processing
                     ;
@@ -5258,6 +5275,11 @@ L000052ec           rts
                     ; ------------------- exit climbing state ---------------------
                     ; Looks like code to return to normal joystick input handling.
                     ;
+                    ; 1) Occurs when at top of ladder and Left/Right pushed
+                    ; 2) Occurs when at bottom of ladder and Down-Left/Down/Right pushed
+                    ;
+                    ; DOESN'T Occur when at bottom of ladder and Down Only is pushed
+                    ;
                     ; Not sure what the tile check 134 and the jump back into 
                     ; climbing code is doing. Look 'hacky' wish i knew what tile 134 was...
                     ;
@@ -5271,7 +5293,7 @@ exit_climbing_state ; original address L000052ee
                     move.b  $00(a0,d3.W),d2                         ; Get map tile to left/right of batman
                     sub.b   #$79,d2                                 ; 121
                     cmp.b   #$0d,d2                                 ; if tile in range >= 134
-                    bcc.w   L00005368                               ; if tile >= 134, return to climbing? (Does this even execute? looks dodgy)
+                    bcc.w   L00005362           ; L00005368                               ; if tile >= 134, return to climbing? (Does this even execute? looks dodgy)
                     ; return to normal joystick movement state.
                     ; back on a platform.
                     ; L000052fe - Tile 121-133
@@ -5328,18 +5350,19 @@ L00005348           move.w  d1,batman_y_offset
                     bra.b   L000053a6
                     ;----------------------
 
-on_tile_boundary    ; L0000534e
+on_tile_boundary    ; L0000534e - on tile boundary - check climb exit
                     bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
                     move.w  d4,d5                                       ; copy player input command
                     and.b   #$03,d5                                     ; mask all but bits 0 & 1 (LEFT/RIGHT)
                     move.b  d5,player_input_command                     ; L00006308
 
+                    ; L0000535c - check push right (exit climb)
                     moveq   #$01,d5                                     ; +1 (check tile to right)
                     asr.w   #$01,d4                                     ; c = 1 if input = right
                     bcs.w   exit_climbing_state                         ; if right then, exit climb ladder state 
 
-                    ; L00005362
-                    MOVE.L  #$ffffffff,D5                               ; -1 (check tile to left)
+                    ; L00005362 - check push left (exit climb)
+L00005362           MOVE.L  #$ffffffff,D5                               ; -1 (check tile to left)
 L00005368           asr.w   #$01,d4                                     ; c = 1 if input = left
                     bcs.w   exit_climbing_state                         ; if left then, exit climb ladder state
 
@@ -5490,22 +5513,26 @@ L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
 
 
                     ; -------------------- set player state falling ---------------------
-                    ; set player state to falling (between plaforms, from ladder/stairs)
+                    ; Set player state to falling (between plaforms, from ladder/stairs)
                     ;
+                    ; Runs when Dropping from one platform to another (Fire + Down)
+                    ; Also Runs When walking off the end of a Platform.
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
+                    ; Code Checked 3/1/2025
                     ;
 set_player_state_falling    ; original address L0000545a
-L0000545a           movem.w batman_xy_offset,d0-d1                  ; d0,d1 = batman X,Y
-L00005460           clr.l   L000062f4
+                    movem.w batman_xy_offset,d0-d1                  ; d0,d1 = batman X,Y
+                    clr.l   L000062f4                               ; falling speed/distance
+                    ; L00005464
 L00005464           move.w  batman_y_offset,target_window_y_offset  ; set batman Y as target for centre window
-L0000546a           lea.l   batman_sprite_falling(pc),a0            ; L00005454(pc),a0                        ; 3 sprite id array
-L0000546e           bsr.w   set_batman_sprites
-L00005472           move.l  #player_state_falling,gl_jsr_address    ; Set game_loop Self Modifying Code JSR 
-L00005478           move.w  #$ffff,L000062fa
-L0000547e           clr.w   L000062f8
+                    lea.l   batman_sprite_falling(pc),a0            ; L00005454(pc),a0                        ; 3 sprite id array
+                    bsr.w   set_batman_sprites
+                    move.l  #player_state_falling,gl_jsr_address    ; Set game_loop Self Modifying Code JSR 
+                    move.w  #$ffff,L000062fa                        ; -1
+                    clr.w   L000062f8                               ; 0
 
 
 
@@ -5537,12 +5564,12 @@ L000054a0           moveq   #$01,d7                 ; loop counter
 L000054a2           cmp.b   #$17,d2                 ; test wall tile
 L000054a6           bcs.b   L000054c8               ; is wall tile?
 
-L000054a8           move.b  $01(a0,d3.W),d2         ; check nnext map tile
+L000054a8           move.b  $01(a0,d3.w),d2         ; check nnext map tile
 L000054ac           cmp.b   #$17,d2                 ; test wall tile
 L000054b0           bcs.b   L000054c8               ; is wall tile
 
 L000054b2           add.w   MAPGR_BASE,d3           ; add map width (value = $00c0)
-L000054b8           move.b  $00(a0,d3.W),d2         ; get tile 1 line down in d2
+L000054b8           move.b  $00(a0,d3.w),d2         ; get tile 1 line down in d2
 L000054bc           dbf.w   d7,L000054a2
                     ; end of wall tile loop ttest
 
@@ -5551,7 +5578,7 @@ L000054c0           add.w   d0,d4                   ; add fall x speed to batman
 L000054c2           move.w  d4,batman_x_offset
 L000054c6           bra.b   L000054cc
 
-L000054c8           clr.w   L000062f4               ; fall distance?
+L000054c8           clr.w   L000062f4               ; fall speed/distance?
 
                     ; do fall/swing y-axis
 L000054cc           cmp.w   #$0010,d5
@@ -5578,13 +5605,13 @@ L000054f6           movem.w batman_xy_offset,d0-d1
 L000054fc           bra.w   player_state_falling                    ; L00005482           ; bra.b
 L000054fe           sub.b   #$79,d2
 L00005502           cmp.b   #$0d,d2
-L00005506           nop
+L00005506           nop                                         ; #$8000 = or.b d0,d0
 L00005508           move.w  sr,d6
 L0000550a           add.w   L000062f8,d5
 L0000550e           move.w  d5,L000062f8
 L00005512           cmp.w   #$0008,d5
 L00005516           bcs.b   L0000551e
-L00005518           move.w  #$4e71,L00005506
+L00005518           move.w  #$4e71,L00005506                    ; insert 'nop' above
 L0000551e           move.w  d6,sr
 L00005520           bcc.b   L000054e6
 L00005522           move.w  #$0028,target_window_y_offset       ; L000067c6
