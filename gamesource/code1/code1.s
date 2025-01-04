@@ -4489,13 +4489,13 @@ L00004c4c           dc.l    player_input_cmd_nop            ; 0     | 0     | 0 
 L00004c50           dc.l    player_input_cmd_right          ; 0     | 0     | 0     | 0     | 1     | - CMD01 - $00005246 - Batman Right
 L00004c54           dc.l    player_input_cmd_left           ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Left
 L00004c58           dc.l    player_input_cmd_nop            ; 0     | 0     | 0     | 1     | 1     | - CMD03 - $00005290 - NOP - (input left and right)
-L00004c5c           dc.l    input_down                      ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
+L00004c5c           dc.l    player_input_cmd_down           ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
 L00004c60           dc.l    player_input_cmd_down_right     ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Right
-L00004c64           dc.l    input_down_left                 ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Left
+L00004c64           dc.l    player_input_cmd_down_left      ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Left
 L00004c68           dc.l    player_input_cmd_nop            ; 0     | 0     | 1     | 1     | 1     | - CMD07 - $00005290 - NOP - (input down, left & right)
 L00004c6c           dc.l    player_input_cmd_up             ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
-L00004c70           dc.l    Player_input_cmd_up_right       ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
-L00004c74           dc.l    input_up_left                   ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Left
+L00004c70           dc.l    player_input_cmd_up_right       ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
+L00004c74           dc.l    player_input_cmd_up_left        ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Left
 L00004c78           dc.l    player_input_cmd_nop            ; 0     | 1     | 0     | 1     | 1     | - CMD11 - $00005290 - NOP - (input up, left & right)
 L00004c7c           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 0     | 0     | - CMD12 - $00005290 - NOP - (input up, & down)
 L00004c80           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 0     | 1     | - CMD13 - $00005290 - NOP - (input up, down & right)
@@ -4607,7 +4607,11 @@ L00004d66           move.l  #player_move_commands,gl_jsr_address        ; L00003
 L00004d6c           tst.w   grappling_hook_height                       ; L00006318
 L00004d70           beq.b   L00004d76
 L00004d72           bsr.w   L000051a8
-L00004d76           bsr.w   L00005430
+;L00004d76           bsr.w   L00005430 - added two lines below to replace this
+L00004d76
+L00005430a          lea.l   batman_sprite_anim_standing,a0
+L00005434a          bsr     set_batman_sprites
+
 L00004d7a           tst.b   PANEL_STATUS_1                              ; Panel - Status Byte 1 - $0007c874
 L00004d80           beq.b   exit_rts                                    ; L00004d36
 
@@ -5206,7 +5210,7 @@ player_input_cmd_down_right ; original address L00005240
                     ;
                     ; Code Checked 4/1/2025
                     ;
-Player_input_cmd_up_right   ; original address L00005244
+player_input_cmd_up_right   ; original address L00005244
 L00005244           bsr.b  input_up_common                          ; L00005208  ; jmp table CMD7
                     ; perform common move right processing
                     ; falls through to player_input_cmd_right below
@@ -5295,19 +5299,37 @@ player_input_cmd_nop    ; original address L00005290
 
 
 
-
-input_down_left
-L00005292           bsr.w   player_check_climb_down             ; L000051e2
+                    ; -------------------- player input command - down left --------------------
+                    ; Command to execute when joystick input is set to diagaonal 'down-left'
+                    ;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_down_left        ; original address L00005292
+                    bsr.w   player_check_climb_down                         ; L000051e2
                         ; if on a ladder then manipulates stack to return to caller
                         ; does not execute the following code. 
-L00005296           bra.w   player_input_cmd_left                          ; L0000592c 
+                    bra.w   player_input_cmd_left                           ; L0000592c 
 
 
 
-input_up_left
-L00005298           bsr.w   input_up_common                     ; L00005208  ; Jump Table CMD8
+                    ; -------------------- player input command - up left --------------------
+                    ; Command to execute when joystick input is set to diagaonal 'up-left'
+                    ;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_up_left       ; original address L00005298
+                    bsr.w   input_up_common                     ; L00005208  ; Jump Table CMD8
                     ; falls through to player_input_cmd_left below
-
 
 
 
@@ -5536,55 +5558,74 @@ L000053d4           rts
 
 
 
-input_fire_down
+input_fire_down     ; original address L000053d6
 L000053d6            add.w   #$0008,d1                              ; Jump Table CMD10
 L000053da            bsr.w   get_map_tile_at_display_offset_d0_d1   ; out: d2.b = tile value
 L000053de            movem.w batman_xy_offset,d0-d1
 L000053e4            cmp.b   #$17,d2
-L000053e8            bcs.b   input_down                             ; L000053f4
+L000053e8            bcs.b   player_input_cmd_down                  ; L000053f4
 L000053ea            move.w  #$8000,L00005506                       ; 'or.b d0,d0'
 L000053f0            bra.w   set_player_state_falling               ; L0000545a
 
 
 
-input_down
-L000053f4           bsr.w   player_check_climb_down                 ; L000051e2
+
+                    ; ------------------ player input command - down ---------------------
+                    ; Player input command called when joystick input 'down' is selected
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Check 4/1/2025
+                    ;
+player_input_cmd_down   ; original address L000053f4
+                    bsr.w   player_check_climb_down                 ; L000051e2
                         ; if on a ladder then manipulates stack to return to caller
                         ; does not execute the following code.
-L000053f8           lea.l   batman_sprite_anim_03,a0                ; L000063d6,a0
-L000053fc           bsr.b   set_batman_sprites
-L000053fe           move.l  #L00005406,gl_jsr_address               ; L00003c90 ; Set Self Modifying Code - game_loop JSR
-L00005404           rts
+                    lea.l   batman_sprite_anim_ducking,a0           ; L000063d6,a0
+                    bsr.b   set_batman_sprites
+                    move.l  #player_state_ducking,gl_jsr_address    ; L00003c90 ; Set Self Modifying Code - game_loop JSR
+                    rts
 
 
 
-                    ; address moved into self modified JSR
-                    ; by code line L000053fe
-L00005406           lea.l   batman_sprite_anim_04,a0                            ; L000063d9,a0
-L0000540a           bsr.b   set_batman_sprites
-L0000540c           btst.b  #PLAYER_INPUT_DOWN,player_input_command             ; L00006308
-L00005412           bne.b   L00005420
+                    ; ----------------------- player state - ducking --------------------
+                    ; The state entered into the game_loop when batman is ducking down.
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_ducking    ; original address L00005406
+                    lea.l   batman_sprite_anim_ducked,a0
+                    bsr.b   set_batman_sprites
+                    btst.b  #PLAYER_INPUT_DOWN,player_input_command ; L00006308
+                    bne.b   .check_firebutton
+
+.return_to_standing ; L00005414                   
+                    move.l  #set_player_state_standing,gl_jsr_address
+                    lea.l   batman_sprite_anim_ducking,a0    
+                    bra.b   set_batman_sprites
+                    ; uses 'rts' in set_batman_sprites to return
+
+.check_firebutton   ; L00005420 - ducking and firing doesn't do anything (same on original game)
+                    btst.b  #PLAYER_INPUT_FIRE,player_input_command
+                    bne.b   input_fire_down
+                    rts 
 
 
 
-                    ; address moved into self modified JSR
-                    ; by code line L000050a2
-L00005414           move.l  #set_default_gl_jsr,gl_jsr_address      ; L00003c90 ; Set game_loop JSR self modified code
-L0000541a           lea.l   batman_sprite_anim_03,a0                ; L000063d6,a0
-L0000541e           bra.b   set_batman_sprites
-L00005420           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
-L00005426           bne.b   input_fire_down                         ; L000053d6
-L00005428           rts 
+                    ; --------------- set player status - standing ---------------
+                    ; Called when leaving the 'ducked' state. Returns batman to
+                    ; a standing sprite and standard input checing.
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+set_player_state_standing   ; original address L0000542a
+                    move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+                    lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
+                    bra.w   set_batman_sprites
+                    ; use 'rts' in set_batman_sprites to return
 
-
-
-                    ; code inserted into game_loop JSR self modified code
-                    ; by line L00005414
-                    ; reset self modified code JSR to default routine.
-set_default_gl_jsr
-L0000542a           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005430           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
-L00005434           bra.w   set_batman_sprites
 
 
                     ; ----------------- set batman sprites --------------------
@@ -7502,10 +7543,12 @@ batman_sprite_anim_02                                       ; sprite ids - origi
 batman_sprite_anim_standing                                 ; sprite ids - original address L000063d3
                     dc.b $01,$02,$07                        ; 01, 03, 10
 
-batman_sprite_anim_03                                       ; sprite ids - original address L000063d6
+batman_sprite_anim_03  
+batman_sprite_anim_ducking                                     ; sprite ids - original address L000063d6
                     dc.b $19,$01,$E6                        ; 25, 26, 00
 
-batman_sprite_anim_04                                       ; sprite ids - original address L000063d9
+batman_sprite_anim_04
+batman_sprite_anim_ducked                                   ; sprite ids - original address L000063d9
                     dc.b $1E,$01,$E1                        ; 30, 31, 00
 
 batman_sprite_anim_0a                                       ; sprite ids - original address L000063DC
