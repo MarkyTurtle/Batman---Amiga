@@ -4501,10 +4501,10 @@ L00004c7c           dc.l    player_input_cmd_nop            ; 0     | 1     | 1 
 L00004c80           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 0     | 1     | - CMD13 - $00005290 - NOP - (input up, down & right)
 L00004c84           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 1     | 0     | - CMD14 - $00005290 - NOP - (input up, down & left)
 L00004c88           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 1     | 1     | - CMD15 - $00005290 - NOP - (input up, down, left & right)
-L00004c8c           dc.l    input_fire                      ; 1     | 0     | 0     | 0     | 0     | - CMD16 - $00004fe0 - Fire
-L00004c90           dc.l    input_fire                      ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Right
-L00004c94           dc.l    input_fire                      ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Left
-L00004c98           dc.l    input_fire                      ; 1     | 0     | 0     | 1     | 1     | - CMD19 - $00004fe0 - Fire + Left + Right
+L00004c8c           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 0     | 0     | - CMD16 - $00004fe0 - Fire
+L00004c90           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Right
+L00004c94           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Left
+L00004c98           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 1     | 1     | - CMD19 - $00004fe0 - Fire + Left + Right
 L00004c9c           dc.l    input_fire_down                 ; 1     | 0     | 1     | 0     | 0     | - CMD20 - $000053d6 - Fire + Down
 L00004ca0           dc.l    input_fire_down                 ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Right
 L00004ca4           dc.l    input_fire_down                 ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Left
@@ -4563,7 +4563,7 @@ L00004d0a                           beq.b   L00004d1c
 L00004d0c                               cmp.l   d2,d3
 L00004d0e                               beq.b   L00004d1c
 
-L00004d10                                   lea.l   batman_sprite_fall_Landing,a0                ; L00005457,a0
+L00004d10                                   lea.l   batman_sprite_anim_fall_landing,a0                ; L00005457,a0
 L00004d14                                   bsr.w   set_batman_sprites
 L00004d18                                   move.l  #L00004d56,d3                           ; Address
 
@@ -4585,11 +4585,11 @@ exit_rts
 L00004d36           rts 
 
 
-L00004d38           move.w  L000062f2,d2
+L00004d38           move.w  state_parameter,d2              ; L000062f2,d2
 L00004d3c           add.w   d6,d2
 L00004d3e           add.w   d6,d2
 L00004d40           add.w   d6,d2
-L00004d42           move.w  d2,L000062f2
+L00004d42           move.w  d2,state_parameter              ; L000062f2
 L00004d46           rts 
 
 
@@ -4771,7 +4771,7 @@ L00004e7a            subq.w  #$01,d5
 L00004e7c            bhi.b   L00004ea6
 L00004e7e            clr.w   (a0)
 L00004e80            move.l  #L00005058,gl_jsr_address              ; L00003c90 ; Self modified code JSR game_loop
-L00004e86            move.w  #$0005,L000062f2
+L00004e86            move.w  #$0005,state_parameter                 ; L000062f2
 L00004e8c            move.l  #L00006426,batman_sprite_anim_ptr      ; modified to long pointer L00006326
 L00004e92            move.w  d1,d2
 L00004e94            add.w   scroll_window_y_coord,d2               ; L000067be,d2
@@ -4890,52 +4890,108 @@ L00004fdc           bra.w   L00005464
 
 
 
-                    ; -------- input fire - Jump Table CMD9 ---------
-input_fire                                                  ; original address L00004fe0
-L00004fe0           move.l  #batman_sprite_anim_08,batman_sprite_anim_ptr ;  #$6419,L00006326            
-L00004fe8           move.l  #L00004ff6,gl_jsr_address       ; Set game_loop Self Modified Code JSR 
-L00004fee           moveq   #SFX_BATARANG,d0
-L00004ff0           jsr     AUDIO_PLAYER_INIT_SFX
-
-L00004ff6           movea.l batman_sprite_anim_ptr,a0       ; modified to long pointer - L00006326,a0
-L00004ffa           bsr.w   set_batman_sprites
-L00004ffe           move.l  a0,batman_sprite_anim_ptr        ; modified to long pointer - L00006326
-L00005002           tst.b   (a0)
-L00005004           bne.b   L00005034
-L00005006           move.w  #$0008,L000062f2
-L0000500c           move.l  #L00005036,gl_jsr_address   ; Set game_loop Self Modified Code JSR
-L00005012           bsr.w   get_empty_projectile            ; out: a0 = emptyprojectile entry (or end of list) - L0000463e
-L00005016           sub.w   #$0007,d0
-L0000501a           move.w  batman_sprite1_id,d2
-L0000501e           spl.b   d2
-L00005020           ext.w   d2
-L00005022           bpl.b   L00005028
-L00005024           add.w   #$000e,d0
-L00005028           addq.w  #$03,d2
-L0000502a           move.w  d2,(a0)+
-L0000502c           sub.w   #$0010,d1
-L00005030           movem.w d0-d1,(a0)
-L00005034           rts  
+                    ; --------------- player input command - fire ------------------
+                    ; Called when the fire button is pressed on the joystick.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_fire   ; original address L00004fe0
+                    move.l  #batman_sprite_anim_firing,batman_sprite_anim_ptr           
+                    move.l  #player_state_firing,gl_jsr_address 
+                    moveq   #SFX_BATARANG,d0
+                    jsr     AUDIO_PLAYER_INIT_SFX
+                    ; fall through to player_state_firing below...
 
 
-L00005036           move.b  player_input_command,d4                 ; L00006308,d4
-L0000503c           bne.w   L0000504e
-L00005040           subq.w  #$01,L000062f2
-L00005044           bne.b   L00005034
-L00005046           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
-L0000504a           bra.w   set_batman_sprites                      ; L00004538
 
-L0000504e           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
-L00005054           bra.w   player_move_commands                ; L00004c3e
+                    ; ------------------- player state - firing ---------------------
+                    ; batman state used to handle firing of 'bat-a-rang' projectile
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;                    ; 
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_firing ; original address L00004ff6
+                    movea.l batman_sprite_anim_ptr,a0   ; set sprite anim
+                    bsr.w   set_batman_sprites
+                    move.l  a0,batman_sprite_anim_ptr   ; update anim ptr (next frame)
+                    tst.b   (a0)                        ; test end of anim
+                    bne.b   .exit                       ; if not anim end, then exit
+.set_state          ; L00005006
+                    move.w  #$0008,state_parameter      ; count for animation (next state) - L000062f2
+                    move.l  #player_state_fired,gl_jsr_address  ; set 'fired' state
+.set_projectile     ; L00005012
+                    bsr.w   get_empty_projectile                ; out: a0 = emptyprojectile entry (or end of list) - L0000463e
+                    sub.w   #$0007,d0                   ; adjust x co-ord (assume left facing)
+.check_direction    ; 0000501a
+                    move.w  batman_sprite1_id,d2        ; get 'arms' sprite id
+                    spl.b   d2                          ; d2 = -1 if right facing?
+                    ext.w   d2                          ; extend to 16 bits
+                    bpl.b   .set_handler_id
+.is_right_facing    ; L00005024
+                    add.w   #$000e,d0                   ; if right facing, adjust x co-ord            
+.set_handler_id     ; L00005028 - set handler based on facing direction
+                    addq.w  #$03,d2                     ; d2, either 02 or 03 (depending on left/right facing)                
+                    move.w  d2,(a0)+                    ; set projectile handler Id (left or right)
+.set_coords         ; L0000502c - set start x,y
+                    sub.w   #$0010,d1                   ; adjust y co-ord
+                    movem.w d0-d1,(a0)                  ; set starting projectile x,y
+.exit               ; L00005034
+                    rts  
+
+
+; shared rts
+L00005034           rts
+
+
+
+                    ; -------------------- player state - fired -------------------
+                    ; batman state entered after 'firing' state has completed.
+                    ; this state displayed the throw animation for 8 frames
+                    ; i.e. the value set in 'state_parameter' by thhe previous state
+                    ; if player input is received then it short-cuts the anim
+                    ; and returns to normal input processing.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;                    ; 
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_fired  ; original address L00005036
+                    move.b  player_input_command,d4                 ; get player input value
+                    bne.w   .set_player_move_commands_state         ; if input the short-cut state and return to normal state processing
+ 
+.test_state_counter ; L00005040
+                    subq.w  #$01,state_parameter                    ; decrement state counter
+                    beq.b   .set_batman_sprites                     ; if 0 then set complete animation, modified to aid readability - original 'bne.b   L00005034 (exit)'
+                    rts                                             ; modified to aid readability - additional code
+
+.set_batman_sprites ; L00005046
+                    lea.l   batman_sprite_anim_standing,a0          ; L000063d3,a0
+                    bra.w   set_batman_sprites                      ; L00004538
+                    ; use 'rts' in set_batman_sprites to return
+
+.set_player_move_commands_state  ; L0000504e
+                    move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
+                    bra.w   player_move_commands                    ; L00004c3e
+                    ; use 'rts' in player_move_commands to return
+
 
 
 
                     ; routine inserted into self modified JSR
                     ; in game_loop by code line L00004e80
                     ;
-L00005058           subq.w  #$01,L000062f2
+L00005058           subq.w  #$01,state_parameter            ; L000062f2
 L0000505c           bne.b   L00005034
-L0000505e           move.w  #$0006,L000062f2
+L0000505e           move.w  #$0006,state_parameter          ; L000062f2
 L00005064           subq.w  #$05,batman_y_offset
 L00005068           subq.w  #$04,d1
 L0000506a           move.w  batman_sprite1_id,d2                     ; L000062ee,d2
@@ -5655,12 +5711,11 @@ set_batman_sprites                                                  ; original a
                     rts 
 
 
-batman_sprite_anim_06
-batman_sprite_falling                                       ; original address L00005454
-L00005454           dc.b    $0d,$01,$01                     ; 13, 14, 15
-batman_sprite_anim_05
-batman_sprite_fall_Landing
-L00005457           dc.b    $11,$ff,$02                     ; 11, 10, 12
+batman_sprite_anim_falling       ; original address L00005454
+                    dc.b    $0d,$01,$01                     ; 13, 14, 15
+
+batman_sprite_anim_fall_landing  ; original address L00005457
+                    dc.b    $11,$ff,$02                     ; 11, 10, 12
 
 
 
@@ -5681,7 +5736,7 @@ set_player_state_falling    ; original address L0000545a
                     clr.l   batman_swing_fall_speed                      ; L000062f4                               ; falling speed/distance
                     ; L00005464
 L00005464           move.w  batman_y_offset,target_window_y_offset  ; set batman Y as target for centre window
-                    lea.l   batman_sprite_falling(pc),a0            ; L00005454(pc),a0                        ; 3 sprite id array
+                    lea.l   batman_sprite_anim_falling(pc),a0            ; L00005454(pc),a0                        ; 3 sprite id array
                     bsr.w   set_batman_sprites
                     move.l  #player_state_falling,gl_jsr_address    ; Set game_loop Self Modifying Code JSR 
                     move.w  #$ffff,L000062fa                        ; -1
@@ -5789,14 +5844,14 @@ L00005506           nop                                             ; #$8000 = o
                     ; landing on platform/floor
                     ; L00005522
                     move.w  #$0028,target_window_y_offset       ; scroll window to show level below
-                    lea.l   batman_sprite_fall_Landing,a0            ; L00005457,a0
+                    lea.l   batman_sprite_anim_fall_landing,a0            ; L00005457,a0
                     bsr.w   set_batman_sprites      
 
                     ; L00005530 - batman landing (end falling?)
                     move.l  #player_state_fall_landing,gl_jsr_address           ; Set game_loop Self Modified Command JSR
                     clr.w   batman_fall_speed                   ; L000062f6
                     move.w  #$0001,L000062fa
-                    move.w  #$0002,L000062f2
+                    move.w  #$0002,state_parameter              ; L000062f2
                     move.w  scroll_window_y_coord,d0 
                     add.w   d1,d0                       ; window y + batman y offset
                     and.w   #$0007,d0                   ; d0 = window soft scroll
@@ -5818,7 +5873,7 @@ L00005506           nop                                             ; #$8000 = o
                     ; Code Checked 3/1/2025
                     ;
 player_state_fall_landing   ; original address L0000555a
-                    subq.w  #$01,L000062f2
+                    subq.w  #$01,state_parameter            ; L000062f2
                     bne.b   .exit_routine
  
                     ; L00005560 - test timer, life lost, no energy
@@ -7423,7 +7478,9 @@ batman_y_bottom                                         ; original address L0000
 L000062f0           dc.w $0000                          ; batman y bottom co-ord, used for bullet collision (set in draw_batman_and_rope routine)
                     
 
-L000062f2           dc.w $0000
+state_parameter     ; original address L000062f2
+L000062f2           dc.w $0000                          ; parameter that can be used by the current batman state
+                                                        ; for its own use.
 
 
 batman_swing_fall_speed     ; original address L000062f4 - used when accessing both
@@ -7577,9 +7634,8 @@ batman_sprite_anim_life_lost
 batman_sprite_anim_07                                       ; sprite ids - original address L00006416
                     dc.b $24,$01,$01                        ; 36, 37, 38
 
-                    ; ------ something to do with 'fire' button ------
-                    ; ------ not sure that this is a sprite animation ------
-batman_sprite_anim_08                                       ; sprite ids - original address L00006419
+
+batman_sprite_anim_firing   ; original address L00006419    ; sprite ids
                     dc.b $27,$01,$01                        ; 39, 40, 41
                     dc.b $2A,$01,$FE                        ; 42, 43, 41
                     dc.b $2C,$FD,$D7                        ; 44, 41, 00
