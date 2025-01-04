@@ -4493,8 +4493,8 @@ L00004c5c           dc.l    input_down                      ; 0     | 0     | 1 
 L00004c60           dc.l    player_input_cmd_down_right     ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Right
 L00004c64           dc.l    input_down_left                 ; 0     | 0     | 1     | 1     | 0     | - CMD06 - $00005292 - Batman Down + Left
 L00004c68           dc.l    player_input_cmd_nop            ; 0     | 0     | 1     | 1     | 1     | - CMD07 - $00005290 - NOP - (input down, left & right)
-L00004c6c           dc.l    input_up                        ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
-L00004c70           dc.l    input_up_right                  ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
+L00004c6c           dc.l    player_input_cmd_up             ; 0     | 1     | 0     | 0     | 0     | - CMD08 - $00005202 - Batman Up 
+L00004c70           dc.l    Player_input_cmd_up_right       ; 0     | 1     | 0     | 0     | 1     | - CMD09 - $00005244 - Batman Up + Right
 L00004c74           dc.l    input_up_left                   ; 0     | 1     | 0     | 1     | 0     | - CMD10 - $00005298 - Batman Up + Left
 L00004c78           dc.l    player_input_cmd_nop            ; 0     | 1     | 0     | 1     | 1     | - CMD11 - $00005290 - NOP - (input up, left & right)
 L00004c7c           dc.l    player_input_cmd_nop            ; 0     | 1     | 1     | 0     | 0     | - CMD12 - $00005290 - NOP - (input up, & down)
@@ -4715,7 +4715,7 @@ text_time_up        ; TIME UP - original address L00004e1c
 
                     even
                     
-                    
+
 clear_backbuffer_playfield                              ; original address $00004e28
 L00004e28           movea.l playfield_buffer_2,a0      ; 
                     move.w  #$1c8b,d7                  ; loop 7308 times / 42 = 174 rasters
@@ -5100,30 +5100,57 @@ player_check_climb_down ; original address L000051e2
 
 
 
+                    ; --------------------- player inpout command - up ----------------
+                    ; Player input command, called from player move state when
+                    ; joystick 'up' is selected
+                    ;   
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-input_up
-L00005202           bsr.b   L00005208                               ; Jmp Table CMD6
-L00005204           bra.w   L00005430
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_up ; original address L00005202
+                    bsr.b   input_up_common
+                    ;bra.w   L00005430                      ; replaced code to aid readability
+                    lea.l   batman_sprite_anim_standing,a0  ; modified code to aid readability
+                    bra.w   set_batman_sprites              ; modified code to aid readability
+                    ; use rts from set_batman_sprites to return
 
 
+
+                    ; ------------------- input up common -----------------
+                    ; Player input up common processing logic.
+                    ;
+                    ; Called from:
+                    ;   player_input_cmd_up_left
+                    ;   player_input_cmd_up_right
+                    ;   player_input_cmd_up
+                    ;
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-L00005208           move.w  #$0048,target_window_y_offset           ; L000067c6
-L0000520e           move.w  scroll_window_x_coord,d2                ; L000067bc,d2                            ; updated_batman_distance_walked
-L00005212           add.w   d0,d2
-L00005214           and.w   #$0007,d2
-L00005218           subq.w  #$04,d2
-L0000521a           bne.b   L000051e0
-L0000521c           sub.w   #$000c,d1
-L00005220           bsr.w   get_map_tile_at_display_offset_d0_d1    ; d2.b = tile value
-L00005224           add.w   #$000c,d1
-L00005228           cmp.b   #$85,d2
-L0000522c           bcs.b   L000051e0
-                    ; fall through to change player state below
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+input_up_common     ; original address L00005208
+                    move.w  #$0048,target_window_y_offset           ; window, show more level above batman
+                    move.w  scroll_window_x_coord,d2           
+                    add.w   d0,d2                                   ; d2 = window Y + batman Y
+                    and.w   #$0007,d2                               ; d2 = soft scroll value (0-7)
+                    subq.w  #$04,d2
+                    bne.b   .exit                                   ; if not 8 pixel boundary, exit
 
+                    ; every 8 pixel boundary
+                    ; check tile above batman
+                    sub.w   #$000c,d1                               ; batman Y - 12 (24 pixels)
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; d2.b = tile value
+                    add.w   #$000c,d1
+                    cmp.b   #$85,d2                             ; if tile >= 133, thhen climbing
+                    bcc.b   set_player_state_climbing           ; inverted logic (aid readability)
+;L0000522c           bcs.b   L000051e0
+.exit               ; new code (aid read ability)
+                    rts
 
 
 
@@ -5170,11 +5197,17 @@ player_input_cmd_down_right ; original address L00005240
 
 
 
+                    ; ------------------- player input command - up right ------------------
+                    ; Command executed when joystick input is set to diagonal 'up-right'
+                    ;;
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-input_up_right
-L00005244           bsr.b   L00005208               ; jmp table CMD7
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+Player_input_cmd_up_right   ; original address L00005244
+L00005244           bsr.b  input_up_common                          ; L00005208  ; jmp table CMD7
                     ; perform common move right processing
                     ; falls through to player_input_cmd_right below
 
@@ -5272,7 +5305,7 @@ L00005296           bra.w   input_left                          ; L0000592c
 
 
 input_up_left
-L00005298           bsr.w   L00005208               ; Jump Table CMD8
+L00005298           bsr.w   input_up_common                     ; L00005208  ; Jump Table CMD8
 
 
 
