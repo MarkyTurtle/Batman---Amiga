@@ -4509,9 +4509,9 @@ L00004c9c           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1 
 L00004ca0           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Right
 L00004ca4           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Left
 L00004ca8           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 1     | 1     | - CMD23 - $000053d6 - Fire + Down + Left + Right
-L00004cac           dc.l    input_fire_up                   ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
-L00004cb0           dc.l    input_fire_up_right             ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Right
-L00004cb4           dc.l    input_fire_up_left              ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Left
+L00004cac           dc.l    player_input_cmd_fire_up        ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
+L00004cb0           dc.l    player_input_cmd_fire_up_right  ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Right
+L00004cb4           dc.l    player_input_cmd_fire_up_left   ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Left
 L00004cb8           dc.l    player_input_cmd_nop            ; 1     | 1     | 0     | 1     | 1     | - CMD27 - $00005290 - NOP - (input fire, up, left & right)
 L00004cbc           dc.l    player_input_cmd_nop            ; 1     | 1     | 1     | 0     | 0     | - CMD28 - $00005290 - NOP - (input fire, up & down)
 L00004cc0           dc.l    player_input_cmd_nop            ; 1     | 1     | 1     | 0     | 1     | - CMD29 - $00005290 - NOP - (input fire, up, down & right)
@@ -5012,7 +5012,7 @@ L00005096           bsr.w   set_batman_sprites
 L0000509a           move.l  a0,batman_sprite_anim_ptr                ; modified to long pointer - L00006326
 L0000509e           move.b  (a0),d7
 L000050a0           bne.b   L000050a8
-L000050a2           move.l  #$00005414,gl_jsr_address   ; L00003c90  ; update self modified code JSR game_loop
+L000050a2           move.l  #L00005414,gl_jsr_address   ; L00003c90  ; update self modified code JSR game_loop
 L000050a8           rts 
 
 
@@ -5043,24 +5043,44 @@ L000050e4           rts
 
 
                     ; ------- batrope up-right - Jump Table CMD12 --------
-input_fire_up_right                                                 ; original address L000050e6
+player_input_cmd_fire_up_right                                                 ; original address L000050e6
 L000050e6           clr.w   batman_sprite1_id                       ; set right facing sprite
 L000050ea           moveq   #$7f,d0                                 ; d0 = +127
-L000050ec           bra.b   L000050fa
+L000050ec           bra.b   player_input_fire_up_common             ; L000050fa
 
 
                     ; -------- batrope up-left - Jump Table CMD13 --------
-input_fire_up_left                                                  ; original address L000050ee
+player_input_cmd_fire_up_left                                                  ; original address L000050ee
 L000050ee           move.w  #$e000,batman_sprite1_id                ; set left facing sprite
 L000050f4           MOVE.L  #$ffffff81,D0                           ; d0 = -127
-L000050f6           bra.b   L000050fa
+L000050f6           bra.b   player_input_fire_up_common             ; L000050fa
 
 
-                    ; ---------- batrope up - Jump Table CMD11 -----------
-input_fire_up                                                       ; original address L000050f8
+
+                    ; ------------- player input command - fire + up ---------------
+                    ; player input command executed when the joystick 'fire + up'
+                    ; is selected.
+                    ;
+                    ;
+                    ;
+player_input_cmd_fire_up    ; original address L000050f8
 L000050f8           clr.w   d0                                      ; d0 = 0
+                    ; fall through to 'player_input_fire_up_common' below...
+
+
+                    ; --------------- player input fire up common -----------------
+                    ; Common code called by the routines:-
+                    ;   player_input_cmd_fire_up_right
+                    ;   player_input_cmd_fire_up_left
+                    ;   player_input_cmd_fire_up
+                    ;
+                    ; IN:-
+                    ;   d0.w - 0 = up, -127 = up + left, +127 = up + right
+                    ;   d1.w = batman y offset
+                    ;
+player_input_fire_up_common ; original address L000050fa
 L000050fa           move.w  #$0048,target_window_y_offset           ; L000067c6
-L00005100           lea.l   $6314,a0
+L00005100           lea.l   L00006314,a0
 L00005104           move.w  d0,(a0)+
 L00005106           clr.l   (a0)+
 L00005108           bsr.w   get_empty_projectile                    ; a0 = address of empty projectile or the end of the list - L0000463e
@@ -5667,15 +5687,15 @@ player_state_ducking    ; original address L00005406
                     lea.l   batman_sprite_anim_ducked,a0
                     bsr.b   set_batman_sprites
                     btst.b  #PLAYER_INPUT_DOWN,player_input_command ; L00006308
-                    bne.b   .check_firebutton
-
+                    bne.b   ps_ducking_check_firebutton
+L00005414
 .return_to_standing ; L00005414                   
                     move.l  #set_player_state_standing,gl_jsr_address
                     lea.l   batman_sprite_anim_ducking,a0    
                     bra.b   set_batman_sprites
                     ; uses 'rts' in set_batman_sprites to return
 
-.check_firebutton   ; L00005420 - ducking and firing doesn't do anything (same on original game)
+ps_ducking_check_firebutton   ; L00005420 - ducking and firing doesn't do anything (same on original game)
                     btst.b  #PLAYER_INPUT_FIRE,player_input_command
                     bne.b   player_input_cmd_fire_down
                     rts 
