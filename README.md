@@ -66,6 +66,9 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 ## Progress to Date
 
+2025-01-04 - Have now debugged the scrolling, projectiles and player movement routines. The bad guy enemy routines are still buggy and causing some corruption. I've uploaded the latest video on Youtube at the following link.
+ - [Test Build 04 - 04/01/2025](https://youtu.be/PPE2NbVPY78)
+
 2024-12-31 - The latest video of the Level 1 build and the Batman character being controlled, walking around the level.  Next job is to debug all of the player controls.
 
  - [YouTube Video](https://youtu.be/vJdWEZv0IVE)
