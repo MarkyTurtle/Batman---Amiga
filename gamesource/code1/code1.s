@@ -4505,10 +4505,10 @@ L00004c8c           dc.l    player_input_cmd_fire           ; 1     | 0     | 0 
 L00004c90           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 0     | 1     | - CMD17 - $00004fe0 - Fire + Right
 L00004c94           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 1     | 0     | - CMD18 - $00004fe0 - Fire + Left
 L00004c98           dc.l    player_input_cmd_fire           ; 1     | 0     | 0     | 1     | 1     | - CMD19 - $00004fe0 - Fire + Left + Right
-L00004c9c           dc.l    input_fire_down                 ; 1     | 0     | 1     | 0     | 0     | - CMD20 - $000053d6 - Fire + Down
-L00004ca0           dc.l    input_fire_down                 ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Right
-L00004ca4           dc.l    input_fire_down                 ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Left
-L00004ca8           dc.l    input_fire_down                 ; 1     | 0     | 1     | 1     | 1     | - CMD23 - $000053d6 - Fire + Down + Left + Right
+L00004c9c           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 0     | 0     | - CMD20 - $000053d6 - Fire + Down
+L00004ca0           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 0     | 1     | - CMD21 - $000053d6 - Fire + Down + Right
+L00004ca4           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 1     | 0     | - CMD22 - $000053d6 - fire + Down + Left
+L00004ca8           dc.l    player_input_cmd_fire_down      ; 1     | 0     | 1     | 1     | 1     | - CMD23 - $000053d6 - Fire + Down + Left + Right
 L00004cac           dc.l    input_fire_up                   ; 1     | 1     | 0     | 0     | 0     | - CMD24 - $000050f8 - Fire + Up
 L00004cb0           dc.l    input_fire_up_right             ; 1     | 1     | 0     | 0     | 1     | - CMD25 - $000050e6 - Fire + Up + Right
 L00004cb4           dc.l    input_fire_up_left              ; 1     | 1     | 0     | 1     | 0     | - CMD26 - $000050ee - Fire + Up + Left
@@ -5614,15 +5614,27 @@ L000053d4           rts
 
 
 
-input_fire_down     ; original address L000053d6
-L000053d6            add.w   #$0008,d1                              ; Jump Table CMD10
-L000053da            bsr.w   get_map_tile_at_display_offset_d0_d1   ; out: d2.b = tile value
-L000053de            movem.w batman_xy_offset,d0-d1
-L000053e4            cmp.b   #$17,d2
-L000053e8            bcs.b   player_input_cmd_down                  ; L000053f4
-L000053ea            move.w  #$8000,L00005506                       ; 'or.b d0,d0'
-L000053f0            bra.w   set_player_state_falling               ; L0000545a
+                    ; ------------------ player input command - fire + down ---------------------
+                    ; Player input command called when joystick input 'fire and down' is selected
+                    ; Also, used as game_loop state update routine $00005f38
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Check 4/1/2025
+                    ;
+player_input_cmd_fire_down     ; original address L000053d6
+                    add.w   #$0008,d1                              ; update y co-ord
+                    bsr.w   get_map_tile_at_display_offset_d0_d1   ; out: d2.b = tile value
+                    movem.w batman_xy_offset,d0-d1                 ; d0,d1 = x,y co-ords
+                    cmp.b   #$17,d2
+                    bcs.b   player_input_cmd_down                  ; if tile < 17, then do notmal down processing
 
+.fall_through_platform ; L000053ea - fall through platform
+                    move.w  #$8000,L00005506                       ; temporarily disable platform collision by overwritting 'nop' with self modifying code - 'or.b d0,d0'
+                    bra.w   set_player_state_falling               ; L0000545a
+                    ; use 'rts' in set_player_falling_state to return
 
 
 
@@ -5665,7 +5677,7 @@ player_state_ducking    ; original address L00005406
 
 .check_firebutton   ; L00005420 - ducking and firing doesn't do anything (same on original game)
                     btst.b  #PLAYER_INPUT_FIRE,player_input_command
-                    bne.b   input_fire_down
+                    bne.b   player_input_cmd_fire_down
                     rts 
 
 
@@ -7284,7 +7296,7 @@ L00005f26           move.b  #$4f,$02(a0,d3.W)
 L00005f2c           move.b  #$4f,$03(a0,d3.W)
 L00005f32           bsr.w   L00005e98
 L00005f36           bcc.b   actor_cmd_28                ; L00005f42
-L00005f38           move.l  #L000053d6,gl_jsr_address           ; L00003c90 ; Set Self Modifying Code JSR in game_loop
+L00005f38           move.l  #player_input_cmd_fire_down,gl_jsr_address           ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005f3e           clr.w   grappling_hook_height       ; L00006318
 
 
