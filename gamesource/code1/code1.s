@@ -4487,7 +4487,7 @@ player_input_cmd_table
                     ; original address $00004c4c            ; Fire  | Up    | Down  | Left  | Right |
 L00004c4c           dc.l    player_input_cmd_nop            ; 0     | 0     | 0     | 0     | 0     | - CMD00 - $00005290 - NOP - (no input)
 L00004c50           dc.l    player_input_cmd_right          ; 0     | 0     | 0     | 0     | 1     | - CMD01 - $00005246 - Batman Right
-L00004c54           dc.l    input_left                      ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Left
+L00004c54           dc.l    player_input_cmd_left           ; 0     | 0     | 0     | 1     | 0     | - CMD02 - $0000529c - Batman Left
 L00004c58           dc.l    player_input_cmd_nop            ; 0     | 0     | 0     | 1     | 1     | - CMD03 - $00005290 - NOP - (input left and right)
 L00004c5c           dc.l    input_down                      ; 0     | 0     | 1     | 0     | 0     | - CMD04 - $000053f4 - Batman Down
 L00004c60           dc.l    player_input_cmd_down_right     ; 0     | 0     | 1     | 0     | 1     | - CMD05 - $00005240 - Batman Down + Right
@@ -5248,7 +5248,7 @@ player_input_cmd_right      ; original address L00005246
                     bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value (tile by feet?)
                     sub.b   #$79,d2                                 ; #$79 (121)
                     cmp.b   #$0d,d2                                 ; check tile is >= 134
-                    bcc.w   set_player_state_falling                ; if in range then (maybe falling?)
+                    bcc.w   set_player_state_falling                ; if tile >= 134 then set falling
 
                     ; L0000526c - tile 121-133
                     ; update batman walk sprite animation
@@ -5300,44 +5300,86 @@ input_down_left
 L00005292           bsr.w   player_check_climb_down             ; L000051e2
                         ; if on a ladder then manipulates stack to return to caller
                         ; does not execute the following code. 
-L00005296           bra.w   input_left                          ; L0000592c 
+L00005296           bra.w   player_input_cmd_left                          ; L0000592c 
 
 
 
 input_up_left
 L00005298           bsr.w   input_up_common                     ; L00005208  ; Jump Table CMD8
+                    ; falls through to player_input_cmd_left below
 
 
 
 
-input_left
-L0000529c           subq.w  #$05,d0                 ; Jump Table CMD2
-L0000529e           subq.w  #$02,d1
-L000052a0           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L000052a4           cmp.b   #$17,d2
-L000052a8           bcs.b   player_input_cmd_nop                        ; L00005290
-L000052aa           subq.w  #$01,batman_x_offset
-L000052ae           addq.w  #$07,d1
-L000052b0           addq.w  #$05,d0
-L000052b2           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
-L000052b6           sub.b   #$79,d2
-L000052ba           cmp.b   #$0d,d2
-L000052be           bcc.w   set_player_state_falling    ; L0000545a
-L000052c2           lea.l   batman_sprite3_id,a0        ; L000062ea,a0
-L000052c6           add.w   scroll_window_x_coord,d0    ; L000067bc,d0                ; updated_batman_distance_walked
-L000052ca           not.w   d0
-L000052cc           lsr.w   #$01,d0
-L000052ce           and.w   #$0007,d0
-L000052d2           add.w   #$e005,d0
-L000052d6           move.w  d0,(a0)+
-L000052d8           and.w   #$e006,d0
-L000052dc           lsr.b   #$01,d0
-L000052de           bne.b   L000052e4
-L000052e0           move.w  #$e002,d0
-L000052e4           addq.w  #$01,d0
-L000052e6           move.w  d0,(a0)+ 
-L000052e8           move.w  #$e001,(a0)
-L000052ec           rts 
+                    ; ------------------- player input command left ------------------------
+                    ; Command to walk batman to the left, when joystick left is selected.
+                    ;
+                    ; Checks tile to batman's left, if wall (tile > 23) then exit.
+                    ; otherwise move 1 unit to left (2 pixels) and check if now falling.
+                    ; if not falling the set sprite walk left animation.
+                    ;   - animation is selected from batman's x co-ordinate to choose
+                    ;     animation frames for legs (sprite 3) and body (sprite 2)
+                    ;     the head sprite is always set to id = 1 (sprite 1)
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_left   ; original address L0000529c
+
+.wall_collider      ; L0000529c - test wall collision
+                    subq.w  #$05,d0                                 ; sub 5 from batman x
+                    subq.w  #$02,d1                                 ; sub 2 from batman y
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
+                    cmp.b   #$17,d2
+                    bcs.b   player_input_cmd_nop                    ; if tile > 23 then exit
+
+.update_x_pos       ; L000052aa - move batman left (2 pixels)
+                    subq.w  #$01,batman_x_offset                    ; decrement batman x
+
+.platform_collider  ; L000052ae - test platform collision (10 pixels below)
+                    addq.w  #$07,d1                                 ; d1 (y offset), already decremented by 2, increment by further 7 (+5)
+                    addq.w  #$05,d0                                 ; d0 (x offset), already decremented by 5, increment by further 5 (0)
+                    bsr.w   get_map_tile_at_display_offset_d0_d1    ; out: d2.b = tile value
+                    sub.b   #$79,d2                                 ; #$79 (121)
+                    cmp.b   #$0d,d2                                 ; check tile is >= 134
+                    bcc.w   set_player_state_falling                ; if tile >= 134 then set falling
+
+                    ; L000052c2 - tile 121 - 133?
+                    ; update batman walk sprite animation
+                    ; uses scroll position to choose animation
+.set_animation      ; frame - L000052c2                  
+                    lea.l   batman_sprite3_id,a0        ; L000062ea,a0
+                    add.w   scroll_window_x_coord,d0    ; L000067bc,d0                ; updated_batman_distance_walked
+                    not.w   d0
+                    lsr.w   #$01,d0
+                    and.w   #$0007,d0
+                    add.w   #$e005,d0                   ; set left facing ($e000) and base value 5 for leg animation frame
+.set_sprite3        move.w  d0,(a0)+                    ; set sprite id value (range 5 - 13 decimal)
+
+                    ; L000052d8 - sprite 2 - batman arms
+                    and.w   #$e006,d0
+                    lsr.b   #$01,d0
+                    bne.b   .inc_sprite2                ;  L000052e4
+
+.rst_sprite2        move.w  #$e002,d0
+
+.inc_sprite2        ; L000052e4
+                    addq.w  #$01,d0
+.set_sprite2        move.w  d0,(a0)+ 
+
+                    ; L000052e8 - batman head
+.set_sprite1        move.w  #$e001,(a0)
+
+                    ; L000052ec
+.exit               rts 
+
+
+
+                    ; L000052ec - shared rts - TODO: remove dependency
+L000052ec           rts
 
 
 
