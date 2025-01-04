@@ -4611,74 +4611,110 @@ L00004d76           bsr.w   L00005430
 L00004d7a           tst.b   PANEL_STATUS_1                              ; Panel - Status Byte 1 - $0007c874
 L00004d80           beq.b   exit_rts                                    ; L00004d36
 
-                    ; lose a life - audio & animation?
-set_state_player_life_lost
-L00004d82           jsr     AUDIO_PLAYER_SILENCE              
-L00004d88           clr.w   grappling_hook_height                               ; L00006318
-L00004d8c           moveq   #$03,d0                                             ; song/sound number - 03 = player life lost
-L00004d8e           jsr     AUDIO_PLAYER_INIT_SONG            
-L00004d94           move.l  #L00004da2,gl_jsr_address           
-L00004d9a           move.l  #batman_sprite_anim_0a,batman_sprite_anim_ptr       ; modified ptr to longword - L00006326
-L00004da0           rts 
 
 
-                    ; ----------------- PLAYER STATE: player dead ------------------
-                    ; routine inserted into game_loop self modified code routine.
-                    ;  - installed be rouine L00004d82 above.
+                    ; ----------------- set state - player life lost -----------------
+                    ; This routine sets the state 'player life lost' state.
+                    ; It updated the game loop state function to L00004da2
+                    ; This method handles the player life lost animations etc.
                     ;
-player_state_dead                                                       ; original address L00004da2
+set_state_player_life_lost  ; original address L00004d82
+                    jsr     AUDIO_PLAYER_SILENCE              
+                    clr.w   grappling_hook_height
+                    moveq   #SFX_LIFE_LOST,d0                                       ; song/sound number - 03 = player life lost
+                    jsr     AUDIO_PLAYER_INIT_SONG            
+                    move.l  #player_state_life_lost,gl_jsr_address           
+                    move.l  #batman_sprite_anim_life_lost,batman_sprite_anim_ptr    ; modified ptr to longword - L00006326
+                    rts 
+
+
+
+
+                    ; ----------------- player state life lost ------------------
+                    ; Routine set in player state in the game_loop to manage
+                    ; the player life lost state.
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_life_lost      ; original address L00004da2
                     ; player dead animation                             
-L00004da2            movea.l batman_sprite_anim_ptr,a0                   ; modified to long pointer - L00006326,a0                               
-L00004da6            bsr.w   set_batman_sprites
-L00004daa            move.l  a0,batman_sprite_anim_ptr                   ; modified to long pointer - L00006326
-L00004dae            tst.b   (a0)
-L00004db0            bne     exit_rts                                   ;  L00004d36  ; Exit (JMP to RTS)
+                    movea.l batman_sprite_anim_ptr,a0                   ; modified to long pointer - L00006326,a0                               
+                    bsr.w   set_batman_sprites
+                    move.l  a0,batman_sprite_anim_ptr                   ; modified to long pointer - L00006326
+                    tst.b   (a0)
+;L00004db0            bne     exit_rts                                  ; original code ; Exit (JMP to RTS)
+                    beq.s     .prep_display                             ; L00004db2                                 ; inverted the logic to aid readability
+                    rts
+          
+.prep_display       ; L00004db2 - prepare audio & display buffers
+                    jsr     AUDIO_PLAYER_INIT_SFX_2                    ; stop audio
+                    move.w  #$0032,d0
+                    bsr.w   wait_for_frame_count                       ; L00005e8c
+                    bsr.w   clear_backbuffer_playfield                 ; L00004e28
 
-L00004db2            jsr     AUDIO_PLAYER_INIT_SFX_2                    ; stop audio
-L00004db8            move.w  #$0032,d0
-L00004dbc            bsr.w   wait_for_frame_count                       ; L00005e8c
-L00004dc0            bsr.w   clear_backbuffer_playfield                 ; L00004e28
-L00004dc4            btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Panel - Status Byte 1 bit #$0000 of $0007c874
-L00004dcc            beq.b   L00004dd6
+.test_timer_expired ; L00004dc4
+                    btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Panel - Status Byte 1 bit #$0000 of $0007c874
+                    beq.b   .test_game_over                             ; L00004dd6
 
-L00004dce            lea.l   text_time_up,a0                            ; L00004e1c,a0
-L00004dd2            bsr.w   large_text_plotter                         ; L000067ca
+.timer_expied       ; L00004dce - display time-up message
+                    lea.l   text_time_up,a0                            ; L00004e1c,a0
+                    bsr.w   large_text_plotter                         ; L000067ca
 
-L00004dd6            btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
-L00004dde            beq.b   L00004de8
-L00004de0            lea.l   text_game_over,a0                          ; L00004e0e,a0
-L00004de4            bsr.w   large_text_plotter                         ; L000067ca
+.test_game_over     ; L00004dd6
+                    btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
+                    beq.b   .wipe_display                               ; L00004de8
 
-L00004de8            bsr.w   screen_wipe_to_backbuffer                  ; L00003cc0
-L00004dec            move.w  #$001e,d0
-L00004df0            bsr.w   wait_for_frame_count                       ; L00005e8c
-L00004df4            btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
-L00004dfc            beq.w   restart_level                              ; L00003b02
+.game_over          ; L00004de0 - display game-over message
+                    lea.l   text_game_over,a0                          ; L00004e0e,a0
+                    bsr.w   large_text_plotter                         ; L000067ca
+
+.wipe_display       ; L00004de8 - wipe display
+                    bsr.w   screen_wipe_to_backbuffer                  ; L00003cc0
+                    move.w  #$001e,d0
+                    bsr.w   wait_for_frame_count                       ; L00005e8c
+
+.test_lives_left    ; L00004df4
+                    btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; Panel - Status Byte 1 - bit #$0001 of $0007c874
+                    beq.w   restart_level                              ; L00003b02
+                    ; Fall through to return to Title Screen
+                    ; if 'Game Over'
+
 
 
                     ; ------------------- return to title screen ------------------------
+                    ; When the game is over, return to the titlle screen processing.
+                    ; If test build then restart the level instead.
+                    ;
+return_to_title_screen  ; original address L00004e00
+L00004e00           jsr     AUDIO_PLAYER_SILENCE                             ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
+L00004e06           bsr.w   panel_fade_out                             ; L00003d8c
+                    
+                    IFD TEST_BUILD_LEVEL
+                        jsr _DEBUG_COLOURS
+                        JMP game_start
+                    ENDC
 
-return_to_title_screen                                                  ; original address L00004e00
-L00004e00            jsr     AUDIO_PLAYER_SILENCE                             ; Chem.iff - Music/SFX player - Silence Audio- $00048004           ; External Address - CHEM.IFF
-L00004e06            bsr.w   panel_fade_out                             ; L00003d8c
-L00004e0a            bra.w   LOADER_TITLE_SCREEN                        ; $00000820 ; **** LOADER ****
+                    bra.w   LOADER_TITLE_SCREEN                        ; $00000820 ; **** LOADER ****
+                    ; *************************************
+                    ; ****        LOAD TITLE SCREEN     ***
+                    ; *************************************
 
+                    
+text_game_over      ; GAME OVER - original address L00004e0e
+                    dc.b    $5f, $0f
+                    dc.b    'GAME  '                   ; $47, $41, $4d, $45, $20, $20
+                    dc.b    'OVER'                     ; $4f, $56, $45, $52
+                    dc.b    $00, $ff
 
-                    ; GAME OVER - original address L00004e0e
-text_game_over
-                     dc.b    $5f, $0f
-                     dc.b    'GAME  '                   ; $47, $41, $4d, $45, $20, $20
-                     dc.b    'OVER'                     ; $4f, $56, $45, $52
-                     dc.b    $00, $ff
-
-                    ; TIME UP - original address L00004e1c
-text_time_up
-                     dc.b    $43, $10
-                     dc.b    'TIME  '                   ; $54, $49, $4d, $45, $20, $20 
-                     dc.b    'UP'                       ; $55, $50
-                     dc.b    $00, $ff
+                    
+text_time_up        ; TIME UP - original address L00004e1c
+                    dc.b    $43, $10
+                    dc.b    'TIME  '                   ; $54, $49, $4d, $45, $20, $20 
+                    dc.b    'UP'                       ; $55, $50
+                    dc.b    $00, $ff
 
                     even
+                    
                     
 clear_backbuffer_playfield                              ; original address $00004e28
 L00004e28           movea.l playfield_buffer_2,a0      ; 
@@ -5670,7 +5706,7 @@ player_state_fall_landing   ; original address L0000555a
                     bne.b   .exit_routine
  
                     ; L00005560 - test timer, life lost, no energy
-.test_liife_lost    tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
+.test_life_lost     tst.b   PANEL_STATUS_1                          ; Panel - Status Byte 1 - $0007c874
                     bne.w   set_state_player_life_lost              ; player dead?
 
                     ; L0000556a - reset state to joystick control state
@@ -7398,6 +7434,7 @@ batman_sprite_anim_04                                       ; sprite ids - origi
                     dc.b $1E,$01,$E1                        ; 30, 31, 00
 
 batman_sprite_anim_0a                                       ; sprite ids - original address L000063DC
+batman_sprite_anim_life_lost
                     dc.b $19,$01,$E6                        ; 25, 26, 00
                     dc.b $19,$01,$E6                        ; 25, 26, 00
                     dc.b $19,$01,$E6                        ; 25, 26, 00
