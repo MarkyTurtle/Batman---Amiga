@@ -1675,7 +1675,7 @@ L00003a8e           dc.w    $0000
 text_axis_chemicals
 L00003aa4           
                     dc.b    $30,$09
-                    dc.b    'TEST BUILD 03/12/2025',$00
+                    dc.b    'TEST BUILD 04/01/2025',$00
                     dc.b    $50, $09                                    ; raster line (Y), byte offset (X)
                     dc.b    'AXIS '                                     ; $41, $58, $49, $53, $20
                     dc.b    'CHEMICAL '                                 ; $43, $48, $45, $4d, $49, $43, $41,$4c, $20
