@@ -4790,7 +4790,7 @@ L00004eb6            addq.w  #$01,d5
 L00004eb8            cmp.w   #$0050,d5
 L00004ebc            bcc.b   L00004ec0
 L00004ebe            move.w  d5,(a0)
-L00004ec0            lea.l   L00006314,a0
+L00004ec0            lea.l   L00006314,a0                           ; grappling hook vars
 L00004ec4            movem.w (a0),d2-d3
 L00004ec8            clr.w   d7
 L00004eca            moveq   #$07,d6
@@ -4824,9 +4824,11 @@ L00004f10            MOVE.L  #$ffffff81,D2
 L00004f12            bra.b   L00004f16
 L00004f14            moveq   #$7f,d2
 L00004f16            movem.w d2-d3,(a0)
-L00004f1a            lea.l   L00006314,a0
+
+L00004f1a            lea.l   L00006314,a0                               ; grappling hook vars
 L00004f1e            lea.l   batman_xy_offset,a2
 L00004f22            bsr.w   L000050aa
+
 L00004f26            movem.w batman_xy_offset,d0-d1
 L00004f2c            movem.w L00006328,d5-d6
 L00004f32            sub.w   d3,d5
@@ -5016,27 +5018,31 @@ L000050a2           move.l  #L00005414,gl_jsr_address   ; L00003c90  ; update se
 L000050a8           rts 
 
 
-L000050aa           lea.l   $007c(a0),a1
+                    ; called from grappling hook state
+                    ;   IN:-
+                    ;       a0 = L00006314 - grappling hook vars
+                    ;
+L000050aa           lea.l   $007c(a0),a1            ; a1 = L0006390
 L000050ae           move.w  (a0),d2
 L000050b0           asr.w   #$01,d2
 L000050b2           move.w  d2,d4
 L000050b4           bpl.b   L000050b8
 L000050b6           neg.w   d4
 L000050b8           clr.w   d3
-L000050ba           move.b  -64(a1,d4.W),d3         ; $c0(a1,d4.W),d3
+L000050ba           move.b  -64(a1,d4.W),d3
 L000050be           mulu.w  $0004(a0),d3
 L000050c2           btst.l  #$000f,d2
 L000050c6           beq.b   L000050ca
 L000050c8           neg.w   d3
 L000050ca           asr.w   #$08,d3
-L000050cc           move.w  d3,$0006(a0)            ; $00000a06 [2ffc]
+L000050cc           move.w  d3,$0006(a0)
 L000050d0           move.w  d4,d2
 L000050d2           neg.w   d2
 L000050d4           clr.w   d4
-L000050d6           move.b  $3f(a1,d2.W),d4         ; $000409a0 [00],d4
-L000050da           mulu.w  $0004(a0),d4            ; $00000a04 [0000],d4
+L000050d6           move.b  $3f(a1,d2.W),d4
+L000050da           mulu.w  $0004(a0),d4
 L000050de           lsr.w   #$08,d4
-L000050e0           move.w  d4,$0008(a0)            ; $00000a08 [0000]
+L000050e0           move.w  d4,$0008(a0)
 L000050e4           rts 
 
 
@@ -5133,6 +5139,8 @@ player_input_fire_up_common ; original address L000050fa
                     ; fall through to 'player_state_firing_grappling_hook' below
 
 
+
+
                     ; ------------------- player state - firing grappling hook ----------------
                     ; game_loop state for batman firing the gappling hook.
                     ; also initially called from player_input_fire_up_common above
@@ -5140,57 +5148,79 @@ player_input_fire_up_common ; original address L000050fa
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
+                    ;   - D3.w = window x?
+                    ;   - D4.w = window y?
                     ;
-                    ; Code Check 3/1/2025
+                    ;
                     ;
 player_state_firing_grappling_hook  ; original address L00005132
-L00005132           lea.l   L00006314,a0
+L00005132           lea.l   L00006314,a0                                ; a0 = grappling hook params
 L00005136           btst.b  #PLAYER_INPUT_FIRE,player_input_command
-L0000513e           bne     L000051be
-L00005140           move.w  $0004(a0),d2
-L00005144           addq.w  #$02,d2
-L00005146           cmp.w   #$0028,d2
-L0000514a           bcc.b   L00005156
+L0000513e           bne     grappling_hook_fire                         ; L000051be
+
+.no_fire
+L00005140           move.w  $0004(a0),d2                                ; d2 = grappling hook height?
+L00005144           addq.w  #$02,d2                                     ; increment by 2
+L00005146           cmp.w   #$0028,d2                                   ; compare 40 (80)
+L0000514a           bcc.b   L00005156                                   ; if height >= 40 then
+
 L0000514c           addq.w  #$01,d2
 L0000514e           cmp.w   #$0014,d2
 L00005152           bcc.b   L00005156
 L00005154           addq.w  #$01,d2
-L00005156           move.w  d2,$0004(a0)
+
+L00005156           move.w  d2,$0004(a0)                                ; store grappling hook height
 L0000515a           bsr.w   L000050aa
+
 L0000515e           addq.w  #$03,d3
 L00005160           move.w  batman_sprite1_id,d7
 L00005164           bpl.b   L00005168
+
 L00005166           subq.w  #$07,d3
+
 L00005168           add.w   #$000a,d4
-L0000516c           sub.w   d4,d1
+L0000516c           sub.w   d4,d1                                       ; update batman y
 L0000516e           bcs.b   L000051a8
-L00005170           move.w  scroll_window_y_coord,d5                ; L000067be,d5
+
+L00005170           move.w  scroll_window_y_coord,d5 
 L00005174           add.w   d1,d5
 L00005176           btst.l  #$0002,d5
 L0000517a           bne.b   L000051ae
-L0000517c           add.w   d3,d0
+L0000517c           add.w   d3,d0                                       ; update batman x
+
 L0000517e           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005182           cmp.b   #$17,d2
 L00005186           bcs.b   L000051a8
+
 L00005188           cmp.b   #$85,d2
 L0000518c           bcc.b   L000051a8
+
 L0000518e           cmp.b   #$79,d2
 L00005192           bcs.b   L000051ae
+
 L00005194           move.l  #L00004e64,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L0000519a           move.l  L0000631a,L00006328
+
 L000051a0           lea.l   batman_sprite_anim_07,a0                ; L00006416,a0
 L000051a4           bra.w   set_batman_sprites
-L000051a8           move.l  #L000051b0,gl_jsr_address               ; Set game_loop Self Modified Code JSR
+                    ; use 'rts' in set_batman_sprites to return
+
+                    ; wall collision
+L000051a8           jsr     _DEBUG_COLOURS
+                    move.l  #L000051b0,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L000051ae           rts
 
 
-L000051b0           lea.l   L00006314,a0
-L000051b4           btst.b  #PLAYER_INPUT_FIRE,player_input_command             ; L00006308
+L000051b0           lea.l   L00006314,a0                            ; grappling hook vars
+L000051b4           btst.b  #PLAYER_INPUT_FIRE,player_input_command      
 L000051bc           beq.b   L000051c4
+
+grappling_hook_fire ; L000051be
 L000051be           move.w  #$0002,$0004(a0)
 L000051c4           subq.w  #$03,$0004(a0)
 L000051c8           bls.b   L000051ce
 L000051ca           bra.w   L000050aa
+
 L000051ce           clr.w   $0004(a0)
 L000051d2           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000051d8           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
@@ -7636,8 +7666,10 @@ vertical_scroll_increments                          ; original address L00006310
 offscreen_y_coord                                   ; original address L00006312
                     dc.w $0000                      ; Y co-ord into offscreen buffer (circular buffer).
 
+
+                    ; L00006314 - grappling hook vars
 L00006314           dc.w $0000                      ; grappling hook x?
-L00006316           dc.w $0000
+L00006316           dc.w $0000                      ; grappling hook y?
 grappling_hook_height                               ; original address L00006318
 L00006318           dc.w $0000                      ; length/height of grappling hook rope.
 L0000631a           dc.w $0000 
@@ -7660,13 +7692,16 @@ playfield_swap_count                                                ; original a
                     dc.w $0000                                      ; word value incremented when playfield buffers are swapped
 
 
+
 L0000632e           dc.w $2221,$201F,$1E1D,$1C1B,$1A19,$1817,$1615 
 L0000633C           dc.w $1413,$1211,$100F,$0E0D,$0C0B,$0A09,$0807,$0605
 L0000634C           dc.w $0403,$0201,$0003,$0609,$0D10,$1316,$191C,$1F22
 L0000635C           dc.w $2529,$2C2F,$3235,$383B,$3E41,$4447,$4A4D,$5053
 L0000636C           dc.w $5659,$5C5F,$6264,$676A,$6D70,$7375,$787B,$7E80
 L0000637C           dc.w $8386,$888B,$8E90,$9395,$989A,$9D9F,$A2A4,$A7A9
-L0000638C           dc.w $ABAE,$B0B2,$B4B7,$B9BB,$BDBF,$C1C3,$C5C7,$C9CB
+L0000638C           dc.w $ABAE,$B0B2
+                    ; L00006390 = L00006314 + $7c (grappling hook code) - is this swing data?
+L00006390           dc.w $B4B7,$B9BB,$BDBF,$C1C3,$C5C7,$C9CB
 L0000639C           dc.w $CDCF,$D0D2,$D4D6,$D7D9,$DBDC,$DEDF,$E1E2,$E4E5
 L000063AC           dc.w $E7E8,$E9EA,$ECED,$EEEF,$F0F1,$F2F3,$F4F5,$F6F7
 L000063BC           dc.w $F7F8,$F9F9,$FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF
