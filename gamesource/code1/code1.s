@@ -4546,17 +4546,17 @@ L00004ce4           move.l  gl_jsr_address,d2                       ; L00003c90,
 L00004ce8               cmp.l   #player_state_falling,d2            ; compare state with #$5482
 L00004cec               beq.b   exit_rts                                ; exit if already in state #$5482
 
-L00004cee               move.l  #L00004e3a,d3                           ; get new state
+L00004cee               move.l  #player_state_actor_collide_on_batrope,d3                           ; get new state
 L00004cf2               cmp.l   d3,d2                                   ; compate state with #$4e3a
 L00004cf4               beq.b   L00004d1c                               ; set state to (d3)
 
-L00004cf6                   cmp.l   #L00004e64,d2                           ; Address
+L00004cf6                   cmp.l   #player_state_grappling_hook_attached,d2                           ; Address
 L00004cfa                   beq.b   L00004d1c
 
-L00004cfc                       cmp.l   #L00005058,d2                           ; Address
+L00004cfc                       cmp.l   #player_state_climb_onto_platform,d2                           ; Address
 L00004d00                       beq.b   L00004d38
 
-L00004d02                           move.l  #L00004d48,d3                           ; Address
+L00004d02                           move.l  #player_state_actor_collide_on_ladder,d3                           ; Address
 L00004d06                           cmp.l   #state_climbing_stairs,d2                 ; Address
 L00004d0a                           beq.b   L00004d1c
 
@@ -4593,14 +4593,20 @@ L00004d42           move.w  d2,state_parameter              ; L000062f2
 L00004d46           rts 
 
 
-L00004d48           subq.w  #$01,L00006306
+
+                    ; -------------- player state - unknown -------------
+player_state_actor_collide_on_ladder
+L00004d48           jsr     _DEBUG_COLOURS
+                    subq.w  #$01,L00006306
 L00004d4c           bne.b   exit_rts                                    ; L00004d36
 L00004d4e           move.l  #state_climbing_stairs,gl_jsr_address         ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00004d54           bra.b   L00004d7a
 
+
+
 L00004d56           tst.w   grappling_hook_height                       ; L00006318
 L00004d5a           beq.b   L00004d60
-L00004d5c           bsr.w   L000051b0
+L00004d5c           bsr.w   player_state_retract_grappling_hook         ; L000051b0
 L00004d60           subq.w  #$01,L00006306
 L00004d64           bne.b   exit_rts                                    ; L00004d36
 L00004d66           move.l  #player_move_commands,gl_jsr_address        ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
@@ -4695,7 +4701,7 @@ L00004e06           bsr.w   panel_fade_out                             ; L00003d
                     
                     IFD TEST_BUILD_LEVEL
                         jsr _DEBUG_COLOURS
-                        JMP game_start
+                        JMP return_to_title_screen
                     ENDC
 
                     bra.w   LOADER_TITLE_SCREEN                        ; $00000820 ; **** LOADER ****
@@ -4730,10 +4736,19 @@ L00004e28           movea.l playfield_buffer_2,a0      ;
 
 
 
+_DEBUG_RED_PAUSE
+                    move.w  #$f00,$dff180
+                    btst    #6,$bfe001
+                    bne.s   _DEBUG_RED_PAUSE
+                    rts
 
                     ; game_loop - Self Modified JSR Address
                     ; set at line of code L00004cee
-L00004e3a            moveq   #$10,d3                    ; CMD16 - Fire - No Direction
+                    ; ---- player state - actor Collision on batrope ------
+player_state_actor_collide_on_batrope
+L00004e3a           ;jsr _DEBUG_RED_PAUSE
+                    move.w  #$f00,$dff180 
+                    moveq   #$10,d3                    ; CMD16 - Fire - No Direction
 L00004e3c            tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - (Clock Timer Expired, No Lives, Life Lost bits)
 L00004e42            bne.b   L00004e60
 
@@ -4745,7 +4760,7 @@ L00004e50            addq.w  #$01,(a0)
 L00004e52            clr.w   d3                         ; Player Movement Command 00 - NOP
 L00004e54            subq.w  #$01,L00006306
 L00004e58            bne.b   L00004e60
-L00004e5a            move.l  #L00004e64,gl_jsr_address  ; L00003c90        ; Set Self MOdified Code JSR in game_loop
+L00004e5a            move.l  #player_state_grappling_hook_attached,gl_jsr_address  ; L00003c90        ; Set Self MOdified Code JSR in game_loop
 
 
                     ; one of the following has occurred
@@ -4760,26 +4775,30 @@ L00004e5a            move.l  #L00004e64,gl_jsr_address  ; L00003c90        ; Set
                     ;
 L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) Fire no Direction
 
-                    ; Updated Self Modified JSR (game_loop) when ($00006306).w is zero
-L00004e64            lea.l   grappling_hook_height,a0               ; L00006318,a0                
-L00004e68            move.w  (a0),d5
-L00004e6a            move.b  player_input_command,d4                ; L00006308,d4
-L00004e6e            btst.l  #PLAYER_INPUT_UP,d4
-L00004e72            beq.b   L00004ea8
-L00004e74            move.w  #$0048,target_window_y_offset          ; L000067c6
-L00004e7a            subq.w  #$01,d5
-L00004e7c            bhi.b   L00004ea6
-L00004e7e            clr.w   (a0)
-L00004e80            move.l  #L00005058,gl_jsr_address              ; L00003c90 ; Self modified code JSR game_loop
-L00004e86            move.w  #$0005,state_parameter                 ; L000062f2
-L00004e8c            move.l  #L00006426,batman_sprite_anim_ptr      ; modified to long pointer L00006326
-L00004e92            move.w  d1,d2
-L00004e94            add.w   scroll_window_y_coord,d2               ; L000067be,d2
-L00004e98            subq.w  #$02,d2
-L00004e9a            and.w   #$0007,d2
-L00004e9e            sub.w   d2,d1
-L00004ea0            move.w  d1,batman_y_offset
-L00004ea4            rts  
+
+
+                    ; player state - grappling hook attached
+player_state_grappling_hook_attached    ; original address L00004e64
+L00004e64           move.w #$0f0,$dff180
+                    lea.l   grappling_hook_height,a0               ; L00006318,a0                
+L00004e68           move.w  (a0),d5
+L00004e6a           move.b  player_input_command,d4                ; L00006308,d4
+L00004e6e           btst.l  #PLAYER_INPUT_UP,d4
+L00004e72           beq.b   L00004ea8
+L00004e74           move.w  #$0048,target_window_y_offset          ; L000067c6
+L00004e7a           subq.w  #$01,d5
+L00004e7c           bhi.b   L00004ea6
+L00004e7e           clr.w   (a0)
+L00004e80           move.l  #player_state_climb_onto_platform,gl_jsr_address              ; L00003c90 ; Self modified code JSR game_loop
+L00004e86           move.w  #$0005,state_parameter                 ; L000062f2
+L00004e8c           move.l  #L00006426,batman_sprite_anim_ptr      ; modified to long pointer L00006326
+L00004e92           move.w  d1,d2
+L00004e94           add.w   scroll_window_y_coord,d2               ; L000067be,d2
+L00004e98           subq.w  #$02,d2
+L00004e9a           and.w   #$0007,d2
+L00004e9e           sub.w   d2,d1
+L00004ea0           move.w  d1,batman_y_offset
+L00004ea4           rts  
 
                     ; d4.b = player_input_command
 L00004ea6            move.w  d5,(a0) 
@@ -4991,7 +5010,12 @@ player_state_fired  ; original address L00005036
                     ; routine inserted into self modified JSR
                     ; in game_loop by code line L00004e80
                     ;
-L00005058           subq.w  #$01,state_parameter            ; L000062f2
+                    ; -------------- player state - climb onto plaform
+                    ; Player state when climbing onto a platform from your
+                    ; bat-rope/grappling hook
+player_state_climb_onto_platform    ; original address L00005058
+L00005058           ;jsr     _DEBUG_COLOURS
+                    subq.w  #$01,state_parameter            ; L000062f2
 L0000505c           bne.b   L00005034
 L0000505e           move.w  #$0006,state_parameter          ; L000062f2
 L00005064           subq.w  #$05,batman_y_offset
@@ -5014,7 +5038,7 @@ L00005096           bsr.w   set_batman_sprites
 L0000509a           move.l  a0,batman_sprite_anim_ptr                ; modified to long pointer - L00006326
 L0000509e           move.b  (a0),d7
 L000050a0           bne.b   L000050a8
-L000050a2           move.l  #L00005414,gl_jsr_address   ; L00003c90  ; update self modified code JSR game_loop
+L000050a2           move.l  #L00005414,gl_jsr_address   ; Return to Standing - update self modified code JSR game_loop
 L000050a8           rts 
 
 
@@ -5190,37 +5214,47 @@ L0000517c           add.w   d3,d0                                       ; update
 
 L0000517e           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L00005182           cmp.b   #$17,d2
-L00005186           bcs.b   L000051a8
+L00005186           bcs.b   L000051a8               ; set retract hook
 
 L00005188           cmp.b   #$85,d2
-L0000518c           bcc.b   L000051a8
+L0000518c           bcc.b   L000051a8               ; set retract hook
 
 L0000518e           cmp.b   #$79,d2
-L00005192           bcs.b   L000051ae
+L00005192           bcs.b   L000051ae               ; exit
 
-L00005194           move.l  #L00004e64,gl_jsr_address               ; Set game_loop Self Modified Code JSR
+                    ; grabed platform
+L00005194           move.l  #player_state_grappling_hook_attached,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L0000519a           move.l  L0000631a,L00006328
 
 L000051a0           lea.l   batman_sprite_anim_07,a0                ; L00006416,a0
 L000051a4           bra.w   set_batman_sprites
                     ; use 'rts' in set_batman_sprites to return
 
-                    ; wall collision
-L000051a8           jsr     _DEBUG_COLOURS
-                    move.l  #L000051b0,gl_jsr_address               ; Set game_loop Self Modified Code JSR
+                    ; wall, ladder, collision
+                    ; retract grappling hook state
+L000051a8           move.l  #player_state_retract_grappling_hook,gl_jsr_address               ; Set game_loop Self Modified Code JSR
 L000051ae           rts
 
 
+
+
+player_state_retract_grappling_hook ; orignal address L000051b0
 L000051b0           lea.l   L00006314,a0                            ; grappling hook vars
 L000051b4           btst.b  #PLAYER_INPUT_FIRE,player_input_command      
 L000051bc           beq.b   L000051c4
+                    ; fall through to grappling_hook_fire
 
-grappling_hook_fire ; L000051be
+
+
+grappling_hook_fire ; original address L000051be
 L000051be           move.w  #$0002,$0004(a0)
 L000051c4           subq.w  #$03,$0004(a0)
-L000051c8           bls.b   L000051ce
+L000051c8           bls.b   exit_fire_grappling_hook_state          ; L000051ce
 L000051ca           bra.w   L000050aa
 
+
+
+exit_fire_grappling_hook_state  ; original address L000051ce
 L000051ce           clr.w   $0004(a0)
 L000051d2           move.l  #player_move_commands,gl_jsr_address    ; L00003c90 ; Set Self Modifying code - GameLoop JSR - L00003c92 = jsr address (low word) - Default Value = $4c3e (run command loop)
 L000051d8           lea.l   batman_sprite_anim_standing,a0                ; L000063d3,a0
