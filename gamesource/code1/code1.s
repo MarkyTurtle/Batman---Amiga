@@ -1974,9 +1974,9 @@ gl_update_state_machine
                         btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; Test Timer has expired 
                         beq.b   .execute_player_state                       ; if timer expired then continue
 .timer_still_not_expired
-                            ; update player state machine?
+                            ; update player state and increment counters
                             moveq   #$01,d6
-                            bsr.w   update_self_modified_code_ptr           ; update state machine?
+                            bsr.w   update_self_modified_code_ptr
 
 .execute_player_state
                     clr.l   d0
@@ -4526,7 +4526,7 @@ L00004cc8           dc.l    player_input_cmd_nop            ; 1     | 1     | 1 
                     ;
 batman_lose_energy                                                  ; original address L00004ccc
                     tst.b   PANEL_STATUS_1                          ; Test if Time UP, Life Lost, No Lives
-                    bne.b   exit_rts                                ; exit if 'Timer Expired', 'Life Lost', 'No Lives Remaining'
+                    bne     exit_rts                                ; exit if 'Timer Expired', 'Life Lost', 'No Lives Remaining'
 
                     movem.l d0-d7/a5-a6,-(a7)
                     move.w  d6,d0
@@ -4538,73 +4538,117 @@ batman_lose_energy                                                  ; original a
                     ; --------------- update 'self modified code pointer' --------------------
                     ; appears to be a kind-of state machine, updated in the game loop
                     ; updates occur as long as the level timer has not expired.
-                    ; IN;
-                    ;   D6.w = #$01 (from main loop) - new state?
-update_self_modified_code_ptr
-L00004ce4           move.l  gl_jsr_address,d2                       ; L00003c90,d2 ; Self Modified Code JSR - game_loop - JSR address
+                    ;
+                    ; IN:-
+                    ;   D6.l = #$01 (set from main loop)
+                    ;
+update_self_modified_code_ptr   ; L00004ce4
+                    move.l  gl_jsr_address,d2               ; d2 = current state
 
-L00004ce8               cmp.l   #player_state_falling,d2            ; compare state with #$5482
-L00004cec               beq.b   exit_rts                                ; exit if already in state #$5482
+.check_falling          ; L00004ce8
+                        cmp.l   #player_state_falling,d2    
+                        beq.b   .exit_rts                    
+                        ; if state = 'falling' then exit
+                                               
+.check_collision_on_batrope ; L00004cee
+                        move.l  #player_state_actor_collide_on_batrope,d3                           ; get new state
+                        cmp.l   d3,d2                   
+                        beq.b   .update_state               
+                        ; if state equal, then state = 'actor_collide_on_batrope'
+                        ; increment L00006306
 
-L00004cee               move.l  #player_state_actor_collide_on_batrope,d3                           ; get new state
-L00004cf2               cmp.l   d3,d2                                   ; compate state with #$4e3a
-L00004cf4               beq.b   L00004d1c                               ; set state to (d3)
+.check_swing_on_rope    ; L00004cf6
+                        cmp.l   #player_state_grappling_hook_attached,d2                           ; Address
+                        beq.b   .update_state
+                        ; if state equal then, state = 'actor_collide_on_batrope'
+                        ; increment L00006306
 
-L00004cf6                   cmp.l   #player_state_grappling_hook_attached,d2                           ; Address
-L00004cfa                   beq.b   L00004d1c
+.check_climb_on_platform ; L00004cfc
+                        cmp.l   #player_state_climb_onto_platform,d2                           ; Address
+                        beq.b   .increment_state_param_by_3
+                        ; if state equal then, state = 'climb_onto_platform' 
+                        ; increment state param by 3
 
-L00004cfc                       cmp.l   #player_state_climb_onto_platform,d2                           ; Address
-L00004d00                       beq.b   L00004d38
+.check_climbing_stairs  ; L00004d02
+                        move.l  #player_state_actor_collide_on_ladder,d3                           ; Address
+                        cmp.l   #state_climbing_stairs,d2                 ; Address
+                        beq.b   .update_state
+                        ; if 'climbing stairs', state = 'actor_collide_on_ladder'
+                        ; increment L00006306
 
-L00004d02                           move.l  #player_state_actor_collide_on_ladder,d3                           ; Address
-L00004d06                           cmp.l   #state_climbing_stairs,d2                 ; Address
-L00004d0a                           beq.b   L00004d1c
+.check_collide_on_ladder ; L00004d0c
+                        cmp.l   d2,d3
+                        beq.b   .update_state
+                        ; if 'actor_collide_on_ladder', state = 'actor_collide_on_ladder'
+                        ; increment L00006306
 
-L00004d0c                               cmp.l   d2,d3
-L00004d0e                               beq.b   L00004d1c
+.else_check_actor_collision   ; L00004d10 - collision with 'badguy', 'drip', 'gas leak'
+                        ; while stasnding on a platform.
+                        lea.l   batman_sprite_anim_fall_landing,a0
+                        bsr.w   set_batman_sprites
+                        move.l  #player_state_check_actor_collision,d3
+                        ; set state to 'drip' or 'gasleak' collision
+                        ; increment L00006306
 
-L00004d10                                   lea.l   batman_sprite_anim_fall_landing,a0                ; L00005457,a0
-L00004d14                                   bsr.w   set_batman_sprites
-L00004d18                                   move.l  #L00004d56,d3                           ; Address
-
-L00004d1c               move.l  d3,gl_jsr_address                       ; L00003c90  ; UPDATE game_loop JSR address
+.update_state           ; L00004d1c
+                        move.l  d3,gl_jsr_address ; update state routine address
 
                         ; update value held in L00006306
-                        ; by value passed in d6
+                        ; by value passed in d6 (#$01 from main loop)
                         ; clamp value in range (0 - 12)
-L00004d20               move.w  L00006306,d2                            ; d2 = current state?
-L00004d24               add.w   d6,d6                                   ; multiple d6 by 4
-L00004d26               add.w   d6,d6                                   
-L00004d28               add.w   d6,d2                   
-L00004d2a               cmp.w   #$000c,d2                               ; compare d2 with 12
-L00004d2e               bcs.b   L00004d32
-.clamp_d2
-L00004d30               moveq   #$0c,d2                                 ; clamp d2 to max of 12
-L00004d32               move.w  d2,L00006306
-exit_rts    
-L00004d36           rts 
+                        ; increment in steps of 4
+.increment_L00006306    ; L00004d20
+                        move.w  L00006306,d2                            ; d2 = current state?
+                        add.w   d6,d6                                   ; multiply #$01 by 4
+                        add.w   d6,d6                                   
+                        add.w   d6,d2                                   ; add 4 to d2                  
+                        cmp.w   #$000c,d2                               ; compare d2 with 12
+                        bcs.b   .store_value                            ; if < 12
+.clamp_d2               ; L00004d30
+                        moveq   #$0c,d2                                 ; clamp d2 to max of 12
+.store_value            ; L00004d32
+                        move.w  d2,L00006306
+.exit_rts           ; L00004d36  
+                    rts 
+
+.increment_state_param_by_3 ; L00004d38
+                    move.w  state_parameter,d2              ; L000062f2,d2
+                    add.w   d6,d2
+                    add.w   d6,d2
+                    add.w   d6,d2
+                    move.w  d2,state_parameter              ; L000062f2
+                    rts 
 
 
-L00004d38           move.w  state_parameter,d2              ; L000062f2,d2
-L00004d3c           add.w   d6,d2
-L00004d3e           add.w   d6,d2
-L00004d40           add.w   d6,d2
-L00004d42           move.w  d2,state_parameter              ; L000062f2
-L00004d46           rts 
 
 
-
-                    ; -------------- player state - unknown -------------
+                    ; -------------- player state - actor collision on ladder -------------
+                    ; This state gets called when Batman collides with an actor when
+                    ; climbing a ladder.
+                    ;
 player_state_actor_collide_on_ladder
-L00004d48           jsr     _DEBUG_COLOURS
+L00004d48           ;jsr     _DEBUG_COLOURS
                     subq.w  #$01,L00006306
 L00004d4c           bne.b   exit_rts                                    ; L00004d36
 L00004d4e           move.l  #state_climbing_stairs,gl_jsr_address         ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00004d54           bra.b   L00004d7a
 
+                    ; shared rts - moved to here
+exit_rts            rts
 
 
-L00004d56           tst.w   grappling_hook_height                       ; L00006318
+
+                    ; -------------- player state - drip and leak collision -------------
+                    ; This state is called when the player collides with a toxic drip
+                    ; or gas jet. Also if colliding with a 'bad guy' actor.
+                    ;
+                    ; Only occurs when batman is standing on a platform, not when 
+                    ; climbing a ladder or swinging on a rope..
+                    ;
+                    ;
+player_state_check_actor_collision
+L00004d56           ;jsr     _DEBUG_RED_PAUSE
+                    tst.w   grappling_hook_height                       ; L00006318
 L00004d5a           beq.b   L00004d60
 L00004d5c           bsr.w   player_state_retract_grappling_hook         ; L000051b0
 L00004d60           subq.w  #$01,L00006306
@@ -4627,6 +4671,10 @@ L00004d80           beq.b   exit_rts                                    ; L00004
                     ; This routine sets the state 'player life lost' state.
                     ; It updated the game loop state function to L00004da2
                     ; This method handles the player life lost animations etc.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
                     ;
 set_state_player_life_lost  ; original address L00004d82
                     jsr     AUDIO_PLAYER_SILENCE              
