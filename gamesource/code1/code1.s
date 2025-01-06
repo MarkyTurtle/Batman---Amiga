@@ -5042,30 +5042,54 @@ L000050e4           rts
 
 
 
-                    ; ------- batrope up-right - Jump Table CMD12 --------
-player_input_cmd_fire_up_right                                                 ; original address L000050e6
-L000050e6           clr.w   batman_sprite1_id                       ; set right facing sprite
-L000050ea           moveq   #$7f,d0                                 ; d0 = +127
-L000050ec           bra.b   player_input_fire_up_common             ; L000050fa
-
-
-                    ; -------- batrope up-left - Jump Table CMD13 --------
-player_input_cmd_fire_up_left                                                  ; original address L000050ee
-L000050ee           move.w  #$e000,batman_sprite1_id                ; set left facing sprite
-L000050f4           MOVE.L  #$ffffff81,D0                           ; d0 = -127
-L000050f6           bra.b   player_input_fire_up_common             ; L000050fa
-
-
-
-                    ; ------------- player input command - fire + up ---------------
-                    ; player input command executed when the joystick 'fire + up'
-                    ; is selected.
+                    ; ------------ player input command - fire + up + right --------------
+                    ; Player input command executed when the joystick 'fire + up + right'
+                    ; is selected;
                     ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
                     ;
+                    ; Code Checked 6/1/2025
+                    ;
+player_input_cmd_fire_up_right  ; original address L000050e6
+                    clr.w   batman_sprite1_id                       ; set right facing sprite
+                    moveq   #$7f,d0                                 ; d0 = +127
+                    bra.b   player_input_fire_up_common             ; L000050fa
+
+
+
+                    ; ------------ player input command - fire + up + left --------------
+                    ; Player input command executed when the joystick 'fire + up + left'
+                    ; is selected;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 6/1/2025
+                    ;
+player_input_cmd_fire_up_left   ; original address L000050ee
+                    move.w  #$e000,batman_sprite1_id                ; set left facing sprite
+                    move.l  #$ffffff81,D0                           ; d0 = -127
+                    bra.b   player_input_fire_up_common             ; L000050fa
+
+
+
+                    ; ------------ player input command - fire + up --------------
+                    ; Player input command executed when the joystick 'fire + up'
+                    ; is selected;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 6/1/2025
                     ;
 player_input_cmd_fire_up    ; original address L000050f8
-L000050f8           clr.w   d0                                      ; d0 = 0
+                    clr.w   d0                                      ; d0 = 0
                     ; fall through to 'player_input_fire_up_common' below...
+
 
 
                     ; --------------- player input fire up common -----------------
@@ -5078,20 +5102,48 @@ L000050f8           clr.w   d0                                      ; d0 = 0
                     ;   d0.w - 0 = up, -127 = up + left, +127 = up + right
                     ;   d1.w = batman y offset
                     ;
+                    ; Code Checked 6/1/2025
+                    ;
 player_input_fire_up_common ; original address L000050fa
-L000050fa           move.w  #$0048,target_window_y_offset           ; L000067c6
-L00005100           lea.l   L00006314,a0
-L00005104           move.w  d0,(a0)+
-L00005106           clr.l   (a0)+
-L00005108           bsr.w   get_empty_projectile                    ; a0 = address of empty projectile or the end of the list - L0000463e
-L0000510c           move.w  #$0001,(a0)
-L00005110           move.l  #L00005132,gl_jsr_address               ; Set game_loop Self Modified Code JSR
-L00005116           lea.l   batman_sprite_anim_01,a0                ; L000063d0,a0
-L0000511a           bsr.w   set_batman_sprites
-L0000511e           moveq   #SFX_BATROPE,d0
-L00005120           jsr     AUDIO_PLAYER_INIT_SFX
-L00005126           movem.w batman_xy_offset,d0-d1
-L0000512c           bclr.b  #PLAYER_INPUT_FIRE,player_input_command
+                    move.w  #$0048,target_window_y_offset           ; see more level above batman
+
+                    ; L00005100 - initialise grappling hook state
+.init_hook_vars     lea.l   L00006314,a0                            ; grappling hook vars
+                    move.w  d0,(a0)+                                ; store batman x offset
+                    clr.l   (a0)+                                   ; clear maybe y and grappling hook height?
+
+                    ; L00005108 - create projectile for grappling hook
+.create_projectile  bsr.w   get_empty_projectile                    ; a0 = address of empty projectile or the end of the list - L0000463e
+                    ; a0 (handlerId, X, Y, Param - 8bytes)
+                    move.w  #$0001,(a0)                             ; set projectile handler Id = batman_grappling_hook
+                    move.l  #player_state_firing_grappling_hook,gl_jsr_address               ; Set state 'firing_grappling_hook' - game_loop Self Modified Code JSR
+
+                    ; L00005116 - set initial sprite animation
+.set_animation      lea.l   batman_sprite_anim_fire_hook,a0                ; L000063d0,a0
+                    bsr.w   set_batman_sprites
+
+                    ; L0000511e - play sound fx
+.play_sfx           moveq   #SFX_BATROPE,d0
+                    jsr     AUDIO_PLAYER_INIT_SFX
+
+                    ; L00005126 - init d0,d1 for player_state, clear fire button input
+.init_for_state     movem.w batman_xy_offset,d0-d1                  ; d0,d1 = batman x,y offset
+                    bclr.b  #PLAYER_INPUT_FIRE,player_input_command ; clear firebutton input
+                    
+                    ; fall through to 'player_state_firing_grappling_hook' below
+
+
+                    ; ------------------- player state - firing grappling hook ----------------
+                    ; game_loop state for batman firing the gappling hook.
+                    ; also initially called from player_input_fire_up_common above
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Check 3/1/2025
+                    ;
+player_state_firing_grappling_hook  ; original address L00005132
 L00005132           lea.l   L00006314,a0
 L00005136           btst.b  #PLAYER_INPUT_FIRE,player_input_command
 L0000513e           bne     L000051be
@@ -7584,7 +7636,7 @@ vertical_scroll_increments                          ; original address L00006310
 offscreen_y_coord                                   ; original address L00006312
                     dc.w $0000                      ; Y co-ord into offscreen buffer (circular buffer).
 
-L00006314           dc.w $0000
+L00006314           dc.w $0000                      ; grappling hook x?
 L00006316           dc.w $0000
 grappling_hook_height                               ; original address L00006318
 L00006318           dc.w $0000                      ; length/height of grappling hook rope.
@@ -7626,7 +7678,8 @@ L000063CC           dc.w $FFFF,$FFFF
                     ; byte 1 = second sprite offset
                     ; byte 2 = third sprite offset
 batman_sprite_anim_01                                       ; sprite ids - original address L000063d0
-                     dc.b $30,$D2,$04                        ; 48, 02, 06
+batman_sprite_anim_fire_hook                                ; sprite ids - original address L000063d0
+                     dc.b $30,$D2,$04                       ; 48, 02, 06
 
 batman_sprite_anim_02                                       ; sprite ids - original address L000063d3
 batman_sprite_anim_standing                                 ; sprite ids - original address L000063d3
