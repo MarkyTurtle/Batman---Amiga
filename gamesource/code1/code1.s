@@ -5180,7 +5180,7 @@ player_input_fire_up_common ; original address L000050fa
 player_state_firing_grappling_hook  ; original address L00005132
 L00005132           lea.l   L00006314,a0                                ; a0 = grappling hook params
 L00005136           btst.b  #PLAYER_INPUT_FIRE,player_input_command
-L0000513e           bne     grappling_hook_fire                         ; L000051be
+L0000513e           bne     stop_grappling_hook                         ; if fire pressed then, stop grappling hook
 
 .no_fire
 L00005140           move.w  $0004(a0),d2                                ; d2 = grappling hook height?
@@ -5238,19 +5238,33 @@ L000051ae           rts
 
 
 
+                    ; ------------- player state - retract grappling hook --------------
+                    ; When firing the grappling hook and it hits the 'wall' or 'ladder'
+                    ; then this state is used to retract the grappling hook back 
+                    ; towards batman. 
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;   - D3.w = window x?
+                    ;   - D4.w = window y?
+                    ;
 player_state_retract_grappling_hook ; orignal address L000051b0
-L000051b0           lea.l   L00006314,a0                            ; grappling hook vars
-L000051b4           btst.b  #PLAYER_INPUT_FIRE,player_input_command      
-L000051bc           beq.b   L000051c4
-                    ; fall through to grappling_hook_fire
+                    lea.l   L00006314,a0                            ; grappling hook vars
+                    btst.b  #PLAYER_INPUT_FIRE,player_input_command      
+                    beq.b   shorten_grappling_hook                  ; L000051c4
+                    ; if fire is pressed then shortcut the retraction.
+                    ; fall through to stop_grappling_hook
 
-
-
-grappling_hook_fire ; original address L000051be
-L000051be           move.w  #$0002,$0004(a0)
-L000051c4           subq.w  #$03,$0004(a0)
-L000051c8           bls.b   exit_fire_grappling_hook_state          ; L000051ce
-L000051ca           bra.w   L000050aa
+                    ; IN:-
+                    ;   a0.l = L00006314  (offset 4 = grappling hook height)
+                    ;
+stop_grappling_hook ; original address L000051be
+                    move.w  #$0002,$0004(a0)                        ; force grappling hook height to 2.
+shorten_grappling_hook  ; L000051c4
+                    subq.w  #$03,$0004(a0)                          ; shorten grappling hook height by 3
+                    bls.b   exit_fire_grappling_hook_state          ; if negative, then exit state
+                    bra.w   L000050aa
 
 
 
