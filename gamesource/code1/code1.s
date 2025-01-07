@@ -4870,7 +4870,7 @@ L00004eb6            addq.w  #$01,d5
 L00004eb8            cmp.w   #$0050,d5
 L00004ebc            bcc.b   L00004ec0
 L00004ebe            move.w  d5,(a0)
-L00004ec0            lea.l   L00006314,a0                           ; grappling hook vars
+L00004ec0            lea.l   grappling_hook_params,a0                           ; grappling hook vars
 L00004ec4            movem.w (a0),d2-d3
 L00004ec8            clr.w   d7
 L00004eca            moveq   #$07,d6
@@ -4905,7 +4905,7 @@ L00004f12            bra.b   L00004f16
 L00004f14            moveq   #$7f,d2
 L00004f16            movem.w d2-d3,(a0)
 
-L00004f1a            lea.l   L00006314,a0                               ; grappling hook vars
+L00004f1a            lea.l   grappling_hook_params,a0                               ; grappling hook vars
 L00004f1e            lea.l   batman_xy_offset,a2
 L00004f22            bsr.w   L000050aa
 
@@ -5111,31 +5111,43 @@ L000050a2           move.l  #L00005414,gl_jsr_address   ; Return to Standing - u
 L000050a8           rts 
 
 
-                    ; called from grappling hook state
+
+
+                    ; This appears to be calculating the left/right swing position
+                    ; from a sin table multiplied by the rope length.
+                    ; also, calculating the slight up/down as the cosine of the
+                    ; x position.
+                    ;
+                    ; This may be wrong, as modifying this makes the hook firing fail.
+                    ;
                     ;   IN:-
                     ;       a0 = L00006314 - grappling hook vars
-                    ;
-L000050aa           lea.l   $007c(a0),a1            ; a1 = L0006390
-L000050ae           move.w  (a0),d2
-L000050b0           asr.w   #$01,d2
-L000050b2           move.w  d2,d4
+                    ;                       (x, y, height, swing width?, swing height?)
+L000050aa           lea.l   $007c(a0),a1            ; a1 = L00006390 - data table mid point?
+L000050ae           move.w  (a0),d2                 ; d2 = hook x offset
+L000050b0           asr.w   #$01,d2                 ; d2 = divide by 2
+L000050b2           move.w  d2,d4                   ; d4 = copy of d2
 L000050b4           bpl.b   L000050b8
 L000050b6           neg.w   d4
+
 L000050b8           clr.w   d3
-L000050ba           move.b  -64(a1,d4.W),d3
-L000050be           mulu.w  $0004(a0),d3
-L000050c2           btst.l  #$000f,d2
+L000050ba           move.b  -64(a1,d4.W),d3         ; -64 = start of sine table, d4 = modified X offset
+L000050be           mulu.w  $0004(a0),d3            ; multiply by hook height
+L000050c2           btst.l  #$000f,d2               ; check negative x
 L000050c6           beq.b   L000050ca
-L000050c8           neg.w   d3
-L000050ca           asr.w   #$08,d3
-L000050cc           move.w  d3,$0006(a0)
-L000050d0           move.w  d4,d2
-L000050d2           neg.w   d2
+
+L000050c8           neg.w   d3                      ; make value +ve
+
+L000050ca           asr.w   #$08,d3                 ; divide by 256
+L000050cc           move.w  d3,$0006(a0)            ; update hook width
+
+L000050d0           move.w  d4,d2                   ; d2 = table index
+L000050d2           neg.w   d2                      ; d2 = negative index
 L000050d4           clr.w   d4
-L000050d6           move.b  $3f(a1,d2.W),d4
+L000050d6           move.b  63(a1,d2.W),d4          ; end of table, d2 = negative index back into table
 L000050da           mulu.w  $0004(a0),d4
-L000050de           lsr.w   #$08,d4
-L000050e0           move.w  d4,$0008(a0)
+L000050de           lsr.w   #$08,d4                 ; divide by 256
+L000050e0           move.w  d4,$0008(a0)            ; store value
 L000050e4           rts 
 
 
@@ -5207,9 +5219,9 @@ player_input_fire_up_common ; original address L000050fa
                     move.w  #$0048,target_window_y_offset           ; see more level above batman
 
                     ; L00005100 - initialise grappling hook state
-.init_hook_vars     lea.l   L00006314,a0                            ; grappling hook vars
-                    move.w  d0,(a0)+                                ; store batman x offset
-                    clr.l   (a0)+                                   ; clear maybe y and grappling hook height?
+.init_hook_vars     lea.l   grappling_hook_params,a0                ; grappling hook vars
+                    move.w  d0,(a0)+                                ; store hook x offset = batman x offset
+                    clr.l   (a0)+                                   ; clear hooky y and hook height?
 
                     ; L00005108 - create projectile for grappling hook
 .create_projectile  bsr.w   get_empty_projectile                    ; a0 = address of empty projectile or the end of the list - L0000463e
@@ -5247,22 +5259,30 @@ player_input_fire_up_common ; original address L000050fa
                     ;
                     ;
 player_state_firing_grappling_hook  ; original address L00005132
-L00005132           lea.l   L00006314,a0                                ; a0 = grappling hook params
+L00005132           lea.l   grappling_hook_params,a0                    ; a0 = grappling hook params
 L00005136           btst.b  #PLAYER_INPUT_FIRE,player_input_command
 L0000513e           bne     stop_grappling_hook                         ; if fire pressed then, stop grappling hook
 
-.no_fire
-L00005140           move.w  $0004(a0),d2                                ; d2 = grappling hook height?
-L00005144           addq.w  #$02,d2                                     ; increment by 2
-L00005146           cmp.w   #$0028,d2                                   ; compare 40 (80)
-L0000514a           bcc.b   L00005156                                   ; if height >= 40 then
+.no_fire            ; L00005140
+                    move.w  $0004(a0),d2                                ; d2 = hook height
 
-L0000514c           addq.w  #$01,d2
-L0000514e           cmp.w   #$0014,d2
-L00005152           bcc.b   L00005156
-L00005154           addq.w  #$01,d2
+.increment_height   ; L00005144 - make batrope longer (slows down as it get longer)
+                    ; if longer than 40 then increment = 2.
+                    ; if between 20 and 40 then increment by 3.
+                    ; if shorter than 20 increment by 4.
+                    addq.w  #$02,d2                                     ; increment by 2
+.check_len_40       ; L00005146
+                    cmp.w   #$0028,d2                                   ; compare 40 (80 pixels)
+                    bcc.b   .L00005156                                  ; if height >= 40 then
+.increment_len_1    ; L0000514c
+                    addq.w  #$01,d2                                     ; if height < 40 then increment by additional 1
+.check_len_20       ; L0000514e
+                    cmp.w   #$0014,d2                                   ; compare 20 (40 pixels?)
+                    bcc.b   .L00005156                                  ; if height < 20 then increment by additional 1
+.increment_len_2    ;L00005154
+                    addq.w  #$01,d2
 
-L00005156           move.w  d2,$0004(a0)                                ; store grappling hook height
+.L00005156           move.w  d2,$0004(a0)                                ; store new hook height
 L0000515a           bsr.w   L000050aa
 
 L0000515e           addq.w  #$03,d3
@@ -5319,9 +5339,9 @@ L000051ae           rts
                     ;   - D4.w = window y?
                     ;
 player_state_retract_grappling_hook ; orignal address L000051b0
-                    lea.l   L00006314,a0                            ; grappling hook vars
+                    lea.l   grappling_hook_params,a0                            ; grappling hook vars
                     btst.b  #PLAYER_INPUT_FIRE,player_input_command      
-                    beq.b   shorten_grappling_hook                  ; L000051c4
+                    beq.b   shorten_grappling_hook                              ; L000051c4
                     ; if fire is pressed then shortcut the retraction.
                     ; fall through to stop_grappling_hook
 
@@ -7785,6 +7805,7 @@ offscreen_y_coord                                   ; original address L00006312
 
 
                     ; L00006314 - grappling hook vars
+grappling_hook_params   ; address L00006314 - (hook x?, hook y?, height, width?)
 L00006314           dc.w $0000                      ; grappling hook x?
 L00006316           dc.w $0000                      ; grappling hook y?
 grappling_hook_height                               ; original address L00006318
@@ -7812,7 +7833,10 @@ playfield_swap_count                                                ; original a
 
 L0000632e           dc.w $2221,$201F,$1E1D,$1C1B,$1A19,$1817,$1615 
 L0000633C           dc.w $1413,$1211,$100F,$0E0D,$0C0B,$0A09,$0807,$0605
-L0000634C           dc.w $0403,$0201,$0003,$0609,$0D10,$1316,$191C,$1F22
+L0000634C           dc.w $0403,$0201
+
+                    ; L00006350 - grappling hook x sinus?
+L00006350           dc.w $0003,$0609,$0D10,$1316,$191C,$1F22                ; start = L00006390 - 64 = L00006350
 L0000635C           dc.w $2529,$2C2F,$3235,$383B,$3E41,$4447,$4A4D,$5053
 L0000636C           dc.w $5659,$5C5F,$6264,$676A,$6D70,$7375,$787B,$7E80
 L0000637C           dc.w $8386,$888B,$8E90,$9395,$989A,$9D9F,$A2A4,$A7A9
@@ -7821,7 +7845,7 @@ L0000638C           dc.w $ABAE,$B0B2
 L00006390           dc.w $B4B7,$B9BB,$BDBF,$C1C3,$C5C7,$C9CB
 L0000639C           dc.w $CDCF,$D0D2,$D4D6,$D7D9,$DBDC,$DEDF,$E1E2,$E4E5
 L000063AC           dc.w $E7E8,$E9EA,$ECED,$EEEF,$F0F1,$F2F3,$F4F5,$F6F7
-L000063BC           dc.w $F7F8,$F9F9,$FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF
+L000063BC           dc.w $F7F8,$F9F9,$FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF    ; end = L00006390 + 60 = L000063CC
 L000063CC           dc.w $FFFF,$FFFF
 
 
