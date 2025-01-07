@@ -1976,7 +1976,7 @@ gl_update_state_machine
 .timer_still_not_expired
                             ; update player state and increment counters
                             moveq   #$01,d6
-                            bsr.w   update_self_modified_code_ptr
+                            bsr.w   batman_collision_state_machine
 
 .execute_player_state
                     clr.l   d0
@@ -4535,14 +4535,26 @@ batman_lose_energy                                                  ; original a
                     ; falls though to updating state below
 
 
-                    ; --------------- update 'self modified code pointer' --------------------
-                    ; appears to be a kind-of state machine, updated in the game loop
-                    ; updates occur as long as the level timer has not expired.
+
+
+
+                    ; --------------- batman collision - state machine --------------------
+                    ; Update the Batman State Machine to Perform Collision Detection
+                    ; approptiate to Batman's current state.
+                    ;   If falling between plaforms then exit
+                    ;   Else If On BatRope, then do collision on batrope
+                    ;   Else If On Ladder, then do collision on Ladder
+                    ;   Else do collision on platform.
+                    ;
+                    ; Converted all ptrs to 32bits, original game used 16bit ptrs
+                    ; due to hardcoded memory locations.
                     ;
                     ; IN:-
                     ;   D6.l = #$01 (set from main loop)
                     ;
-update_self_modified_code_ptr   ; L00004ce4
+                    ; Code Checked 7/1/2025
+                    ;
+batman_collision_state_machine  ; original address L00004ce4   
                     move.l  gl_jsr_address,d2               ; d2 = current state
 
 .check_falling          ; L00004ce8
@@ -4599,8 +4611,8 @@ update_self_modified_code_ptr   ; L00004ce4
                         ; increment in steps of 4
 .increment_L00006306    ; L00004d20
                         move.w  L00006306,d2                            ; d2 = current state?
-                        add.w   d6,d6                                   ; multiply #$01 by 4
-                        add.w   d6,d6                                   
+                        add.w   d6,d6                                   ; multiply #$01 by 2
+                        add.w   d6,d6                                   ; multiply #$02 by 2
                         add.w   d6,d2                                   ; add 4 to d2                  
                         cmp.w   #$000c,d2                               ; compare d2 with 12
                         bcs.b   .store_value                            ; if < 12
@@ -4611,12 +4623,13 @@ update_self_modified_code_ptr   ; L00004ce4
 .exit_rts           ; L00004d36  
                     rts 
 
+                    ; if 'climbing onto platform'
 .increment_state_param_by_3 ; L00004d38
-                    move.w  state_parameter,d2              ; L000062f2,d2
-                    add.w   d6,d2
-                    add.w   d6,d2
-                    add.w   d6,d2
-                    move.w  d2,state_parameter              ; L000062f2
+                    move.w  state_parameter,d2              ; d2 = state parameter value
+                    add.w   d6,d2                           ; add 1 to d2
+                    add.w   d6,d2                           ; add 1 to d2
+                    add.w   d6,d2                           ; add 1 to d2
+                    move.w  d2,state_parameter              ; store updated value
                     rts 
 
 
@@ -4626,7 +4639,7 @@ update_self_modified_code_ptr   ; L00004ce4
                     ; This state gets called when Batman collides with an actor when
                     ; climbing a ladder.
                     ;
-player_state_actor_collide_on_ladder
+player_state_actor_collide_on_ladder        ; original address L00004d48
 L00004d48           ;jsr     _DEBUG_COLOURS
                     subq.w  #$01,L00006306
 L00004d4c           bne.b   exit_rts                                    ; L00004d36
@@ -4646,7 +4659,7 @@ exit_rts            rts
                     ; climbing a ladder or swinging on a rope..
                     ;
                     ;
-player_state_check_actor_collision
+player_state_check_actor_collision      ; original address L00004d56
 L00004d56           ;jsr     _DEBUG_RED_PAUSE
                     tst.w   grappling_hook_height                       ; L00006318
 L00004d5a           beq.b   L00004d60
@@ -4793,7 +4806,7 @@ _DEBUG_RED_PAUSE
                     ; game_loop - Self Modified JSR Address
                     ; set at line of code L00004cee
                     ; ---- player state - actor Collision on batrope ------
-player_state_actor_collide_on_batrope
+player_state_actor_collide_on_batrope   ; original address L00004e3a
 L00004e3a           ;jsr _DEBUG_RED_PAUSE
                     move.w  #$f00,$dff180 
                     moveq   #$10,d3                    ; CMD16 - Fire - No Direction
@@ -5015,8 +5028,9 @@ player_state_firing ; original address L00004ff6
                     rts  
 
 
-; shared rts
-L00005034           rts
+; shared rts    - removed all dependancies.
+;shared_exit_rts     ; L00005034
+;L00005034           rts
 
 
 
@@ -5061,10 +5075,17 @@ player_state_fired  ; original address L00005036
                     ; -------------- player state - climb onto plaform
                     ; Player state when climbing onto a platform from your
                     ; bat-rope/grappling hook
+                    ;
+                    ; game_loop - collision state update, increments state_parameter by 3
+                    ;               on each game loop cycle.
+                    ;
 player_state_climb_onto_platform    ; original address L00005058
 L00005058           ;jsr     _DEBUG_COLOURS
                     subq.w  #$01,state_parameter            ; L000062f2
-L0000505c           bne.b   L00005034
+;L0000505c           bne.b   shared_exit_rts                ; inverted logic for readability
+L0000505c           beq     L0000505e
+                    rts
+
 L0000505e           move.w  #$0006,state_parameter          ; L000062f2
 L00005064           subq.w  #$05,batman_y_offset
 L00005068           subq.w  #$04,d1
