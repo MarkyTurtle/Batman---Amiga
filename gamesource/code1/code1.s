@@ -147,115 +147,7 @@ LOADER_LEVEL_3                  EQU $0000082c                       ; Load Level
 LOADER_LEVEL_4                  EQU $00000830                       ; Load Level 4
 LOADER_LEVEL_5                  EQU $00000834                       ; Load Level 5
 
-
-                IFND TEST_BUILD_LEVEL
-; Music Player Constants
-AUDIO_PLAYER_INIT               EQU $00048000                       ; initialise music/sfx player
-AUDIO_PLAYER_SILENCE            EQU $00048004                       ; Silence all audio
-AUDIO_PLAYER_INIT_SFX_1         EQU $00048008                       ; Initialise SFX Audio Channnel
-AUDIO_PLAYER_INIT_SFX_2         EQU $0004800c                       ; same as init_sfx_1 above
-AUDIO_PLAYER_INIT_SONG          EQU $00048010                       ; initialise song to play - D0.l = song/sound 1 to 13
-AUDIO_PLAYER_INIT_SFX           EQU $00048014                       ; initialise sfx to play - d0.l = sfx 5 to 13
-AUDIO_PLAYER_UPDATE             EQU $00048018                       ; regular update (vblank to keep sounds/music playing)
-                ENDC
-                IFD TEST_BUILD_LEVEL
-; Music Player Constants
-AUDIO_PLAYER_INIT               EQU Init_Player                     ; initialise music/sfx player
-AUDIO_PLAYER_SILENCE            EQU Stop_Playing                    ; Silence all audio
-AUDIO_PLAYER_INIT_SFX_1         EQU Init_SFX_1                      ; Initialise SFX Audio Channnel
-AUDIO_PLAYER_INIT_SFX_2         EQU Init_SFX_2                      ; same as init_sfx_1 above
-AUDIO_PLAYER_INIT_SONG          EQU Init_Song                       ; initialise song to play - D0.l = song/sound 1 to 13
-AUDIO_PLAYER_INIT_SFX           EQU Init_SFX                        ; initialise sfx to play - d0.l = sfx 5 to 13
-AUDIO_PLAYER_UPDATE             EQU Play_Sounds                     ; regular update (vblank to keep sounds/music playing)
-                ENDC                
-
-                IFND TEST_BUILD_LEVEL
-; Panel Constants - original function addresses
-PANEL_UPDATE                    EQU $0007c800                       ; called on VBL to update panel display
-PANEL_INIT_TIMER                EQU $0007c80e                       ; initialise level timer (D0.w = BCD encoded MIN:SEC)
-PANEL_INIT_SCORE                EQU $0007c81c                       ; initialise player score
-PANEL_ADD_SCORE                 EQU $0007c82a                       ; add value to player score (D0.l = BCD encoded value)
-PANEL_INIT_LIVES                EQU $0007c838                       ; initialise player lives
-PANEL_ADD_LIFE                  EQU $0007c846                       ; add 1 to player lives
-PANEL_INIT_ENERGY               EQU $0007c854                       ; initialise player energy to full value
-PANEL_LOSE_LIFE                 EQU $0007c862                       ; sub 1 from player lives, check end game, set status bytes
-PANEL_LOSE_ENERGY               EQU $0007c870                       ; reduce player energy (increase hit damage) D0.w = amount to lose
-; Panel Constants - original data value addresses
-PANEL_STATUS_1                  EQU $0007c874                       ; Game Status Bits
-PANEL_STATUS_2                  EQU $0007c875                       ; Game Status Bits
-PANEL_LIVES_COUNT               EQU $0007c876                       ; player lives left
-PANEL_HISCORE                   EQU $0007c878                       ; hi-score BCD value
-PANEL_SCORE                     EQU $0007c87c                       ; player score BCD value
-PANEL_FRAMETICK                 EQU $0007c880                       ; counts down from 50 to 0 on each update
-PANEL_TIMER_UPDATE_VALUE        EQU $0007c882                       ; Timer BCD update value
-PANEL_TIMER_VALUE               EQU $0007c884                       ; Timer BCD value Min:Sec (word)
-PANEL_TIMER_SECONDS             EQU $0007c885                       ; Timer BCD seconds value
-PANEL_SCORE_UPDATE_VALUE        EQU $0007c886                       ; player score update value
-PANEL_SCORE_DISPLAY_VALUE       EQU $0007c88a                       ; player score copy BCD value used for display
-PANEL_ENERGY_VALUE              EQU $0007c88e                       ; player energy value (40 max value)
-PANEL_HIT_DAMAGE                EQU $0007c890                       ; player hit damge (subtracted from player energy on each panel update)
-; Panel Constants - resources
-PANEL_GFX                       EQU $0007c89a                                                   ; main bottom display panel gfx
-PANEL_BATMAN_GFX                EQU $0007e69a                                                   ; batman energy image
-PANEL_JOKER_GFX                 EQU $0007ebba                                                   ; joker energy image
-PANEL_SCORE_GFX                 EQU $0007f30a                                                   ; score digits gfx
-PANEL_LIVES_ON_GFX              EQU $0007f374                                                   ; batman symbol - lives icon 'on'
-PANEL_LIVES_OFF_GFX             EQU $0007f838                                                   ; batman symbol - lives icon 'off'
-                    ENDC
-                    IFD TEST_BUILD_LEVEL
-; Panel Constants - original function addresses
-PANEL_UPDATE                    EQU Panel_Update                    ; called on VBL to update panel display
-PANEL_INIT_TIMER                EQU Initialise_Level_Timer          ; initialise level timer (D0.w = BCD encoded MIN:SEC)
-PANEL_INIT_SCORE                EQU Initialise_Player_Score         ; initialise player score
-PANEL_ADD_SCORE                 EQU Update_Player_Score             ; add value to player score (D0.l = BCD encoded value)
-PANEL_INIT_LIVES                EQU Initialise_Player_Lives         ; initialise player lives
-PANEL_ADD_LIFE                  EQU Add_Extra_Life                  ; add 1 to player lives
-PANEL_INIT_ENERGY               EQU Initialise_Player_Energy        ; initialise player energy to full value
-PANEL_LOSE_LIFE                 EQU Lose_a_Life                     ; sub 1 from player lives, check end game, set status bytes
-PANEL_LOSE_ENERGY               EQU Add_Hit_Damage                  ; reduce player energy (increase hit damage) D0.w = amount to lose
-; Panel Constants - original data value addresses
-PANEL_STATUS_1                  EQU panel_status_1                  ; Game Status Bits
-PANEL_STATUS_2                  EQU panel_status_2                  ; Game Status Bits
-PANEL_LIVES_COUNT               EQU player_lives_count              ; player lives left
-PANEL_HISCORE                   EQU High_Score                      ; hi-score BCD value
-PANEL_SCORE                     EQU Player_Score                    ; player score BCD value
-PANEL_FRAMETICK                 EQU frame_tick                      ; counts down from 50 to 0 on each update
-PANEL_TIMER_UPDATE_VALUE        EQU clock_timer_update_value        ; Timer BCD update value
-PANEL_TIMER_VALUE               EQU clock_timer_minutes             ; Timer BCD value Min:Sec (word)
-PANEL_TIMER_SECONDS             EQU clock_timer_seconds             ; Timer BCD seconds value
-PANEL_SCORE_UPDATE_VALUE        EQU Player_Score_Update_Value       ; player score update value
-PANEL_SCORE_DISPLAY_VALUE       EQU Player_Score_Display_Value      ; player score copy BCD value used for display
-PANEL_ENERGY_VALUE              EQU player_remaining_energy         ; player energy value (40 max value)
-PANEL_HIT_DAMAGE                EQU player_hit_damage               ; player hit damge (subtracted from player energy on each panel update)
-; Panel Constants - resources
-PANEL_GFX                       EQU panel_gfx                                                   ; main bottom display panel gfx
-PANEL_BATMAN_GFX                EQU batman_energy_gfx                                           ; batman energy image
-PANEL_JOKER_GFX                 EQU joker_energy_gfx                                            ; joker energy image
-PANEL_SCORE_GFX                 EQU score_digits                                                ; score digits gfx
-PANEL_LIVES_ON_GFX              EQU batman_lives_icon_on_mask                                   ; batman symbol - lives icon 'on'
-PANEL_LIVES_OFF_GFX             EQU batman_lives_icon_off_mask                                  ; batman symbol - lives icon 'off'
-                ENDC
-
-PANEL_DISPLAY_PIXELWIDTH        EQU $140                                                        ; 320 pixels wide
-PANEL_DISPLAY_BYTEWIDTH         EQU PANEL_DISPLAY_PIXELWIDTH/8;                                 ; 40 bytes wide
-PANEL_DISPLAY_LINEHEIGHT        EQU $30                                                         ; 48 Raster Lines High
-PANEL_DISPLAY_BITPLANEBYTES     EQU PANEL_DISPLAY_BYTEWIDTH*PANEL_DISPLAY_LINEHEIGHT            ; 1920 bytes per bitplane
-PANEL_DISPLAY_BITPLANEDEPTH     EQU $4                                                          ; 4 bitplanes - 16 colours
-PANEL_DISPLAY_BYTESIZE          EQU PANEL_DISPLAY_BITPLANEBYTES*PANEL_DISPLAY_BITPLANEDEPTH
-; Panel Status1 Bit Numbers
-PANEL_ST1_TIMER_EXPIRED         EQU $0                                                          ; panel status 1 - bit 0 - Timer Expired
-PANEL_ST1_NO_LIVES_LEFT         EQU $1                                                          ; panel status 1 - bit 1 - No Lives Remaining
-PANEL_ST1_LIFE_LOST             EQU $2                                                          ; panel status 1 - bit 2 - Player Life Lost
-; Panel Status1 Bit Values
-PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED                                   ; panel status 1 - bit value/mask for Timer Expired
-PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT                                   ; panel status 1 - bit value/mask for No Lives Left 
-PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST                                       ; panel status 1 - bit value/mask for Life Lost 
-; Panel_Status2 Bit Numbers
-PANEL_ST2_MUSIC_SFX             EQU $0                                                          ; panel status 2 - bit 0 - Music/SFX selector bit
-PANEL_ST2_GAME_OVER             EQU $5                                                          ; panel status 2 - bit 5 - Is Game Over
-PANEL_ST2_LEVEL_COMPLETE        EQU $6                                                          ; panel status 2 - bit 6 - Is Level Complete
-PANEL_ST2_CHEAT_ACTIVE          EQU $7                                                          ; panel status 2 - bit 7 - Is Cheat Active
-
+           
 
 
 
@@ -303,7 +195,6 @@ CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE
 
 
 
-
 ; Code1 - debug_print_word_value constants
 FONT_8x8_HEIGHT     EQU         $8
 ASCII_SPACE         EQU         $20
@@ -326,52 +217,6 @@ DISPLAY_BUFFER_BPL2_OFFSET  EQU     DISPLAY_BUFFER_BYTES*2
 DISPLAY_BUFFER_BPL3_OFFSET  EQU     DISPLAY_BUFFER_BYTES*3
 
 
-;Chem.iff - Level Music - Constants
-;----------------------------------
-SFX_LEVEL_MUSIC     EQU         $01
-SFX_LEVEL_COMPLETE  EQU         $02
-SFX_LIFE_LOST       EQU         $03
-SFX_TIMER_EXPIRED   EQU         $04
-SFX_DRIP            EQU         $05
-SFX_GASLEAK         EQU         $06
-SFX_BATROPE         EQU         $07
-SFX_BATARANG        EQU         $08
-SFX_GRENADE         EQU         $09
-SFX_GUYHIT          EQU         $0a
-SFX_SPLASH          EQU         $0b
-SFX_Ricochet        EQU         $0c
-SFX_EXPLOSION       EQU         $0d
-
-
-; MAPPGR.IFF
-                    IFND    TEST_BUILD_LEVEL
-MAPGR_ADDRESS                   EQU $7FFC                                                       ; $7ffc - physical load address of MAPGR.IFF
-                    ELSE
-MAPGR_ADDRESS                   EQU MapGR_IFF                                                   ; label defined in Mapgr.iff
-                    ENDC
-MAPGR_TILEDATA_OFFSET           EQU $7a                                                         ; offsset from $8002 to $800c
-MAPGR_START                     EQU MAPGR_ADDRESS+4                                             ; $8000 - data start address                                      
-MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
-MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
-MAPGR_DATA_ADDRESS              EQU MAPGR_ADDRESS+$80                                           ; $807c - Address offset of the first level data block.
-MAPGR_GFX_ADDRESS               EQU MAPGR_DATA_ADDRESS+$2000                                    ; $a07c - Address offset of level GFX.
-MAPGR_PREPROC_BLOCK_OFFSET      EQU $76                                                         ; 1st data block offset (data preprocessing step)
-
-
-; BATSPR1.IFF
-                    IFND    TEST_BUILD_LEVEL
-BATSPR1_ADDRESS                 EQU $10FFC                                                      ; $10FFC - physical load address of BATSPR1.IFF
-                    ELSE
-BATSPR1_ADDRESS                 EQU Batspr1                                                     ; label defined in batspr1.iff
-                    ENDC
-BATSPR1_START                   EQU BATSPR1_ADDRESS+4                                           ; $11000 - data start address
-BATSPR1_BASE                    EQU BATSPR1_ADDRESS+6                                           ; $11002 - 
-
-                    IFND    TEST_BUILD_LEVEL
-BATSPR1_SPRTIE_LIST             EQU $100000
-                    ELSE
-BATSPR1_SPRTIE_LIST             EQU sprite_list
-                    ENDC
 
                 section code1,code_c
                 
@@ -390,23 +235,12 @@ BATSPR1_SPRTIE_LIST             EQU sprite_list
                 opt         o-
 
 
+
             ; if test then jump to game start
             IFD TEST_BUILD_LEVEL
 start               ; added for testing (doesn't run yet!!!)
                     jmp game_start     
             ENDC
-
-_DEBUG_COLOURS
-            move.w  d0,$dff180
-            add.w   #$1,d0
-            btst    #6,$bfe001
-            bne.s   _DEBUG_COLOURS
-            rts
-
-_MOUSE_WAIT
-            btst    #6,$bfe001
-            bne.s   _MOUSE_WAIT
-            rts
 
 
 original_start:                                             ; original address $2FFC
@@ -414,8 +248,21 @@ original_start:                                             ; original address $
 
 
 
-game_start                                                  ; original address $00003000
-initialise_system
+
+                    ; -------------------------- game start /  initialise system ---------------------------------
+                    ; This is the Level 1 code entry point on loading.
+                    ;
+                    ; NOTES:
+                    ; I added the 'supervisor mode' code as this was previously handled by the loader, and it is
+                    ; required as some code performs 'move.w <ea>,SR' (priviledged instruction on 68000)
+                    ;   NB: the code also performs 'move.w SR,<ea>' which is privileged on some processors.
+                    ; 
+                    ; I added the stack address setting code, which moves the stack to the start of the program,
+                    ; hopefully out of harms way for rebuilding and executing.
+                    ;
+                    ;
+game_start          ; original address $00003000
+initialise_system   ; original address $00003000 
                     ;JSR _DEBUG_COLOURS
                     ; kill the system & initialise h/w
                     moveq   #$00,d0
@@ -8226,6 +8073,75 @@ large_character_gfx                                     ; original address L0000
 
 
 
+
+
+
+                    ;-------------------------------------------------------------------------------------------
+                    ; My Debug Routines
+                    ;-------------------------------------------------------------------------------------------
+                    ; I added the following routines to allow 'signals' to be flashed on screen, and/or
+                    ; the game to be paused as required.
+                    ;
+                    ; The routines are used to modify routines so that I can flash the screen, pause the
+                    ; game when certain code is executed.
+                    ;
+
+_DEBUG_COLOURS
+            move.w  d0,$dff180
+            add.w   #$1,d0
+            btst    #6,$bfe001
+            bne.s   _DEBUG_COLOURS
+            rts
+
+
+_MOUSE_WAIT
+            btst    #6,$bfe001
+            bne.s   _MOUSE_WAIT
+            rts
+
+
+                    ;-------------------------------------------------------------------------------------------
+                    ; End of My Debug Routines
+                    ;-------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+                    ;-------------------------------------------------------------------------------------------
+                    ;
+                    ;   TEST BUILD - Additional Code & Data
+                    ;
+                    ;-------------------------------------------------------------------------------------------
+                    ; If running a test build then we need the following resources:-
+                    ;
+                    ;   - Screen Memory Buffers
+                    ;       - Offscreen Scroll Buffer memory (29232 bytes)
+                    ;       - Double Buffered screen memory (58464 bytes)
+                    ;
+                    ;   - Music Player Code & Data
+                    ;       - chem1.s
+                    ;
+                    ;   - Panel Code & GFX (Bottom of screen lives/score/energy display)
+                    ;       - panel.s
+                    ;
+                    ;   - Level 1 - Background Tile Map Data & GFX
+                    ;       - mapgr.s
+                    ;
+                    ;   - Level 1 - Sprites (Batman, Bad guys, projectiles, Drips, Gasleak)
+                    ;       - batspr1.s
+                    ;       - buffer for mirrored sprites (calculated on level initialisation)
+                    ;
+                    ;   - Sprite List Buffer - Dynamically created list of Sprite Object
+                    ;       - sprite_list
+                    ;
+
             ; if test build, allocate backbuffers in chip memory
                                 IFD TEST_BUILD_LEVEL
 chipmem_buffer                  dcb.b   CODE1_DISPLAY_BUFFER_BYTESIZE,$01
@@ -8246,6 +8162,10 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
                 incdir      "../panel/"
                 include     "panel.s"                                           ; original load address $2FFC
             ENDC
+
+            ; padding - see if it fixes map data corruption
+
+            dcb.B   1024,0
 
             ; If Test Build - Include the level map data and graphics
             IFD TEST_BUILD_LEVEL

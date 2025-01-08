@@ -14,6 +14,43 @@
 
                 section chem,code_c
 
+                IFND TEST_BUILD_LEVEL
+; Music Player Constants
+AUDIO_PLAYER_INIT               EQU $00048000                       ; initialise music/sfx player
+AUDIO_PLAYER_SILENCE            EQU $00048004                       ; Silence all audio
+AUDIO_PLAYER_INIT_SFX_1         EQU $00048008                       ; Initialise SFX Audio Channnel
+AUDIO_PLAYER_INIT_SFX_2         EQU $0004800c                       ; same as init_sfx_1 above
+AUDIO_PLAYER_INIT_SONG          EQU $00048010                       ; initialise song to play - D0.l = song/sound 1 to 13
+AUDIO_PLAYER_INIT_SFX           EQU $00048014                       ; initialise sfx to play - d0.l = sfx 5 to 13
+AUDIO_PLAYER_UPDATE             EQU $00048018                       ; regular update (vblank to keep sounds/music playing)
+                ENDC
+                IFD TEST_BUILD_LEVEL
+; Music Player Constants
+AUDIO_PLAYER_INIT               EQU Init_Player                     ; initialise music/sfx player
+AUDIO_PLAYER_SILENCE            EQU Stop_Playing                    ; Silence all audio
+AUDIO_PLAYER_INIT_SFX_1         EQU Init_SFX_1                      ; Initialise SFX Audio Channnel
+AUDIO_PLAYER_INIT_SFX_2         EQU Init_SFX_2                      ; same as init_sfx_1 above
+AUDIO_PLAYER_INIT_SONG          EQU Init_Song                       ; initialise song to play - D0.l = song/sound 1 to 13
+AUDIO_PLAYER_INIT_SFX           EQU Init_SFX                        ; initialise sfx to play - d0.l = sfx 5 to 13
+AUDIO_PLAYER_UPDATE             EQU Play_Sounds                     ; regular update (vblank to keep sounds/music playing)
+                ENDC    
+
+;Chem.iff - Level Music - Constants
+;----------------------------------
+SFX_LEVEL_MUSIC     EQU         $01
+SFX_LEVEL_COMPLETE  EQU         $02
+SFX_LIFE_LOST       EQU         $03
+SFX_TIMER_EXPIRED   EQU         $04
+SFX_DRIP            EQU         $05
+SFX_GASLEAK         EQU         $06
+SFX_BATROPE         EQU         $07
+SFX_BATARANG        EQU         $08
+SFX_GRENADE         EQU         $09
+SFX_GUYHIT          EQU         $0a
+SFX_SPLASH          EQU         $0b
+SFX_Ricochet        EQU         $0c
+SFX_EXPLOSION       EQU         $0d
+
 
 ;TEST_MUSIC_BUILD SET 1             ; run a test build with imported GFX
 
@@ -22,6 +59,7 @@
                         org     $47fe4                                         ; original load address
                 ENDC
         ELSE
+
 
 kill_system
                 lea     $dff000,a6

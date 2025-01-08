@@ -9,6 +9,100 @@ INFINITE_ENERGY_CHEAT   SET 1                           ; if defined then the 'J
                 org     $7C7FC                                      ; original load address
             ENDC
 
+
+                IFND TEST_BUILD_LEVEL
+; Panel Constants - original function addresses
+PANEL_UPDATE                    EQU $0007c800                       ; called on VBL to update panel display
+PANEL_INIT_TIMER                EQU $0007c80e                       ; initialise level timer (D0.w = BCD encoded MIN:SEC)
+PANEL_INIT_SCORE                EQU $0007c81c                       ; initialise player score
+PANEL_ADD_SCORE                 EQU $0007c82a                       ; add value to player score (D0.l = BCD encoded value)
+PANEL_INIT_LIVES                EQU $0007c838                       ; initialise player lives
+PANEL_ADD_LIFE                  EQU $0007c846                       ; add 1 to player lives
+PANEL_INIT_ENERGY               EQU $0007c854                       ; initialise player energy to full value
+PANEL_LOSE_LIFE                 EQU $0007c862                       ; sub 1 from player lives, check end game, set status bytes
+PANEL_LOSE_ENERGY               EQU $0007c870                       ; reduce player energy (increase hit damage) D0.w = amount to lose
+; Panel Constants - original data value addresses
+PANEL_STATUS_1                  EQU $0007c874                       ; Game Status Bits
+PANEL_STATUS_2                  EQU $0007c875                       ; Game Status Bits
+PANEL_LIVES_COUNT               EQU $0007c876                       ; player lives left
+PANEL_HISCORE                   EQU $0007c878                       ; hi-score BCD value
+PANEL_SCORE                     EQU $0007c87c                       ; player score BCD value
+PANEL_FRAMETICK                 EQU $0007c880                       ; counts down from 50 to 0 on each update
+PANEL_TIMER_UPDATE_VALUE        EQU $0007c882                       ; Timer BCD update value
+PANEL_TIMER_VALUE               EQU $0007c884                       ; Timer BCD value Min:Sec (word)
+PANEL_TIMER_SECONDS             EQU $0007c885                       ; Timer BCD seconds value
+PANEL_SCORE_UPDATE_VALUE        EQU $0007c886                       ; player score update value
+PANEL_SCORE_DISPLAY_VALUE       EQU $0007c88a                       ; player score copy BCD value used for display
+PANEL_ENERGY_VALUE              EQU $0007c88e                       ; player energy value (40 max value)
+PANEL_HIT_DAMAGE                EQU $0007c890                       ; player hit damge (subtracted from player energy on each panel update)
+; Panel Constants - resources
+PANEL_GFX                       EQU $0007c89a                                                   ; main bottom display panel gfx
+PANEL_BATMAN_GFX                EQU $0007e69a                                                   ; batman energy image
+PANEL_JOKER_GFX                 EQU $0007ebba                                                   ; joker energy image
+PANEL_SCORE_GFX                 EQU $0007f30a                                                   ; score digits gfx
+PANEL_LIVES_ON_GFX              EQU $0007f374                                                   ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX             EQU $0007f838                                                   ; batman symbol - lives icon 'off'
+                    ENDC
+                    IFD TEST_BUILD_LEVEL
+; Panel Constants - original function addresses
+PANEL_UPDATE                    EQU Panel_Update                    ; called on VBL to update panel display
+PANEL_INIT_TIMER                EQU Initialise_Level_Timer          ; initialise level timer (D0.w = BCD encoded MIN:SEC)
+PANEL_INIT_SCORE                EQU Initialise_Player_Score         ; initialise player score
+PANEL_ADD_SCORE                 EQU Update_Player_Score             ; add value to player score (D0.l = BCD encoded value)
+PANEL_INIT_LIVES                EQU Initialise_Player_Lives         ; initialise player lives
+PANEL_ADD_LIFE                  EQU Add_Extra_Life                  ; add 1 to player lives
+PANEL_INIT_ENERGY               EQU Initialise_Player_Energy        ; initialise player energy to full value
+PANEL_LOSE_LIFE                 EQU Lose_a_Life                     ; sub 1 from player lives, check end game, set status bytes
+PANEL_LOSE_ENERGY               EQU Add_Hit_Damage                  ; reduce player energy (increase hit damage) D0.w = amount to lose
+; Panel Constants - original data value addresses
+PANEL_STATUS_1                  EQU panel_status_1                  ; Game Status Bits
+PANEL_STATUS_2                  EQU panel_status_2                  ; Game Status Bits
+PANEL_LIVES_COUNT               EQU player_lives_count              ; player lives left
+PANEL_HISCORE                   EQU High_Score                      ; hi-score BCD value
+PANEL_SCORE                     EQU Player_Score                    ; player score BCD value
+PANEL_FRAMETICK                 EQU frame_tick                      ; counts down from 50 to 0 on each update
+PANEL_TIMER_UPDATE_VALUE        EQU clock_timer_update_value        ; Timer BCD update value
+PANEL_TIMER_VALUE               EQU clock_timer_minutes             ; Timer BCD value Min:Sec (word)
+PANEL_TIMER_SECONDS             EQU clock_timer_seconds             ; Timer BCD seconds value
+PANEL_SCORE_UPDATE_VALUE        EQU Player_Score_Update_Value       ; player score update value
+PANEL_SCORE_DISPLAY_VALUE       EQU Player_Score_Display_Value      ; player score copy BCD value used for display
+PANEL_ENERGY_VALUE              EQU player_remaining_energy         ; player energy value (40 max value)
+PANEL_HIT_DAMAGE                EQU player_hit_damage               ; player hit damge (subtracted from player energy on each panel update)
+; Panel Constants - resources
+PANEL_GFX                       EQU panel_gfx                                                   ; main bottom display panel gfx
+PANEL_BATMAN_GFX                EQU batman_energy_gfx                                           ; batman energy image
+PANEL_JOKER_GFX                 EQU joker_energy_gfx                                            ; joker energy image
+PANEL_SCORE_GFX                 EQU score_digits                                                ; score digits gfx
+PANEL_LIVES_ON_GFX              EQU batman_lives_icon_on_mask                                   ; batman symbol - lives icon 'on'
+PANEL_LIVES_OFF_GFX             EQU batman_lives_icon_off_mask                                  ; batman symbol - lives icon 'off'
+                ENDC
+
+
+
+PANEL_DISPLAY_PIXELWIDTH        EQU $140                                                        ; 320 pixels wide
+PANEL_DISPLAY_BYTEWIDTH         EQU PANEL_DISPLAY_PIXELWIDTH/8;                                 ; 40 bytes wide
+PANEL_DISPLAY_LINEHEIGHT        EQU $30                                                         ; 48 Raster Lines High
+PANEL_DISPLAY_BITPLANEBYTES     EQU PANEL_DISPLAY_BYTEWIDTH*PANEL_DISPLAY_LINEHEIGHT            ; 1920 bytes per bitplane
+PANEL_DISPLAY_BITPLANEDEPTH     EQU $4                                                          ; 4 bitplanes - 16 colours
+PANEL_DISPLAY_BYTESIZE          EQU PANEL_DISPLAY_BITPLANEBYTES*PANEL_DISPLAY_BITPLANEDEPTH
+; Panel Status1 Bit Numbers
+PANEL_ST1_TIMER_EXPIRED         EQU $0                                                          ; panel status 1 - bit 0 - Timer Expired
+PANEL_ST1_NO_LIVES_LEFT         EQU $1                                                          ; panel status 1 - bit 1 - No Lives Remaining
+PANEL_ST1_LIFE_LOST             EQU $2                                                          ; panel status 1 - bit 2 - Player Life Lost
+; Panel Status1 Bit Values
+PANEL_ST1_VAL_TIMER_EXPIRED     EQU 2^PANEL_ST1_TIMER_EXPIRED                                   ; panel status 1 - bit value/mask for Timer Expired
+PANEL_ST2_VAL_NO_LIVES_LEFT     EQU 2^PANEL_ST1_NO_LIVES_LEFT                                   ; panel status 1 - bit value/mask for No Lives Left 
+PANEL_ST2_VAL_LIFE_LOST         EQU 2^PANEL_ST1_LIFE_LOST                                       ; panel status 1 - bit value/mask for Life Lost 
+; Panel_Status2 Bit Numbers
+PANEL_ST2_MUSIC_SFX             EQU $0                                                          ; panel status 2 - bit 0 - Music/SFX selector bit
+PANEL_ST2_GAME_OVER             EQU $5                                                          ; panel status 2 - bit 5 - Is Game Over
+PANEL_ST2_LEVEL_COMPLETE        EQU $6                                                          ; panel status 2 - bit 6 - Is Level Complete
+PANEL_ST2_CHEAT_ACTIVE          EQU $7                                                          ; panel status 2 - bit 7 - Is Cheat Active
+
+
+
+
+
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"

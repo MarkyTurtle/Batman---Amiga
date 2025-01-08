@@ -14,6 +14,21 @@
         ENDC
 
   
+; MAPPGR.IFF
+                    IFND    TEST_BUILD_LEVEL
+MAPGR_ADDRESS                   EQU $7FFC                                                       ; $7ffc - physical load address of MAPGR.IFF
+                    ELSE
+MAPGR_ADDRESS                   EQU MapGR_IFF                                                   ; label defined in Mapgr.iff
+                    ENDC
+MAPGR_TILEDATA_OFFSET           EQU $7a                                                         ; offsset from $8002 to $800c
+MAPGR_START                     EQU MAPGR_ADDRESS+4                                             ; $8000 - data start address                                      
+MAPGR_BASE                      EQU MAPGR_ADDRESS+6                                             ; $8002                                         ; 
+MAPGR_BLOCK_PARAMS              EQU MAPGR_ADDRESS+6                                             ; $8002 - physical address of 'block size' and 'number of blocks' parameters
+MAPGR_DATA_ADDRESS              EQU MAPGR_ADDRESS+$80                                           ; $807c - Address offset of the first level data block.
+MAPGR_GFX_ADDRESS               EQU MAPGR_DATA_ADDRESS+$2000                                    ; $a07c - Address offset of level GFX.
+MAPGR_PREPROC_BLOCK_OFFSET      EQU $76                                                         ; 1st data block offset (data preprocessing step)
+
+
 MapGR_IFF       
 L00007FFC           dc.w $0000, $8000, $0029, $00C0, $0029, $0000, $0000, $0014             ;.....)...)......
 L0000800C           dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000             ;................

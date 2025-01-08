@@ -16,6 +16,22 @@
                 org     $10ffc                                         ; original load address
         ENDC
 
+
+; BATSPR1.IFF
+                    IFND    TEST_BUILD_LEVEL
+BATSPR1_ADDRESS                 EQU $10FFC                                                      ; $10FFC - physical load address of BATSPR1.IFF
+                    ELSE
+BATSPR1_ADDRESS                 EQU Batspr1                                                     ; label defined in batspr1.iff
+                    ENDC
+BATSPR1_START                   EQU BATSPR1_ADDRESS+4                                           ; $11000 - data start address
+BATSPR1_BASE                    EQU BATSPR1_ADDRESS+6                                           ; $11002 - 
+
+                    IFND    TEST_BUILD_LEVEL
+BATSPR1_SPRTIE_LIST             EQU $100000
+                    ELSE
+BATSPR1_SPRTIE_LIST             EQU sprite_list
+                    ENDC
+
     
 Batspr1
 L00010FFC           dc.w $3033, $0001, $7976, $0131, $800F, $0909, $0000, $0000         ;03..yv.1........
