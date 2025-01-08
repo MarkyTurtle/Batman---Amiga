@@ -1542,7 +1542,7 @@ ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for 
 ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
 ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
-ACTORSTRUCT_UNKNOWN_1   EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
 ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
 ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
 ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
@@ -2528,7 +2528,7 @@ L00004036           and.w   #$00fe,d2
 L0000403a           adda.w  d2,a5
 L0000403c           add.w   d2,d2
 L0000403e           adda.w  d2,a5
-L00004040           bra.w   L0000457c
+L00004040           bra.w   drawcollide_actor_sprites_a5               ; L0000457c
 
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
@@ -2538,7 +2538,7 @@ L00004040           bra.w   L0000457c
                     ; d4 = actor WorldX
 actor_cmd_07
 L00004044           lea.l   L000044ec,a5
-L00004048           bsr.w   L0000457c
+L00004048           bsr.w   drawcollide_actor_sprites_a5               ; L0000457c
 L0000404c           subq.w  #$01,$0008(a6)
 L00004050           bne.b   L0000405c
 L00004052           move.w  #$0020,$0008(a6)
@@ -2607,7 +2607,7 @@ L000040e2           and.w   #$00fe,d2
 L000040e6           adda.w  d2,a5
 L000040e8           add.w   d2,d2
 L000040ea           adda.w  d2,a5
-L000040ec           bra.w   L0000457c
+L000040ec           bra.w   drawcollide_actor_sprites_a5               ; L0000457c
 
 
 
@@ -2619,7 +2619,7 @@ L000040ec           bra.w   L0000457c
                     ; d4 = actor WorldX
 actor_cmd_06
 L000040f0           lea.l   L0000450a,a5
-L000040f4           bsr.w   L0000457c
+L000040f4           bsr.w   drawcollide_actor_sprites_a5               ; L0000457c
 L000040f8           subq.w  #$01,$0008(a6)
 L000040fc           bne.b   L00004108
 L000040fe           move.w  #$0020,$0008(a6)
@@ -2748,15 +2748,15 @@ L0000424c           lsr.w   #$01,d4
 L0000424e           move.w  d4,-(a7)
 L00004250           addq.w  #$08,d4
 L00004252           move.w  d4,d2
-L00004254           bsr.w   L000045bc
+L00004254           bsr.w   draw_next_sprite            ; L000045bc
 L00004258           move.w  (a7)+,d2
 L0000425a           lsr.w   #$01,d2
 L0000425c           bne.b   L00004260
 L0000425e           addq.w  #$02,d2
 L00004260           addq.w  #$04,d2
-L00004262           bsr.w   L000045bc
+L00004262           bsr.w   draw_next_sprite            ; L000045bc
 L00004266           moveq   #$04,d2
-L00004268           bra.w   L0000458a
+L00004268           bra.w   actor_collision_and_sprite1         ; L0000458a
 
 
 
@@ -2828,15 +2828,15 @@ L00004324           eor.w   #$e007,d4
 L00004328           move.w  d4,-(a7)
 L0000432a           addq.w  #$08,d4
 L0000432c           move.w  d4,d2
-L0000432e           bsr.w   L000045bc
+L0000432e           bsr.w   draw_next_sprite                ; L000045bc
 L00004332           move.w  (a7)+,d2
 L00004334           lsr.b   #$01,d2
 L00004336           bne.b   L0000433a
 L00004338           addq.w  #$02,d2
 L0000433a           addq.w  #$04,d2
-L0000433c           bsr.w   L000045bc
+L0000433c           bsr.w   draw_next_sprite                ; L000045bc
 L00004340           move.w  #$e004,d2
-L00004344           bra.w   L0000458a
+L00004344           bra.w   actor_collision_and_sprite1         ; L0000458a
 L00004348           move.w  $000c(a6),d6
 L0000434c           move.w  d6,(a6)
 L0000434e           cmp.w   #$0010,d6
@@ -2910,11 +2910,11 @@ L000043de           or.w    #$e000,d2
 L000043e2           addq.w  #$01,d0
 L000043e4           add.w   #$001b,d2
 L000043e8           move.w  d2,-(a7)
-L000043ea           bsr.w   L000045bc
+L000043ea           bsr.w   draw_next_sprite                ; L000045bc
 L000043ee           move.w  (a7)+,d2
 L000043f0           and.w   #$e000,d2
 L000043f4           add.w   #$001a,d2
-L000043f8           bra.w   L0000458a
+L000043f8           bra.w   actor_collision_and_sprite1     ; L0000458a
 L000043fc           moveq   #$07,d2
 L000043fe           moveq   #$4c,d3
 L00004400           sub.w   d0,d3
@@ -2943,7 +2943,7 @@ L0000442c           move.w  #$0010,(a6)
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_16
-L00004430           bsr.w   L00004570
+L00004430           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004434           subq.w  #$01,$0008(a6)
 L00004438           bpl.b   L00004442
 L0000443a           addq.w  #$01,(a6)
@@ -2958,7 +2958,7 @@ L00004442           rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_17
-L00004444           bsr.w   L00004570
+L00004444           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004448           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00004450           bne.b   L00004442
 L00004452           bsr.w   get_empty_projectile                    ; a0 = empty projectile entry or the end of the list - L0000463e
@@ -2984,7 +2984,7 @@ L0000447c           rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_18
-L0000447e           bsr.w   L00004570
+L0000447e           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004482           subq.w  #$01,$0008(a6)
 L00004486           bne.b   L00004442
 L00004488           move.w  #$0004,$0008(a6)
@@ -3044,60 +3044,63 @@ L00004508           dc.w    $0011
 L0000450a           dc.w    $0015                ; or.b #$15,(a1) [04]
 L0000450c           dc.w    $0016, $0011                ; or.b #$11,(a6)
 
-L00004510           dc.w    $0010, $0011                ; or.b #$11,(a0) [00]
-L00004514           dc.w    $0012, $0012                ; or.b #$12,(a2) [12]
-L00004518           dc.w    $0008                       ; illegal
-L0000451a           dc.w    $8006                       ; or.b d6,d0
-L0000451c           dc.w    $e010                       ; roxr.b #$08,d0
-L0000451e           dc.w    $e011                       ; roxr.b #$08,d1
-L00004520           dc.w    $e012                       ; roxr.b #$08,d2
-L00004522           dc.w    $0012, $fff8                ; or.b #$f8,(a2) [12]
-L00004526           dc.w    $8007                       ; or.b d7,d0
-L00004528           dc.w    $0017, $0018                ; or.b #$18,(a7) [60]
-L0000452c           dc.w    $0019, $000e                ; or.b #$0e,(a1)+ [04]
-L00004530           dc.w    $0008                       ; illegal
-L00004532           dc.w    $8006                       ; or.b d6,d0
-L00004534           dc.w    $e017                       ; roxr.b #$08,d7
-L00004536           dc.w    $e018                       ; ror.b #$08,d0
-L00004538           dc.w    $e019                       ; ror.b #$08,d1
-L0000453a           dc.w    $000e                       ; illegal
-L0000453c           dc.w    $fff8                       ; illegal
-L0000453e           dc.w    $8007                       ; or.b d7,d0
-L00004540           dc.w    $e013                       ; roxr.b #$08,d3
-L00004542           dc.w    $e014                       ; roxr.b #$08,d4
-L00004544           dc.w    $e012                       ; roxr.b #$08,d2
-L00004546           dc.w    $0012, $fffd                ; or.b #$fd,(a2) [12]
-L0000454a           dc.w    $800b                       ; illegal
-L0000454c           dc.w    $0013, $0014                ; or.b #$14,(a3) [71]
-L00004550           dc.w    $0012, $0012                ; or.b #$12,(a2) [12]
-L00004554           dc.w    $0003, $800a                ; or.b #$0a,d3
-L00004558           dc.w    $e015                       ; roxr.b #$08,d5
-L0000455a           dc.w    $e016                       ; roxr.b #$08,d6
-L0000455c           dc.w    $e012                       ; roxr.b #$08,d2
-L0000455e           dc.w    $000c                       ; illegal
-L00004560           dc.w    $fffb                       ; illegal
-L00004562           dc.w    $8009                       ; illegal
-L00004564           dc.w    $0015, $0016                ; or.b #$16,(a5)
-L00004568           dc.w    $0012, $000c                ; or.b #$0c,(a2) [12]
-L0000456c           dc.w    $0005, $8008                ; or.b #$08,d5
+
+; 12 byte sprite id structure 
+;   Offset
+;   0-1     - Sprite 1 Id
+;   2-3     - Sprite 2 Id
+;   4-5     - Sprite 3 Id
+;   6-7     - ?????
+;   8-9     - ?????
+;   10-11   - ?????
+actor_sprite_ids    ; original address 
+L00004510           dc.w    $0010,$0011,$0012,$0012,$0008,$8006
+L0000451c           dc.w    $e010,$e011,$e012,$0012,$fff8,$8007
+L00004528           dc.w    $0017,$0018,$0019,$000e,$0008,$8006
+L00004534           dc.w    $e017,$e018,$e019,$000e,$fff8,$8007
+L00004540           dc.w    $e013,$e014,$e012,$0012,$fffd,$800b
+L0000454c           dc.w    $0013,$0014,$0012,$0012,$0003,$800a
+L00004558           dc.w    $e015,$e016,$e012,$000c,$fffb,$8009
+L00004564           dc.w    $0015,$0016,$0012,$000c,$0005,$8008
 
 
-; core to game object updates
-; when not executed, the game does not run.
-L00004570           move.w  $000a(a6),d2        ; $00dff00a
-L00004574           mulu.w  #$000c,d2
-L00004578           lea.l   L00004510(pc,d2.W),a5        ; $00004510     (warning 2069: encoding absolute displacement directly)
+
+                    ; ---------------------- draw and collide actor sprites ------------------------
+                    ; Draws actor sprites using an offset specified in the 'actor list structure'
+                    ; offset is a word at byte  offset #$0a (10)
+                    ; 
+                    ; IN:-
+                    ;   a6 = actor list structure ptr
+                    ;
+drawcollide_sprites_from_actor_list_struct_0a
+L00004570           move.w  ACTORSTRUCT_SPRITES_IDX(a6),d2      ; offset #$000a into actors_list structure               
+L00004574           mulu.w  #$000c,d2                           ; structure 12 bytes in size
+L00004578           lea.l   actor_sprite_ids(pc,d2.W),a5        ; table containing sprite data (12 byte struct, 1st 3 words sprite ids)
+                    ; fall through to 'drawcollide_actor_sprites_a5' below...
+
+                    ; ----------------------- draw and collide sprites ids --------------------------
+                    ; draw and collide sprites using 3 word ids specified by address a5.
+                    ;
+                    ; IN:-
+                    ;   a5 = address ptr to 3 sprite ids
+                    ;
+drawcollide_actor_sprites_a5  ; L0000457c - draw 3 actor sprites 3 ids at address a5
 L0000457c           move.w  (a5)+,d2
-L0000457e           bsr.b   L0000458a
+L0000457e           bsr.b   actor_collision_and_sprite1     ; L0000458a
 L00004580           move.w  (a5)+,d2
-L00004582           bsr.b   L000045bc
+L00004582           bsr.b   draw_next_sprite                ; L000045bc
 L00004584           move.w  (a5)+,d2
-L00004586           bne.b   L000045bc
+L00004586           bne.b   draw_next_sprite                ; L000045bc
 L00004588           rts 
 
 
-; draw bad guy head/sprite 1
-L0000458a           add.w   $0006(a6),d2        ; $00dff006
+
+
+                    ; do bad guy collision
+                    ; draw bad guy head/sprite 1
+actor_collision_and_sprite1 ; original address L0000458a
+L0000458a          
+                    add.w   $0006(a6),d2        ; $00dff006
 L0000458e           move.w  d2,d3
 L00004590           and.w   #$1fff,d3           ; clamp value to max $1fff
 L00004594           lsl.w   #$01,d3
@@ -3109,6 +3112,7 @@ L000045a2           ext.w   d5
 L000045a4           sub.w   d5,d4
 L000045a6           asr.w   #$01,d4
 L000045a8           movem.w d0-d1/d4,$000e(a6)  ; update Sprite X, Y and Id to offset 14
+                    ;  draw sprite
 L000045ae           movem.w d0-d1/a5-a6,-(a7)
 L000045b2           bsr.w   draw_sprite         ; draw top/head of bad guy  ; L000056f4
 L000045b6           movem.w (a7)+,d0-d1/a5-a6
@@ -3122,7 +3126,7 @@ L000045ba           rts
                     ;   a6.l - address of object/sprite struct
                     ; OUT:
                     ;   d2.w - updated sprite id
-draw_next_sprite                                                        ; original address L000045bc
+draw_next_sprite    ; original address L000045bc
 L000045bc           add.w   $0006(a6),d2                                ; set sprite id
 L000045c0           movem.w d0-d1/a5-a6,-(a7)
 L000045c4           bsr.w   draw_sprite                                 ; d0.w - Sprite X Position, d1.w - Sprite Y Position,  d2.w - Sprite id
@@ -3132,14 +3136,19 @@ L000045cc           rts
 
 
 
-
+                    ; -------------------- actor command - falling -----------------------
+                    ; Called to handle actor killed/falling form playform.
+                    ;   - Brown Bad Guy
+                    ;   - Green Bad Guy
+                    ;   - Grey Bad Guy (Jack)
+                    ;
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_01
+actor_cmd_falling   ; L000045ce
 L000045ce           move.w  $000a(a6),d2            ; $00dff00a
 L000045d2           addq.w  #$01,d2
 L000045d4           cmp.w   #$000e,d2
@@ -3149,10 +3158,24 @@ L000045de           asr.w   #$01,d2
 L000045e0           add.w   d2,$0004(a6)            ;$00dff004
 L000045e4           lea.l   L000062de,a5
 L000045e8           cmp.w   #$0064,d1
-L000045ec           bmi.w   L0000457c
+L000045ec           bmi.w   drawcollide_actor_sprites_a5   ; L0000457c
 L000045f0           clr.w   (a6)
 L000045f2           move.l  #$00000350,d0
 L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
+                    ; uses rts in 'panel_add_score' above
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -4803,6 +4826,8 @@ _DEBUG_RED_PAUSE
                     bne.s   _DEBUG_RED_PAUSE
                     rts
 
+
+                    ; -------------- player state - actor collide on batrope -----------
                     ; game_loop - Self Modified JSR Address
                     ; set at line of code L00004cee
                     ; ---- player state - actor Collision on batrope ------
@@ -4810,8 +4835,8 @@ player_state_actor_collide_on_batrope   ; original address L00004e3a
 L00004e3a           ;jsr _DEBUG_RED_PAUSE
                     move.w  #$f00,$dff180 
                     moveq   #$10,d3                    ; CMD16 - Fire - No Direction
-L00004e3c            tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - (Clock Timer Expired, No Lives, Life Lost bits)
-L00004e42            bne.b   L00004e60
+L00004e3c           tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - (Clock Timer Expired, No Lives, Life Lost bits)
+L00004e42           bne.b   L00004e60
 
 L00004e44            lea.l   grappling_hook_height,a0   ; L00006318,a0
 L00004e48            move.w  (a0),d2
@@ -4824,23 +4849,14 @@ L00004e58            bne.b   L00004e60
 L00004e5a            move.l  #player_state_grappling_hook_attached,gl_jsr_address  ; L00003c90        ; Set Self MOdified Code JSR in game_loop
 
 
-                    ; one of the following has occurred
-                    ; Panel Status 1
-                    ;  - Clock Timer Expired
-                    ;  - No Lives Left
-                    ;  - Life has been Lost
-                    ; Contents of $00006318
-                    ;  - is less than 80 (decimal) #$50
-                    ; Contents of $00006305
-                    ;  - is more than 0
-                    ;
-L00004e60            move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) Fire no Direction
+                    ; update control command
+L00004e60           move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) Fire no Direction
+                    ; fall through to 'update_grppling_hook' below
 
 
-
-                    ; player state - grappling hook attached
+                    ; --------- player state - grappling hook attached -----------
 player_state_grappling_hook_attached    ; original address L00004e64
-L00004e64           move.w #$0f0,$dff180
+L00004e64           move.w #$00f,$dff180
                     lea.l   grappling_hook_height,a0               ; L00006318,a0                
 L00004e68           move.w  (a0),d5
 L00004e6a           move.b  player_input_command,d4                ; L00006308,d4
@@ -6994,7 +7010,7 @@ L00005a98           dc.w    $0000
 actor_handler_table                                         ; original address L00005a9a
                                                             ; index | offset    | Description
 L00005a9a           dc.l    actor_cmd_nop                   ;   0   |    0      |                        original 16 bit value $5290
-                    dc.l    actor_cmd_01                    ;   1   |    4      |                        original 16 bit value $45ce
+                    dc.l    actor_cmd_falling               ;   1   |    4      |                        original 16 bit value $45ce
                     dc.l    actor_cmd_02                    ;   2   |    8      |                        original 16 bit value $410a
                     dc.l    actor_cmd_03                    ;   3   |    12     |                        original 16 bit value $405e
                     dc.l    actor_cmd_04                    ;   4   |    16     |                        original 16 bit value $40b8
@@ -7077,7 +7093,7 @@ L00005b0a           sub.w   scroll_window_x_coord,d0                ; L000067bc,
 L00005b0e           addq.w  #$02,$000a(a6)
 L00005b12           movea.l $0008(a6),a5
 L00005b16           move.w  (a5),d2
-L00005b18           bpl.w   L000045bc
+L00005b18           bpl.w   draw_next_sprite                        ; L000045bc
 L00005b1c           bsr.w   double_buffer_playfield                 ; L000036fa
 L00005b20           moveq   #$32,d0
 L00005b22           bsr.w   wait_for_frame_count                    ; L00005e8c
@@ -7163,10 +7179,11 @@ L00005bea           bsr.b   L00005c20
 L00005bec           cmp.w   #$0008,d2
 L00005bf0           bcc.b   L00005be8
 L00005bf2           cmp.w   #$0004,d2
-L00005bf6           bne.w   L000045bc
+L00005bf6           bne.w   draw_next_sprite                    ; L000045bc
 L00005bfa           bsr.b   L00005c4e
 L00005bfc           moveq   #$04,d2
-L00005bfe           bra.w   L000045bc
+L00005bfe           bra.w   draw_next_sprite                    ; L000045bc
+
 
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
@@ -7180,10 +7197,10 @@ L00005c04           or.w    #$e000,d2
 L00005c08           cmp.w   #$e008,d2
 L00005c0c           bcc.b   L00005be8
 L00005c0e           cmp.w   #$e004,d2
-L00005c12           bne.w   L000045bc
+L00005c12           bne.w   draw_next_sprite                        ; L000045bc
 L00005c16           bsr.b   L00005c42
 L00005c18           move.w  #$e004,d2
-L00005c1c           bra.w   L000045bc
+L00005c1c           bra.w   draw_next_sprite                        ; L000045bc
 L00005c20           clr.w   d2
 L00005c22           move.w  $0008(a6),d2
 L00005c26           addq.b  #$04,d2
@@ -7229,7 +7246,7 @@ L00005c78           cmp.b   #$20,d3
 L00005c7c           bcs.b   L00005c40
 L00005c7e           moveq   #$01,d2
 L00005c80           cmp.b   #$40,d3
-L00005c84           bcs.w   L000045bc
+L00005c84           bcs.w   draw_next_sprite        ; L000045bc
 L00005c88           move.w  $000a(a6),d5
 L00005c8c           cmp.w   #$0010,d5
 L00005c90           bcc.w   L00005c96
@@ -7254,17 +7271,17 @@ L00005cc8           clr.w   $000c(a6)
 L00005ccc           moveq   #SFX_DRIP,d2
 L00005cce           bsr.w   play_proximity_sfx                      ; play sfx if d0 < 160 & d1 < 89
 L00005cd2           moveq   #$02,d2
-L00005cd4           bra.w   L000045bc
+L00005cd4           bra.w   draw_next_sprite                        ; L000045bc
 L00005cd8           moveq   #$01,d2
 L00005cda           move.w  batman_x_offset,d3
 L00005cde           sub.w   d0,d3
 L00005ce0           addq.w  #$03,d3
 L00005ce2           cmp.w   #$0007,d3
-L00005ce6           bcc.w   L000045bc
+L00005ce6           bcc.w   draw_next_sprite                        ; L000045bc
 L00005cea           cmp.w   batman_y_bottom,d1                      ; L000062f0,d1
-L00005cee           bmi.w   L000045bc
+L00005cee           bmi.w   draw_next_sprite                        ; L000045bc
 L00005cf2           cmp.w   batman_y_offset,d1
-L00005cf6           bpl.w   L000045bc
+L00005cf6           bpl.w   draw_next_sprite                        ; 
 L00005cfa           moveq   #$02,d6                                 ; Value of Energy to Lose (2 of 48)
 L00005cfc           bsr.w   batman_lose_energy
 L00005d00           bra.b   L00005cbe
@@ -7287,11 +7304,11 @@ L00005d12           bne.b   L00005d18
 L00005d14           add.w   #$e000,d2
 L00005d18           move.w  d2,-(a7)
 L00005d1a           addq.w  #$02,d2
-L00005d1c           bsr.w   L000045bc
+L00005d1c           bsr.w   draw_next_sprite                        ; L000045bc
 L00005d20           move.w  (a7)+,d2
 L00005d22           and.w   #$e000,d2
 L00005d26           addq.w  #$01,d2
-L00005d28           bsr.w   L0000458a
+L00005d28           bsr.w   actor_collision_and_sprite1             ; L0000458a
 L00005d2c           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00005d32           beq.b   L00005d02
 L00005d34           subq.w  #$01,$0004(a6)
@@ -7319,7 +7336,7 @@ L00005d54           move.w  playfield_swap_count,d2
 L00005d58           lsr.w   #$02,d2
 L00005d5a           and.w   #$0003,d2
 L00005d5e           addq.w  #$01,d2
-L00005d60           bsr.w   L000045bc
+L00005d60           bsr.w   draw_next_sprite                        ; L000045bc
 L00005d64           sub.w   #$0010,d1
 L00005d68           bpl.b   L00005d54
 L00005d6a           lea.l   actors_list,a5                          ; L000039c8,a5
@@ -7394,7 +7411,7 @@ L00005e08           lsr.w   #$02,d2                     ; divide swap count by 4
 L00005e0a           bne.b   L00005e0e                   ; frame swaps 4-7 - jmp $5e0e
 L00005e0c           moveq   #$02,d2                     ; frame swaps 0-3 - do this
 L00005e0e           addq.w  #$07,d2
-L00005e10           bsr.w   L000045bc
+L00005e10           bsr.w   draw_next_sprite            ; L000045bc
 L00005e14           jsr     AUDIO_PLAYER_SILENCE              ; Chem.iff - Music/SFX player - silence all audio - $00048004 ; External Address - CHEM.IFF
 L00005e1a           move.l  #$00000210,d0
 L00005e20           jmp     PANEL_ADD_SCORE             ; Panel Add Player Score (D0.l BCD value to add)- $0007c82a
@@ -7506,16 +7523,16 @@ L00005ed2           moveq   #$27,d2
 L00005ed4           sub.w   $0008(a6),d2
 L00005ed8           lsr.w   #$03,d2
 L00005eda           move.w  d2,-(a7)
-L00005edc           bsr.w   L000045bc
+L00005edc           bsr.w   draw_next_sprite            ; L000045bc
 L00005ee0           addq.w  #$08,d0
 L00005ee2           move.w  (a7),d2
-L00005ee4           bsr.w   L000045bc
+L00005ee4           bsr.w   draw_next_sprite            ; L000045bc
 L00005ee8           addq.w  #$08,d0
 L00005eea           move.w  (a7),d2
-L00005eec           bsr.w   L000045bc
+L00005eec           bsr.w   draw_next_sprite            ; L000045bc
 L00005ef0           addq.w  #$08,d0
 L00005ef2           move.w  (a7)+,d2
-L00005ef4           bra.w   L000045bc
+L00005ef4           bra.w   draw_next_sprite            ; L000045bc
 
                     ; IN:-
                     ;   a0.l = level data index?
@@ -7547,16 +7564,16 @@ L00005f3e           clr.w   grappling_hook_height       ; L00006318
                     ; d4 = actor WorldX
 actor_cmd_28
 L00005f42           moveq   #$05,d2
-L00005f44           bsr.w   L000045bc
+L00005f44           bsr.w   draw_next_sprite                ; L000045bc
 L00005f48           moveq   #$05,d2
 L00005f4a           addq.w  #$08,d0
-L00005f4c           bsr.w   L000045bc
+L00005f4c           bsr.w   draw_next_sprite                ; L000045bc
 L00005f50           moveq   #$05,d2
 L00005f52           addq.w  #$08,d0
-L00005f54           bsr.w   L000045bc
+L00005f54           bsr.w   draw_next_sprite                ; L000045bc
 L00005f58           moveq   #$05,d2
 L00005f5a           addq.w  #$08,d0
-L00005f5c           bsr.w   L000045bc
+L00005f5c           bsr.w   draw_next_sprite                ; L000045bc
 L00005f60           bra.w   initialise_offscreen_buffer         ; draw full background screen to offscreen buffer - L000058aa
 
 
@@ -7627,7 +7644,7 @@ L00006012           move.w  #$001e,(a6)
 L00006016           move.w  d4,d2
 L00006018           lsr.w   #$01,d2
 L0000601a           addq.w  #$01,d2
-L0000601c           bra.w   L000045bc
+L0000601c           bra.w   draw_next_sprite                        ; L000045bc
 
 
                     ; a6 = actor list struct ptr
@@ -7664,7 +7681,7 @@ L0000606e           move.w  #$e003,d2
 L00006072           lsr.w   #$01,d4
 L00006074           eor.w   d4,d2
 L00006076           addq.w  #$01,d2
-L00006078           bra.w   L000045bc
+L00006078           bra.w   draw_next_sprite                    ; L000045bc
 
                     even
 

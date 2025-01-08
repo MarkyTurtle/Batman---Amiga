@@ -380,10 +380,7 @@ Exit
 do_add_hit_damage                                                   ; original routine address $0007fa66
 
             IFD INFINITE_ENERGY_CHEAT
-                btst    #6,$bfe001
-                beq.s   .do_hit_damage
-                btst.b  #INFINITE_LIVES,panel_status_2              ; test bit 7 of status byte 2,                                  - 0007fb16
-                bne.s   .exit
+                rts
             ENDC
 .do_hit_damage
                 tst.w   player_remaining_energy                     ; test player remaining energy with 0, as address $0007c88e    - 0007fa66
