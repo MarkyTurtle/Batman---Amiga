@@ -2247,11 +2247,11 @@ actor_in_range                                              ; original address L
                     bclr.b  #$0007,(a6)                     ; test & clear
                     beq.b   execute_handler                 ; jmp if bit already clear (last execution before disabled?)
 
-actor_in_display    ; check actor is in display window
-L00003f22           cmp.w   #$0050,d1                       ; compare 80,d1 (y)
-L00003f26           bcc.b   execute_handler                 ; jmp if d1 > 80 (I guess off screen)
-L00003f28           cmp.w   #$00a0,d0                       ; compare 160,d0 (x)
-L00003f2c           bcc.b   execute_handler                 ; jmp id d0 > 160 (I guess offscreen)
+actor_in_display    ; L00003f22 check actor is in display window
+                    cmp.w   #$0050,d1                       ; compare 80,d1 (y)
+                    bcc.b   execute_handler                 ; jmp if d1 > 80 (I guess off screen)
+                    cmp.w   #$00a0,d0                       ; compare 160,d0 (x)
+                    bcc.b   execute_handler                 ; jmp id d0 > 160 (I guess offscreen)
 
 forget_actor        ; actor is out of bounds forget about it            ; original address L00003f2e
                     cmp.w   #$0014,d6
@@ -2317,90 +2317,134 @@ skip_to_next_actor  ; increment data struct ptr to next actor           ; origin
 
 
 
-
-L00003fb2           add.w   #$0002,(a6)
+                    ; ---------- calculate grenade inital drop speed ----------
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
+;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+;ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+;ACTORLIST_STRUCT_SIZE   EQU     $18                         ;  new size #$18 (24 bytes) - original size #$16 (22 bytes) -
+;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+calc_grenade_speed  ; L00003fb2
+L00003fb2           add.w   #$0002,(a6)                     ; add 2 to actor status/id
 L00003fb6           move.w  batman_x_offset,d2
 L00003fbc           move.w  batman_y_bottom,d1              ; L000062f0,d3
-L00003fc0           add.w   #$0015,d3
-L00003fc4           sub.w   d1,d3
-L00003fc6           asl.w   #$03,d3
-L00003fc8           ext.l   d3
-L00003fca           sub.w   d0,d2
+L00003fc0           add.w   #$0015,d3                       ; window y + 21
+L00003fc4           sub.w   d1,d3                           ; d3 = batman distance from bottom window
+L00003fc6           asl.w   #$03,d3                         ; d3 = multiply by 8
+L00003fc8           ext.l   d3                              ; d3 = sign extend to long
+
+L00003fca           sub.w   d0,d2                           ; d2 = x distance from batman
 L00003fcc           bpl.b   L00003fd0
-L00003fce           neg.w   d2
-L00003fd0           beq.b   L00003fd4
-L00003fd2           divs.w  d2,d3
-L00003fd4           asr.w   #$02,d2
-L00003fd6           sub.w   d2,d3
+L00003fce           neg.w   d2                              ; make distance +ve
+L00003fd0           beq.b   L00003fd4                       ; iif zero distance, skip divide by 0
+L00003fd2           divs.w  d2,d3                           ; d3 = divide x distance by batman ditance from window y 
+L00003fd4           asr.w   #$02,d2                         ; divide x distance by 4 (8 pixels)
+L00003fd6           sub.w   d2,d3                           ; subtract from d3
+
 L00003fd8           bsr.w   get_empty_projectile            ; a0 = empty projectile list entry or end of the list - L0000463e
 L00003fdc           cmp.w   #$0008,d3
-L00003fe0           bcs.b   L00003ff0
-L00003fe2           bmi.b   L00003fe8
-L00003fe4           moveq   #$08,d3
+L00003fe0           bcs.b   L00003ff0                       ; if distance < 8, $3ff0
+L00003fe2           bmi.b   L00003fe8                       ; if negative flag, $3fe8
+L00003fe4           moveq   #$08,d3                         ; clamp d3 to 8
 L00003fe6           bra.b   L00003ff0
-L00003fe8           cmp.w   #$ffe8,d3
-L00003fec           bcc.b   L00003ff0
-L00003fee           MOVE.L  #$ffffffe8,D3
-L00003ff0           move.w  d3,$0006(a0)
-L00003ff4           cmp.w   #$0073,d1
-L00003ff8           bpl.b   L0000400a
-L00003ffa           movem.w d0-d1,-(a7)
+
+L00003fe8           cmp.w   #$ffe8,d3                       ; -24
+L00003fec           bcc.b   L00003ff0                       ; if > -24
+L00003fee           MOVE.L  #$ffffffe8,D3                   ; clamp d3 to -24
+
+L00003ff0           move.w  d3,$0006(a0)                    ; set projectile parameter
+L00003ff4           cmp.w   #$0073,d1                       
+L00003ff8           bpl.b   L0000400a                       ; if batman y bottom < 115, then exit
+L00003ffa           movem.w d0-d1,-(a7)                     ; play sfx
 L00003ffe           moveq   #SFX_GRENADE,d0
 L00004000           jsr     AUDIO_PLAYER_INIT_SFX
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
 
 
+
+                    ; ---------------------- actor throw a grenade left ------------------
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_05
+;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
+;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+;ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+;ACTORLIST_STRUCT_SIZE   EQU     $18                         ;  new size #$18 (24 bytes) - original size #$16 (22 bytes) -
+;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+
+actor_cmd_grenade_left_01
+actor_cmd_05        ; L0000400c
 L0000400c           move.w  $0008(a6),d2
 L00004010           cmp.w   #$0007,d2
 L00004014           bne.b   L0000402e
-L00004016           subq.w  #$05,d0
-L00004018           bsr.w   L00003fb2
-L0000401c           move.w  #$000d,(a0)+
+L00004016           subq.w  #$05,d0                     ; actor display x - 5
+L00004018           bsr.w   calc_grenade_speed          ; out: a0 - projectile - L00003fb2
+L0000401c           move.w  #$000d,(a0)+                ; set projjectile handler id (13)
 L00004020           move.w  d1,d3
-L00004022           sub.w   #$0011,d3
-L00004026           movem.w d0/d3,(a0)
+L00004022           sub.w   #$0011,d3                   ; grenade y
+L00004026           movem.w d0/d3,(a0)                  ; store grenade x & y
 L0000402a           addq.w  #$05,d0
-L0000402c           moveq   #$08,d2
+
+L0000402c           moveq   #$08,d2                     ; animation index (8th entry)
 L0000402e           addq.w  #$01,$0008(a6)
-L00004032           lea.l   L000044d4,a5
+L00004032           lea.l   badguy_actor_anim,a5        ; L000044d4,a5                ; sprite animation
 L00004036           and.w   #$00fe,d2
 L0000403a           adda.w  d2,a5
 L0000403c           add.w   d2,d2
 L0000403e           adda.w  d2,a5
-L00004040           bra.w   drawcollide_actor_sprites_a5               ; L0000457c
+L00004040           bra.w   drawcollide_actor_sprites_a5    ; draw 3 sprites at specified table address
+                    ; use rts in 'drawcollide_actor_sprites_a5' to return
 
+
+
+
+                    ; called when green-guy throws a grenade
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_07
+actor_cmd_grenade_left_02
+actor_cmd_07        ; L00004044
 L00004044           lea.l   L000044ec,a5
 L00004048           bsr.w   drawcollide_actor_sprites_a5               ; L0000457c
 L0000404c           subq.w  #$01,$0008(a6)
-L00004050           bne.b   L0000405c
-L00004052           move.w  #$0020,$0008(a6)
-L00004058           move.w  #$0002,(a6)
+L00004050           bne.b   L0000405c                       ; if > 0, then exit
+L00004052           move.w  #$0020,$0008(a6)                ; delay parameter (before throwing again)
+L00004058           move.w  #$0002,(a6)                     ; actor status = 2
 L0000405c           rts
 
 
 
+
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_03
+actor_cmd_green_walk_left
+actor_cmd_03        ;move.w  #$f00,$dff180
 L0000405e           cmp.w   #$ffc0,d0
 L00004062           bmi.b   L000040b0
 L00004064           subq.w  #$01,$0008(a6)
@@ -2426,6 +2470,7 @@ L000040a4           move.w  d0,d2
 L000040a6           sub.w   batman_x_offset,d2
 L000040aa           cmp.w   #$0040,d2
 L000040ae           bcs.b   L00004076
+
 L000040b0           move.w  #$0002,(a6)
 L000040b4           bra.w   L0000431e
 
@@ -2436,12 +2481,13 @@ L000040b4           bra.w   L0000431e
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_04
+actor_cmd_grenade_right_01
+actor_cmd_04        ;move.w  #$f00,$dff180
 L000040b8           move.w  $0008(a6),d2
 L000040bc           cmp.w   #$0007,d2
 L000040c0           bne.b   L000040da
 L000040c2           addq.w  #$05,d0
-L000040c4           bsr.w   L00003fb2
+L000040c4           bsr.w   calc_grenade_speed                  ; out: a0 - projectile - L00003fb2
 L000040c8           move.w  #$000c,(a0)+
 L000040cc           move.w  d1,d3
 L000040ce           sub.w   #$0011,d3
@@ -2464,7 +2510,8 @@ L000040ec           bra.w   drawcollide_actor_sprites_a5               ; L000045
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_06
+actor_cmd_grenade_right_02
+actor_cmd_06        ;move.w  #$0f0,$dff180
 L000040f0           lea.l   L0000450a,a5
 L000040f4           bsr.w   drawcollide_actor_sprites_a5               ; L0000457c
 L000040f8           subq.w  #$01,$0008(a6)
@@ -2481,7 +2528,8 @@ L00004108           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_02
+actor_cmd_green_walk_right
+actor_cmd_02        ;move.w  #$00f,$dff180
 L0000410a           cmp.w   #$00e0,d0
 L0000410e           bpl.b   L00004158
 L00004110           subq.w  #$01,$0008(a6)
@@ -2537,7 +2585,8 @@ L000041a0           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_14
+actor_cmd_actor_brown_walk_right
+actor_cmd_14        ;move.w  #$f00,$dff180
 L000041a2           move.w  d4,d2
 L000041a4           addq.w  #$04,d2
 L000041a6           and.w   #$0007,d2
@@ -2613,7 +2662,8 @@ L00004268           bra.w   actor_collision_and_sprite1         ; L0000458a
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_15_23
+actor_cmd_brown_walk_left
+actor_cmd_15_23     ;move.w  #$0f0,$dff180
 L0000426c           move.w  d4,d2
 L0000426e           addq.w  #$04,d2
 L00004270           and.w   #$0007,d2
@@ -2713,7 +2763,8 @@ L0000437e           jmp     (a0)
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_13
+actor_cmd_climb_down_ladder
+actor_cmd_13        ;move.w  #$00f,$dff180
 L00004380           move.w  $0004(a6),d4
 L00004384           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L0000438a           bne.b   L000043ce
@@ -2732,7 +2783,8 @@ L0000439e           bra.b   L000043c6
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_12
+actor_cmd_climb_up_ladder
+actor_cmd_12        ;move.w  #$f00,$dff180
 L000043a0           move.w  $0004(a6),d4
 L000043a4           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L000043aa           bne.b   L000043ce
@@ -2744,6 +2796,8 @@ L000043b8           bne.b   L000043ce
 L000043ba           sub.w   #$0018,d1
 L000043be           bsr.w   get_map_tile_at_display_offset_d0_d1        ; out: d2.b = tile value
 L000043c2           add.w   #$0018,d1
+
+actor_cmd_climb_ladder_common
 L000043c6           cmp.b   #$85,d2
 L000043ca           bcc.b   L000043ce
 L000043cc           bsr.b   L000043fc
@@ -2783,13 +2837,15 @@ L00004426           addq.w  #$02,d2
 L00004428           move.w  d2,$000a(a6)
 L0000442c           move.w  #$0010,(a6)
 
+
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_16
+actor_cmd_shooting_diagonally_01
+actor_cmd_16        ;move.w  #$0f0,$dff180
 L00004430           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004434           subq.w  #$01,$0008(a6)
 L00004438           bpl.b   L00004442
@@ -2804,7 +2860,8 @@ L00004442           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_17
+actor_cmd_shooting_diagonally_02
+actor_cmd_17        ;move.w  #$f00,$dff180
 L00004444           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004448           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
 L00004450           bne.b   L00004442
@@ -2830,7 +2887,8 @@ L0000447c           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_18
+actor_cmd_shooting_horizontal
+actor_cmd_18        move.w  #$f00,$dff180
 L0000447e           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004482           subq.w  #$01,$0008(a6)
 L00004486           bne.b   L00004442
@@ -2868,28 +2926,19 @@ play_proximity_sfx                                                  ; original a
                     rts
 
 
-L000044d4           dc.w    $e004                       ; asr.b #$08,d4
-L000044d6           dc.w    $e005                       ; asr.b #$08,d5
-L000044d8           dc.w    $e008                       ; lsr.b #$08,d0
-L000044da           dc.w    $e010                       ; roxr.b #$08,d0
-L000044dc           dc.w    $e011                       ; roxr.b #$08,d1
-L000044de           dc.w    $0000, $e012                ; or.b #$12,d0
-L000044e2           dc.w    $e011                       ; roxr.b #$08,d1
-L000044e4           dc.w    $0000, $e013                ; or.b #$13,d0
-L000044e8           dc.w    $e014                       ; roxr.b #$08,d4
-L000044ea           dc.w    $e011                       ; roxr.b #$08,d1
-L000044ec           dc.w    $e015                       ; roxr.b #$08,d5
-L000044ee           dc.w    $e016                       ; roxr.b #$08,d6
-L000044f0           dc.w    $e011                       ; roxr.b #$08,d1
-L000044f2           dc.w    $0004, $0005                ; or.b #$05,d4
-L000044f6           dc.w    $0008                       ; illegal
-L000044f8           dc.w    $0010, $0011                ; or.b #$11,(a0) [00]
-L000044fc           dc.w    $0000, $0012                ; or.b #$12,d0
-L00004500           dc.w    $0011, $0000                ; or.b #$00,(a1) [04]
-L00004504           dc.w    $0013, $0014                ; or.b #$14,(a3) [71]
-L00004508           dc.w    $0011
-L0000450a           dc.w    $0015                ; or.b #$15,(a1) [04]
-L0000450c           dc.w    $0016, $0011                ; or.b #$11,(a6)
+                    ; bad-guy - actor animation frames
+badguy_actor_anim   ; L000044d4
+L000044d4           dc.w    $e004,$e005,$e008
+L000044da           dc.w    $e010,$e011,$0000
+                    dc.w    $e012,$e011,$0000
+                    dc.w    $e013,$e014,$e011
+throw_grenade_left
+L000044ec           dc.w    $e015,$e016,$e011
+L000044f2           dc.w    $0004,$0005,$0008
+L000044f8           dc.w    $0010,$0011,$0000
+                    dc.w    $0012,$0011,$0000
+L00004504           dc.w    $0013,$0014,$0011
+L0000450a           dc.w    $0015,$0016,$0011
 
 
 ; 12 byte sprite id structure 
@@ -3013,6 +3062,11 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
 
 
 
+                    ;-----------------------------------------------------------------------------------------------------------------------------
+                    ;
+                    ; END OF - ACTOR HANDLER CODE
+                    ;
+                    ;-----------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -3021,6 +3075,11 @@ L000045f8           jmp     PANEL_ADD_SCORE         ; ; Panel Add Player Score (
 
 
 
+                    ;-----------------------------------------------------------------------------------------------------------------------------
+                    ;
+                    ; PROJECTILE HANDLER CODE
+                    ;
+                    ;-----------------------------------------------------------------------------------------------------------------------------
 
 
 
