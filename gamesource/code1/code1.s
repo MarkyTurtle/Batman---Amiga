@@ -2888,7 +2888,7 @@ L0000447c           rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_shooting_horizontal
-actor_cmd_18        move.w  #$f00,$dff180
+actor_cmd_18        ;move.w  #$f00,$dff180
 L0000447e           bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ; L00004570
 L00004482           subq.w  #$01,$0008(a6)
 L00004486           bne.b   L00004442
@@ -4726,11 +4726,7 @@ L00004e28           movea.l playfield_buffer_2,a0      ;
 
 
 
-_DEBUG_RED_PAUSE
-                    move.w  #$f00,$dff180
-                    btst    #6,$bfe001
-                    bne.s   _DEBUG_RED_PAUSE
-                    rts
+
 
 
                     ; -------------- player state - actor collide on batrope -----------
@@ -4739,7 +4735,7 @@ _DEBUG_RED_PAUSE
                     ; ---- player state - actor Collision on batrope ------
 player_state_actor_collide_on_batrope   ; original address L00004e3a
 L00004e3a           ;jsr _DEBUG_RED_PAUSE
-                    move.w  #$f00,$dff180 
+                    ;move.w  #$f00,$dff180 
                     moveq   #$10,d3                    ; CMD16 - Fire - No Direction
 L00004e3c           tst.b   PANEL_STATUS_1             ; Panel - Status Byte 1 - (Clock Timer Expired, No Lives, Life Lost bits)
 L00004e42           bne.b   L00004e60
@@ -4762,7 +4758,7 @@ L00004e60           move.b  d3,player_input_command    ; CMD00 (rts) or (CMD16) 
 
                     ; --------- player state - grappling hook attached -----------
 player_state_grappling_hook_attached    ; original address L00004e64
-L00004e64           move.w #$00f,$dff180
+L00004e64           ;move.w #$00f,$dff180
                     lea.l   grappling_hook_height,a0               ; L00006318,a0                
 L00004e68           move.w  (a0),d5
 L00004e6a           move.b  player_input_command,d4                ; L00006308,d4
@@ -8152,6 +8148,12 @@ _DEBUG_COLOURS
             bne.s   _DEBUG_COLOURS
             rts
 
+            
+_DEBUG_RED_PAUSE
+                    move.w  #$f00,$dff180
+                    btst    #6,$bfe001
+                    bne.s   _DEBUG_RED_PAUSE
+                    rts
 
 _MOUSE_WAIT
             btst    #6,$bfe001
@@ -8204,17 +8206,23 @@ _MOUSE_WAIT
             ; if test build, allocate backbuffers in chip memory
                                 IFD TEST_BUILD_LEVEL
 chipmem_buffer                  dcb.b   CODE1_DISPLAY_BUFFER_BYTESIZE,$01
-                                dcb.B   40,0
+                                dcb.B   40*10,0     ; padding fixed scroll corruption
                                 even
 chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
-                                dcb.b   40,0
+                                dcb.b   40*10,0     ; padding fixed scroll corruption
                                 ENDC
+
+            ; padding - see if it fixes map data corruption
+            dcb.B   1024,0
 
             ; If Test Build - Include the Level Music and SFX
             IFD TEST_BUILD_LEVEL
                 incdir      "../chem/"
                 include     "chem.s"
             ENDC
+
+            ; padding - see if it fixes map data corruption
+            dcb.B   1024,0
 
             ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
             IFD TEST_BUILD_LEVEL
@@ -8223,7 +8231,6 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
             ENDC
 
             ; padding - see if it fixes map data corruption
-
             dcb.B   1024,0
 
             ; If Test Build - Include the level map data and graphics
@@ -8232,6 +8239,9 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
                 include     "mapgr.s"
             ENDC
 
+            ; padding - see if it fixes map data corruption
+            dcb.B   1024,0
+
             ; If Test Build - Include Batman Sprites File 1n( also allocate memory for mirrored sprites)
             IFD TEST_BUILD_LEVEL
                 incdir      "../batspr1/"
@@ -8239,6 +8249,8 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
                 dcb.b       98856,0
             ENDC
 
+            ; padding - see if it fixes map data corruption
+            dcb.B   1024,0
 
             IFD TEST_BUILD_LEVEL
                 even
