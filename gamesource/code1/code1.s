@@ -2093,11 +2093,11 @@ trigger_new_actors  ; original address L00003dfe
                     cmp.w   #$0050,d3                                   ; is actor > 80 (160) from window Y
                     bcc.b   .skip_to_next                                ; actor is > 80 (160) from window Y
 
-.trigger_in_range   ; trigger is in window range
+.trigger_in_range   ;L00003e1c - trigger is in window range
                     bset.b  #$0007,-$0004(a0)                           ; set MSB of offset 0 (facing direction? enabled/disabled?)
                     move.w  (a0)+,d7                                    ; d7 = number of actors to spawn
                     subq.w  #$01,d7                                     ; counter (-1)
-.spawn_actor_loop                                                       ; original address 00003E26
+.spawn_actor_loop   ; L00003E26
                     bsr.w   spawn_new_actor                             ; spawn actor.
                     dbf.w   d7,.spawn_actor_loop                         ; loop for all spawned actors
                     bra.b   .continue_triggers
@@ -2107,21 +2107,25 @@ trigger_new_actors  ; original address L00003dfe
                     add.w   d2,d2                                       ; multiply by 2
                     add.w   (a0),d2                                     ; add again (multiply by 3)
                     add.w   d2,d2                                       ; muliply by 2 (multiply by 6)
-                    lea.l   $02(a0,d2.W),a0                             ; skip to start of next actor data structure
+                    lea.l   $02(a0,d2.w),a0                             ; skip to start of next actor data structure
 
-.continue_triggers  ; check end of trigger list                         ; original address L00003e3c
+.continue_triggers  ; L00003e3c - check end of trigger list                         ; original address L00003e3c
                     cmpa.l  #end_of_trigger_list,a0                     ; converted to 32 bit address check - end_of_trigger_list
                     bcs.b   .process_next_trigger                        ; not at end of list (process next trigger in list)
 
 
+                    ; ----------------- trigger_gasleak_and_drips ---------------------
                     ; process list of 6 bytes (other actors)
                     ; possibly steam jets and toxic drips?
                     ; do something else
                     ; what is d0 here? sill window x?
-trigger_gasleak_and_drips                                               ; original address L00003e42
+                    ;
+                    ; Code Checked 9/1/2025
+                    ;
+trigger_gasleak_and_drips  ; L00003e42                                  ; original address L00003e42
                     sub.w   #$0010,d0                                   ; sub 16 from window x?
                     subq.w  #$08,d1                                     ; sub 8 from window y?
-.next_leak_or_drip                                                      ; original address L00003e48
+.next_leak_or_drip  ; L00003e48
                     movem.w $0002(a0),d2-d3                             ; get actor x & y
                     sub.w   d0,d2                                       ; subtract window X from actor X
                     cmp.w   #$00c0,d2                                   ; compare 192 with actor X
@@ -2133,9 +2137,9 @@ trigger_gasleak_and_drips                                               ; origin
                     bset.b  #$0007,-$0002(a0)
                     bra.b   .continue_next                              ; L00003e6c
 
-.skip_to_next        ; skip to next                                     ; original address L00003e6a
+.skip_to_next        ; L00003e6a - skip to next                         ; original address L00003e6a
                     addq.w  #$06,a0                                     ; add structure size to address ptr                       
-.continue_next                                                          ; original address L00003e6c
+.continue_next      ; L00003e6c                                         ; original address L00003e6c
                     cmpa.l  #end_of_actors,a0                           ; check end of actor list (converted to long word)
                     bcs.b   .next_leak_or_drip                          ; if not the end of the list then process next
                     rts
@@ -2152,23 +2156,27 @@ trigger_gasleak_and_drips                                               ; origin
                     ;   d1.w = window scroll y
                     ;   a0.l = ptr to actor data
                     ;
-spawn_new_actor                                                     ; original address L00003e74
+                    ; Code Checked 9/1/2025
+                    ;
+spawn_new_actor     ; original address L00003e74
                     movem.w (a0)+,d2-d4                             ; get 3 words of actor data
 
-.protection_check   ; maybe protection check
+.protection_check   ; L00003e78 - maybe protection check
                     cmp.w   $00000022,d0                            ; compare window X with value at $22.w (privilege violation vector - is set by Rob Northen protection)
 .infinite_loop      beq.b   .infinite_loop                          
                     nop 
 
-                    ; find entry in list for the new actor
+                    ; L00003e82 - find entry in list for the new actor
 .alloc_list_entry   lea.l   actors_list,a6                          ; L000039c8,a6
                     moveq   #$09,d6                                 ; loop 10 times (max 10 active actors?)
-.check_next_entry                                                   ; original address L00003e88
+.check_next_entry   ; L00003e88
                     tst.w   (a6)                                    ; look for blank entry
                     beq.b   initialise_new_actor
                     lea.l   ACTORLIST_STRUCT_SIZE(a6),a6            ; skip to next list entry
                     dbf.w   d6,.check_next_entry                    ; loop for 10 active actor entries
                     rts
+
+
 
 
                     ; ----------------- initialise new actor ------------------
@@ -2179,13 +2187,16 @@ spawn_new_actor                                                     ; original a
                     ; d3.w = actor init data
                     ; d4.w = actor init data
                     ; a6.l = address of blank entry in actors_list
+                    ; a0.l = ptr to actor data
+                    ;
+                    ; Code Check 9/1/2025
                     ;
 ACTORLIST_STRUCT_ADDR   EQU $14                                     ; 20 byte offset - address  of actor data
 ACTORLIST_STRUCT_WORD1  EQU $00                                     ; 00 byte offset - actor init data param 1
 ACTORLIST_STRUCT_WORD2  EQU $02                                     ; 02 byte offset - actor init data param 2
 ACTORLIST_STRUCT_WORD3  EQU $04                                     ; 04 byte offset - actor init data param 3
 
-initialise_new_actor                                                ; original address L00003e96
+initialise_new_actor ; original address L00003e96
 L00003e96           move.l  a0,ACTORLIST_STRUCT_ADDR(a6)            ; offset 20 - (32 bit address) - store address of actor data struct
 L00003e9a           bset.l  #$000f,d2                               ; set bit 15
 L00003e9e           movem.w d2-d4,ACTORLIST_STRUCT_WORD1(a6)        ; store 3 actor init data words
@@ -7738,8 +7749,7 @@ L0000631c           dc.w $0034
 offscreen_display_buffer_ptr                                        ; original address L0000631e
                     dc.l CODE1_CHIPMEM_BUFFER                       ; ptr to offscreen display buffer - $0005A36C
 
-L00006322           dc.w $0000
-L00006324           dc.w $3DFE
+L00006322           dc.l trigger_new_actors                         ; $00003DFE
 
 batman_sprite_anim_ptr  ; ----- ptr to batman sprite animation ---  ; original address L00006326
 L00006326           dc.l $00000000                                  ; modified to long ptr to 3 byte animation array (originally a word)
@@ -7903,7 +7913,8 @@ L0000642e           dc.w $02C1,$0081,$0001,$0022,$0240,$00C0
                     dc.w $05B0,$00C8,$0002,$000F,$0540,$00B8,$000F,$0580,$00B8
                     dc.w $0580,$0090,$0002,$000E,$0568,$0078,$000F,$0568,$0078
 L0000670a           dc.w $0574,$0030,$0003,$0018,$0520,$0018,$0017,$0580,$0018,$0002,$0530,$0018
-end_of_trigger_list
+end_of_trigger_list ; original address L00006722
+
                     ; 3 word/ 6 byte data structure list
                     ; MSB of byte 0 is cleared on game_start
                     ; 21 - entries in list
