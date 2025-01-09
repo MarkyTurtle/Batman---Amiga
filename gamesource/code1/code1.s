@@ -329,6 +329,7 @@ initialise_system   ; original address $00003000
 .supervisor_trap    MOVEA.L A0,A7                           ; restore the stack (i.e. rts return address etc)
                     ; ------ enter supervisor mode -------
 
+                    ;jsr     _DEBUG_COLOURS
 
                     ; set stack address
                     lea.l   STACK_ADDRESS,a7                ; External Address - Stack = $0005a36c
@@ -8147,7 +8148,6 @@ _DEBUG_COLOURS
             btst    #6,$bfe001
             bne.s   _DEBUG_COLOURS
             rts
-
             
 _DEBUG_RED_PAUSE
                     move.w  #$f00,$dff180
