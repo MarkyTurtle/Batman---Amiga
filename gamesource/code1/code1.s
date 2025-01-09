@@ -1386,6 +1386,7 @@ debug_print_word_value                                                      ; or
                     ;   20-23   | (long updated from word) Address of actor data structure
                     ;
                     ; 
+ACTORSTRUCT_INIT_DATA   EQU     $0
 ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
 ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
@@ -1394,12 +1395,13 @@ ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to
 ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
 ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
 ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+ACTORSTRUCT_INIT_PTR    EQU     $14                         ; offset 20 - ptr to actor init data (trigger data)
 ACTORLIST_STRUCT_SIZE   EQU     $18                         ;  new size #$18 (24 bytes) - original size #$16 (22 bytes) -
 ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
 
-actors_list                                                 ; original address L000039c8
-L000039c8           dc.w    $0000
-                    dc.w    $0119                           ; actor X
+actors_list         ; original address L000039c8
+                    dc.w    $0000
+                    dc.W    $0000                           ; actor X
                     dc.w    $003a                           ; actor Y
                     dc.w    $0097
                     dc.w    $0000
@@ -1408,7 +1410,7 @@ L000039c8           dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
                     dc.w    $0000
-                    dc.l    $0000           ; 16 bit address of actor data structure
+                    dc.l    $00000000                       ; ptr to actor init data (actors_list)
 
                     dc.w    $0000
                     dc.w    $00a0
@@ -2091,40 +2093,40 @@ trigger_new_actors  ; original address L00003dfe
                     bcc.b   .skip_to_next                               ; actor is > 152 (304) from window X
                     sub.w   d1,d3                                       ; d3 = window Y - actor Y
                     cmp.w   #$0050,d3                                   ; is actor > 80 (160) from window Y
-                    bcc.b   .skip_to_next                                ; actor is > 80 (160) from window Y
+                    bcc.b   .skip_to_next                               ; actor is > 80 (160) from window Y
 
 .trigger_in_range   ;L00003e1c - trigger is in window range
-                    bset.b  #$0007,-$0004(a0)                           ; set MSB of offset 0 (facing direction? enabled/disabled?)
+                    bset.b  #$7,-$0004(a0)                              ; set MSB of offset 0 (facing direction? enabled/disabled?)
                     move.w  (a0)+,d7                                    ; d7 = number of actors to spawn
                     subq.w  #$01,d7                                     ; counter (-1)
 .spawn_actor_loop   ; L00003E26
                     bsr.w   spawn_new_actor                             ; spawn actor.
-                    dbf.w   d7,.spawn_actor_loop                         ; loop for all spawned actors
+                    dbf.w   d7,.spawn_actor_loop                        ; loop for all actors on this trigger
                     bra.b   .continue_triggers
                    
-.skip_to_next       ; L00003E30 - skip this actor                                   ; original address L00003e30
-                    move.w  (a0),d2                                     ; get number of data items
-                    add.w   d2,d2                                       ; multiply by 2
-                    add.w   (a0),d2                                     ; add again (multiply by 3)
-                    add.w   d2,d2                                       ; muliply by 2 (multiply by 6)
+.skip_to_next       ; L00003E30 - skip to next trigger data
+                    move.w  (a0),d2                                     ; get number of actors associated with this trigger
+                    add.w   d2,d2                                       ; 
+                    add.w   (a0),d2                                     ; multiply by 6 to get size of actor data to skip
+                    add.w   d2,d2                                       ; 
                     lea.l   $02(a0,d2.w),a0                             ; skip to start of next actor data structure
 
-.continue_triggers  ; L00003e3c - check end of trigger list                         ; original address L00003e3c
+.continue_triggers  ; L00003e3c - check end of trigger list
                     cmpa.l  #end_of_trigger_list,a0                     ; converted to 32 bit address check - end_of_trigger_list
                     bcs.b   .process_next_trigger                        ; not at end of list (process next trigger in list)
 
 
-                    ; ----------------- trigger_gasleak_and_drips ---------------------
-                    ; process list of 6 bytes (other actors)
-                    ; possibly steam jets and toxic drips?
-                    ; do something else
-                    ; what is d0 here? sill window x?
+                    ; ----------------------- trigger_gasleak_and_drips -------------------------
+                    ; process list of 6 bytes (other actors - steam jets and toxic drips)
+                    ;
+                    ; IN:-
+                    ;   a0.l = start of gasleak/drip trigger locations. (3 word structure per item)
                     ;
                     ; Code Checked 9/1/2025
                     ;
 trigger_gasleak_and_drips  ; L00003e42                                  ; original address L00003e42
-                    sub.w   #$0010,d0                                   ; sub 16 from window x?
-                    subq.w  #$08,d1                                     ; sub 8 from window y?
+                    sub.w   #$0010,d0                                   ; sub 16 from window x
+                    subq.w  #$08,d1                                     ; sub 8 from window y
 .next_leak_or_drip  ; L00003e48
                     movem.w $0002(a0),d2-d3                             ; get actor x & y
                     sub.w   d0,d2                                       ; subtract window X from actor X
@@ -2132,15 +2134,15 @@ trigger_gasleak_and_drips  ; L00003e42                                  ; origin
                     bcc.b   .skip_to_next                               ; if actor X > 194 (388?)
                     sub.w   d1,d3
                     cmp.w   #$0060,d3
-                    bcc.b   .skip_to_next                               ; L00003e6a
+                    bcc.b   .skip_to_next
                     bsr.w   spawn_new_actor
-                    bset.b  #$0007,-$0002(a0)
-                    bra.b   .continue_next                              ; L00003e6c
+                    bset.b  #$7,-$0002(a0)                              ; set triggered bit
+                    bra.b   .continue_next
 
 .skip_to_next        ; L00003e6a - skip to next                         ; original address L00003e6a
                     addq.w  #$06,a0                                     ; add structure size to address ptr                       
 .continue_next      ; L00003e6c                                         ; original address L00003e6c
-                    cmpa.l  #end_of_actors,a0                           ; check end of actor list (converted to long word)
+                    cmpa.l  #end_of_actors,a0                           ; check end address of actor list (converted to long word)
                     bcs.b   .next_leak_or_drip                          ; if not the end of the list then process next
                     rts
 
@@ -2154,12 +2156,12 @@ trigger_gasleak_and_drips  ; L00003e42                                  ; origin
                     ; IN:
                     ;   d0.w = window scroll x
                     ;   d1.w = window scroll y
-                    ;   a0.l = ptr to actor data
+                    ;   a0.l = ptr to actor init data in trigger data
                     ;
                     ; Code Checked 9/1/2025
                     ;
 spawn_new_actor     ; original address L00003e74
-                    movem.w (a0)+,d2-d4                             ; get 3 words of actor data
+                    movem.w (a0)+,d2-d4                             ; get 3 words of actor data 
 
 .protection_check   ; L00003e78 - maybe protection check
                     cmp.w   $00000022,d0                            ; compare window X with value at $22.w (privilege violation vector - is set by Rob Northen protection)
@@ -2187,44 +2189,68 @@ spawn_new_actor     ; original address L00003e74
                     ; d3.w = actor init data
                     ; d4.w = actor init data
                     ; a6.l = address of blank entry in actors_list
-                    ; a0.l = ptr to actor data
+                    ; a0.l = ptr to actor init data in trigger data
                     ;
-                    ; Code Check 9/1/2025
+                    ; Code Check 9/1/2025 - not understood yet
                     ;
-ACTORLIST_STRUCT_ADDR   EQU $14                                     ; 20 byte offset - address  of actor data
-ACTORLIST_STRUCT_WORD1  EQU $00                                     ; 00 byte offset - actor init data param 1
-ACTORLIST_STRUCT_WORD2  EQU $02                                     ; 02 byte offset - actor init data param 2
-ACTORLIST_STRUCT_WORD3  EQU $04                                     ; 04 byte offset - actor init data param 3
+
+;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
+;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+;ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+;ACTORSTRUCT_INIT_PTR    EQU     $14                         ; offset 20 - ptr to actor init data (trigger data)
+;ACTORLIST_STRUCT_SIZE   EQU     $18                         ; new size #$18 (24 bytes) - original size #$16 (22 bytes) -
+;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+
+;actor_init_data     ; original address L00005a7a
+;                            Actor Id?, Value
+;L00005a7a           dc.w    $0004,$006b
+;L00005a7e           dc.w    $0012,$0046
+;L00005a82           dc.w    $0015,$0097
+;L00005a86           dc.w    $0017,$0064
+;L00005a8a           dc.w    $0018,$0085
+;L00005a8e           dc.w    $001b,$00bc
+;L00005a92           dc.w    $001f,$00c1
+;L00005a96           dc.w    $00ff,$0000
 
 initialise_new_actor ; original address L00003e96
-L00003e96           move.l  a0,ACTORLIST_STRUCT_ADDR(a6)            ; offset 20 - (32 bit address) - store address of actor data struct
-L00003e9a           bset.l  #$000f,d2                               ; set bit 15
-L00003e9e           movem.w d2-d4,ACTORLIST_STRUCT_WORD1(a6)        ; store 3 actor init data words
-L00003ea2           clr.l   $0008(a6)
-L00003ea6           bclr.l  #$000f,d2                               ; clear bit 15
-L00003eaa           clr.l   $0010(a6)
+                    move.l  a0,ACTORSTRUCT_INIT_PTR(a6)             ; offset 20 - (32 bit address) - store address of actor data struct
+                    bset.l  #$0f,d2                                 ; set bit 15 - actor init data word 1 (disable?)
+                    movem.w d2-d4,ACTORSTRUCT_INIT_DATA(a6)         ; offset 00 - store 3 actor init data words
+                    clr.l   $0008(a6)
+                    bclr.l  #$0f,d2                                 ; clear bit 15 - actor init data word 1 (enable?)
+                    clr.l   $0010(a6)                               ; actor y top & bottom
+ 
+                    ; L00003eae
+                    lea.l   actor_init_data,a5                      ; L00005a7a,a5
+L00003eb2           cmp.w   (a5)+,d2                                ; d2 = actor init data word 1
+                    bcs.b   L00003eba                               ; if table entry > d2 
+                    addq.l  #$02,a5                                 ; get next table entry
+                    bra.b   L00003eb2                               ; loop next entry.
 
-L00003eae           lea.l   L00005a7a,a5
-L00003eb2           cmp.w   (a5)+,d2
-L00003eb4           bcs.b   L00003eba
-L00003eb6           addq.w  #$02,a5             ; addaq.w
-L00003eb8           bra.b   L00003eb2
-
+                    ; L00003eba
 L00003eba           move.w  (a5),d3
-L00003ebc           cmp.w   #$0046,d3
-L00003ec0           bne.b   L00003ed0
-L00003ec2           bsr.w   L00003ed6
-L00003ec6           btst.l  #$000c,d2
-L00003eca           beq.b   L00003ed0
-L00003ecc           move.w  #$009e,d3
+                    cmp.w   #$0046,d3                           ; #$0046 is 2nd table entry
+                    bne.b   L00003ed0
+                    ; is 46 (2nd table entry)
+                    bsr.w   L00003ed6                           ; d2 = psuedo random number
+                    btst.l  #$000c,d2                           ; test bit 12
+                    beq.b   L00003ed0
+                    move.w  #$009e,d3
 
-L00003ed0           move.w  d3,$0006(a6)
-L00003ed4           rts
+                    ; L00003ed0                                 ; all actors except 46 take table value
+L00003ed0           move.w  d3,$0006(a6)                        ; apart from when bit 12 is 0
+                    rts
 
-L00003ed6           movea.l L00006322,a1
-L00003edc           move.w  (a1)+,d2
-L00003ede           move.l  a1,L00006322
-L00003ee4           rts
+                    ; L00003ed6
+L00003ed6           movea.l L00006322,a1                        ; a ptr that points to code 'trigger_new_actors'
+                    move.w  (a1)+,d2                            ; using code as a pseudo random number?
+                    move.l  a1,L00006322
+                    rts
 
 
 
@@ -2232,34 +2258,37 @@ L00003ee4           rts
                     ;-----------------------------------------------------------------------------------------------
                     ; -- Update Level Actors 02
                     ;-----------------------------------------------------------------------------------------------
-                    ; If this routine is skipped then the level is empty of any actors.
+                    ; called from game_loop every cycle.
                     ;
-update_active_actors                                                    ; original address L00003ee6
+update_active_actors    ; original address L00003ee6
                     lea.l   actors_list,a6                              ; 24 byte struct, list of max 10 active actors
                     moveq   #$09,d7                                     ; actor count (10-1)
 
-process_next_actor                                                      
+process_next_actor  ; L00003ee6                                                     
                     move.w  (a6),d6                                     ; d6 = actor type/id?
                     beq.w   skip_to_next_actor
-calc_actor_coords
+calc_actor_coords   ; L00003ef2
                     movem.w ACTORSTRUCT_XY(a6),d0-d1                    ; actor X,Y
                     move.w  d0,d4                                       ; d4 = actorX
                     movem.w scroll_window_xy_coords,d2-d3               ; d2,d3 = Scroll Window X & Y
                     sub.w   d2,d0                                       ; d0 = actorX - windowX
                     sub.w   d3,d1                                       ; d1 = actorY - windowY
-actor_check_x
-                    cmp.w   #$0140,d0                       ; compare 320,d0 (screen width + 1 screen width)
-                    bcs.b   actor_check_y                   ; L00003f10
-                    cmp.w   #$ff60,d0                       ; compare -160,d0 (-1 screen width)
-                    bcs.b   forget_actor                    ; L00003f2e
-actor_check_y                                               ; original address L00003f10
-                    cmp.w   #$00a0,d1                       ; compare 160,d1 (screen height + 1 screen height)
-                    bcs.b   actor_in_range                  ; L00003f1c
-                    cmp.w   #$ffb0,d1                       ; compare -80,d1 (-1 screen height)
-                    bcs.b   forget_actor                    ; L00003f2e
-actor_in_range                                              ; original address L00003f1c
-                    bclr.b  #$0007,(a6)                     ; test & clear
-                    beq.b   execute_handler                 ; jmp if bit already clear (last execution before disabled?)
+actor_check_x       ; L00003f04
+                    cmp.w   #$0140,d0                                   ; compare 320,d0 (screen width + 1 screen width)
+                    bcs.b   actor_check_y                               ; L00003f10
+                    cmp.w   #$ff60,d0                                   ; compare -160,d0 (-1 screen width)
+                    bcs.b   forget_actor                                ; L00003f2e
+
+actor_check_y       ; L00003f10
+                    cmp.w   #$00a0,d1                                   ; compare 160,d1 (screen height + 1 screen height)
+                    bcs.b   actor_in_range                              ; L00003f1c
+                    cmp.w   #$ffb0,d1                                   ; compare -80,d1 (-1 screen height)
+                    bcs.b   forget_actor                                ; L00003f2e
+
+actor_in_range      ; L00003f1c
+                    bclr.b  #$07,(a6)                                   ; test & clear
+                    beq.b   execute_handler                             ; jmp if bit already clear (last execution before disabled?)
+                    ; bit 7 was 1, then fall through
 
 actor_in_display    ; L00003f22 check actor is in display window
                     cmp.w   #$0050,d1                       ; compare 80,d1 (y)
@@ -2267,16 +2296,19 @@ actor_in_display    ; L00003f22 check actor is in display window
                     cmp.w   #$00a0,d0                       ; compare 160,d0 (x)
                     bcc.b   execute_handler                 ; jmp id d0 > 160 (I guess offscreen)
 
-forget_actor        ; actor is out of bounds forget about it            ; original address L00003f2e
+forget_actor        ; L00003f2e - actor is out of bounds forget about it
                     cmp.w   #$0014,d6
-                    bcs.b   remove_actor                    ; if actor type <= 14 jmp
+                    bcs.b   remove_actor                    ; if actor type <= 14 then remove_actor
+
                     ; this code doesn't appear to execute
                     ; looks like it may kill-off the actor
-                    lea.l   $00000000,a0                    ; Looks like nonsense -- clear a0
-                    movea.l d0,a0                           ; Looks like nonsense --copy d0 into a0 (why?)
-                    movea.l ACTORLIST_STRUCT_ADDR(a6),a0    ; a0 = actor data ptr - conveted to 32 bit address
-                    bclr.b  #$0007,-$0002(a0)               ; clear enable? status bit?
-remove_actor
+                    jsr     _DEBUG_COLOURS
+                    lea.l   $00000000,a0                    ; clear a0
+                    movea.l d0,a0                           ; store actor x in a0?
+                    movea.l ACTORSTRUCT_INIT_PTR(a6),a0     ; a0 = actor data ptr - conveted to 32 bit address
+                    bclr.b  #$07,-$0002(a0)                 ; reenable actor
+
+remove_actor        ; L00003f44 - remove actor
                     clr.w   (a6)                            ; take actor out of the list
                     bra.b   skip_to_next_actor              ; L00003fa8
 
@@ -6906,16 +6938,15 @@ mirror_sprites
                     rts
 
 
-
-L00005a7a           dc.w    $0004, $006b                ; or.b #$6b,d4
-L00005a7e           dc.w    $0012, $0046                ; or.b #$46,(a2) [12]
-L00005a82           dc.w    $0015, $0097                ; or.b #$97,(a5)
-L00005a86           dc.w    $0017, $0064                ; or.b #$64,(a7) [60]
-L00005a8a           dc.w    $0018, $0085                ; or.b #$85,(a0)+ [00]
-L00005a8e           dc.w    $001b, $00bc                ; or.b #$bc,(a3)+ [71]
-L00005a92           dc.w    $001f, $00c1                ; or.b #$c1,(a7)+ [60]
-L00005a96           dc.w    $00ff                       ; illegal
-L00005a98           dc.w    $0000
+actor_init_data     ; original address L00005a7a
+L00005a7a           dc.w    $0004,$006b
+L00005a7e           dc.w    $0012,$0046
+L00005a82           dc.w    $0015,$0097
+L00005a86           dc.w    $0017,$0064
+L00005a8a           dc.w    $0018,$0085
+L00005a8e           dc.w    $001b,$00bc
+L00005a92           dc.w    $001f,$00c1
+L00005a96           dc.w    $00ff,$0000
 
 
                     ; ------- jmp table -----
@@ -7919,6 +7950,7 @@ end_of_trigger_list ; original address L00006722
                     ; MSB of byte 0 is cleared on game_start
                     ; 21 - entries in list
                     ; Type, X co-ord, y co-ord?
+trigger_gas_drips   ; original address L00006722
 L00006722           dc.w $0014,$0118,$0038
                     dc.w $0015,$00D0,$0028
                     dc.w $0014,$0070,$0068
