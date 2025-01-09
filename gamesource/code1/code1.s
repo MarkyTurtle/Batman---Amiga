@@ -2079,10 +2079,12 @@ update_score_by_level_progress                                         ; origina
                     ; gas-leaks/drips.
                     ; Spawns new actors if there is room to do so (max 10 at anytime)
                     ;
-trigger_new_actors                                                      ; original address L00003dfe
+                    ; Code Checked 9/1/2025
+                    ;
+trigger_new_actors  ; original address L00003dfe
                     movem.w scroll_window_xy_coords,d0-d1               ; scroll window X, Y? - L000067bc,d0-d1 (updated_batman_distance_walked,unknown)
                     lea.l   trigger_definitions_list,a0                 ; L0000642e,a0
-.process_next_trigger                                                   ; original address L00003e08
+.process_next_trigger ; L00003e08
                     movem.w (a0)+,d2-d3                                 ; trigger X,Y co-ords?
                     sub.w   d0,d2                                       ; sub window x from actor x
                     cmp.w   #$0098,d2                                   ; compare 152 (304 decimal)
@@ -2100,7 +2102,7 @@ trigger_new_actors                                                      ; origin
                     dbf.w   d7,.spawn_actor_loop                         ; loop for all spawned actors
                     bra.b   .continue_triggers
                    
-.skip_to_next       ; skip this actor                                   ; original address L00003e30
+.skip_to_next       ; L00003E30 - skip this actor                                   ; original address L00003e30
                     move.w  (a0),d2                                     ; get number of data items
                     add.w   d2,d2                                       ; multiply by 2
                     add.w   (a0),d2                                     ; add again (multiply by 3)
@@ -7956,7 +7958,7 @@ halfway_spawn_point_parameters                              ; original address L
 level_parameters                                            ; original address L000067bc
 updated_batman_distance_walked                              ; original address L000067bc
 
-scroll_window_xy_coords
+scroll_window_xy_coords                                     ; original address L000067bc
 scroll_window_x_coord                                       ; original address L000067bc
                     dc.w $0000
 scroll_window_y_coord                                       ; original address L000067be
