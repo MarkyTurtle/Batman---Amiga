@@ -2393,6 +2393,9 @@ skip_to_next_actor  ; L00003fa8 - increment data struct ptr to next actor       
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 14/01/2025
+                    ;
 ;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
 ;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
@@ -2405,8 +2408,8 @@ skip_to_next_actor  ; L00003fa8 - increment data struct ptr to next actor       
 ;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
 calc_grenade_speed  ; L00003fb2
 L00003fb2           add.w   #$0002,(a6)                     ; add 2 to actor status/id
-L00003fb6           move.w  batman_x_offset,d2
-L00003fbc           move.w  batman_y_bottom,d1              ; L000062f0,d3
+L00003fb6           movem.w  batman_x_offset,d2
+L00003fbc           move.w  batman_y_bottom,d3              ; L000062f0,d3
 L00003fc0           add.w   #$0015,d3                       ; window y + 21
 L00003fc4           sub.w   d1,d3                           ; d3 = batman distance from bottom window
 L00003fc6           asl.w   #$03,d3                         ; d3 = multiply by 8
@@ -2424,18 +2427,18 @@ L00003fd8           bsr.w   get_empty_projectile            ; a0 = empty project
 L00003fdc           cmp.w   #$0008,d3
 L00003fe0           bcs.b   L00003ff0                       ; if distance < 8, $3ff0
 L00003fe2           bmi.b   L00003fe8                       ; if negative flag, $3fe8
-L00003fe4           moveq   #$08,d3                         ; clamp d3 to 8
+L00003fe4           moveq.l #$08,d3                         ; clamp d3 to 8
 L00003fe6           bra.b   L00003ff0
 
 L00003fe8           cmp.w   #$ffe8,d3                       ; -24
 L00003fec           bcc.b   L00003ff0                       ; if > -24
-L00003fee           MOVE.L  #$ffffffe8,D3                   ; clamp d3 to -24
+L00003fee           moveq.l  #$e8,d3                        ; clamp d3 to -24
 
 L00003ff0           move.w  d3,$0006(a0)                    ; set projectile parameter
 L00003ff4           cmp.w   #$0073,d1                       
 L00003ff8           bpl.b   L0000400a                       ; if batman y bottom < 115, then exit
 L00003ffa           movem.w d0-d1,-(a7)                     ; play sfx
-L00003ffe           moveq   #SFX_GRENADE,d0
+L00003ffe           moveq.l #SFX_GRENADE,d0
 L00004000           jsr     AUDIO_PLAYER_INIT_SFX
 L00004006           movem.w (a7)+,d0-d1
 L0000400a           rts
@@ -2473,7 +2476,7 @@ L00004022           sub.w   #$0011,d3                   ; grenade y
 L00004026           movem.w d0/d3,(a0)                  ; store grenade x & y
 L0000402a           addq.w  #$05,d0
 
-L0000402c           moveq   #$08,d2                     ; animation index (8th entry)
+L0000402c           moveq.l #$08,d2                     ; animation index (8th entry)
 L0000402e           addq.w  #$01,$0008(a6)
 L00004032           lea.l   badguy_actor_anim,a5        ; L000044d4,a5                ; sprite animation
 L00004036           and.w   #$00fe,d2
@@ -2493,6 +2496,9 @@ L00004040           bra.w   drawcollide_actor_sprites_a5    ; draw 3 sprites at 
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 14/01/2025
+                    ;
 actor_cmd_grenade_left_02
 actor_cmd_07        ; L00004044
 L00004044           lea.l   L000044ec,a5
