@@ -70,6 +70,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
  - [Test Build 05 - 16/01/2025](https://youtu.be/pkMAV1ocsOs)
 
+Began disassembling Level 5 (Church), code5.iff. It is based on an almost identical code base.
+
 2025-01-04 - Have now debugged the scrolling, projectiles and player movement routines. The bad guy enemy routines are still buggy and causing some corruption. I've uploaded the latest video on Youtube at the following link.
  - [Test Build 04 - 04/01/2025](https://youtu.be/PPE2NbVPY78)
 
