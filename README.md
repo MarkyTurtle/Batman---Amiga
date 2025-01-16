@@ -56,7 +56,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
     - Updated Test ADF with Title Screen rebuilt from Source Code - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) 
  - Disassemble the Platform Levels.
     - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/FSX
-    - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - In Progress
+    - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done - can be re-assembled and played from source code
     - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Just Data - TODO: Write Test Project to Display Sprites
     - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Just Data - TODO: Write Test Project to Display GFX/Level Data
  - Disassemble the Batmobile/Batwing Levels.
@@ -65,6 +65,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 
 ## Progress to Date
+
+2025-01-16 - Level 1 is now assembling and can be played to the end.
 
 2025-01-04 - Have now debugged the scrolling, projectiles and player movement routines. The bad guy enemy routines are still buggy and causing some corruption. I've uploaded the latest video on Youtube at the following link.
  - [Test Build 04 - 04/01/2025](https://youtu.be/PPE2NbVPY78)
