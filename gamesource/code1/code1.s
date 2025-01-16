@@ -1395,6 +1395,7 @@ ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for 
 ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
 ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+ACTORSTRUCT_ANIMFRAME   EQU     $8                          ; 16 bits animation frame
 ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
 ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
 ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
@@ -2306,9 +2307,9 @@ forget_actor        ; L00003f2e - actor is out of bounds forget about it
                     cmp.w   #$0014,d6
                     bcs.b   remove_actor                    ; if actor type <= 14 then remove_actor
 
-                    ; this code doesn't appear to execute
+                    ; this code kills off actors out of scene
                     ; looks like it may kill-off the actor
-                    jsr     _DEBUG_COLOURS
+                    ; jsr     _DEBUG_COLOURS
                     lea.l   $00000000,a0                    ; clear a0
                     movea.l d0,a0                           ; store actor x in a0?
                     movea.l ACTORSTRUCT_INIT_PTR(a6),a0     ; a0 = actor data ptr - conveted to 32 bit address
@@ -2321,7 +2322,8 @@ remove_actor        ; L00003f44 - remove actor
 execute_handler     ; L00003f48 - execute actor handler                 ; original address L00003f48
                     lea.l   actor_handler_table,a0          ; jmp table
                     add.w   d6,d6                           ; convert index to word value
-                    adda.w  d6,a0                           ; add word value to address - jmp table index (word table)
+                    add.w   d6,d6                           ; convert index to word value
+;                    adda.w  d6,a0                           ; add word value to address - jmp table index (word table)
                     adda.w  d6,a0                           ; add word value to address - jmp table index (long table) - additional line of code (jmp table converted to long from word)
                     movea.l (a0),a0                         ; code change  (jmp table converted to long from word)
                     move.w  d7,-(a7)                        ; store loop count on stack
@@ -2408,7 +2410,7 @@ skip_to_next_actor  ; L00003fa8 - increment data struct ptr to next actor       
 ;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
 calc_grenade_speed  ; L00003fb2
 L00003fb2           add.w   #$0002,(a6)                     ; add 2 to actor status/id
-L00003fb6           movem.w  batman_x_offset,d2
+L00003fb6           movem.w batman_x_offset,d2
 L00003fbc           move.w  batman_y_bottom,d3              ; L000062f0,d3
 L00003fc0           add.w   #$0015,d3                       ; window y + 21
 L00003fc4           sub.w   d1,d3                           ; d3 = batman distance from bottom window
@@ -2452,10 +2454,14 @@ L0000400a           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 16/01/2025
+                    ;
 ;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
 ;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
 ;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
 ;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_ANIMFRAME   EQU     $8                          ; 16 bits animation frame
 ;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
 ;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
 ;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
@@ -2465,21 +2471,26 @@ L0000400a           rts
 
 actor_cmd_grenade_left_01
 actor_cmd_05        ; L0000400c
-L0000400c           move.w  $0008(a6),d2
-L00004010           cmp.w   #$0007,d2
+                    ; do throw animation
+L0000400c           move.w  ACTORSTRUCT_ANIMFRAME(a6),d2    ; d2 = animation index
+L00004010           cmp.w   #$0007,d2                       ; compare last animation frame
 L00004014           bne.b   L0000402e
+
+                    ; do create new grenade
 L00004016           subq.w  #$05,d0                     ; actor display x - 5
-L00004018           bsr.w   calc_grenade_speed          ; out: a0 - projectile - L00003fb2
-L0000401c           move.w  #$000d,(a0)+                ; set projjectile handler id (13)
+L00004018           bsr.w   calc_grenade_speed          ; out: a0 = new projectile - L00003fb2
+L0000401c           move.w  #$000d,(a0)+                ; set projectile handler id (13)
 L00004020           move.w  d1,d3
 L00004022           sub.w   #$0011,d3                   ; grenade y
 L00004026           movem.w d0/d3,(a0)                  ; store grenade x & y
 L0000402a           addq.w  #$05,d0
 
-L0000402c           moveq.l #$08,d2                     ; animation index (8th entry)
+                    ; draw final actor animation frame
+L0000402c           moveq.l #$08,d2                     ; final animation index (8th entry)
+                    ; draw actor animation frame
 L0000402e           addq.w  #$01,$0008(a6)
 L00004032           lea.l   badguy_actor_anim,a5        ; L000044d4,a5                ; sprite animation
-L00004036           and.w   #$00fe,d2
+L00004036           and.w   #$00fe,d2                   ; clamp d2
 L0000403a           adda.w  d2,a5
 L0000403c           add.w   d2,d2
 L0000403e           adda.w  d2,a5
@@ -2825,8 +2836,9 @@ L00004370           addq.w  #$02,$000a(a6)
 
 L00004374           lea.l   actor_handler_table,a0          ; L00005a9a,a0                    ; jmp table
 L00004378           add.w   d6,d6                           ; convert index to word value
+L00004378a          add.w   d6,d6                           ; convert index to long value
 L0000437a           adda.w  d6,a0                           ; add word value to address - jmp table index (word table)
-L0000437a1          adda.w  d6,a0                           ; add word value to address - jmp table index (long table) - additional line of code (jmp table converted to long from word)
+;L0000437a1          adda.w  d6,a0                           ; add word value to address - jmp table index (long table) - additional line of code (jmp table converted to long from word)
 ;L0000437c           movea.w (a0),a0
 L0000437c           movea.l (a0),a0                         ; code change  (jmp table converted to long from word)
 L0000437e           jmp     (a0)
@@ -3001,14 +3013,15 @@ play_proximity_sfx                                                  ; original a
                     rts
 
 
-                    ; bad-guy - actor animation frames
+                    ; bad-guy - actor animation frames (left)
 badguy_actor_anim   ; L000044d4
 L000044d4           dc.w    $e004,$e005,$e008
 L000044da           dc.w    $e010,$e011,$0000
                     dc.w    $e012,$e011,$0000
                     dc.w    $e013,$e014,$e011
-throw_grenade_left
+throw_grenade_left                                  ; final animation frame?
 L000044ec           dc.w    $e015,$e016,$e011
+
 L000044f2           dc.w    $0004,$0005,$0008
 L000044f8           dc.w    $0010,$0011,$0000
                     dc.w    $0012,$0011,$0000
@@ -3268,10 +3281,10 @@ update_projectiles  ; original address L00004658
                     asl.w   #$02,d6                             ; modified address table to 32 bit addresses, original code 'asl.w #$01,d6'
                     clr.l   d2                                  ; clear d2
                     movea.l d2,a0                               ; clear a0
-                    movea.l -$4(a5,d6.W),a0                     ; modified address table to 32 bit addresses, original code 'movea.w $fe(a5,d6.W),a0' 
+                    movea.l -$4(a5,d6.w),a0                     ; modified address table to 32 bit addresses, original code 'movea.w $fe(a5,d6.W),a0' 
                     jsr     (a0)
 .skip_to_next       ;  L0000467e
-                    addq.w  #$06,a6                             ; increase ptr 6 + 2 (8 bytes structure)
+                    addq.l  #$06,a6                             ; increase ptr 6 + 2 (8 bytes structure)
                     dbf.w   d7,.update_loop
                     rts
 
@@ -3854,9 +3867,9 @@ grenade_explosion_effect
                     ; Code Checked 2/1/2025
                     ;
 projectile_jmp_table        ; original address L00004866
-                    dc.l    batman_grappling_hook       ; 01 - L00004758 ; batman grappling hook
-                    dc.l    batarang_right              ; 02 - L00004728 ; batman fire right
-                    dc.l    batarang_left               ; 03 - L00004740 ; batman fire left
+                    ;dc.l    batman_grappling_hook       ; 01 - L00004758 ; batman grappling hook
+                    dc.l    batman_grappling_hook       ; 02 - L00004728 ; batman fire right
+                    dc.l    batarang_right              ; 03 - L00004740 ; batman fire left
                     dc.l    batarang_left               ; 04 - L00004740 ; batman fire left
                     dc.l    remove_projectile           ; 05 - L00004722 ; remove projectile
                     dc.l    remove_projectile           ; 06 - L00004722 ; remove projectile
@@ -3877,6 +3890,7 @@ projectile_jmp_table        ; original address L00004866
                     dc.l    grenade_explosion_effect    ; 21 - L00004844 ; runs while grenade explosion is displayed?
                     dc.l    grenade_explosion_effect    ; 22 - L00004844 ; runs while grenade explosion is displayed?
                     dc.l    grenade_explosion_effect    ; 23 - L00004844 ; runs while grenade explosion is displayed?
+                    dc.l    grenade_explosion_effect    ; 24 - L00004844 ; runs while grenade explosion is displayed?
                     dc.l    grenade_explosion_effect    ; 24 - L00004844 ; runs while grenade explosion is displayed?
 
 
@@ -7444,9 +7458,13 @@ Load_level_2        ; silence current audio                             ; origin
                     ; fade bottom panel (score etc)
                     bsr.w   panel_fade_out
                     ; jump to loader, load level 2
+                IFND TEST_BUILD_LEVEL
                     bra.w   LOADER_LEVEL_2
-
-
+                ELSE
+.dont_load_loop
+                    jsr     _DEBUG_COLOURS
+                    bra     .dont_load_loop
+                ENDC
 
                     ; -------- wait for frame count ---------
 wait_for_frame_count                                                    ; original address L00005e8c
