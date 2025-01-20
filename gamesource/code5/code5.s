@@ -2761,283 +2761,467 @@ temp_vertical_scroll_increments
 
 L00004972   dc.w $0000 
 
-00004974 4cb8 0006 69f4           movem.w $69f4,d1-d2
-0000497a 3001                     move.w d1,d0
-0000497c 9042                     sub.w d2,d0
-0000497e 31f8 6358 4972           move.w $6358 [0000],$4972 [0000]
-00004984 31c0 6358                move.w d0,$6358 [0000]
-00004988 6700 00a0                beq.w #$00a0 == $00004a2a (F)
+L00004974               movem.w L000069f4,d1-d2
+L0000497a               move.w  d1,d0
+L0000497c               sub.w   d2,d0
+L0000497e               move.w  L00006358,L00004972
+L00004984               move.w  d0,L00006358
+L00004988               beq.w   L00004a2a 
 
-0000498c 4a78 6342                tst.w $6342 [0001]
-00004990 6b18                     bmi.b #$18 == $000049aa (F)
-00004992 672a                     beq.b #$2a == $000049be (F)
-00004994 0c40 0004                cmp.w #$0004,d0
-00004998 6524                     bcs.b #$24 == $000049be (F)
-0000499a 0c40 fffd                cmp.w #$fffd,d0
-0000499e 641e                     bcc.b #$1e == $000049be (T)
-000049a0 6a04                     bpl.b #$04 == $000049a6 (T)
-000049a2 70fe                     moveq #$fe,d0
-000049a4 6018                     bra.b #$18 == $000049be (T)
-000049a6 7002                     moveq #$02,d0
-000049a8 6014                     bra.b #$14 == $000049be (T)
-000049aa 0c40 0008                cmp.w #$0008,d0
-000049ae 650e                     bcs.b #$0e == $000049be (F)
-000049b0 0c40 fffd                cmp.w #$fffd,d0
-000049b4 6408                     bcc.b #$08 == $000049be (T)
-000049b6 6b04                     bmi.b #$04 == $000049bc (F)
-000049b8 7007                     moveq #$07,d0
-000049ba 6002                     bra.b #$02 == $000049be (T)
-000049bc 70fd                     moveq #$fd,d0
-000049be 3238 69ee                move.w $69ee [00f0],d1
-000049c2 3601                     move.w d1,d3
-000049c4 d240                     add.w d0,d1
-000049c6 0c41 0601                cmp.w #$0601,d1
-000049ca 6512                     bcs.b #$12 == $000049de (F)
-000049cc 6b0c                     bmi.b #$0c == $000049da (F)
-000049ce 343c 0600                move.w #$0600,d2
-000049d2 9242                     sub.w d2,d1
-000049d4 9041                     sub.w d1,d0
-000049d6 3202                     move.w d2,d1
-000049d8 6004                     bra.b #$04 == $000049de (T)
-000049da 9041                     sub.w d1,d0
-000049dc 4241                     clr.w d1
-000049de 9178 69f4                sub.w d0,$69f4 [0048]
-000049e2 31c1 69ee                move.w d1,$69ee [00f0]
-000049e6 9243                     sub.w d3,d1
-000049e8 31c1 6358                move.w d1,$6358 [0000]
-000049ec 673c                     beq.b #$3c == $00004a2a (F)
-000049ee 6b22                     bmi.b #$22 == $00004a12 (F)
-000049f0 0643 0057                add.w #$0057,d3
-000049f4 3438 635a                move.w $635a [0000],d2
-000049f8 3801                     move.w d1,d4
-000049fa d842                     add.w d2,d4
-000049fc 0c44 0057                cmp.w #$0057,d4
-00004a00 6504                     bcs.b #$04 == $00004a06 (F)
-00004a02 0444 0057                sub.w #$0057,d4
-00004a06 31c4 635a                move.w d4,$635a [0000]
-00004a0a 6100 0090                bsr.w #$0090 == $00004a9c
-00004a0e 6000 001a                bra.w #$001a == $00004a2a (T)
-00004a12 3438 635a                move.w $635a [0000],d2
-00004a16 d441                     add.w d1,d2
-00004a18 6a04                     bpl.b #$04 == $00004a1e (T)
-00004a1a 0642 0057                add.w #$0057,d2
-00004a1e 31c2 635a                move.w d2,$635a [0000]
-00004a22 d641                     add.w d1,d3
-00004a24 4441                     neg.w d1
-00004a26 6100 0074                bsr.w #$0074 == $00004a9c
-00004a2a 3038 69f2                move.w $69f2 [0050],d0
-00004a2e 9078 69f8                sub.w $69f8 [0050],d0
-00004a32 31c0 6356                move.w d0,$6356 [0000]
-00004a36 6700 0062                beq.w #$0062 == $00004a9a (F)
-00004a3a 3238 69ec                move.w $69ec [0000],d1
-00004a3e 3401                     move.w d1,d2
-00004a40 d240                     add.w d0,d1
-00004a42 6a06                     bpl.b #$06 == $00004a4a (T)
-00004a44 3001                     move.w d1,d0
-00004a46 4241                     clr.w d1
-00004a48 6010                     bra.b #$10 == $00004a5a (T)
-00004a4a 4240                     clr.w d0
-00004a4c 0c41 0230                cmp.w #$0230,d1
-00004a50 6308                     bls.b #$08 == $00004a5a (F)
-00004a52 303c 0230                move.w #$0230,d0
-00004a56 9240                     sub.w d0,d1
-00004a58 c340                     exg.l d1,d0
-00004a5a d078 69f8                add.w $69f8 [0050],d0
-00004a5e 31c0 69f2                move.w d0,$69f2 [0050]
-00004a62 31c1 69ec                move.w d1,$69ec [0000]
-00004a66 3601                     move.w d1,d3
-00004a68 9642                     sub.w d2,d3
-00004a6a 31c3 6356                move.w d3,$6356 [0000]
-00004a6e 672a                     beq.b #$2a == $00004a9a (F)
-00004a70 b342                     eor.w d1,d2
-00004a72 0802 0003                btst.l #$0003,d2
-00004a76 6722                     beq.b #$22 == $00004a9a (F)
-00004a78 2878 6366                movea.l $6366 [0005a36c],a4
-00004a7c 4a43                     tst.w d3
-00004a7e 6b10                     bmi.b #$10 == $00004a90 (F)
-00004a80 0641 00a0                add.w #$00a0,d1
-00004a84 544c                     addaq.w #$02,a4
-00004a86 21cc 6366                move.l a4,$6366 [0005a36c]
-00004a8a 49ec 0028                lea.l (a4,$0028) == $00bfe129,a4
-00004a8e 6006                     bra.b #$06 == $00004a96 (T)
-00004a90 554c                     subaq.w #$02,a4
-00004a92 21cc 6366                move.l a4,$6366 [0005a36c]
-00004a96 6100 007c                bsr.w #$007c == $00004b14
-00004a9a 4e75                     rts  == $6000001a
+                    ; think this is doing something to set the scroll speed.
+                    ; it's fannying around with values in d0.
+                    ; d0 is an offset added to the window Y coord further below.
+scroll_speed_shenanigans 
+L0000498c               tst.w   L00006342
+L00004990               bmi.b   L000049aa
+L00004992               beq.b   L000049be
+L00004994               cmp.w   #$0004,d0
+L00004998               bcs.b   L000049be
+L0000499a               cmp.w   #$fffd,d0       ; -3
+L0000499e               bcc.b   L000049be
+L000049a0               bpl.b   L000049a6
+L000049a2               moveq   #$fe,d0         ; -2
+L000049a4               bra.b   L000049be
 
+L000049a6               moveq   #$02,d0
+L000049a8               bra.b   L000049be
 
+L000049aa               cmp.w   #$0008,d0
+L000049ae               bcs.b   L000049be
+L000049b0               cmp.w   #$fffd,d0       ; -3
+L000049b4               bcc.b   L000049be
+L000049b6               bmi.b   L000049bc
+L000049b8               moveq   #$07,d0
+L000049ba               bra.b   L000049be
+L000049bc               moveq   #$fd,d0         ; -3
 
-00004a9c 5341                     subq.w #$01,d1
-00004a9e 3803                     move.w d3,d4
-00004aa0 0244 0007                and.w #$0007,d4
-00004aa4 e944                     asl.w #$04,d4
-00004aa6 13c4 0000 4adf           move.b d4,$00004adf [00]
-00004aac 3803                     move.w d3,d4
-00004aae e64c                     lsr.w #$03,d4
-00004ab0 41f9 0000 8002           lea.l $00008002,a0
-00004ab6 c8d0                     mulu.w (a0) [003c],d4
-00004ab8 3038 69ec                move.w $69ec [0000],d0
-00004abc e648                     lsr.w #$03,d0
-00004abe d840                     add.w d0,d4
-00004ac0 41f0 407a                lea.l (a0,d4.W,$7a) == $00000df3,a0
-00004ac4 3802                     move.w d2,d4
-00004ac6 c8fc 0054                mulu.w #$0054,d4
-00004aca d8b8 6366                add.l $6366 [0005a36c],d4
-00004ace 2244                     movea.l d4,a1
-00004ad0 7e14                     moveq #$14,d7
-00004ad2 2478 6352                movea.l $6352 [0000c77c],a2
-00004ad6 4240                     clr.w d0
-00004ad8 1018                     move.b (a0)+ [00],d0
-00004ada ef40                     asl.w #$07,d0
-00004adc 47f2 0000                lea.l (a2,d0.W,$00) == $000622a7,a3
-00004ae0 32db                     move.w (a3)+ [62f9],(a1)+ [0000]
-00004ae2 335b 1c8a                move.w (a3)+ [62f9],(a1,$1c8a) == $00040fb4 [0000]
-00004ae6 335b 3916                move.w (a3)+ [62f9],(a1,$3916) == $00042c40 [3844]
-00004aea 335b 55a2                move.w (a3)+ [62f9],(a1,$55a2) == $000448cc [eae1]
-00004aee 335b 0028                move.w (a3)+ [62f9],(a1,$0028) == $0003f352 [ee00]
-00004af2 335b 1cb4                move.w (a3)+ [62f9],(a1,$1cb4) == $00040fde [0000]
-00004af6 335b 3940                move.w (a3)+ [62f9],(a1,$3940) == $00042c6a [0060]
-00004afa 335b 55cc                move.w (a3)+ [62f9],(a1,$55cc) == $000448f6 [7000]
-00004afe 51cf ffd6                dbf .w d7,#$ffd6 == $00004ad6 (F)
-00004b02 5243                     addq.w #$01,d3
-00004b04 5242                     addq.w #$01,d2
-00004b06 0c42 0057                cmp.w #$0057,d2
-00004b0a 6502                     bcs.b #$02 == $00004b0e (F)
-00004b0c 4242                     clr.w d2
-00004b0e 51c9 ff8e                dbf .w d1,#$ff8e == $00004a9e (F)
-00004b12 4e75                     rts  == $6000001a
+.continue_vertical_scroll  
+L000049be               move.w  L000069ee,d1
+L000049c2               move.w  d1,d3
+L000049c4               add.w   d0,d1
+L000049c6               cmp.w   #$0601,d1
+L000049ca               bcs.b   L000049de
 
+L000049cc               bmi.b   L000049da
 
+.clamp_y_max        ; clamp to max Y coord     
+L000049ce               move.w  #$0600,d2
+L000049d2               sub.w   d2,d1
+L000049d4               sub.w   d1,d0
+L000049d6               move.w  d2,d1
+L000049d8               bra.b   L000049de
 
-00004b14 2478 6352                movea.l $6352 [0000c77c],a2
-00004b18 3401                     move.w d1,d2
-00004b1a e64a                     lsr.w #$03,d2
-00004b1c 3238 69ee                move.w $69ee [00f0],d1
-00004b20 3001                     move.w d1,d0
-00004b22 0240 0007                and.w #$0007,d0
-00004b26 3a00                     move.w d0,d5
-00004b28 4645                     not.w d5
-00004b2a 0245 0007                and.w #$0007,d5
-00004b2e e948                     lsl.w #$04,d0
-00004b30 e649                     lsr.w #$03,d1
-00004b32 41f9 0000 8002           lea.l $00008002,a0
-00004b38 3810                     move.w (a0) [003c],d4
-00004b3a c2c4                     mulu.w d4,d1
-00004b3c d242                     add.w d2,d1
-00004b3e 41f0 107a                lea.l (a0,d1.W,$7a) == $00000cf1,a0
-00004b42 7e56                     moveq #$56,d7
-00004b44 3238 635a                move.w $635a [0000],d1
-00004b48 7c56                     moveq #$56,d6
-00004b4a 9c41                     sub.w d1,d6
-00004b4c c2fc 0054                mulu.w #$0054,d1
-00004b50 43f4 1800                lea.l (a4,d1.L,$00) == $00c0e100,a1
-00004b54 4241                     clr.w d1
-00004b56 1210                     move.b (a0) [00],d1
-00004b58 ef41                     asl.w #$07,d1
-00004b5a d041                     add.w d1,d0
-00004b5c 600c                     bra.b #$0c == $00004b6a (T)
-00004b5e 51cd 0010                dbf .w d5,#$0010 == $00004b70 (F)
-00004b62 7a07                     moveq #$07,d5
-00004b64 4240                     clr.w d0
-00004b66 1010                     move.b (a0) [00],d0
-00004b68 ef40                     asl.w #$07,d0
-00004b6a 47f2 0000                lea.l (a2,d0.W,$00) == $000622a7,a3
-00004b6e d0c4                     adda.w d4,a0
-00004b70 329b                     move.w (a3)+ [62f9],(a1) [0000]
-00004b72 335b 1c8c                move.w (a3)+ [62f9],(a1,$1c8c) == $00040fb6 [0000]
-00004b76 335b 3918                move.w (a3)+ [62f9],(a1,$3918) == $00042c42 [0120]
-00004b7a 335b 55a4                move.w (a3)+ [62f9],(a1,$55a4) == $000448ce [f000]
-00004b7e 335b 002a                move.w (a3)+ [62f9],(a1,$002a) == $0003f354 [ce00]
-00004b82 335b 1cb6                move.w (a3)+ [62f9],(a1,$1cb6) == $00040fe0 [0000]
-00004b86 335b 3942                move.w (a3)+ [62f9],(a1,$3942) == $00042c6c [0000]
-00004b8a 335b 55ce                move.w (a3)+ [62f9],(a1,$55ce) == $000448f8 [0000]
-00004b8e 43e9 0054                lea.l (a1,$0054) == $0003f37e,a1
-00004b92 51ce 0006                dbf .w d6,#$0006 == $00004b9a (F)
-00004b96 43e9 e374                lea.l (a1,-$1c8c) == $0003d69e,a1
-00004b9a 51cf ffc2                dbf .w d7,#$ffc2 == $00004b5e (F)
-00004b9e 4e75                     rts  == $6000001a
+.clamp_y_min        ; clamp to min Y coord?   
+L000049da               sub.w   d1,d0
+L000049dc               clr.w   d1
+
+.update_y_scroll_position   ; original address L000049a0
+L000049de               sub.w   d0,L000069f4
+L000049e2               move.w  d1,L000069ee
+
+check_vertical_scroll  ; original address L000049a8
+                    ; calculate the number of increments to scroll
+L000049e6               sub.w   d3,d1
+L000049e8               move.w  d1,L00006358
+L000049ec               beq.b   L00004a2a
+L000049ee               bmi.b   L00004a12
+
+scroll_display_window_down 
+L000049f0               add.w   #$0057,d3
+L000049f4               move.w  L0000635a,d2
+L000049f8               move.w  d1,d4
+L000049fa               add.w   d2,d4
+L000049fc               cmp.w   #$0057,d4
+L00004a00               bcs.b   L00004a06
+.is_display_wrap
+L00004a02               sub.w   #$0057,d4
+.no_display_wrap
+L00004a06               move.w  d4,L0000635a
+L00004a0a               bsr.w   L00004a9c
+L00004a0e               bra.w   L00004a2a
+                    ;---------------------------------------
+
+                    ; scroll display up (e.g. climbing upwards)
+                    ; NB: d1 is negative
+scroll_display_window_up 
+L00004a12               move.w  L0000635a,d2
+L00004a16               add.w   d1,d2
+L00004a18               bpl.b   L00004a1e
+.is_enderflow_wrap
+L00004a1a               add.w   #$0057,d2
+.no_underflow_wrap 
+L00004a1e               move.w  d2,L0000635a
+L00004a22               add.w   d1,d3
+L00004a24               neg.w   d1
+L00004a26               bsr.w   L00004a9c       ; draw_background_vertical_scroll
+
+                    ; ------- do horizontal scroll -------
+do_horizontal_scroll
+L00004a2a               move.w  L000069f2,d0
+L00004a2e               sub.w   L000069f8,d0
+L00004a32               move.w  d0,L00006356
+L00004a36               beq.w   L00004a9a
+
+L00004a3a               move.w  L000069ec,d1
+
+.test_min_X         ; test window min X value (0)
+L00004a3e               move.w  d1,d2
+L00004a40               add.w   d0,d1
+L00004a42               bpl.b   L00004a4a
+
+.clamp_low_X        ; clamp window at X=0
+L00004a44               move.w  d1,d0
+L00004a46               clr.w   d1
+L00004a48               bra.b   L00004a5a
+
+.test_max_X        ; test window max X value
+L0004a4a                clr.w   d0
+L0004a4c                cmp.w   #$0230,d1
+L0004a50                bls.b   L00004a5a
+
+.clamp_max_X        ; clamp window at x = #$230
+L00004a52               move.w  #$0230,d0
+L00004a56               sub.w   d0,d1
+L00004a58               exg.l   d1,d0
+
+.cont_horiz_scroll  ; calc amount of horizontal scroll  
+L00004a5a               add.w   L000069f8,d0
+L00004a5e               move.w  d0,L000069f2
+L00004a62               move.w  d1,L000069ec
+L00004a66               move.w  d1,d3
+L00004a68               sub.w   d2,d3
+L00004a6a               move.w  d3,L00006356
+L00004a6e               beq.b   L00004a9a
+
+                    ; check if coarse scroll     
+L00004a70               eor.w   d1,d2
+L00004a72               btst.l  #$0003,d2
+L00004a76               beq.b   L00004a9a
+
+                    ; set up coarse scroll  
+L00004a78               movea.l L00006366,a4
+L00004a7c               tst.w   d3
+L00004a7e               bmi.b   L00004a90
+
+.scroll_right       ; do scroll right 
+L00004a80               add.w   #$00a0,d1
+L00004a84               addq.w  #$02,a4
+L00004a86               move.l  a4,L00006366
+L00004a8a               lea.l   $0028(a4),a4
+L00004a8e               bra.b   L00004a96
+
+.scroll_left        ; do scroll left. L00004a52
+L00004a90               subq.w  #$02,a4
+L00004a92               move.l  a4,L00006366
+
+.update_horizontal  ; draw new column of tile map
+L00004a96               bsr.w   L00004b14
+
+.exit_horizontal_scroll ; original address L00004a5c
+L00004a9a               rts
 
 
+                    ; -------------------- draw background vertical scroll --------------------
+                    ; The vertical scroll window moves 2 rasters at a time.
+                    ; This routine draws 2 raster lines of graphics that are being scrolled 
+                    ; into the new window when the screen scrolls vertically.
+                    ;
+                    ; NB: This routine draws the background information into the 
+                    ;       off-screen buffer. This buffer is a then presented into
+                    ;       
+                    ;
+                    ; The way the scroll window works is that it moves to keep batman in
+                    ; the frame.  The vertical scroll moves when the joystick movement
+                    ; is made up/down and allows the player to see more background
+                    ; displayed above or below batman on thhe platforms.
+                    ;
+                    ; it also scrolls when batman is hanging on his batrope.
+                    ; it also scrolls when batman is falling between platforms.
+                    ; it also scrolls when batman is climbing a ladder.
+                    ;
+                    ; IN:
+                    ;   d1.w - Number of 'scroll' counts (two raster lines per scroll)
+                    ;   d2.w - Destination GFX Buffer Y Value to add scroll GFX into. - Y value is divided by 2
+                    ;   d3.w - Y value of world/tilemap location to display - Y value is divided by 2
+                    ;   a3.l - source base gfx ptr
+                    ;
+draw_background_vertical_scroll
+L00004a9c               subq.w  #$01,d1
 
-00004ba0 33fc 8400 00df f096      move.w #$8400,$00dff096
-00004ba8 2c78 36ea                movea.l $36ea [00061b9c],a6
-00004bac 554e                     subaq.w #$02,a6
-00004bae 2a78 6366                movea.l $6366 [0005a36c],a5
-00004bb2 3238 635a                move.w $635a [0000],d1
-00004bb6 4286                     clr.l d6
-00004bb8 5346                     subq.w #$01,d6
-00004bba 4846                     swap.w d6
-00004bbc 3438 69ec                move.w $69ec [0000],d2
-00004bc0 0242 0007                and.w #$0007,d2
-00004bc4 6704                     beq.b #$04 == $00004bca (F)
-00004bc6 e4be                     ror.l d2,d6
-00004bc8 e4be                     ror.l d2,d6
-00004bca 4442                     neg.w d2
-00004bcc e65a                     ror.w #$03,d2
-00004bce 0282 0000 e000           and.l #$0000e000,d2
-00004bd4 6602                     bne.b #$02 == $00004bd8 (T)
-00004bd6 544e                     addaq.w #$02,a6
-00004bd8 0042 09f0                or.w #$09f0,d2
-00004bdc 4842                     swap.w d2
-00004bde 3801                     move.w d1,d4
-00004be0 c8fc 0054                mulu.w #$0054,d4
-00004be4 43f5 4800                lea.l (a5,d4.L,$00) == $1022d201,a1
-00004be8 204e                     movea.l a6,a0
-00004bea 7628                     moveq #$28,d3
-00004bec 383c 00ae                move.w #$00ae,d4
-00004bf0 9841                     sub.w d1,d4
-00004bf2 9841                     sub.w d1,d4
-00004bf4 6100 0026                bsr.w #$0026 == $00004c1c
-00004bf8 3801                     move.w d1,d4
-00004bfa 6716                     beq.b #$16 == $00004c12 (F)
-00004bfc 7657                     moveq #$57,d3
-00004bfe 9644                     sub.w d4,d3
-00004c00 c6fc 0054                mulu.w #$0054,d3
-00004c04 41f6 3800                lea.l (a6,d3.L,$00) == $04f3f313,a0
-00004c08 d844                     add.w d4,d4
-00004c0a 7628                     moveq #$28,d3
-00004c0c 43d5                     lea.l (a5),a1
-00004c0e 6100 000c                bsr.w #$000c == $00004c1c
-00004c12 33fc 0400 00df f096      move.w #$0400,$00dff096
-00004c1a 4e75                     rts  == $6000001a
+                    ; calc source gfx start offset (depends on soft scroll value)
+                    ; self modified code, updates LEA offset value below.
+.draw_next_scroll_line ; draw new line (2 rasters) of scroll gfx
+L00004a9e               move.w  d3,d4
+L00004aa0               and.w   #$0007,d4
+L00004aa4               asl.w   #$04,d4
+L00004aa6               move.b  d4,gfx_lea_offset       ; L00004adf 
+
+                    ; calc Y offset into map tile map data
+L00004aac               move.w  d3,d4
+L00004aae               lsr.w   #$03,d4
+L00004ab0               lea.l   $00008002,a0            ; MAPGR_BASE
+L00004ab6               mulu.w  (a0),d4
+
+                    ; calc X offset into map tile map data
+L00004ab8               move.w  L000069ec,d0
+L00004abc               lsr.w   #$03,d0
+
+                    ; calc total offset into tile map data
+L00004abe               add.w   d0,d4
+L00004ac0               lea.l   $7a(a0,d4.w),a0         ; MAPGR_TILEDATA_OFFSET
+
+                    ; calc gfx destination address
+L00004ac4               move.w  d2,d4
+L00004ac6               mulu.w  #$0054,d4
+L00004aca               add.l   L00006366,d4
+L00004ace               movea.l d4,a1
+
+                    ; Initialise Draw Loop 
+                    ; width of display buffer - #$14 (21) words
+L00004ad0               moveq   #$14,d7
+L00004ad2               movea.l L00006352,a2
+
+.draw_next_block    ; draw tile gfx (2 rasters worth)
+L00004ad6               clr.w   d0
+L00004ad8               move.b  (a0)+,d0
+L00004ada               asl.w   #$07,d0
+
+                    ; calc gfx source address ptr 
+                    ; lea.l   $XX(a2,d0.W),a3 - Self Modified Code 
+;00004adc                lea.l $00(a2,d0.W),a3
+                        dc.w    $47f2                               ; lea.l   $XX(a2,d0.W),a3 - Self Modified Code                          
+                        dc.b    $00
+gfx_lea_offset          dc.b    $00                                 ; $XX - byte offset value - original address L00004aa1
+
+                    ; draw gfx block (2 rasters)
+L00004ae0               move.w  (a3)+,(a1)+
+L00004ae2               move.w  (a3)+,$1c8a(a1)
+L00004ae6               move.w  (a3)+,$3916(a1)
+L00004aea               move.w  (a3)+,$55a2(a1)
+L00004aee               move.w  (a3)+,$0028(a1)
+L00004af2               move.w  (a3)+,$1cb4(a1)
+L00004af6               move.w  (a3)+,$3940(a1)
+L00004afa               move.w  (a3)+,$55cc(a1)
+L00004afe               dbf.w   d7,L00004ad6
+
+                        ; update Y co-ords
+L00004b02               addq.w  #$01,d3
+L00004b04               addq.w  #$01,d2
+
+                        ; test for dest gfx buffer overrun
+L00004b06               cmp.w   #$0057,d2
+L00004b0a               bcs.b   L00004b0e
+L00004b0c               clr.w   d2
+L00004b0e               dbf.w   d1,L00004a9e
+L00004b12               rts  
 
 
-00004c1c 2a02                     move.l d2,d5
-00004c1e 4845                     swap.w d5
-00004c20 0245 e000                and.w #$e000,d5
-00004c24 5443                     addq.w #$02,d3
-00004c26 ed44                     asl.w #$06,d4
-00004c28 3a03                     move.w d3,d5
-00004c2a e24d                     lsr.w #$01,d5
-00004c2c d845                     add.w d5,d4
-00004c2e 0443 002a                sub.w #$002a,d3
-00004c32 4443                     neg.w d3
-00004c34 49f9 00df f000           lea.l $00dff000,a4
-00004c3a 2a3c 0000 1c8c           move.l #$00001c8c,d5
-00004c40 0839 0006 00df f002      btst.b #$0006,$00dff002
-00004c48 66f6                     bne.b #$f6 == $00004c40 (T)
-00004c4a 2946 0044                move.l d6,(a4,$0044) == $00bfe145
-00004c4e 3943 0064                move.w d3,(a4,$0064) == $00bfe165
-00004c52 3943 0066                move.w d3,(a4,$0066) == $00bfe167
-00004c56 2942 0040                move.l d2,(a4,$0040) == $00bfe141
-00004c5a 7e03                     moveq #$03,d7
-00004c5c 0839 0006 00df f002      btst.b #$0006,$00dff002
-00004c64 66f6                     bne.b #$f6 == $00004c5c (T)
-00004c66 2949 0050                move.l a1,(a4,$0050) == $00bfe151
-00004c6a 2948 0054                move.l a0,(a4,$0054) == $00bfe155
-00004c6e 3944 0058                move.w d4,(a4,$0058) == $00bfe159
-00004c72 d3c5                     adda.l d5,a1
-00004c74 d1c5                     adda.l d5,a0
-00004c76 51cf ffe4                dbf .w d7,#$ffe4 == $00004c5c (F)
-00004c7a 4e75                     rts  == $6000001a
+
+                    ; -------------------- draw background vertical scroll --------------------
+                    ; draw background screen blocks for Horizonal Scroll.
+                    ; Draws a column of tiles into the offscreen buffer.
+                    ;
+                    ; The draw loops for the tile are 'upsidedown' see 'dbf' at display_gfx_loop
+                    ; this makes understanding the draw a little more complicated.
+                    ; the d5 in this loop represents the count of 2 rasters of gfx displayed.
+                    ; once this loop ends it moves on to the next tile to draw.
+                    ;
+                    ; IN: -
+                    ;   d1.w = world X co-ordinate
+                    ;   a4.l = offscreen display buffer. 
+                    ;
+draw_background_horizontal_scroll    
+L00004b14               movea.l L00006352,a2
+L00004b18               move.w  d1,d2
+L00004b1a               lsr.w   #$03,d2
+L00004b1c               move.w  L000069ee,d1
+L00004b20               move.w  d1,d0
+L00004b22               and.w   #$0007,d0
+L00004b26               move.w  d0,d5
+L00004b28               not.w   d5
+L00004b2a               and.w   #$0007,d5
+L00004b2e               lsl.w   #$04,d0
+L00004b30               lsr.w   #$03,d1
+L00004b32               lea.l   $00008002,a0        ; MAPGR_BASE
+L00004b38               move.w  (a0),d4
+L00004b3a               mulu.w  d4,d1
+L00004b3c               add.w   d2,d1
+L00004b3e               lea.l   $7a(a0,d1.w),a0     ; MAPGR_TILEDATA_OFFSET
+L00004b42               moveq   #$56,d7
+L00004b44               move.w  L0000635a,d1
+L00004b48               moveq   #$56,d6
+L00004b4a               sub.w   d1,d6
+L00004b4c               mulu.w  #$0054,d1
+L00004b50               lea.l   $00(a4,d1.l),a1
+
+L00004b54               clr.w   d1
+L00004b56               move.b  (a0),d1
+L00004b58               asl.w   #$07,d1
+L00004b5a               add.w   d1,d0
+L00004b5c               bra.b   L00004b6a
+
+L00004b5e               dbf.w   d5,L00004b70
+
+L00004b62               moveq   #$07,d5
+L00004b64               clr.w   d0
+L00004b66               move.b  (a0),d0
+L00004b68               asl.w   #$07,d0
+
+L00004b6a               lea.l   $00(a2,d0.w),a3
+L00004b6e               adda.w  d4,a0
+
+L00004b70               move.w  (a3)+,(a1)
+L00004b72               move.w  (a3)+,$1c8c(a1)
+L00004b76               move.w  (a3)+,$3918(a1)
+L00004b7a               move.w  (a3)+,$55a4(a1)
+L00004b7e               move.w  (a3)+,$002a(a1)
+L00004b82               move.w  (a3)+,$1cb6(a1)
+L00004b86               move.w  (a3)+,$3942(a1)
+L00004b8a               move.w  (a3)+,$55ce(a1)
+L00004b8e               lea.l   $0054(a1),a1
+L00004b92               dbf.w   d6,L00004b9a
+L00004b96               lea.l   -$1c8c(a1),a1
+L00004b9a               dbf.w   d7,L00004b5e
+L00004b9e               rts  
 
 
-00004c7c 4242                     clr.w d2
-00004c7e 1438 6350                move.b $6350 [00],d2
-00004c82 e542                     asl.w #$02,d2
-00004c84 207b 2004                movea.l (pc,d2.W,$04=$00004c8a) == $00005691 [4200623b],a0
-00004c88 4ed0                     jmp (a0)
+                    ;-------------------- copy off-screen buffer to back buffer --------------------------
+                    ; This routine copies the background scroll GFX from the off-screen buffer into
+                    ; the back buffer of the double-buffered display.
+                    ;
+                    ; the offscreen buffer is circular (i.e it wraps in the Y direction)
+                    ; This means that the start (source gfx ptr) of the back buffer may vary any number
+                    ; of rasters down into the buffer.
+                    ;
+                    ; so, when the gfx in the off-screen buffer aligned to the top, then only a single
+                    ; full screen blit is required.
+                    ;
+                    ; whem the gfx in the offscreen buffer starts (x) rasters down the buffer then
+                    ; the gfx requires two blits to the back buffer.
+                    ;   1) one for the first section of the display
+                    ;   2) for the wrapped portion of the display. 
+                    ;
+                    ; I like to think of the back buffer like an old CRT monitor where the picture
+                    ; is rolling (mechanism used to manage the 8 way scrolling without requiring huge
+                    ; double buffering)
+                    ;;
+                    ; This off-screen buffer needs to be re-aligned to the back buffer before
+                    ; being displayed to the player.
+                    ;
+copy_offscreen_to_backbuffer 
+L00004ba0               move.w  #$8400,$00dff096
+L00004ba8               movea.l L000036ea,a6
+L00004bac               subq.w  #$02,a6
+L00004bae               movea.l L00006366,a5
+L00004bb2               move.w  L0000635a,d1
+L00004bb6               clr.l   d6
+L00004bb8               subq.w  #$01,d6
+L00004bba               swap.w  d6
+L00004bbc               move.w  L000069ec,d2
+L00004bc0               and.w   #$0007,d2
+L00004bc4               beq.b   L00004bca 
+L00004bc6               ror.l   d2,d6
+L00004bc8               ror.l   d2,d6
+L00004bca               neg.w   d2
+L00004bcc               ror.w   #$03,d2
+L00004bce               and.l   #$0000e000,d2
+L00004bd4               bne.b   L00004bd8
+L00004bd6               addq.w  #$02,a6
+L00004bd8               or.w    #$09f0,d2
+L00004bdc               swap.w  d2
+L00004bde               move.w  d1,d4
+L00004be0               mulu.w  #$0054,d4
+L00004be4               lea.l   $00(a5,d4.l),a1
+L00004be8               movea.l a6,a0
+L00004bea               moveq   #$28,d3
+L00004bec               move.w  #$00ae,d4
+L00004bf0               sub.w   d1,d4
+L00004bf2               sub.w   d1,d4
+L00004bf4               bsr.w   L00004c1c
+L00004bf8               move.w  d1,d4
+L00004bfa               beq.b   L00004c12
+L00004bfc               moveq   #$57,d3
+L00004bfe               sub.w   d4,d3
+L00004c00               mulu.w  #$0054,d3
+L00004c04               lea.l   $00(a6,d3.l),a0
+L00004c08               add.w   d4,d4
+L00004c0a               moveq   #$28,d3
+L00004c0c               lea.l   (a5),a1
+L00004c0e               bsr.w   L00004c1c
+L00004c12               move.w  #$0400,$00dff096
+L00004c1a               rts  
 
+
+                    ; -------------------- blit source to destination --------------------
+                    ; Routine used by the copy_offscreen_to_backbuffer routine above
+                    ; to copy the off-screen background scroll gfx into the back buffer
+                    ; of the double buffered display.
+                    ;
+                    ; IN:-
+                    ;   d2.l = BLTCON0 & BLTCON1 ($x9f00000) x = shift
+                    ;   d3.w = Blit Width
+                    ;   d4.w = Blit Height
+                    ;   d6.l = firstword/lastwoord mask
+                    ;   a0.l = DEST Blitter Address ptr
+                    ;   a1.l = GFX Source Address ptr
+blit_src_to_dest 
+L00004c1c               move.l  d2,d5
+L00004c1e               swap.w  d5
+L00004c20               and.w   #$e000,d5
+L00004c24               addq.w  #$02,d3
+L00004c26               asl.w   #$06,d4
+L00004c28               move.w  d3,d5
+L00004c2a               lsr.w   #$01,d5
+L00004c2c               add.w   d5,d4
+L00004c2e               sub.w   #$002a,d3
+L00004c32               neg.w   d3
+L00004c34               lea.l   $00dff000,a4
+L00004c3a               move.l  #$00001c8c,d5
+L00004c40               btst.b  #$0006,$00dff002
+L00004c48               bne.b   L00004c40
+L00004c4a               move.l  d6,$0044(a4)
+L00004c4e               move.w  d3,$0064(a4)
+L00004c52               move.w  d3,$0066(a4)
+L00004c56               move.l  d2,$0040(a4)
+L00004c5a               moveq   #$03,d7
+L00004c5c               btst.b  #$0006,$00dff002
+L00004c64               bne.b   L00004c5c
+L00004c66               move.l  a1,$0050(a4)
+L00004c6a               move.l  a0,$0054(a4)
+L00004c6e               move.w  d4,$0058(a4)
+L00004c72               adda.l  d5,a1
+L00004c74               adda.l  d5,a0
+L00004c76               dbf.w   d7,L00004c5c 
+L00004c7a               rts 
+
+                    ;-----------------------------------------------------------------
+                    ; Player Move Commands
+                    ;-----------------------------------------------------------------
+                    ; Perform the player move command using the player_input_command
+                    ; value read from the current joystick inputs.
+                    ; Jump table into player input/movement commands
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ; 
+                    ; Code Checked 3/1/2025
+                    ;
+player_move_commands  
+L00004c7c               clr.w   d2
+L00004c7e               move.b  L00006350,d2
+L00004c82               asl.w   #$02,d2
+L00004c84               movea.l player_input_cmd_table(pc,d2.w),a0      ; $00004c8a
+L00004c88               jmp     (a0)
+
+                    ; ------------- player input jump table ------------
+                    ; the player_input_command byte is used as an index
+                    ; into the table to execute the command associated
+                    ; with the jotstick input.
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_table 
 
 
 
