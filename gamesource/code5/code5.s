@@ -3476,521 +3476,857 @@ L00004e76       rts
                     ; set at line of code L00004cee
                     ; ---- player state - actor Collision on batrope ------
 player_state_actor_collide_on_batrope 
-00004e78 7610                     moveq #$10,d3
-00004e7a 4a39 0007 c874           tst.b $0007c874 [00]
-00004e80 661c                     bne.b #$1c == $00004e9e (T)
-00004e82 41f8 6360                lea.l $6360,a0
-00004e86 3410                     move.w (a0) [003c],d2
+L00004e78               moveq   #$10,d3
+L00004e7a               tst.b   $0007c874
+L00004e80               bne.b   L00004e9e
+L00004e82               lea.l   L00006360,a0
+L00004e86               move.w  (a0),d2
+L00004e88               cmp.w   #$0050,d2
+L00004e8c               bcc.b   L00004e9e 
+L00004e8e               addq.w  #$01,(a0)
+L00004e90               clr.w   d3
+L00004e92               subq.w  #$01,L0000634e 
+L00004e96               bne.b   L00004e9e 
+L00004e98               move.w  #$4ea2,L00003c7c        ; gl_jsr_address
 
->d
-00004e88 0c42 0050                cmp.w #$0050,d2
-00004e8c 6410                     bcc.b #$10 == $00004e9e (T)
-00004e8e 5250                     addq.w #$01,(a0) [003c]
-00004e90 4243                     clr.w d3
-00004e92 5378 634e                subq.w #$01,$634e [0000]
-00004e96 6606                     bne.b #$06 == $00004e9e (T)
-00004e98 31fc 4ea2 3c7c           move.w #$4ea2,$3c7c [4c7c]
-00004e9e 11c3 6350                move.b d3,$6350 [00]
-00004ea2 41f8 6360                lea.l $6360,a0
-00004ea6 3a10                     move.w (a0) [003c],d5
->d
-00004ea8 1838 6350                move.b $6350 [00],d4
-00004eac 0804 0003                btst.l #$0003,d4
-00004eb0 6734                     beq.b #$34 == $00004ee6 (F)
-00004eb2 31fc 0048 69f6           move.w #$0048,$69f6 [0048]
-00004eb8 5345                     subq.w #$01,d5
-00004eba 6228                     bhi.b #$28 == $00004ee4 (T)
-00004ebc 4250                     clr.w (a0) [003c]
-00004ebe 31fc 5096 3c7c           move.w #$5096,$3c7c [4c7c]
-00004ec4 31fc 0005 633a           move.w #$0005,$633a [0000]
-00004eca 31fc 646e 636e           move.w #$646e,$636e [0000]
->d
-00004ed0 3401                     move.w d1,d2
-00004ed2 d478 69ee                add.w $69ee [00f0],d2
-00004ed6 5542                     subq.w #$02,d2
-00004ed8 0242 0007                and.w #$0007,d2
-00004edc 9242                     sub.w d2,d1
-00004ede 31c1 69f4                move.w d1,$69f4 [0048]
-00004ee2 4e75                     rts  == $6000001a
-00004ee4 3085                     move.w d5,(a0) [003c]
-00004ee6 0804 0002                btst.l #$0002,d4
-00004eea 6700 0012                beq.w #$0012 == $00004efe (F)
->d
-00004eee 31fc 0028 69f6           move.w #$0028,$69f6 [0048]
-00004ef4 5245                     addq.w #$01,d5
-00004ef6 0c45 0050                cmp.w #$0050,d5
-00004efa 6402                     bcc.b #$02 == $00004efe (T)
-00004efc 3085                     move.w d5,(a0) [003c]
-00004efe 41f8 635c                lea.l $635c,a0
-00004f02 4c90 000c                movem.w (a0),d2-d3
-00004f06 4247                     clr.w d7
-00004f08 7c07                     moveq #$07,d6
-00004f0a 0c45 0028                cmp.w #$0028,d5
+                    ; update control command
+L00004e9e               move.b  d3,L00006350
 
-
-00004f0e 640a                     bcc.b #$0a == $00004f1a (T)
-00004f10 7c03                     moveq #$03,d6
-00004f12 0c46 0014                cmp.w #$0014,d6
-00004f16 6402                     bcc.b #$02 == $00004f1a (T)
-00004f18 7c01                     moveq #$01,d6
-00004f1a cc78 6374                and.w $6374 [0000],d6
-00004f1e 660a                     bne.b #$0a == $00004f2a (T)
-00004f20 0244 0003                and.w #$0003,d4
-00004f24 e244                     asr.w #$01,d4
-00004f26 9947                     subx.w d7,d4
->d
-00004f28 3e04                     move.w d4,d7
-00004f2a 3802                     move.w d2,d4
-00004f2c 48c4                     ext.l d4
-00004f2e 89c5                     divs.w d5,d4
-00004f30 9847                     sub.w d7,d4
-00004f32 d644                     add.w d4,d3
-00004f34 9443                     sub.w d3,d2
-00004f36 0642 0080                add.w #$0080,d2
-00004f3a 0c42 0100                cmp.w #$0100,d2
-00004f3e 6406                     bcc.b #$06 == $00004f46 (T)
->d
-00004f40 0442 0080                sub.w #$0080,d2
-00004f44 600e                     bra.b #$0e == $00004f54 (T)
-00004f46 4243                     clr.w d3
-00004f48 0442 0080                sub.w #$0080,d2
-00004f4c 6a04                     bpl.b #$04 == $00004f52 (T)
-00004f4e 7481                     moveq #$81,d2
-00004f50 6002                     bra.b #$02 == $00004f54 (T)
-00004f52 747f                     moveq #$7f,d2
-00004f54 4890 000c                movem.w d2-d3,(a0)
-00004f58 41f8 635c                lea.l $635c,a0
->d
-00004f5c 45f8 69f2                lea.l $69f2,a2
-00004f60 6100 0186                bsr.w #$0186 == $000050e8
-00004f64 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00004f6a 4cb8 0060 6370           movem.w $6370,d5-d6
-00004f70 9a43                     sub.w d3,d5
-00004f72 31c5 633c                move.w d5,$633c [0000]
-00004f76 31c5 6356                move.w d5,$6356 [0000]
-00004f7a 9846                     sub.w d6,d4
-00004f7c 31c4 633e                move.w d4,$633e [0000]
-00004f80 d244                     add.w d4,d1
-
-
->d
-00004f82 d045                     add.w d5,d0
-00004f84 5941                     subq.w #$04,d1
-00004f86 5b40                     subq.w #$05,d0
-00004f88 6100 0656                bsr.w #$0656 == $000055e0
-00004f8c 7e02                     moveq #$02,d7
-00004f8e 1430 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d2
-00004f92 0c02 0003                cmp.b #$03,d2
-00004f96 6534                     bcs.b #$34 == $00004fcc (F)
-00004f98 1430 3001                move.b (a0,d3.W,$01) == $00000c78 [00],d2
-00004f9c 0c02 0003                cmp.b #$03,d2
->d
-00004fa0 652a                     bcs.b #$2a == $00004fcc (F)
-00004fa2 9679 0000 8002           sub.w $00008002 [0058],d3
-00004fa8 51cf ffe4                dbf .w d7,#$ffe4 == $00004f8e (F)
-00004fac 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00004fb2 d244                     add.w d4,d1
-00004fb4 d045                     add.w d5,d0
-00004fb6 48b8 0003 69f2           movem.w d0-d1,$69f2
-00004fbc 21f8 6362 6370           move.l $6362 [00000034],$6370 [00000000]
-00004fc2 0838 0004 6350           btst.b #$0004,$6350 [00]
-00004fc8 6622                     bne.b #$22 == $00004fec (T)
->d
-00004fca 4e75                     rts  == $6000001a
-00004fcc 4a44                     tst.w d4
-00004fce 6b08                     bmi.b #$08 == $00004fd8 (F)
-00004fd0 5578 6360                subq.w #$02,$6360 [0000]
-00004fd4 6000 ff82                bra.w #$ff82 == $00004f58 (T)
-00004fd8 48a7 ff00                movem.w d0-d7,-(a7)
-00004fdc 7c02                     moveq #$02,d6
-00004fde 6100 fd2a                bsr.w #$fd2a == $00004d0a
-00004fe2 4c9f 00ff                movem.w (a7)+,d0-d7
-00004fe6 4244                     clr.w d4
->d
-00004fe8 4245                     clr.w d5
-00004fea 601e                     bra.b #$1e == $0000500a (T)
-00004fec 4cb8 0030 633c           movem.w $633c,d4-d5
-00004ff2 5745                     subq.w #$03,d5
-00004ff4 0c45 fffa                cmp.w #$fffa,d5
-00004ff8 6a02                     bpl.b #$02 == $00004ffc (T)
-00004ffa 7afa                     moveq #$fa,d5
-00004ffc 5544                     subq.w #$02,d4
-00004ffe 0c44 fffc                cmp.w #$fffc,d4
-00005002 6404                     bcc.b #$04 == $00005008 (T)
+                    ; --------- player state - grappling hook attached -----------
+player_state_grappling_hook_attached  
+L00004ea2               lea.l   L00006360,a0
+L00004ea6               move.w  (a0),d5
+L00004ea8               move.b  L00006350,d4
+L00004eac               btst.l  #$0003,d4
+L00004eb0               beq.b   L00004ee6 
+L00004eb2               move.w  #$0048,L000069f6 
+L00004eb8               subq.w  #$01,d5
+L00004eba               bhi.b   L00004ee4 
+L00004ebc               clr.w   (a0) 
+L00004ebe               move.w  #$5096,L00003c7c        ; gl_jsr_address
+L00004ec4               move.w  #$0005,L0000633a
+L00004eca               move.w  #$646e,L0000636e        ; (long)
+L00004ed0               move.w  d1,d2
+L00004ed2               add.w   L000069ee,d2
+L00004ed6               subq.w  #$02,d2
+L00004ed8               and.w   #$0007,d2
+L00004edc               sub.w   d2,d1
+L00004ede               move.w  d1,L000069f4
+L00004ee2               rts 
 
 
 
->d
-00005004 5bc4                     smi.b d4 (F)
-00005006 e544                     asl.w #$02,d4
-00005008 5444                     addq.w #$02,d4
-0000500a 48b8 0030 633c           movem.w d4-d5,$633c
-00005010 4278 6360                clr.w $6360 [0000]
-00005014 4cb8 0003 69f2           movem.w $69f2,d0-d1
-0000501a 6000 0480                bra.w #$0480 == $0000549c (T)
-0000501e 33fc 6461 0000 636e      move.w #$6461,$0000636e [0000]
-00005026 31fc 5034 3c7c           move.w #$5034,$3c7c [4c7c]
-0000502c 7008                     moveq #$08,d0
->d
-0000502e 4eb9 0004 8014           jsr $00048014
-00005034 3078 636e                movea.w $636e [0000],a0
-00005038 6100 0436                bsr.w #$0436 == $00005470
-0000503c 31c8 636e                move.w a0,$636e [0000]
-00005040 4a10                     tst.b (a0) [00]
-00005042 662e                     bne.b #$2e == $00005072 (T)
-00005044 31fc 0008 633a           move.w #$0008,$633a [0000]
-0000504a 31fc 5074 3c7c           move.w #$5074,$3c7c [4c7c]
-00005050 6100 f62a                bsr.w #$f62a == $0000467c
-00005054 0440 0007                sub.w #$0007,d0
->d
-00005058 3438 6336                move.w $6336 [0001],d2
-0000505c 5ac2                     spl.b d2 (T)
-0000505e 4882                     ext.w d2
-00005060 6a04                     bpl.b #$04 == $00005066 (T)
-00005062 0640 000e                add.w #$000e,d0
-00005066 5642                     addq.w #$03,d2
-00005068 30c2                     move.w d2,(a0)+ [003c]
-0000506a 0441 0010                sub.w #$0010,d1
-0000506e 4890 0003                movem.w d0-d1,(a0)
-00005072 4e75                     rts  == $6000001a
->d
-00005074 1839 0000 6350           move.b $00006350 [00],d4
-0000507a 6600 0010                bne.w #$0010 == $0000508c (T)
-0000507e 5378 633a                subq.w #$01,$633a [0000]
-00005082 66ee                     bne.b #$ee == $00005072 (T)
-00005084 41f8 641b                lea.l $641b,a0
-00005088 6000 03e6                bra.w #$03e6 == $00005470 (T)
-0000508c 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
-00005092 6000 fbe8                bra.w #$fbe8 == $00004c7c (T)
-00005096 5378 633a                subq.w #$01,$633a [0000]
-0000509a 66d6                     bne.b #$d6 == $00005072 (T)
+                    ; d4.b = player_input_command
+L00004ee4               move.w  d5,(a0)
+L00004ee6               btst.l  #$0002,d4                   ; PLAYER_INPUT_DOWN
+L00004eea               beq.w   L00004efe
+L00004eee               move.w  #$0028,L000069f6
+L00004ef4               addq.w  #$01,d5
+L00004ef6               cmp.w   #$0050,d5
+L00004efa               bcc.b   L00004efe
+L00004efc               move.w  d5,(a0)
+L00004efe               lea.l   L0000635c,a0
+L00004f02               movem.w (a0),d2-d3
+L00004f06               clr.w   d7
+L00004f08               moveq   #$07,d6
+L00004f0a               cmp.w   #$0028,d5
+L00004f0e               bcc.b   L00004f1a 
+L00004f10               moveq   #$03,d6
+L00004f12               cmp.w   #$0014,d6
+L00004f16               bcc.b   L00004f1a 
+L00004f18               moveq   #$01,d6
+L00004f1a               and.w   L00006374,d6
+L00004f1e               bne.b   L00004f2a
+L00004f20               and.w   #$0003,d4
+L00004f24               asr.w   #$01,d4
+L00004f26               subx.w  d7,d4
+L00004f28               move.w  d4,d7
+L00004f2a               move.w  d2,d4
+L00004f2c               ext.l   d4
+L00004f2e               divs.w  d5,d4
+L00004f30               sub.w   d7,d4
+L00004f32               add.w   d4,d3
+L00004f34               sub.w   d3,d2
+L00004f36               add.w   #$0080,d2
+L00004f3a               cmp.w   #$0100,d2
+L00004f3e               bcc.b   L00004f46 
+L00004f40               sub.w   #$0080,d2
+L00004f44               bra.b   L00004f54 
+L00004f46               clr.w   d3
+L00004f48               sub.w   #$0080,d2
+L00004f4c               bpl.b   L00004f52 
+L00004f4e               moveq   #$81,d2
+L00004f50               bra.b   L00004f54 
+L00004f52               moveq   #$7f,d2
+L00004f54               movem.w d2-d3,(a0)
+
+L00004f58               lea.l   L0000635c,a0
+L00004f5c               lea.l   L000069f2,a2
+L00004f60               bsr.w   L000050e8
+
+L00004f64               movem.w L000069f2,d0-d1
+L00004f6a               movem.w L00006370,d5-d6
+L00004f70               sub.w   d3,d5
+L00004f72               move.w  d5,L0000633c
+L00004f76               move.w  d5,L00006356
+L00004f7a               sub.w   d6,d4
+L00004f7c               move.w  d4,L0000633e
+L00004f80               add.w   d4,d1
+L00004f82               add.w   d5,d0
+L00004f84               subq.w  #$04,d1
+L00004f86               subq.w  #$05,d0
+L00004f88               bsr.w   L000055e0
+L00004f8c               moveq   #$02,d7
+L00004f8e               move.b  $00(a0,d3.w),d2
+L00004f92               cmp.b   #$03,d2
+L00004f96               bcs.b   L00004fcc
+L00004f98               move.b  $01(a0,d3.w),d2
+L00004f9c               cmp.b   #$03,d2
+L00004fa0               bcs.b   L00004fcc
+L00004fa2               sub.w   $00008002,d3            ; MAPGR.IFF
+L00004fa8               dbf.w   d7,L00004f8e
+L00004fac               movem.w L000069f2,d0-d1
+L00004fb2               add.w   d4,d1
+L00004fb4               add.w   d5,d0
+L00004fb6               movem.w d0-d1,L000069f2
+L00004fbc               move.l  L00006362,L00006370
+L00004fc2               btst.b  #$0004,L00006350
+L00004fc8               bne.b   L00004fec 
+L00004fca               rts  
 
 
->d
-0000509c 31fc 0006 633a           move.w #$0006,$633a [0000]
-000050a2 5b78 69f4                subq.w #$05,$69f4 [0048]
-000050a6 5941                     subq.w #$04,d1
-000050a8 3438 6336                move.w $6336 [0001],d2
-000050ac 6b12                     bmi.b #$12 == $000050c0 (F)
-000050ae 5e40                     addq.w #$07,d0
-000050b0 6100 052e                bsr.w #$052e == $000055e0
-000050b4 0c02 0003                cmp.b #$03,d2
-000050b8 6516                     bcs.b #$16 == $000050d0 (F)
-000050ba 5278 69f2                addq.w #$01,$69f2 [0050]
->d
-000050be 6010                     bra.b #$10 == $000050d0 (T)
-000050c0 5d40                     subq.w #$06,d0
-000050c2 6100 051c                bsr.w #$051c == $000055e0
-000050c6 0c02 0003                cmp.b #$03,d2
-000050ca 6504                     bcs.b #$04 == $000050d0 (F)
-000050cc 5378 69f2                subq.w #$01,$69f2 [0050]
-000050d0 3078 636e                movea.w $636e [0000],a0
-000050d4 6100 039a                bsr.w #$039a == $00005470
-000050d8 31c8 636e                move.w a0,$636e [0000]
-000050dc 1e10                     move.b (a0) [00],d7
->d
-000050de 6606                     bne.b #$06 == $000050e6 (T)
-000050e0 31fc 544c 3c7c           move.w #$544c,$3c7c [4c7c]
-000050e6 4e75                     rts  == $6000001a
-000050e8 43e8 007c                lea.l (a0,$007c) == $00000cf4,a1
-000050ec 3410                     move.w (a0) [003c],d2
-000050ee e242                     asr.w #$01,d2
-000050f0 3802                     move.w d2,d4
-000050f2 6a02                     bpl.b #$02 == $000050f6 (T)
-000050f4 4444                     neg.w d4
-000050f6 4243                     clr.w d3
->d
-000050f8 1631 40c0                move.b (a1,d4.W,$c0) == $00003281 [98],d3
-000050fc c6e8 0004                mulu.w (a0,$0004) == $00000c7c [0000],d3
-00005100 0802 000f                btst.l #$000f,d2
-00005104 6702                     beq.b #$02 == $00005108 (F)
-00005106 4443                     neg.w d3
-00005108 e043                     asr.w #$08,d3
-0000510a 3143 0006                move.w d3,(a0,$0006) == $00000c7e [2ffc]
-0000510e 3404                     move.w d4,d2
-00005110 4442                     neg.w d2
-00005112 4244                     clr.w d4
+L00004fcc               tst.w   d4
+L00004fce               bmi.b   L00004fd8
+L00004fd0               subq.w  #$02,L00006360
+L00004fd4               bra.w   L00004f58 
 
 
->d
-00005114 1831 203f                move.b (a1,d2.W,$3f) == $0000328f [00],d4
-00005118 c8e8 0004                mulu.w (a0,$0004) == $00000c7c [0000],d4
-0000511c e04c                     lsr.w #$08,d4
-0000511e 3144 0008                move.w d4,(a0,$0008) == $00000c80 [0000]
-00005122 4e75                     rts  == $6000001a
-00005124 4278 6336                clr.w $6336 [0001]
-00005128 707f                     moveq #$7f,d0
-0000512a 600c                     bra.b #$0c == $00005138 (T)
-0000512c 31fc e000 6336           move.w #$e000,$6336 [0001]
-00005132 7081                     moveq #$81,d0
->d
-00005134 6002                     bra.b #$02 == $00005138 (T)
-00005136 4240                     clr.w d0
-00005138 31fc 0048 69f6           move.w #$0048,$69f6 [0048]
-0000513e 41f8 635c                lea.l $635c,a0
-00005142 30c0                     move.w d0,(a0)+ [003c]
-00005144 4298                     clr.l (a0)+ [003c004a]
-00005146 6100 f534                bsr.w #$f534 == $0000467c
-0000514a 30bc 0001                move.w #$0001,(a0) [003c]
-0000514e 31fc 5170 3c7c           move.w #$5170,$3c7c [4c7c]
-00005154 41f8 6418                lea.l $6418,a0
->d
-00005158 6100 0316                bsr.w #$0316 == $00005470
-0000515c 7007                     moveq #$07,d0
-0000515e 4eb9 0004 8014           jsr $00048014
-00005164 4cb8 0003 69f2           movem.w $69f2,d0-d1
-0000516a 08b8 0004 6350           bclr.b #$0004,$6350 [00]
-00005170 41f8 635c                lea.l $635c,a0
-00005174 0839 0004 0000 6350      btst.b #$0004,$00006350 [00]
-0000517c 667e                     bne.b #$7e == $000051fc (T)
-0000517e 3428 0004                move.w (a0,$0004) == $00000c7c [0000],d2
-00005182 5442                     addq.w #$02,d2
->d
-00005184 0c42 0028                cmp.w #$0028,d2
-00005188 640a                     bcc.b #$0a == $00005194 (T)
-0000518a 5242                     addq.w #$01,d2
-0000518c 0c42 0014                cmp.w #$0014,d2
-00005190 6402                     bcc.b #$02 == $00005194 (T)
-00005192 5242                     addq.w #$01,d2
-00005194 3142 0004                move.w d2,(a0,$0004) == $00000c7c [0000]
-00005198 6100 ff4e                bsr.w #$ff4e == $000050e8
-0000519c 5643                     addq.w #$03,d3
-0000519e 3e38 6336                move.w $6336 [0001],d7
+L00004fd8               movem.w d0-d7,-(a7)
+L00004fdc               moveq   #$02,d6
+L00004fde               bsr.w   L00004d0a
+L00004fe2               movem.w (a7)+,d0-d7
+L00004fe6               clr.w   d4
+L00004fe8               clr.w   d5
+L00004fea               bra.b   L0000500a
+
+L00004fec               movem.w L0000633c,d4-d5
+L00004ff2               subq.w  #$03,d5
+L00004ff4               cmp.w   #$fffa,d5
+L00004ff8               bpl.b   L00004ffc
+L00004ffa               moveq   #$fa,d5
+L00004ffc               subq.w  #$02,d4
+L00004ffe               cmp.w   #$fffc,d4
+L00005002               bcc.b   L00005008
+L00005004               smi.b   d4
+L00005006               asl.w   #$02,d4
+L00005008               addq.w  #$02,d4
+L0000500a               movem.w d4-d5,L0000633c
+L00005010               clr.w   L00006360
+L00005014               movem.w L000069f2,d0-d1
+L0000501a               bra.w   L0000549c 
 
 
 
->d
-000051a2 6a02                     bpl.b #$02 == $000051a6 (T)
-000051a4 5f43                     subq.w #$07,d3
-000051a6 0644 000a                add.w #$000a,d4
-000051aa 9244                     sub.w d4,d1
-000051ac 6538                     bcs.b #$38 == $000051e6 (F)
-000051ae 3a38 69ee                move.w $69ee [00f0],d5
-000051b2 da41                     add.w d1,d5
-000051b4 0805 0002                btst.l #$0002,d5
-000051b8 6632                     bne.b #$32 == $000051ec (T)
-000051ba d043                     add.w d3,d0
->d
-000051bc 6100 0422                bsr.w #$0422 == $000055e0
-000051c0 0c02 0003                cmp.b #$03,d2
-000051c4 6520                     bcs.b #$20 == $000051e6 (F)
-000051c6 0c02 005f                cmp.b #$5f,d2
-000051ca 641a                     bcc.b #$1a == $000051e6 (T)
-000051cc 0c02 0051                cmp.b #$51,d2
-000051d0 651a                     bcs.b #$1a == $000051ec (F)
-000051d2 31fc 4ea2 3c7c           move.w #$4ea2,$3c7c [4c7c]
-000051d8 21f8 6362 6370           move.l $6362 [00000034],$6370 [00000000]
-000051de 41f8 645e                lea.l $645e,a0
->d
-000051e2 6000 028c                bra.w #$028c == $00005470 (T)
-000051e6 31fc 51ee 3c7c           move.w #$51ee,$3c7c [4c7c]
-000051ec 4e75                     rts  == $6000001a
-000051ee 41f8 635c                lea.l $635c,a0
-000051f2 0839 0004 0000 6350      btst.b #$0004,$00006350 [00]
-000051fa 6706                     beq.b #$06 == $00005202 (F)
-000051fc 317c 0002 0004           move.w #$0002,(a0,$0004) == $00000c7c [0000]
-00005202 5768 0004                subq.w #$03,(a0,$0004) == $00000c7c [0000]
-00005206 6304                     bls.b #$04 == $0000520c (F)
-00005208 6000 fede                bra.w #$fede == $000050e8 (T)
->d
-0000520c 4268 0004                clr.w (a0,$0004) == $00000c7c [0000]
-00005210 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
-00005216 41f8 641b                lea.l $641b,a0
-0000521a 6000 0254                bra.w #$0254 == $00005470 (T)
-0000521e 4e75                     rts  == $6000001a
-00005220 31fc 0028 69f6           move.w #$0028,$69f6 [0048]
-00005226 5840                     addq.w #$04,d0
-00005228 6100 03b6                bsr.w #$03b6 == $000055e0
-0000522c 5940                     subq.w #$04,d0
-0000522e 0c02 005f                cmp.b #$5f,d2
-
-
->d
-00005232 66ea                     bne.b #$ea == $0000521e (T)
-00005234 601e                     bra.b #$1e == $00005254 (T)
-00005236 6104                     bsr.b #$04 == $0000523c
-00005238 6000 022e                bra.w #$022e == $00005468 (T)
-0000523c 31fc 0048 69f6           move.w #$0048,$69f6 [0048]
-00005242 5840                     addq.w #$04,d0
-00005244 5941                     subq.w #$04,d1
-00005246 6100 0398                bsr.w #$0398 == $000055e0
-0000524a 5841                     addq.w #$04,d1
-0000524c 5940                     subq.w #$04,d0
->d
-0000524e 0c02 0062                cmp.b #$62,d2
-00005252 66ca                     bne.b #$ca == $0000521e (T)
-00005254 584f                     addaq.w #$04,a7
-00005256 0238 000c 6350           and.b #$0c,$6350 [00]
-0000525c 31fc 532e 3c7c           move.w #$532e,$3c7c [4c7c]
-00005262 6000 00ca                bra.w #$00ca == $0000532e (T)
-00005266 61b8                     bsr.b #$b8 == $00005220
-00005268 6002                     bra.b #$02 == $0000526c (T)
-0000526a 61d0                     bsr.b #$d0 == $0000523c
-0000526c 5840                     addq.w #$04,d0
->d
-0000526e 5541                     subq.w #$02,d1
-00005270 6100 036e                bsr.w #$036e == $000055e0
-00005274 0c02 0003                cmp.b #$03,d2
-00005278 653c                     bcs.b #$3c == $000052b6 (F)
-0000527a 5278 69f2                addq.w #$01,$69f2 [0050]
-0000527e 5e41                     addq.w #$07,d1
-00005280 5b40                     subq.w #$05,d0
-00005282 6100 035c                bsr.w #$035c == $000055e0
-00005286 0402 0051                sub.b #$51,d2
-0000528a 0c02 0010                cmp.b #$10,d2
->d
-0000528e 6400 0202                bcc.w #$0202 == $00005492 (T)
-00005292 41f8 6332                lea.l $6332,a0
-00005296 d078 69ec                add.w $69ec [0000],d0
-0000529a e248                     lsr.w #$01,d0
-0000529c 0240 0007                and.w #$0007,d0
-000052a0 5a40                     addq.w #$05,d0
-000052a2 30c0                     move.w d0,(a0)+ [003c]
-000052a4 0240 0006                and.w #$0006,d0
-000052a8 e248                     lsr.w #$01,d0
-000052aa 6602                     bne.b #$02 == $000052ae (T)
+                    ; --------------- player input command - fire ------------------
+                    ; Called when the fire button is pressed on the joystick.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_fire  
+L0000501e           move.w  #$6461,L0000636e
+L00005026           move.w  #$5034,L00003c7c
+L0000502c           moveq   #$08,d0                 ; SFX_BATARANG
+L0000502e           jsr     $00048014               ; AUDIO_PLAYER_INIT_SFX
+                    ; fall through to player_state_firing below...
 
 
 
->d
-000052ac 7002                     moveq #$02,d0
-000052ae 5240                     addq.w #$01,d0
-000052b0 30c0                     move.w d0,(a0)+ [003c]
-000052b2 30bc 0001                move.w #$0001,(a0) [003c]
-000052b6 4e75                     rts  == $6000001a
-000052b8 6100 ff66                bsr.w #$ff66 == $00005220
-000052bc 6004                     bra.b #$04 == $000052c2 (T)
-000052be 6100 ff7c                bsr.w #$ff7c == $0000523c
-000052c2 5b40                     subq.w #$05,d0
-000052c4 5541                     subq.w #$02,d1
->d
-000052c6 6100 0318                bsr.w #$0318 == $000055e0
-000052ca 0c02 0003                cmp.b #$03,d2
-000052ce 65e6                     bcs.b #$e6 == $000052b6 (F)
-000052d0 5378 69f2                subq.w #$01,$69f2 [0050]
-000052d4 5e41                     addq.w #$07,d1
-000052d6 5a40                     addq.w #$05,d0
-000052d8 6100 0306                bsr.w #$0306 == $000055e0
-000052dc 0402 0051                sub.b #$51,d2
-000052e0 0c02 0010                cmp.b #$10,d2
-000052e4 6400 01ac                bcc.w #$01ac == $00005492 (T)
->d
-000052e8 41f8 6332                lea.l $6332,a0
-000052ec d078 69ec                add.w $69ec [0000],d0
-000052f0 4640                     not.w d0
-000052f2 e248                     lsr.w #$01,d0
-000052f4 0240 0007                and.w #$0007,d0
-000052f8 0640 e005                add.w #$e005,d0
-000052fc 30c0                     move.w d0,(a0)+ [003c]
-000052fe 0240 e006                and.w #$e006,d0
-00005302 e208                     lsr.b #$01,d0
-00005304 6604                     bne.b #$04 == $0000530a (T)
->d
-00005306 303c e002                move.w #$e002,d0
-0000530a 5240                     addq.w #$01,d0
-0000530c 30c0                     move.w d0,(a0)+ [003c]
-0000530e 30bc e001                move.w #$e001,(a0) [003c]
-00005312 4e75                     rts  == $6000001a
-00005314 d645                     add.w d5,d3
-00005316 1430 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d2
-0000531a 0402 0051                sub.b #$51,d2
-0000531e 0c02 0010                cmp.b #$10,d2
-00005322 646a                     bcc.b #$6a == $0000538e (T)
+                    ; ------------------- player state - firing ---------------------
+                    ; batman state used to handle firing of 'bat-a-rang' projectile
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;                    ; 
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_firing 
+L00005034               movea.w L0000636e,a0
+L00005038               bsr.w   L00005470
+L0000503c               move.w  a0,L0000636e
+L00005040               tst.b   (a0)
+L00005042               bne.b   L00005072 
+L00005044               move.w  #$0008,L0000633a 
+L0000504a               move.w  #$5074,L00003c7c        ; gl_jsr_address
+L00005050               bsr.w   L0000467c
+L00005054               sub.w   #$0007,d0
+L00005058               move.w  L00006336,d2
+L0000505c               spl.b   d2 (T)
+L0000505e               ext.w   d2
+L00005060               bpl.b   L00005066
+L00005062               add.w   #$000e,d0
+L00005066               addq.w  #$03,d2
+L00005068               move.w  d2,(a0)+ 
+L0000506a               sub.w   #$0010,d1
+L0000506e               movem.w d0-d1,(a0)
+L00005072               rts  
 
 
 
->d
-00005324 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
-0000532a 6000 f950                bra.w #$f950 == $00004c7c (T)
-0000532e 0838 0004 6350           btst.b #$0004,$6350 [00]
-00005334 6600 015c                bne.w #$015c == $00005492 (T)
-00005338 0838 0000 6375           btst.b #$0000,$6375 [00]
-0000533e 66d2                     bne.b #$d2 == $00005312 (T)
-00005340 4244                     clr.w d4
-00005342 1838 6350                move.b $6350 [00],d4
-00005346 3438 69ee                move.w $69ee [00f0],d2
-0000534a d441                     add.w d1,d2
->d
-0000534c 0242 0007                and.w #$0007,d2
-00005350 6722                     beq.b #$22 == $00005374 (F)
-00005352 0804 0002                btst.l #$0002,d4
-00005356 6708                     beq.b #$08 == $00005360 (F)
-00005358 5241                     addq.w #$01,d1
-0000535a 31fc 0028 69f6           move.w #$0028,$69f6 [0048]
-00005360 0804 0003                btst.l #$0003,d4
-00005364 6708                     beq.b #$08 == $0000536e (F)
-00005366 5341                     subq.w #$01,d1
-00005368 31fc 0048 69f6           move.w #$0048,$69f6 [0048]
->d
-0000536e 31c1 69f4                move.w d1,$69f4 [0048]
-00005372 6054                     bra.b #$54 == $000053c8 (T)
-00005374 6100 026a                bsr.w #$026a == $000055e0
-00005378 3a04                     move.w d4,d5
-0000537a 0205 0003                and.b #$03,d5
-0000537e 11c5 6350                move.b d5,$6350 [00]
-00005382 7a01                     moveq #$01,d5
-00005384 e244                     asr.w #$01,d4
-00005386 658c                     bcs.b #$8c == $00005314 (F)
-00005388 7aff                     moveq #$ff,d5
->d
-0000538a e244                     asr.w #$01,d4
-0000538c 6586                     bcs.b #$86 == $00005314 (F)
-0000538e e244                     asr.w #$01,d4
-00005390 6414                     bcc.b #$14 == $000053a6 (T)
-00005392 31fc 0028 69f6           move.w #$0028,$69f6 [0048]
-00005398 0c02 005f                cmp.b #$5f,d2
-0000539c 6500 0068                bcs.w #$0068 == $00005406 (F)
-000053a0 5278 69f4                addq.w #$01,$69f4 [0048]
-000053a4 6022                     bra.b #$22 == $000053c8 (T)
-000053a6 e244                     asr.w #$01,d4
 
->d
-000053a8 645a                     bcc.b #$5a == $00005404 (T)
-000053aa 31fc 0048 69f6           move.w #$0048,$69f6 [0048]
-000053b0 3a39 0000 8002           move.w $00008002 [0058],d5
-000053b6 9645                     sub.w d5,d3
-000053b8 1430 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d2
-000053bc 0c02 005f                cmp.b #$5f,d2
-000053c0 6544                     bcs.b #$44 == $00005406 (F)
-000053c2 5341                     subq.w #$01,d1
-000053c4 31c1 69f4                move.w d1,$69f4 [0048]
-000053c8 7631                     moveq #$31,d3
->d
-000053ca 0838 0003 6350           btst.b #$0003,$6350 [00]
-000053d0 660a                     bne.b #$0a == $000053dc (T)
-000053d2 5a43                     addq.w #$05,d3
-000053d4 0838 0002 6350           btst.b #$0002,$6350 [00]
-000053da 6728                     beq.b #$28 == $00005404 (F)
-000053dc 3438 69ee                move.w $69ee [00f0],d2
-000053e0 d478 69f4                add.w $69f4 [0048],d2
-000053e4 5442                     addq.w #$02,d2
-000053e6 4642                     not.w d2
-000053e8 0242 0007                and.w #$0007,d2
->d
-000053ec 0882 0002                bclr.l #$0002,d2
-000053f0 6704                     beq.b #$04 == $000053f6 (F)
-000053f2 0643 e000                add.w #$e000,d3
-000053f6 5242                     addq.w #$01,d2
-000053f8 d443                     add.w d3,d2
-000053fa 41f8 6332                lea.l $6332,a0
-000053fe 4258                     clr.w (a0)+ [003c]
-00005400 30c2                     move.w d2,(a0)+ [003c]
-00005402 3083                     move.w d3,(a0) [003c]
-00005404 4e75                     rts  == $6000001a
->d
-00005406 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
-0000540c 4e75                     rts  == $6000001a
-0000540e 0641 0008                add.w #$0008,d1
-00005412 6100 01cc                bsr.w #$01cc == $000055e0
-00005416 4cb8 0003 69f2           movem.w $69f2,d0-d1
-0000541c 0c02 0003                cmp.b #$03,d2
-00005420 650a                     bcs.b #$0a == $0000542c (F)
-00005422 31fc 8000 5546           move.w #$8000,$5546 [4e71]
-00005428 6000 0068                bra.w #$0068 == $00005492 (T)
-0000542c 6100 fdf2                bsr.w #$fdf2 == $00005220
+                    ; -------------------- player state - fired -------------------
+                    ; batman state entered after 'firing' state has completed.
+                    ; this state displayed the throw animation for 8 frames
+                    ; i.e. the value set in 'state_parameter' by thhe previous state
+                    ; if player input is received then it short-cuts the anim
+                    ; and returns to normal input processing.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;                    ; 
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_fired
+L00005074               move.b  L00006350,d4
+L0000507a               bne.w   L0000508c
+L0000507e               subq.w  #$01,L0000633a
+L00005082               bne.b   L00005072 
+L00005084               lea.l   L0000641b,a0
+L00005088               bra.w   L00005470
+L0000508c               move.w  #$4c7c,L00003c7c            ; gl_jsr_address
+L00005092               bra.w   L00004c7c 
+                    ; use 'rts' in player_move_commands to return
 
 
->d
+
+                    ; routine inserted into self modified JSR
+                    ; in game_loop by code line L00004e80
+                    ;
+                    ; -------------- player state - climb onto plaform
+                    ; Player state when climbing onto a platform from your
+                    ; bat-rope/grappling hook
+                    ;
+                    ; game_loop - collision state update, increments state_parameter by 3
+                    ;               on each game loop cycle.
+                    ;
+player_state_climb_onto_platform  
+L00005096               subq.w  #$01,L0000633a
+L0000509a               bne.b   L00005072 
+L0000509c               move.w  #$0006,L0000633a
+L000050a2               subq.w  #$05,L000069f4 
+L000050a6               subq.w  #$04,d1
+L000050a8               move.w  L00006336,d2
+L000050ac               bmi.b   L000050c0 
+L000050ae               addq.w  #$07,d0
+L000050b0               bsr.w   L000055e0
+L000050b4               cmp.b   #$03,d2
+L000050b8               bcs.b   L000050d0
+L000050ba               addq.w  #$01,L000069f2
+L000050be               bra.b   L000050d0
+L000050c0               subq.w  #$06,d0
+L000050c2               bsr.w   L000055e0
+L000050c6               cmp.b   #$03,d2
+L000050ca               bcs.b   L000050d0
+L000050cc               subq.w  #$01,L000069f2
+L000050d0               movea.w L0000636e,a0
+L000050d4               bsr.w   L00005470
+L000050d8               move.w  a0,L0000636e
+L000050dc               move.b  (a0),d7
+L000050de               bne.b   L000050e6
+L000050e0               move.w  #$544c,L00003c7c            ; gl_jsr_address
+L000050e6               rts  
+
+
+
+                    ; This appears to be calculating the left/right swing position
+                    ; from a sin table multiplied by the rope length.
+                    ; also, calculating the slight up/down as the cosine of the
+                    ; x position.
+                    ;
+                    ; This may be wrong, as modifying this makes the hook firing fail.
+                    ;
+                    ;   IN:-
+                    ;       a0 = L00006314 - grappling hook vars
+                    ; 
+L000050e8               lea.l   $007c(a0),a1
+L000050ec               move.w  (a0),d2
+L000050ee               asr.w   #$01,d2
+L000050f0               move.w  d2,d4
+L000050f2               bpl.b   L000050f6
+L000050f4               neg.w   d4
+
+L000050f6               clr.w   d3
+L000050f8               move.b  $c0(a1,d4.w),d3
+L000050fc               mulu.w  $0004(a0),d3
+L00005100               btst.l  #$000f,d2
+L00005104               beq.b   L00005108
+
+L00005106               neg.w   d3
+
+L00005108               asr.w   #$08,d3
+L0000510a               move.w  d3,$0006(a0)
+
+L0000510e               move.w  d4,d2
+L00005110               neg.w   d2
+L00005112               clr.w   d4
+
+L00005114               move.b  $3f(a1,d2.w),d4
+L00005118               mulu.w  $0004(a0),d4
+L0000511c               lsr.w   #$08,d4
+L0000511e               move.w  d4,$0008(a0)
+L00005122               rts  
+
+
+
+                    ; ------------ player input command - fire + up + right --------------
+                    ; Player input command executed when the joystick 'fire + up + right'
+                    ; is selected;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ;
+player_input_cmd_fire_up_right
+L00005124               clr.w   L00006336
+L00005128               moveq   #$7f,d0
+L0000512a               bra.b   L00005138
+
+
+
+                    ; ------------ player input command - fire + up + left --------------
+                    ; Player input command executed when the joystick 'fire + up + left'
+                    ; is selected;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 6/1/2025
+                    ;
+player_input_cmd_fire_up_left 
+L0000512c               move.w  #$e000,L00006336
+L00005132               moveq   #$81,d0
+L00005134               bra.b   L00005138 
+
+
+                    ; ------------ player input command - fire + up --------------
+                    ; Player input command executed when the joystick 'fire + up'
+                    ; is selected;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 6/1/2025
+                    ;
+player_input_cmd_fire_up  
+L00005136               clr.w d0
+                    ; fall through to 'player_input_fire_up_common' below...
+
+
+
+                    ; --------------- player input fire up common -----------------
+                    ; Common code called by the routines:-
+                    ;   player_input_cmd_fire_up_right
+                    ;   player_input_cmd_fire_up_left
+                    ;   player_input_cmd_fire_up
+                    ;
+                    ; IN:-
+                    ;   d0.w - 0 = up, -127 = up + left, +127 = up + right
+                    ;   d1.w = batman y offset
+                    ;
+                    ; Code Checked 6/1/2025
+                    ;
+player_input_fire_up_common 
+L00005138               move.w  #$0048,L000069f6
+L0000513e               lea.l   L0000635c,a0
+L00005142               move.w  d0,(a0)
+L00005144               clr.l   (a0)+ 
+L00005146               bsr.w   L0000467c
+L0000514a               move.w  #$0001,(a0)
+L0000514e               move.w  #$5170,L00003c7c            ; gl_jsr_address
+L00005154               lea.l   L00006418,a0
+L00005158               bsr.w   L00005470
+L0000515c               moveq   #$07,d0
+L0000515e               jsr     $00048014               ; AUDIO_PLAYER_INIT_SFX
+L00005164               movem.w L000069f2,d0-d1
+L0000516a               bclr.b  #$0004,L00006350
+                    ; fall through to 'player_state_firing_grappling_hook' below
+
+
+
+                    ; ------------------- player state - firing grappling hook ----------------
+                    ; game_loop state for batman firing the gappling hook.
+                    ; also initially called from player_input_fire_up_common above
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;   - D3.w = window x?
+                    ;   - D4.w = window y?
+                    ;
+                    ;
+                    ;
+player_state_firing_grappling_hook
+L00005170               lea.l   L0000635c,a0
+L00005174               btst.b  #$0004,L00006350 
+L0000517c               bne.b   L000051fc
+L0000517e               move.w  $0004(a0),d2
+L00005182               addq.w  #$02,d2
+L00005184               cmp.w   #$0028,d2
+L00005188               bcc.b   L00005194 
+L0000518a               addq.w  #$01,d2
+L0000518c               cmp.w   #$0014,d2
+L00005190               bcc.b   L00005194 
+L00005192               addq.w  #$01,d2
+L00005194               move.w  d2,$0004(a0)
+L00005198               bsr.w   L000050e8
+L0000519c               addq.w  #$03,d3
+L0000519e               move.w  L00006336,d7
+L000051a2               bpl.b   L000051a6
+L000051a4               subq.w  #$07,d3
+L000051a6               add.w   #$000a,d4
+L000051aa               sub.w   d4,d1
+L000051ac               bcs.b   L000051e6
+L000051ae               move.w  L000069ee,d5
+L000051b2               add.w   d1,d5
+L000051b4               btst.l  #$0002,d5
+L000051b8               bne.b   L000051ec
+L000051ba               add.w   d3,d0
+L000051bc               bsr.w   L000055e0
+L000051c0               cmp.b   #$03,d2
+L000051c4               bcs.b   L000051e6 
+L000051c6               cmp.b   #$5f,d2
+L000051ca               bcc.b   L000051e6 
+L000051cc               cmp.b   #$51,d2
+L000051d0               bcs.b   L000051ec 
+L000051d2               move.w  #$4ea2,L00003c7c 
+L000051d8               move.l  L00006362,L00006370
+L000051de               lea.l   L0000645e,a0
+L000051e2               bra.w   L00005470 
+L000051e6               move.w  #$51ee,L00003c7c
+L000051ec               rts 
+
+
+                    ; ------------- player state - retract grappling hook --------------
+                    ; When firing the grappling hook and it hits the 'wall' or 'ladder'
+                    ; then this state is used to retract the grappling hook back 
+                    ; towards batman. 
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;   - D3.w = window x?
+                    ;   - D4.w = window y?
+                    ;
+player_state_retract_grappling_hook 
+L000051ee               lea.l   L0000635c,a0
+L000051f2               btst.b  #$0004,L00006350
+L000051fa               beq.b   L00005202
+
+L000051fc               move.w  #$0002,$0004(a0)
+L00005202               subq.w  #$03,$0004(a0)
+L00005206               bls.b   L0000520c 
+L00005208               bra.w   L000050e8 
+
+exit_fire_grappling_hook_state 
+L0000520c               clr.w   $0004(a0)
+L00005210               move.w  #$4c7c,L00003c7c
+L00005216               lea.l   L0000641b,a0
+L0000521a               bra.w   L00005470 
+L0000521e               rts  
+
+
+
+                    ; ----------------------- check climb down --------------------
+                    ; This routine checks whether batman is on the top of a ladder or
+                    ; stairwell and if so, changes the state for the player input.
+                    ;
+                    ; called from:
+                    ;           player_input_cmd_down
+                    ;           player_input_cmd_down_right
+                    ;           player_input_cmd_down_left
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_check_climb_down 
+L00005220               move.w  #$0028,L000069f6
+L00005226               addq.w  #$04,d0
+L00005228               bsr.w   L000055e0
+L0000522c               subq.w  #$04,d0
+L0000522e               cmp.b   #$5f,d2
+L00005232               bne.b   L0000521e        ; exit
+L00005234               bra.b   L00005254 
+
+
+
+                    ; --------------------- player inpout command - up ----------------
+                    ; Player input command, called from player move state when
+                    ; joystick 'up' is selected
+                    ;   
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_up
+L00005236               bsr.b   L0000523c
+L00005238               bra.w   L00005468
+                    ; use rts from set_batman_sprites to return
+
+
+
+                    ; ------------------- input up common -----------------
+                    ; Player input up common processing logic.
+                    ;
+                    ; Called from:
+                    ;   player_input_cmd_up_left
+                    ;   player_input_cmd_up_right
+                    ;   player_input_cmd_up
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+input_up_common 
+L0000523c               move.w  #$0048,L000069f6
+L00005242               addq.w  #$04,d0
+L00005244               subq.w  #$04,d1
+L00005246               bsr.w   L000055e0
+L0000524a               addq.w  #$04,d1
+L0000524c               subq.w  #$04,d0
+L0000524e               cmp.b   #$62,d2
+L00005252               bne.b   L0000521e
+
+
+
+                    ; --------------------- set player state climbing --------------------
+                    ; Change player state to climbing (ladder or stairs) in game_loop
+                    ;
+                    ; 1) Occurs when at bottom of ladder and start to climb.
+                    ;    Also Occurs when climbed to top of ladder and up is pushed.
+                    ; 2) Occirs when at top of ladder and start to descend.
+                    ;    DOESN'T Occur when descened to bottom of ladder and down is pushed.
+                    ;
+                    ; Manipulates the stack, so that the caller returns and does not
+                    ; proceed to call standard player_input_down processing
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+set_player_state_climbing
+L00005254               addq.w  #$04,a7
+L00005256               and.b   #$0c,L00006350
+L0000525c               move.w  #$532e,L00003c7c        ; gl_jsr_address
+L00005262               bra.w   L0000532e 
+
+
+                    ; -------------------- player input command - down right --------------------
+                    ; Command to execute when joystick input is set to diagaonal 'down-right'
+                    ;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_down_right 
+L00005266               bsr.b L00005220
+L00005268               bra.b L0000526c 
+
+
+
+                    ; ------------------- player input command - up right ------------------
+                    ; Command executed when joystick input is set to diagonal 'up-right'
+                    ;;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_up_right 
+L0000526a               bsr.b L0000523c
+
+
+
+                    ; ------------------- player input command right ------------------------
+                    ; Command to walk batman to the right, when joystick right is selected.
+                    ;
+                    ; Checks tile to batman's right, if wall (tile > 23) then exit.
+                    ; otherwise move 1 unit to right (2 pixels) and check if now falling.
+                    ; if not falling the set sprite walk right animation.
+                    ;   - animation is selected from batman's x co-ordinate to choose
+                    ;     animation frames for legs (sprite 3) and body (sprite 2)
+                    ;     the head sprite is always set to id = 1 (sprite 1)
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_input_cmd_right  
+L0000526c               addq.w  #$04,d0
+L0000526e               subq.w  #$02,d1
+L00005270               bsr.w   L000055e0
+L00005274               cmp.b   #$03,d2
+L00005278               bcs.b   L000052b6 
+L0000527a               addq.w  #$01,L000069f2
+L0000527e               addq.w  #$07,d1
+L00005280               subq.w  #$05,d0
+L00005282               bsr.w   L000055e0
+L00005286               sub.b   #$51,d2
+L0000528a               cmp.b   #$10,d2
+L0000528e               bcc.w   L00005492
+L00005292               lea.l   L00006332,a0
+L00005296               add.w   L000069ec,d0
+L0000529a               lsr.w   #$01,d0
+L0000529c               and.w   #$0007,d0
+L000052a0               addq.w  #$05,d0
+L000052a2               move.w  d0,(a0)+
+L000052a4               and.w   #$0006,d0
+L000052a8               lsr.w   #$01,d0
+L000052aa               bne.b   L000052ae
+L000052ac               moveq   #$02,d0
+L000052ae               addq.w  #$01,d0
+L000052b0               move.w  d0,(a0)+ 
+L000052b2               move.w  #$0001,(a0) 
+L000052b6               rts 
+
+
+
+
+
+                    ; -------------------- player input command - down left --------------------
+                    ; Command to execute when joystick input is set to diagaonal 'down-left'
+                    ;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_down_left  
+L000052b8               bsr.w   L00005220
+L000052bc               bra.b   L000052c2 
+
+
+                    ; -------------------- player input command - up left --------------------
+                    ; Command to execute when joystick input is set to diagaonal 'up-left'
+                    ;
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_up_left  
+L000052be               bsr.w   L0000523c
+                    ; falls through to player_input_cmd_left below
+
+
+
+                    ; ------------------- player input command left ------------------------
+                    ; Command to walk batman to the left, when joystick left is selected.
+                    ;
+                    ; Checks tile to batman's left, if wall (tile > 23) then exit.
+                    ; otherwise move 1 unit to left (2 pixels) and check if now falling.
+                    ; if not falling the set sprite walk left animation.
+                    ;   - animation is selected from batman's x co-ordinate to choose
+                    ;     animation frames for legs (sprite 3) and body (sprite 2)
+                    ;     the head sprite is always set to id = 1 (sprite 1)
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_input_cmd_left 
+L000052c2               subq.w  #$05,d0
+L000052c4               subq.w  #$02,d1
+L000052c6               bsr.w   L000055e0
+L000052ca               cmp.b   #$03,d2
+L000052ce               bcs.b   L000052b6 
+L000052d0               subq.w  #$01,L000069f2
+L000052d4               addq.w  #$07,d1
+L000052d6               addq.w  #$05,d0
+L000052d8               bsr.w   L000055e0
+L000052dc               sub.b   #$51,d2
+L000052e0               cmp.b   #$10,d2
+L000052e4               bcc.w   L00005492 
+L000052e8               lea.l   L00006332,a0
+L000052ec               add.w   L000069ec,d0
+L000052f0               not.w   d0
+L000052f2               lsr.w   #$01,d0
+L000052f4               and.w   #$0007,d0
+L000052f8               add.w   #$e005,d0
+L000052fc               move.w  d0,(a0)+
+L000052fe               and.w   #$e006,d0
+L00005302               lsr.b   #$01,d0
+L00005304               bne.b   L0000530a
+L00005306               move.w  #$e002,d0
+L0000530a               addq.w  #$01,d0
+L0000530c               move.w  d0,(a0)+ 
+L0000530e               move.w  #$e001,(a0) 
+L00005312               rts  
+
+
+                    ; ------------------- exit climbing state ---------------------
+                    ; Looks like code to return to normal joystick input handling.
+                    ;
+                    ; 1) Occurs when at top of ladder and Left/Right pushed
+                    ; 2) Occurs when at bottom of ladder and Down-Left/Down/Right pushed
+                    ;
+                    ; DOESN'T Occur when at bottom of ladder and Down Only is pushed
+                    ;
+                    ; Not sure what the tile check 134 and the jump back into 
+                    ; climbing code is doing. Look 'hacky' wish i knew what tile 134 was...
+                    ;
+                    ; IN:
+                    ;   d5.w - +ve = Exit Right, -ve = Exit Left
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+exit_climbing_state 
+L00005314               add.w   d5,d3
+L00005316               move.b  $00(a0,d3.w),d2
+L0000531a               sub.b   #$51,d2
+L0000531e               cmp.b   #$10,d2
+L00005322               bcc.b   L0000538e 
+L00005324               move.w  #$4c7c,L00003c7c        ; gl_jsr_address
+L0000532a               bra.w   L00004c7c 
+
+
+
+                    ; ----------------- batman climb stairs -------------------
+                    ; inserted into game loop self modified code for batman
+                    ; control state updates.
+                    ; state is entered via the up/down input command handlers
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Check 3/1/2025
+                    ;
+state_climbing_stairs  
+L0000532e               btst.b  #$0004,L00006350
+L00005334               bne.w   L00005492
+L00005338               btst.b  #$0000,L00006375 
+L0000533e               bne.b   L00005312 
+L00005340               clr.w   d4
+L00005342               move.b  L00006350,d4
+L00005346               move.w  L000069ee,d2
+L0000534a               add.w   d1,d2
+L0000534c               and.w   #$0007,d2
+L00005350               beq.b   L00005374
+L00005352               btst.l  #$0002,d4
+L00005356               beq.b   L00005360 
+L00005358               addq.w  #$01,d1
+L0000535a               move.w  #$0028,L000069f6
+L00005360               btst.l  #$0003,d4
+L00005364               beq.b   L0000536e
+L00005366               subq.w  #$01,d1
+L00005368               move.w  #$0048,L000069f6
+L0000536e               move.w  d1,L000069f4
+L00005372               bra.b   L000053c8 
+L00005374               bsr.w   L000055e0
+L00005378               move.w  d4,d5
+L0000537a               and.b   #$03,d5
+L0000537e               move.b  d5,L00006350 
+L00005382               moveq   #$01,d5
+L00005384               asr.w   #$01,d4
+L00005386               bcs.b   L00005314 
+L00005388               moveq   #$ff,d5
+L0000538a               asr.w   #$01,d4
+L0000538c               bcs.b   L00005314
+L0000538e               asr.w   #$01,d4
+L00005390               bcc.b   L000053a6
+L00005392               move.w  #$0028,L000069f6
+L00005398               cmp.b   #$5f,d2
+L0000539c               bcs.w   L00005406
+L000053a0               addq.w  #$01,L000069f4
+L000053a4               bra.b   L000053c8 
+L000053a6               asr.w   #$01,d4
+L000053a8               bcc.b   L00005404 
+L000053aa               move.w  #$0048,L000069f6 
+L000053b0               move.w  $00008002,d5            ; MAPGR.IFF
+L000053b6               sub.w   d5,d3
+L000053b8               move.b  $00(a0,d3.w),d2
+L000053bc               cmp.b   #$5f,d2
+L000053c0               bcs.b   L00005406
+L000053c2               subq.w  #$01,d1
+L000053c4               move.w  d1,L000069f4
+L000053c8               moveq   #$31,d3
+L000053ca               btst.b  #$0003,L00006350
+L000053d0               bne.b   L000053dc
+L000053d2               addq.w  #$05,d3
+L000053d4               btst.b  #$0002,L00006350
+L000053da               beq.b   L00005404
+L000053dc               move.w  L000069ee,d2
+L000053e0               add.w   L000069f4,d2
+L000053e4               addq.w  #$02,d2
+L000053e6               not.w   d2
+L000053e8               and.w   #$0007,d2
+L000053ec               bclr.l  #$0002,d2
+L000053f0               beq.b   L000053f6 
+L000053f2               add.w   #$e000,d3
+L000053f6               addq.w  #$01,d2
+L000053f8               add.w   d3,d2
+L000053fa               lea.l   L00006332,a0
+L000053fe               clr.w   (a0)+ 
+L00005400               move.w  d2,(a0)+ 
+L00005402               move.w  d3,(a0) 
+L00005404               rts  
+
+
+set_player_move_commands_state
+L00005406                move.w #$4c7c,L00003c7c     ; gl_jsr_address
+L0000540c                rts 
+
+
+
+
+                    ; ------------------ player input command - fire + down ---------------------
+                    ; Player input command called when joystick input 'fire and down' is selected
+                    ; Also, used as game_loop state update routine $00005f38
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Check 4/1/2025
+                    ;
+player_input_cmd_fire_down 
+L0000540e               add.w   #$0008,d1
+L00005412               bsr.w   #$01cc == $000055e0
+L00005416               movem.w $69f2,d0-d1
+L0000541c               cmp.b   #$03,d2
+L00005420               bcs.b   #$0a == $0000542c (F)
+L00005422               move.w  #$8000,$5546 [4e71]
+L00005428               bra.w   #$0068 == $00005492 (T)
+; Line 5885 in Code1.s
+
+
+
+L0000542c               bsr.w   #$fdf2 == $00005220
 00005430 41f8 641e                lea.l $641e,a0
 00005434 613a                     bsr.b #$3a == $00005470
 00005436 31fc 543e 3c7c           move.w #$543e,$3c7c [4c7c]
@@ -4001,18 +4337,19 @@ player_state_actor_collide_on_batrope
 0000544a 660c                     bne.b #$0c == $00005458 (T)
 0000544c 31fc 5462 3c7c           move.w #$5462,$3c7c [4c7c]
 00005452 41f8 641e                lea.l $641e,a0
->d
 00005456 6018                     bra.b #$18 == $00005470 (T)
 00005458 0838 0004 6350           btst.b #$0004,$6350 [00]
 0000545e 66ae                     bne.b #$ae == $0000540e (T)
 00005460 4e75                     rts  == $6000001a
+
+
+
 00005462 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
 00005468 41f8 641b                lea.l $641b,a0
 0000546c 6000 0002                bra.w #$0002 == $00005470 (T)
 00005470 3f07                     move.w d7,-(a7) [0c64]
 00005472 43f8 6336                lea.l $6336,a1
 00005476 3e11                     move.w (a1) [661e],d7
->d
 00005478 0247 e000                and.w #$e000,d7
 0000547c de18                     add.b (a0)+ [00],d7
 0000547e 3287                     move.w d7,(a1) [661e]
@@ -4037,8 +4374,6 @@ player_state_actor_collide_on_batrope
 000054aa 31fc 54ba 3c7c           move.w #$54ba,$3c7c [4c7c]
 000054b0 31fc ffff 6342           move.w #$ffff,$6342 [0001]
 000054b6 4278 6340                clr.w $6340 [0000]
-
->d
 000054ba 4cb8 0030 633c           movem.w $633c,d4-d5
 000054c0 31c4 6356                move.w d4,$6356 [0000]
 000054c4 673e                     beq.b #$3e == $00005504 (F)
@@ -4049,7 +4384,6 @@ player_state_actor_collide_on_batrope
 000054d2 4cb8 0003 69f2           movem.w $69f2,d0-d1
 000054d8 7e01                     moveq #$01,d7
 000054da 0c02 0003                cmp.b #$03,d2
->d
 000054de 6520                     bcs.b #$20 == $00005500 (F)
 000054e0 1430 3001                move.b (a0,d3.W,$01) == $00000c78 [00],d2
 000054e4 0c02 0003                cmp.b #$03,d2
@@ -4060,7 +4394,7 @@ player_state_actor_collide_on_batrope
 000054f8 d840                     add.w d0,d4
 000054fa 31c4 69f2                move.w d4,$69f2 [0050]
 000054fe 6004                     bra.b #$04 == $00005504 (T)
->d
+
 00005500 4278 633c                clr.w $633c [0000]
 00005504 0c45 0010                cmp.w #$0010,d5
 00005508 6a02                     bpl.b #$02 == $0000550c (T)
@@ -4071,8 +4405,10 @@ player_state_actor_collide_on_batrope
 00005514 31c1 69f4                move.w d1,$69f4 [0048]
 00005518 0801 000f                btst.l #$000f,d1
 0000551c 6702                     beq.b #$02 == $00005520 (F)
->d
 0000551e 4e75                     rts  == $6000001a
+
+
+
 00005520 6100 00be                bsr.w #$00be == $000055e0
 00005524 0c02 0003                cmp.b #$03,d2
 00005528 640c                     bcc.b #$0c == $00005536 (T)
@@ -4082,8 +4418,6 @@ player_state_actor_collide_on_batrope
 00005536 0402 0050                sub.b #$50,d2
 0000553a 6606                     bne.b #$06 == $00005542 (T)
 0000553c 31fc 0070 6340           move.w #$0070,$6340 [0000]
-
->d
 00005542 0c02 0011                cmp.b #$11,d2
 00005546 4e71                     nop
 00005548 40c6                     move.w sr,d6
@@ -4094,7 +4428,6 @@ player_state_actor_collide_on_batrope
 00005558 31fc 4e71 5546           move.w #$4e71,$5546 [4e71]
 0000555e 46c6                     move.w d6,sr
 00005560 64bc                     bcc.b #$bc == $0000551e (T)
->d
 00005562 31fc 0028 69f6           move.w #$0028,$69f6 [0048]
 00005568 41f8 548f                lea.l $548f,a0
 0000556c 6100 ff02                bsr.w #$ff02 == $00005470
@@ -4105,10 +4438,12 @@ player_state_actor_collide_on_batrope
 00005588 3038 69ee                move.w $69ee [00f0],d0
 0000558c d041                     add.w d1,d0
 0000558e 0240 0007                and.w #$0007,d0
->d
 00005592 9240                     sub.w d0,d1
 00005594 31c1 69f4                move.w d1,$69f4 [0048]
 00005598 4e75                     rts  == $6000001a
+
+
+
 0000559a 5378 633a                subq.w #$01,$633a [0000]
 0000559e 66f8                     bne.b #$f8 == $00005598 (T)
 000055a0 4a39 0007 c874           tst.b $0007c874 [00]
@@ -4116,7 +4451,6 @@ player_state_actor_collide_on_batrope
 000055aa 21fc 0000 4c7c 3c7a      move.l #$00004c7c,$3c7a [00004c7c]
 000055b2 41f8 641b                lea.l $641b,a0
 000055b6 0c78 0050 6340           cmp.w #$0050,$6340 [0000]
->d
 000055bc 6b00 feb2                bmi.w #$feb2 == $00005470 (F)
 000055c0 7c5a                     moveq #$5a,d6
 000055c2 6100 f746                bsr.w #$f746 == $00004d0a
@@ -4125,10 +4459,11 @@ player_state_actor_collide_on_batrope
 000055d6 6606                     bne.b #$06 == $000055de (T)
 000055d8 4ef9 0007 c862           jmp $0007c862
 000055de 4e75                     rts  == $6000001a
+
+
+
 000055e0 4cb8 000c 69ec           movem.w $69ec,d2-d3
 000055e6 d440                     add.w d0,d2
-
->d
 000055e8 d641                     add.w d1,d3
 000055ea e64a                     lsr.w #$03,d2
 000055ec e64b                     lsr.w #$03,d3
@@ -4138,8 +4473,10 @@ player_state_actor_collide_on_batrope
 000055fc 4242                     clr.w d2
 000055fe 1430 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d2
 00005602 4e75                     rts  == $6000001a
+
+
+
 00005604 3438 6360                move.w $6360 [0000],d2
->d
 00005608 6700 00dc                beq.w #$00dc == $000056e6 (F)
 0000560c 4cb8 0003 69f2           movem.w $69f2,d0-d1
 00005612 0441 000c                sub.w #$000c,d1
@@ -4150,7 +4487,6 @@ player_state_actor_collide_on_batrope
 00005620 d241                     add.w d1,d1
 00005622 3e01                     move.w d1,d7
 00005624 c2fc 002a                mulu.w #$002a,d1
->d
 00005628 e658                     ror.w #$03,d0
 0000562a 3400                     move.w d0,d2
 0000562c 0242 0fff                and.w #$0fff,d2
@@ -4161,7 +4497,6 @@ player_state_actor_collide_on_batrope
 0000563a 4cb8 000c 6362           movem.w $6362,d2-d3
 00005640 d442                     add.w d2,d2
 00005642 d643                     add.w d3,d3
->d
 00005644 6700 00a0                beq.w #$00a0 == $000056e6 (F)
 00005648 0240 e000                and.w #$e000,d0
 0000564c 7805                     moveq #$05,d4
@@ -4172,9 +4507,6 @@ player_state_actor_collide_on_batrope
 00005658 08c4 0003                bset.l #$0003,d4
 0000565c d442                     add.w d2,d2
 0000565e 3a02                     move.w d2,d5
-
-
->d
 00005660 9a43                     sub.w d3,d5
 00005662 6a04                     bpl.b #$04 == $00005668 (T)
 00005664 08c4 0006                bset.l #$0006,d4
@@ -4185,7 +4517,6 @@ player_state_actor_collide_on_batrope
 00005670 6a02                     bpl.b #$02 == $00005674 (T)
 00005672 d647                     add.w d7,d3
 00005674 ed43                     asl.w #$06,d3
->d
 00005676 5443                     addq.w #$02,d3
 00005678 0040 0bca                or.w #$0bca,d0
 0000567c 4840                     swap.w d0
@@ -4196,7 +4527,6 @@ player_state_actor_collide_on_batrope
 00005690 3b42 0062                move.w d2,(a5,$0062) == $00bfd162
 00005694 3b46 0064                move.w d6,(a5,$0064) == $00bfd164
 00005698 3b7c 002a 0066           move.w #$002a,(a5,$0066) == $00bfd166
->d
 0000569e 3b7c 002a 0060           move.w #$002a,(a5,$0060) == $00bfd160
 000056a4 3b7c c000 0074           move.w #$c000,(a5,$0074) == $00bfd174
 000056aa 2b7c ffff ffff 0044      move.l #$ffffffff,(a5,$0044) == $00bfd144
@@ -4207,7 +4537,6 @@ player_state_actor_collide_on_batrope
 000056c2 3b45 0052                move.w d5,(a5,$0052) == $00bfd152
 000056c6 2b40 0040                move.l d0,(a5,$0040) == $00bfd140
 000056ca 2b41 0048                move.l d1,(a5,$0048) == $00bfd148
->d
 000056ce 2b41 0054                move.l d1,(a5,$0054) == $00bfd154
 000056d2 3b46 0072                move.w d6,(a5,$0072) == $00bfd172
 000056d6 3b43 0058                move.w d3,(a5,$0058) == $00bfd158
@@ -4218,8 +4547,6 @@ player_state_actor_collide_on_batrope
 000056ec 3438 6336                move.w $6336 [0001],d2
 000056f0 4244                     clr.w d4
 000056f2 1802                     move.b d2,d4
-
->d
 000056f4 6700 003c                beq.w #$003c == $00005732 (F)
 000056f8 3601                     move.w d1,d3
 000056fa 41f8 60c4                lea.l $60c4,a0
@@ -4230,7 +4557,6 @@ player_state_actor_collide_on_batrope
 00005708 31c3 6338                move.w d3,$6338 [0000]
 0000570c 6126                     bsr.b #$26 == $00005734
 0000570e 4cb8 0003 69f2           movem.w $69f2,d0-d1
->d
 00005714 3438 6334                move.w $6334 [0002],d2
 00005718 1402                     move.b d2,d2
 0000571a 6700 0016                beq.w #$0016 == $00005732 (F)
@@ -4241,7 +4567,10 @@ player_state_actor_collide_on_batrope
 0000572c 6700 0004                beq.w #$0004 == $00005732 (F)
 00005730 6102                     bsr.b #$02 == $00005734
 00005732 4e75                     rts  == $6000001a
->d
+
+
+
+
 00005734 2278 6346                movea.l $6346 [00010000],a1
 00005738 d241                     add.w d1,d1
 0000573a e742                     asl.w #$03,d2
@@ -4252,7 +4581,6 @@ player_state_actor_collide_on_batrope
 00005746 9244                     sub.w d4,d1
 00005748 1819                     move.b (a1)+ [66],d4
 0000574a 4884                     ext.w d4
->d
 0000574c d044                     add.w d4,d0
 0000574e 4242                     clr.w d2
 00005750 1419                     move.b (a1)+ [66],d2
@@ -4263,9 +4591,9 @@ player_state_actor_collide_on_batrope
 0000575a 1619                     move.b (a1)+ [66],d3
 0000575c 2059                     movea.l (a1)+ [661e0800],a0
 0000575e d1f8 634a                adda.l $634a [00000000],a0
-
->d
 00005762 6016                     bra.b #$16 == $0000577a (T)
+
+
 00005764 1819                     move.b (a1)+ [66],d4
 00005766 4884                     ext.w d4
 00005768 9244                     sub.w d4,d1
@@ -4275,7 +4603,6 @@ player_state_actor_collide_on_batrope
 00005770 4242                     clr.w d2
 00005772 1419                     move.b (a1)+ [66],d2
 00005774 4243                     clr.w d3
->d
 00005776 1619                     move.b (a1)+ [66],d3
 00005778 2059                     movea.l (a1)+ [661e0800],a0
 0000577a 3803                     move.w d3,d4
@@ -4286,18 +4613,18 @@ player_state_actor_collide_on_batrope
 00005784 6a12                     bpl.b #$12 == $00005798 (T)
 00005786 4441                     neg.w d1
 00005788 9641                     sub.w d1,d3
->d
 0000578a 6300 0106                bls.w #$0106 == $00005892 (F)
 0000578e c2c2                     mulu.w d2,d1
 00005790 d1c1                     adda.l d1,a0
 00005792 d1c1                     adda.l d1,a0
 00005794 7200                     moveq #$00,d1
 00005796 6010                     bra.b #$10 == $000057a8 (T)
+
+
 00005798 3c3c 00ad                move.w #$00ad,d6
 0000579c 9c41                     sub.w d1,d6
 0000579e 6300 00f2                bls.w #$00f2 == $00005892 (F)
 000057a2 bc43                     cmp.w d3,d6
->d
 000057a4 6a02                     bpl.b #$02 == $000057a8 (T)
 000057a6 3606                     move.w d6,d3
 000057a8 7eff                     moveq #$ff,d7
@@ -4308,9 +4635,6 @@ player_state_actor_collide_on_batrope
 000057b2 e640                     asr.w #$03,d0
 000057b4 6a0e                     bpl.b #$0e == $000057c4 (T)
 000057b6 4440                     neg.w d0
-
-
->d
 000057b8 9a40                     sub.w d0,d5
 000057ba 6300 00d6                bls.w #$00d6 == $00005892 (F)
 000057be d0c0                     adda.w d0,a0
@@ -4321,9 +4645,10 @@ player_state_actor_collide_on_batrope
 000057c8 6f00 00c8                ble.w #$00c8 == $00005892 (F)
 000057cc ba44                     cmp.w d4,d5
 000057ce 633e                     bls.b #$3e == $0000580e (F)
->d
 000057d0 3a04                     move.w d4,d5
 000057d2 603a                     bra.b #$3a == $0000580e (T)
+
+
 000057d4 4247                     clr.w d7
 000057d6 5245                     addq.w #$01,d5
 000057d8 e640                     asr.w #$03,d0
@@ -4332,7 +4657,6 @@ player_state_actor_collide_on_batrope
 000057de 5340                     subq.w #$01,d0
 000057e0 9a40                     sub.w d0,d5
 000057e2 6300 00ae                bls.w #$00ae == $00005892 (F)
->d
 000057e6 d0c0                     adda.w d0,a0
 000057e8 d0c0                     adda.w d0,a0
 000057ea 70ff                     moveq #$ff,d0
@@ -4343,7 +4667,6 @@ player_state_actor_collide_on_batrope
 000057f4 4840                     swap.w d0
 000057f6 ce80                     and.l d0,d7
 000057f8 7814                     moveq #$14,d4
->d
 000057fa 9840                     sub.w d0,d4
 000057fc 6f00 0094                ble.w #$0094 == $00005892 (F)
 00005800 ba44                     cmp.w d4,d5
@@ -4355,7 +4678,6 @@ player_state_actor_collide_on_batrope
 0000580c 3e04                     move.w d4,d7
 0000580e ed43                     asl.w #$06,d3
 
->d
 00005810 d645                     add.w d5,d3
 00005812 9445                     sub.w d5,d2
 00005814 d442                     add.w d2,d2
@@ -4366,7 +4688,7 @@ player_state_actor_collide_on_batrope
 00005822 d040                     add.w d0,d0
 00005824 d4c0                     adda.w d0,a2
 00005826 c2fc 002a                mulu.w #$002a,d1
->d
+
 0000582a d5c1                     adda.l d1,a2
 0000582c 48c6                     ext.l d6
 0000582e e69e                     ror.l #$03,d6
@@ -4377,7 +4699,7 @@ player_state_actor_collide_on_batrope
 0000583c 0086 0fca 0000           or.l #$0fca0000,d6
 00005842 0839 0006 00df f002      btst.b #$0006,$00dff002
 0000584a 66f6                     bne.b #$f6 == $00005842 (T)
->d
+
 0000584c 3b42 0064                move.w d2,(a5,$0064) == $00bfd164
 00005850 3b42 0062                move.w d2,(a5,$0062) == $00bfd162
 00005854 2b47 0044                move.l d7,(a5,$0044) == $00bfd144
@@ -4388,7 +4710,7 @@ player_state_actor_collide_on_batrope
 00005866 7e03                     moveq #$03,d7
 00005868 0839 0006 00df f002      btst.b #$0006,$00dff002
 00005870 66f6                     bne.b #$f6 == $00005868 (T)
->d
+
 00005872 41f0 9800                lea.l (a0,a1.L,$00) == $00003f38,a0
 00005876 2b4b 0050                move.l a3,(a5,$0050) == $00bfd150
 0000587a 2b48 004c                move.l a0,(a5,$004c) == $00bfd14c
@@ -4398,9 +4720,10 @@ player_state_actor_collide_on_batrope
 0000588a 45ea 1c8c                lea.l (a2,$1c8c) == $00063948,a2
 0000588e 51cf ffd8                dbf .w d7,#$ffd8 == $00005868 (F)
 00005892 4e75                     rts  == $6000001a
-00005894 3039 00df f00c           move.w $00dff00c,d0
 
->d
+
+
+00005894 3039 00df f00c           move.w $00dff00c,d0
 0000589a 4202                     clr.b d2
 0000589c 0800 0001                btst.l #$0001,d0
 000058a0 6704                     beq.b #$04 == $000058a6 (F)
@@ -4411,7 +4734,6 @@ player_state_actor_collide_on_batrope
 000058b0 3200                     move.w d0,d1
 000058b2 e249                     lsr.w #$01,d1
 000058b4 b141                     eor.w d0,d1
->d
 000058b6 0801 0000                btst.l #$0000,d1
 000058ba 6704                     beq.b #$04 == $000058c0 (F)
 000058bc 08c2 0002                bset.l #$0002,d2
@@ -4422,18 +4744,20 @@ player_state_actor_collide_on_batrope
 000058d2 57c0                     seq.b d0 (F)
 000058d4 1238 6351                move.b $6351 [00],d1
 000058d8 6606                     bne.b #$06 == $000058e0 (T)
->d
 000058da 0240 0010                and.w #$0010,d0
 000058de 8440                     or.w d0,d2
 000058e0 11c0 6351                move.b d0,$6351 [00]
 000058e4 11c2 6350                move.b d2,$6350 [00]
 000058e8 4e75                     rts  == $6000001a
+
+
+
+
 000058ea 4280                     clr.l d0
 000058ec 3038 69ec                move.w $69ec [0000],d0
 000058f0 e648                     lsr.w #$03,d0
 000058f2 d040                     add.w d0,d0
 000058f4 287c 0005 a36c           movea.l #$0005a36c,a4
->d
 000058fa d9c0                     adda.l d0,a4
 000058fc 21cc 6366                move.l a4,$6366 [0005a36c]
 00005900 4278 635a                clr.w $635a [0000]
@@ -4444,11 +4768,12 @@ player_state_actor_collide_on_batrope
 00005910 6100 f202                bsr.w #$f202 == $00004b14
 00005914 4cdf 1082                movem.l (a7)+,d1/d7/a4
 00005918 5041                     addq.w #$08,d1
-
->d
 0000591a 548c                     addaq.l #$02,a4
 0000591c 51cf ffee                dbf .w d7,#$ffee == $0000590c (F)
 00005920 4e75                     rts  == $6000001a
+
+
+
 00005922 3e3c 013f                move.w #$013f,d7
 00005926 41f8 6ad0                lea.l $6ad0,a0
 0000592a 1028 0004                move.b (a0,$0004) == $00000c7c [00],d0
@@ -4456,7 +4781,6 @@ player_state_actor_collide_on_batrope
 00005932 4600                     not.b d0
 00005934 c028 0002                and.b (a0,$0002) == $00000c7a [00],d0
 00005938 c028 0003                and.b (a0,$0003) == $00000c7b [4a],d0
->d
 0000593c b128 0001                eor.b d0,(a0,$0001) == $00000c79 [3c]
 00005940 5a48                     addaq.w #$05,a0
 00005942 51cf ffe6                dbf .w d7,#$ffe6 == $0000592a (F)
@@ -4467,7 +4791,6 @@ player_state_actor_collide_on_batrope
 00005954 1028 0028                move.b (a0,$0028) == $00000ca0 [00],d0
 00005958 0c00 0003                cmp.b #$03,d0
 0000595c 6424                     bcc.b #$24 == $00005982 (T)
->d
 0000595e 3006                     move.w d6,d0
 00005960 5340                     subq.w #$01,d0
 00005962 c0c5                     mulu.w d5,d0
@@ -4478,7 +4801,7 @@ player_state_actor_collide_on_batrope
 0000596e 5344                     subq.w #$01,d4
 00005970 1010                     move.b (a0) [00],d0
 00005972 10d1                     move.b (a1) [66],(a0)+ [00]
->d
+
 00005974 12c0                     move.b d0,(a1)+ [66]
 00005976 51cc fff8                dbf .w d4,#$fff8 == $00005970 (F)
 0000597a 92c5                     suba.w d5,a1
@@ -4490,7 +4813,6 @@ player_state_actor_collide_on_batrope
 00005992 3e18                     move.w (a0)+ [003c],d7
 00005994 4280                     clr.l d0
 
->d
 00005996 3007                     move.w d7,d0
 00005998 5347                     subq.w #$01,d7
 0000599a 3c07                     move.w d7,d6
@@ -4501,7 +4823,7 @@ player_state_actor_collide_on_batrope
 000059a6 32da                     move.w (a2)+ [6476],(a1)+ [661e]
 000059a8 1018                     move.b (a0)+ [00],d0
 000059aa e808                     lsr.b #$04,d0
->d
+
 000059ac 5240                     addq.w #$01,d0
 000059ae 12c0                     move.b d0,(a1)+ [66]
 000059b0 1018                     move.b (a0)+ [00],d0
@@ -4512,7 +4834,7 @@ player_state_actor_collide_on_batrope
 000059ba 22c0                     move.l d0,(a1)+ [661e0800]
 000059bc 51cf ffe4                dbf .w d7,#$ffe4 == $000059a2 (F)
 000059c0 3e06                     move.w d6,d7
->d
+
 000059c2 2478 6346                movea.l $6346 [00010000],a2
 000059c6 4282                     clr.l d2
 000059c8 544a                     addaq.w #$02,a2
@@ -4523,7 +4845,6 @@ player_state_actor_collide_on_batrope
 000059d2 c0c1                     mulu.w d1,d0
 000059d4 d440                     add.w d0,d2
 000059d6 5c4a                     addaq.w #$06,a2
->d
 000059d8 51cf fff0                dbf .w d7,#$fff0 == $000059ca (F)
 000059dc c4fc 000a                mulu.w #$000a,d2
 000059e0 21c2 634a                move.l d2,$634a [00000000]
@@ -4533,9 +4854,10 @@ player_state_actor_collide_on_batrope
 000059ee 0811 0000                btst.b #$0000,(a1) [66]
 000059f2 6600 0004                bne.w #$0004 == $000059f8 (T)
 000059f6 4e75                     rts  == $6000001a
-000059f8 3e06                     move.w d6,d7
 
->d
+
+
+000059f8 3e06                     move.w d6,d7
 000059fa 2278 6346                movea.l $6346 [00010000],a1
 000059fe 5449                     addaq.w #$02,a1
 00005a00 2a48                     movea.l a0,a5
@@ -4546,7 +4868,6 @@ player_state_actor_collide_on_batrope
 00005a0a 1a11                     move.b (a1) [66],d5
 00005a0c cac0                     mulu.w d0,d5
 00005a0e 2805                     move.l d5,d4
->d
 00005a10 d844                     add.w d4,d4
 00005a12 2604                     move.l d4,d3
 00005a14 d644                     add.w d4,d3
@@ -4557,7 +4878,6 @@ player_state_actor_collide_on_batrope
 00005a1e 5345                     subq.w #$01,d5
 00005a20 247c 0006 1b9c           movea.l #$00061b9c,a2
 00005a26 3498                     move.w (a0)+ [003c],(a2) [6476]
->d
 00005a28 4652                     not.w (a2) [6476]
 00005a2a 3598 4000                move.w (a0)+ [003c],(a2,d4.W,$00) == $00061cbd [7680]
 00005a2e 3598 3000                move.w (a0)+ [003c],(a2,d3.W,$00) == $00061cbb [fe64]
@@ -4568,7 +4888,6 @@ player_state_actor_collide_on_batrope
 00005a40 383c 0004                move.w #$0004,d4
 00005a44 4245                     clr.w d5
 00005a46 1a11                     move.b (a1) [66],d5
->d
 00005a48 5345                     subq.w #$01,d5
 00005a4a 3400                     move.w d0,d2
 00005a4c 5342                     subq.w #$01,d2
@@ -4579,8 +4898,6 @@ player_state_actor_collide_on_batrope
 00005a58 95c0                     suba.l d0,a2
 00005a5a 95c0                     suba.l d0,a2
 00005a5c 51cd ffec                dbf .w d5,#$ffec == $00005a4a (F)
-
->d
 00005a60 d5c3                     adda.l d3,a2
 00005a62 51cc ffe0                dbf .w d4,#$ffe0 == $00005a44 (F)
 00005a66 43e9 0007                lea.l (a1,$0007) == $000032c7,a1
@@ -4591,7 +4908,6 @@ player_state_actor_collide_on_batrope
 00005a76 7c04                     moveq #$04,d6
 00005a78 2069 0004                movea.l (a1,$0004) == $000032c4 [0001660c],a0
 00005a7c 4285                     clr.l d5
->d
 00005a7e 4284                     clr.l d4
 00005a80 1829 0002                move.b (a1,$0002) == $000032c2 [08],d4
 00005a84 1a29 0003                move.b (a1,$0003) == $000032c3 [00],d5
@@ -4602,7 +4918,6 @@ player_state_actor_collide_on_batrope
 00005a90 1030 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d0
 00005a94 7407                     moveq #$07,d2
 00005a96 e210                     roxr.b #$01,d0
->d
 00005a98 e311                     roxl.b #$01,d1
 00005a9a 51ca fffa                dbf .w d2,#$fffa == $00005a96 (F)
 00005a9e 16c1                     move.b d1,(a3)+ [00]
@@ -4613,8 +4928,10 @@ player_state_actor_collide_on_batrope
 00005aac 51ce ffce                dbf .w d6,#$ffce == $00005a7c (F)
 00005ab0 43e9 0008                lea.l (a1,$0008) == $000032c8,a1
 00005ab4 51cf ffc0                dbf .w d7,#$ffc0 == $00005a76 (F)
->d
 00005ab8 4e75                     rts  == $6000001a
+
+
+
 
 
 actor_init_data
@@ -4626,6 +4943,9 @@ actor_init_data
 00005B0A 5CB6 5C32 5C4A 4278 5BA4 5B4E 5F00 5F14  ;\.\2\JBx[.[N_._.
 00005B1A 5F8A 6014 6068 5D4C 5D84 5DF8 5B2C 5B36  ;_.`.`h]L].].[,[6
 00005B2A 5B40 
+
+
+
 
 
 00005b2c 7001                     moveq #$01,d0
@@ -4656,6 +4976,8 @@ actor_init_data
 00005b6a 6100 0368                bsr.w #$0368 == $00005ed4
 00005b6e 6000 0312                bra.w #$0312 == $00005e82 (T)
 
+
+
 00005B72 0001 0001 0001 0001 0002 0002 0002 0002  ................
 00005B82 0003 0003 0003 0003 0004 0004 0004 0004  ................
 00005B92 0002 0002 0002 0002 0001 0001 0001 0001  ................
@@ -4663,7 +4985,9 @@ actor_init_data
 
 ; line 7117 - Code1.s
 
->d 5ba4
+
+
+
 00005ba4 3d7c 0098 0004           move.w #$0098,(a6,$0004) == $00dff004
 00005baa 4bf8 39bc                lea.l $39bc,a5
 00005bae 343c 0085                move.w #$0085,d2
@@ -4673,20 +4997,22 @@ actor_init_data
 00005bba 4bed 0016                lea.l (a5,$0016) == $00bfd116,a5
 00005bbe 51cf fff4                dbf .w d7,#$fff4 == $00005bb4 (F)
 00005bc2 6004                     bra.b #$04 == $00005bc8 (T)
-00005bc4 3415                     move.w (a5),d2
 
->d
+
+00005bc4 3415                     move.w (a5),d2
 00005bc6 660c                     bne.b #$0c == $00005bd4 (T)
 00005bc8 08b9 0007 0000 6476      bclr.b #$0007,$00006476 [00]
 00005bd0 4256                     clr.w (a6)
 00005bd2 4e75                     rts  == $6000001a
+
+
+
 00005bd4 5342                     subq.w #$01,d2
 00005bd6 66fa                     bne.b #$fa == $00005bd2 (T)
 00005bd8 4eb9 0004 8008           jsr $00048008
 00005bde 08f9 0000 0007 c874      bset.b #$0000,$0007c874 [00]
 00005be6 31fc 52b6 3c7c           move.w #$52b6,$3c7c [4c7c]
 00005bec 4278 6342                clr.w $6342 [0001]
->d
 00005bf0 4278 6360                clr.w $6360 [0000]
 00005bf4 302d 0004                move.w (a5,$0004) == $00bfd104,d0
 00005bf8 0c40 00d4                cmp.w #$00d4,d0
@@ -4697,7 +5023,9 @@ actor_init_data
 00005c10 4256                     clr.w (a6)
 00005c12 700b                     moveq #$0b,d0
 00005c14 4ef9 0004 8014           jmp $00048014
->d
+
+
+
 00005c1a 5378 69f8                subq.w #$01,$69f8 [0050]
 00005c1e 0440 0018                sub.w #$0018,d0
 00005c22 9078 69ee                sub.w $69ee [00f0],d0
@@ -4705,10 +5033,12 @@ actor_init_data
 00005c28 d078 69f4                add.w $69f4 [0048],d0
 00005c2c 31c0 69f6                move.w d0,$69f6 [0048]
 00005c30 4e75                     rts  == $6000001a
+
+
+
 00005c32 6134                     bsr.b #$34 == $00005c68
 00005c34 0c42 0008                cmp.w #$0008,d2
 00005c38 64f6                     bcc.b #$f6 == $00005c30 (T)
->d
 00005c3a 0c42 0004                cmp.w #$0004,d2
 00005c3e 6600 e9ba                bne.w #$e9ba == $000045fa (T)
 00005c42 6152                     bsr.b #$52 == $00005c96
@@ -4720,7 +5050,7 @@ actor_init_data
 00005c54 64da                     bcc.b #$da == $00005c30 (T)
 00005c56 0c42 e004                cmp.w #$e004,d2
 
->d
+
 00005c5a 6600 e99e                bne.w #$e99e == $000045fa (T)
 00005c5e 612a                     bsr.b #$2a == $00005c8a
 00005c60 343c e004                move.w #$e004,d2
@@ -4731,7 +5061,7 @@ actor_init_data
 00005c70 6408                     bcc.b #$08 == $00005c7a (T)
 00005c72 7406                     moveq #$06,d2
 00005c74 6100 e87e                bsr.w #$e87e == $000044f4
->d
+
 00005c78 4242                     clr.w d2
 00005c7a 3d42 0008                move.w d2,(a6,$0008) == $00dff008
 00005c7e 0c42 0037                cmp.w #$0037,d2
@@ -4739,10 +5069,14 @@ actor_init_data
 00005c84 e64a                     lsr.w #$03,d2
 00005c86 5242                     addq.w #$01,d2
 00005c88 4e75                     rts  == $6000001a
+
+
+
+
 00005c8a 4cb8 0018 69f2           movem.w $69f2,d3-d4
 00005c90 0643 0010                add.w #$0010,d3
 00005c94 6008                     bra.b #$08 == $00005c9e (T)
->d
+
 00005c96 4cb8 0018 69f2           movem.w $69f2,d3-d4
 00005c9c 5843                     addq.w #$04,d3
 00005c9e 9640                     sub.w d0,d3
@@ -4753,7 +5087,6 @@ actor_init_data
 00005caa b278 6338                cmp.w $6338 [0000],d1
 00005cae 6bd8                     bmi.b #$d8 == $00005c88 (F)
 00005cb0 7c03                     moveq #$03,d6
->d
 00005cb2 6000 f056                bra.w #$f056 == $00004d0a (T)
 00005cb6 362e 000c                move.w (a6,$000c) == $00dff00c,d3
 00005cba 5c03                     addq.b #$06,d3
@@ -4766,11 +5099,6 @@ actor_init_data
 00005cd0 3a2e 000a                move.w (a6,$000a) == $00dff00a,d5
 
 
-
-
-
-
->d
 00005cd4 0c45 0010                cmp.w #$0010,d5
 00005cd8 6400 0004                bcc.w #$0004 == $00005cde (T)
 00005cdc 5245                     addq.w #$01,d5
@@ -4781,7 +5109,7 @@ actor_init_data
 00005cec d245                     add.w d5,d1
 00005cee 6100 f8f0                bsr.w #$f8f0 == $000055e0
 00005cf2 0c02 0051                cmp.b #$51,d2
->d
+
 00005cf6 6528                     bcs.b #$28 == $00005d20 (F)
 00005cf8 3638 69ee                move.w $69ee [00f0],d3
 00005cfc d641                     add.w d1,d3
@@ -4792,7 +5120,7 @@ actor_init_data
 00005d08 b56e 0002                eor.w d2,(a6,$0002) == $00dff002
 00005d0c 42ae 0008                clr.l (a6,$0008) == $00dff008
 00005d10 426e 000c                clr.w (a6,$000c) == $00dff00c
->d
+
 00005d14 7405                     moveq #$05,d2
 00005d16 6100 e7dc                bsr.w #$e7dc == $000044f4
 00005d1a 7402                     moveq #$02,d2
