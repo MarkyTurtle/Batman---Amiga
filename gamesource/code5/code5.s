@@ -3270,112 +3270,212 @@ L00004CFA           dc.l $000052B6
                     dc.l $000052B6 
                     dc.l $000052B6 
 
-00004d0a 4a39 0007 c874           tst.b $0007c874 [00]
-00004d10 6662                     bne.b #$62 == $00004d74 (T)
-00004d12 48e7 ff06                movem.l d0-d7/a5-a6,-(a7)
-00004d16 3006                     move.w d6,d0
-00004d18 4eb9 0007 c870           jsr $0007c870
-00004d1e 4cdf 60ff                movem.l (a7)+,d0-d7/a5-a6
-00004d22 3438 3c7c                move.w $3c7c [4c7c],d2
-00004d26 0c42 54ba                cmp.w #$54ba,d2
-00004d2a 6748                     beq.b #$48 == $00004d74 (F)
-00004d2c 363c 4e78                move.w #$4e78,d3
 
-00004d30 b443                     cmp.w d3,d2
-00004d32 6726                     beq.b #$26 == $00004d5a (F)
-00004d34 0c42 4ea2                cmp.w #$4ea2,d2
-00004d38 6720                     beq.b #$20 == $00004d5a (F)
-00004d3a 0c42 5096                cmp.w #$5096,d2
-00004d3e 6736                     beq.b #$36 == $00004d76 (F)
-00004d40 363c 4d86                move.w #$4d86,d3
-00004d44 0c42 532e                cmp.w #$532e,d2
-00004d48 6710                     beq.b #$10 == $00004d5a (F)
-00004d4a b642                     cmp.w d2,d3
->d
-00004d4c 670c                     beq.b #$0c == $00004d5a (F)
-00004d4e 41f8 548f                lea.l $548f,a0
-00004d52 6100 071c                bsr.w #$071c == $00005470
-00004d56 363c 4d94                move.w #$4d94,d3
-00004d5a 31c3 3c7c                move.w d3,$3c7c [4c7c]
-00004d5e 3438 634e                move.w $634e [0000],d2
-00004d62 dc46                     add.w d6,d6
-00004d64 dc46                     add.w d6,d6
-00004d66 d446                     add.w d6,d2
-00004d68 0c42 000c                cmp.w #$000c,d2
->d
-00004d6c 6502                     bcs.b #$02 == $00004d70 (F)
-00004d6e 740c                     moveq #$0c,d2
-00004d70 31c2 634e                move.w d2,$634e [0000]
-00004d74 4e75                     rts  == $6000001a
-00004d76 3438 633a                move.w $633a [0000],d2
-00004d7a d446                     add.w d6,d2
-00004d7c d446                     add.w d6,d2
-00004d7e d446                     add.w d6,d2
-00004d80 31c2 633a                move.w d2,$633a [0000]
-00004d84 4e75                     rts  == $6000001a
->d
-00004d86 5378 634e                subq.w #$01,$634e [0000]
-00004d8a 66e8                     bne.b #$e8 == $00004d74 (T)
-00004d8c 31fc 532e 3c7c           move.w #$532e,$3c7c [4c7c]
-00004d92 6024                     bra.b #$24 == $00004db8 (T)
-00004d94 4a78 6360                tst.w $6360 [0000]
-00004d98 6704                     beq.b #$04 == $00004d9e (F)
-00004d9a 6100 0452                bsr.w #$0452 == $000051ee
-00004d9e 5378 634e                subq.w #$01,$634e [0000]
-00004da2 66d0                     bne.b #$d0 == $00004d74 (T)
-00004da4 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
+                    ; ------------------------- batman lose energy ---------------------------
+                    ; IN: 
+                    ;   d6.w - amount of energy to lose.
+                    ;
+batman_lose_energy  
+L00004d0a               tst.b   $0007c874           ; PANEL_STATUS_1
+L00004d10               bne.b   L00004d74           ; exit rts
+L00004d12               movem.l d0-d7/a5-a6,-(a7)
+L00004d16               move.w  d6,d0
+L00004d18               jsr     $0007c870           ; PANEL_LOSE_ENERGY
+L00004d1e               movem.l (a7)+,d0-d7/a5-a6
+                    ; falls though to updating state below
 
-00004daa 4a78 6360                tst.w $6360 [0000]
-00004dae 6704                     beq.b #$04 == $00004db4 (F)
-00004db0 6100 0434                bsr.w #$0434 == $000051e6
-00004db4 6100 06b2                bsr.w #$06b2 == $00005468
-00004db8 4a39 0007 c874           tst.b $0007c874 [00]
-00004dbe 67b4                     beq.b #$b4 == $00004d74 (F)
-00004dc0 4eb9 0004 8004           jsr $00048004
-00004dc6 4278 6360                clr.w $6360 [0000]
-00004dca 7003                     moveq #$03,d0
-00004dcc 4eb9 0004 8010           jsr $00048010
->d
-00004dd2 31fc 4de0 3c7c           move.w #$4de0,$3c7c [4c7c]
-00004dd8 31fc 6424 636e           move.w #$6424,$636e [0000]
-00004dde 4e75                     rts  == $6000001a
-00004de0 3078 636e                movea.w $636e [0000],a0
-00004de4 6100 068a                bsr.w #$068a == $00005470
-00004de8 31c8 636e                move.w a0,$636e [0000]
-00004dec 4a10                     tst.b (a0) [00]
-00004dee 6684                     bne.b #$84 == $00004d74 (T)
-00004df0 4eb9 0004 800c           jsr $0004800c
-00004df6 303c 0032                move.w #$0032,d0
->d
-00004dfa 6100 10d8                bsr.w #$10d8 == $00005ed4
-00004dfe 6100 0066                bsr.w #$0066 == $00004e66
-00004e02 0839 0000 0007 c874      btst.b #$0000,$0007c874 [00]
-00004e0a 6708                     beq.b #$08 == $00004e14 (F)
-00004e0c 41f8 4e5a                lea.l $4e5a,a0
-00004e10 6100 1be8                bsr.w #$1be8 == $000069fa
-00004e14 0839 0001 0007 c874      btst.b #$0001,$0007c874 [00]
-00004e1c 6708                     beq.b #$08 == $00004e26 (F)
-00004e1e 41f8 4e4c                lea.l $4e4c,a0
-00004e22 6100 1bd6                bsr.w #$1bd6 == $000069fa
->d
-00004e26 6100 ee82                bsr.w #$ee82 == $00003caa
-00004e2a 303c 001e                move.w #$001e,d0
-00004e2e 6100 10a4                bsr.w #$10a4 == $00005ed4
-00004e32 0839 0001 0007 c874      btst.b #$0001,$0007c874 [00]
-00004e3a 6700 ecb0                beq.w #$ecb0 == $00003aec (F)
-00004e3e 4eb9 0004 8004           jsr $00048004
-00004e44 6100 ef30                bsr.w #$ef30 == $00003d76
-00004e48 6000 b9d6                bra.w #$b9d6 == $00000820 (T)
 
-00004E4C 5F0F 4741 4D45 2020 4F56 4552 00FF 4310  ;_.GAME  OVER..C.
-00004E5C 5449 4D45 2020 5550 00FF                 ;TIME  UP.. y..6.
+                    ; --------------- batman collision - state machine --------------------
+                    ; Update the Batman State Machine to Perform Collision Detection
+                    ; approptiate to Batman's current state.
+                    ;   If falling between plaforms then exit
+                    ;   Else If On BatRope, then do collision on batrope
+                    ;   Else If On Ladder, then do collision on Ladder
+                    ;   Else do collision on platform.
+                    ;
+                    ; Converted all ptrs to 32bits, original game used 16bit ptrs
+                    ; due to hardcoded memory locations.
+                    ;
+                    ; IN:-
+                    ;   D6.l = #$01 (set from main loop)
+                    ;
+                    ; Code Checked 7/1/2025
+                    ;
+batman_collision_state_machine
+L00004d22               move.w  L0003c7c,d2     ; gl_jsr_address
+L00004d26               cmp.w   #$54ba,d2
+L00004d2a               beq.b   L00004d74
+L00004d2c               move.w  #$4e78,d3
+L00004d30               cmp.w   d3,d2
+L00004d32               beq.b   L00004d5a
+L00004d34               cmp.w   #$4ea2,d2
+L00004d38               beq.b   L00004d5a
+L00004d3a               cmp.w   #$5096,d2
+L00004d3e               beq.b   L00004d76
+L00004d40               move.w  #$4d86,d3
+L00004d44               cmp.w   #$532e,d2
+L00004d48               beq.b   L00004d5a
+L00004d4a               cmp.w   d2,d3
+L00004d4c               beq.b   L00004d5a
+L00004d4e               lea.l   $548f,a0
+L00004d52               bsr.w   L00005470
+L00004d56               move.w  #$4d94,d3
+L00004d5a               move.w  d3,L00003c7c
+L00004d5e               move.w  L0000634e,d2
+L00004d62               add.w   d6,d6
+L00004d64               add.w   d6,d6
+L00004d66               add.w   d6,d2
+L00004d68               cmp.w   #$000c,d2
+L00004d6c               bcs.b   L00004d70
+L00004d6e               moveq   #$0c,d2
+L00004d70               move.w  d2,L0000634e
+L00004d74               rts 
 
->d 4e66
-00004e66 2079 0000 36ea           movea.l $000036ea [00061b9c],a0
-00004e6c 3e3c 1c8b                move.w #$1c8b,d7
-00004e70 4298                     clr.l (a0)+ [003c004a]
-00004e72 51cf fffc                dbf .w d7,#$fffc == $00004e70 (F)
-00004e76 4e75                     rts  == $6000001a
+
+
+                    ; if 'climbing onto platform'
+L00004d76               move.w  L0000633a,d2
+L00004d7a               add.w   d6,d2
+L00004d7c               add.w   d6,d2
+L00004d7e               add.w   d6,d2
+L00004d80               move.w  d2,L0000633a
+L00004d84               rts  
+
+
+                    ; -------------- player state - actor collision on ladder -------------
+                    ; This state gets called when Batman collides with an actor when
+                    ; climbing a ladder.
+                    ;
+player_state_actor_collide_on_ladder  
+L00004d86               subq.w  #$01,L0000634e
+L00004d8a               bne.b   L00004d74
+L00004d8c               move.w  #$532e,L00003c7c
+L00004d92               bra.b   L00004db8
+
+
+                    ; -------------- player state - drip and leak collision -------------
+                    ; This state is called when the player collides with a toxic drip
+                    ; or gas jet. Also if colliding with a 'bad guy' actor.
+                    ;
+                    ; Only occurs when batman is standing on a platform, not when 
+                    ; climbing a ladder or swinging on a rope..
+                    ;
+                    ;
+player_state_check_actor_collision  
+L00004d94               tst.w   L00006360
+L00004d98               beq.b   L00004d9e
+L00004d9a               bsr.w   L000051ee
+L00004d9e               subq.w  #$01,L0000634e
+L00004da2               bne.b   L00004d74
+L00004da4               move.w  #$4c7c,L00003c7c
+L00004daa               tst.w   L00006360
+L00004dae               beq.b   L00004db4
+L00004db0               bsr.w   L000051e6
+
+L00004db4               bsr.w   L00005468
+L00004db8               tst.b   $0007c874       ; PANEL_STATUS_1        
+L00004dbe               beq.b   L00004d74       ; exit rts
+
+
+                    ; ----------------- set state - player life lost -----------------
+                    ; This routine sets the state 'player life lost' state.
+                    ; It updated the game loop state function to L00004da2
+                    ; This method handles the player life lost animations etc.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+set_state_player_life_lost 
+L00004dc0               jsr     $00048004           ; AUDIO_PLAYER_SILENCE
+L00004dc6               clr.w   L00006360
+L00004dca               moveq   #$03,d0             ; SFX_LIFE_LOST
+L00004dcc               jsr     $00048010           ; AUDIO_PLAYER_INIT_SONG
+L00004dd2               move.w  #$4de0,L00003c7c    ; gl_jsr_address
+L00004dd8               move.w  #$6424,L0000636e    ; batman_sprite_anim_ptr
+L00004dde               rts 
+
+
+                    ; ----------------- player state life lost ------------------
+                    ; Routine set in player state in the game_loop to manage
+                    ; the player life lost state.
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_life_lost 
+L00004de0               movea.w L0000636e,a0            ; (long) batman_sprite_anim_ptr
+L00004de4               bsr.w   L00005470
+L00004de8               move.w  a0,L0000636e            ; (long) 
+L00004dec               tst.b   (a0)
+L00004dee               bne.b   L00004d74               ; exit rts
+
+L00004df0               jsr     $0004800c               ; AUDIO_PLAYER_INIT_SFX_2
+L00004df6               move.w  #$0032,d0
+L00004dfa               bsr.w   L00005ed4
+L00004dfe               bsr.w   L00004e66
+L00004e02               btst.b  #$0000,$0007c874        ; PANEL_STATUS_1
+L00004e0a               beq.b   L00004e14
+L00004e0c               lea.l   L00004e5a,a0
+L00004e10               bsr.w   L000069fa
+L00004e14               btst.b  #$0001,$0007c874        ; PANEL_STATUS_1
+L00004e1c               beq.b   L00004e26
+L00004e1e               lea.l   L00004e4c,a0
+L00004e22               bsr.w   L000069fa
+L00004e26               bsr.w   L00003caa
+L00004e2a               move.w  #$001e,d0
+L00004e2e               bsr.w   L00005ed4
+L00004e32               btst.b  #$0001,$0007c874        ; PANEL_STATUS_1
+L00004e3a               beq.w   L00003AEC               ; restart level
+                    ; Fall through to return to Title Screen
+                    ; if 'Game Over'
+
+
+
+                    ; ------------------- return to title screen ------------------------
+                    ; When the game is over, return to the titlle screen processing.
+                    ; If test build then restart the level instead.
+                    ;
+return_to_title_screen 
+L00004e3e               jsr     $00048004               ; AUDIO_PLAYER_SILENCE
+L00004e44               bsr.w   L00003d76
+
+                    IFD TEST_BUILD_LEVEL
+                        jsr _DEBUG_COLOURS
+                        JMP return_to_title_screen
+                    ENDC
+
+L00004e48               bra.w   L00000820           ; load title screen
+                    ; *************************************
+                    ; ****        LOAD TITLE SCREEN     ***
+                    ; *************************************
+
+
+text_game_over  
+L00004E4C       dc.b $5F,$0F
+                dc.b 'GAME  OVER'
+                dc.b $00,$FF 
+
+text_time_up                
+L00004E5A       dc.b $43,$10
+L00004E5C       dc.b 'TIME  UP'
+                dc.b $00,$FF
+
+                even
+
+
+clear_backbuffer_playfield 
+L00004e66       movea.l L000036ea,a0
+L00004e6c       move.w  #$1c8b,d7
+L00004e70       clr.l   (a0)+
+L00004e72       dbf.w   d7,L00004e70
+L00004e76       rts 
+
+
+                    ; -------------- player state - actor collide on batrope -----------
+                    ; game_loop - Self Modified JSR Address
+                    ; set at line of code L00004cee
+                    ; ---- player state - actor Collision on batrope ------
+player_state_actor_collide_on_batrope 
 00004e78 7610                     moveq #$10,d3
 00004e7a 4a39 0007 c874           tst.b $0007c874 [00]
 00004e80 661c                     bne.b #$1c == $00004e9e (T)
@@ -5115,7 +5215,7 @@ offscreen_display_buffer_ptr
 
 0000636A 0000 3DEC      ; trigger_new_actors
 
-batman_sprite_anim_ptr
+batman_sprite_anim_ptr  ; modified to long (haven't yet)
 0000636E 0000 
 
 00006370 0000 
