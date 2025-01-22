@@ -4316,166 +4316,264 @@ L0000540c                rts
                     ;
 player_input_cmd_fire_down 
 L0000540e               add.w   #$0008,d1
-L00005412               bsr.w   #$01cc == $000055e0
+L00005412               bsr.w   L000055e0
 L00005416               movem.w $69f2,d0-d1
 L0000541c               cmp.b   #$03,d2
-L00005420               bcs.b   #$0a == $0000542c (F)
-L00005422               move.w  #$8000,$5546 [4e71]
-L00005428               bra.w   #$0068 == $00005492 (T)
+L00005420               bcs.b   L0000542c
+L00005422               move.w  #$8000,L00005546
+L00005428               bra.w   L00005492
+                    ; use 'rts' in set_player_falling_state to return
 ; Line 5885 in Code1.s
 
 
 
-L0000542c               bsr.w   #$fdf2 == $00005220
-00005430 41f8 641e                lea.l $641e,a0
-00005434 613a                     bsr.b #$3a == $00005470
-00005436 31fc 543e 3c7c           move.w #$543e,$3c7c [4c7c]
-0000543c 4e75                     rts  == $6000001a
-0000543e 41f8 6421                lea.l $6421,a0
-00005442 612c                     bsr.b #$2c == $00005470
-00005444 0838 0002 6350           btst.b #$0002,$6350 [00]
-0000544a 660c                     bne.b #$0c == $00005458 (T)
-0000544c 31fc 5462 3c7c           move.w #$5462,$3c7c [4c7c]
-00005452 41f8 641e                lea.l $641e,a0
-00005456 6018                     bra.b #$18 == $00005470 (T)
-00005458 0838 0004 6350           btst.b #$0004,$6350 [00]
-0000545e 66ae                     bne.b #$ae == $0000540e (T)
-00005460 4e75                     rts  == $6000001a
+                    ; ------------------ player input command - down ---------------------
+                    ; Player input command called when joystick input 'down' is selected
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Check 4/1/2025
+                    ;
+player_input_cmd_down 
+L0000542c               bsr.w   L00005220
+L00005430               lea.l   L0000641e,a0
+L00005434               bsr.b   L00005470
+L00005436               move.w  #$543e,L00003c7c    ; gl_jsr_address
+L0000543c               rts  
 
 
 
-00005462 31fc 4c7c 3c7c           move.w #$4c7c,$3c7c [4c7c]
-00005468 41f8 641b                lea.l $641b,a0
-0000546c 6000 0002                bra.w #$0002 == $00005470 (T)
-00005470 3f07                     move.w d7,-(a7) [0c64]
-00005472 43f8 6336                lea.l $6336,a1
-00005476 3e11                     move.w (a1) [661e],d7
-00005478 0247 e000                and.w #$e000,d7
-0000547c de18                     add.b (a0)+ [00],d7
-0000547e 3287                     move.w d7,(a1) [661e]
-00005480 de18                     add.b (a0)+ [00],d7
-00005482 3307                     move.w d7,-(a1) [0002]
-00005484 de18                     add.b (a0)+ [00],d7
-00005486 3307                     move.w d7,-(a1) [0002]
-00005488 3e1f                     move.w (a7)+ [6000],d7
-0000548a 4e75                     rts  == $6000001a
+                    ; ----------------------- player state - ducking --------------------
+                    ; The state entered into the game_loop when batman is ducking down.
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+player_state_ducking 
+L0000543e               lea.l   L00006421,a0
+L00005442               bsr.b   L00005470
+L00005444               btst.b  #$0002,L00006350
+L0000544a               bne.b   L00005458
+L0000544c               move.w  #$5462,L00003c7c
+L00005452               lea.l   L0000641e,a0
+L00005456               bra.b   L00005470
+L00005458               btst.b  #$0004,L00006350 
+L0000545e               bne.b   L0000540e
+L00005460               rts  
 
 
-0000548c 0d01                     btst.l d6,d1
-0000548e 0111                     btst.b d0,(a1) [66]
-00005490 ff02                     illegal
+                    ; --------------- set player status - standing ---------------
+                    ; Called when leaving the 'ducked' state. Returns batman to
+                    ; a standing sprite and standard input checing.
+                    ;
+                    ; Code Checked 4/1/2025
+                    ;
+set_player_state_standing 
+L00005462               move.w  #$4c7c,L00003c7c
+L00005468               lea.l   L0000641b,a0
+L0000546c               bra.w   L00005470
+                    ; use 'rts' in set_batman_sprites to return
 
 
-00005492 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00005498 42b8 633c                clr.l $633c [00000000]
-0000549c 31f8 69f4 69f6           move.w $69f4 [0048],$69f6 [0048]
-000054a2 41fa ffe8                lea.l (pc,$ffe8) == $0000548c,a0
-000054a6 6100 ffc8                bsr.w #$ffc8 == $00005470
-000054aa 31fc 54ba 3c7c           move.w #$54ba,$3c7c [4c7c]
-000054b0 31fc ffff 6342           move.w #$ffff,$6342 [0001]
-000054b6 4278 6340                clr.w $6340 [0000]
-000054ba 4cb8 0030 633c           movem.w $633c,d4-d5
-000054c0 31c4 6356                move.w d4,$6356 [0000]
-000054c4 673e                     beq.b #$3e == $00005504 (F)
-000054c6 0441 0010                sub.w #$0010,d1
-000054ca 5940                     subq.w #$04,d0
-000054cc d044                     add.w d4,d0
-000054ce 6100 0110                bsr.w #$0110 == $000055e0
-000054d2 4cb8 0003 69f2           movem.w $69f2,d0-d1
-000054d8 7e01                     moveq #$01,d7
-000054da 0c02 0003                cmp.b #$03,d2
-000054de 6520                     bcs.b #$20 == $00005500 (F)
-000054e0 1430 3001                move.b (a0,d3.W,$01) == $00000c78 [00],d2
-000054e4 0c02 0003                cmp.b #$03,d2
-000054e8 6516                     bcs.b #$16 == $00005500 (F)
-000054ea d679 0000 8002           add.w $00008002 [0058],d3
-000054f0 1430 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d2
-000054f4 51cf ffe4                dbf .w d7,#$ffe4 == $000054da (F)
-000054f8 d840                     add.w d0,d4
-000054fa 31c4 69f2                move.w d4,$69f2 [0050]
-000054fe 6004                     bra.b #$04 == $00005504 (T)
+                    ; ----------------- set batman sprites --------------------
+                    ; Sets batman sprites 1, 2 & 3 from the values passed in 
+                    ; the 3 byte array.
+                    ;
+                    ; IN: 
+                    ;   A0.l = address ptr to animation (3 byte array of sprite id's)
+                    ; 
+set_batman_sprites 
+L00005470               move.w  d7,-(a7)
+L00005472               lea.l   L00006336,a1
+L00005476               move.w  (a1),d7
+L00005478               and.w   #$e000,d7
+L0000547c               add.b   (a0)+,d7
+L0000547e               move.w  d7,(a1)
+L00005480               add.b   (a0)+,d7
+L00005482               move.w  d7,-(a1)
+L00005484               add.b   (a0)+,d7
+L00005486               move.w  d7,-(a1)
+L00005488               move.w  (a7)+,d7
+L0000548a               rts  
 
-00005500 4278 633c                clr.w $633c [0000]
-00005504 0c45 0010                cmp.w #$0010,d5
-00005508 6a02                     bpl.b #$02 == $0000550c (T)
-0000550a 5245                     addq.w #$01,d5
-0000550c 31c5 633e                move.w d5,$633e [0000]
-00005510 e445                     asr.w #$02,d5
-00005512 d245                     add.w d5,d1
-00005514 31c1 69f4                move.w d1,$69f4 [0048]
-00005518 0801 000f                btst.l #$000f,d1
-0000551c 6702                     beq.b #$02 == $00005520 (F)
-0000551e 4e75                     rts  == $6000001a
+batman_sprite_anim_falling
+L0000548c   dc.b $0d,$01,$01
+
+batman_sprite_anim_fall_landing
+L0000548f   dc.b $11,$ff,$02
 
 
-
-00005520 6100 00be                bsr.w #$00be == $000055e0
-00005524 0c02 0003                cmp.b #$03,d2
-00005528 640c                     bcc.b #$0c == $00005536 (T)
-0000552a 5f78 69f4                subq.w #$07,$69f4 [0048]
-0000552e 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00005534 6084                     bra.b #$84 == $000054ba (T)
-00005536 0402 0050                sub.b #$50,d2
-0000553a 6606                     bne.b #$06 == $00005542 (T)
-0000553c 31fc 0070 6340           move.w #$0070,$6340 [0000]
-00005542 0c02 0011                cmp.b #$11,d2
-00005546 4e71                     nop
-00005548 40c6                     move.w sr,d6
-0000554a da78 6340                add.w $6340 [0000],d5
-0000554e 31c5 6340                move.w d5,$6340 [0000]
-00005552 0c45 0008                cmp.w #$0008,d5
-00005556 6506                     bcs.b #$06 == $0000555e (F)
-00005558 31fc 4e71 5546           move.w #$4e71,$5546 [4e71]
-0000555e 46c6                     move.w d6,sr
-00005560 64bc                     bcc.b #$bc == $0000551e (T)
-00005562 31fc 0028 69f6           move.w #$0028,$69f6 [0048]
-00005568 41f8 548f                lea.l $548f,a0
-0000556c 6100 ff02                bsr.w #$ff02 == $00005470
-00005570 21fc 0000 559a 3c7a      move.l #$0000559a,$3c7a [00004c7c]
-00005578 4278 633e                clr.w $633e [0000]
-0000557c 31fc 0001 6342           move.w #$0001,$6342 [0001]
-00005582 31fc 0002 633a           move.w #$0002,$633a [0000]
-00005588 3038 69ee                move.w $69ee [00f0],d0
-0000558c d041                     add.w d1,d0
-0000558e 0240 0007                and.w #$0007,d0
-00005592 9240                     sub.w d0,d1
-00005594 31c1 69f4                move.w d1,$69f4 [0048]
-00005598 4e75                     rts  == $6000001a
+                    ; -------------------- set player state falling ---------------------
+                    ; Set player state to falling (between plaforms, from ladder/stairs)
+                    ;
+                    ; Runs when Dropping from one platform to another (Fire + Down)
+                    ; Also Runs When walking off the end of a Platform.
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - batman_x_offset
+                    ;   - D1.w = L000067c4 - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+set_player_state_falling  
+L00005492               movem.w L000069f2,d0-d1
+L00005498               clr.l   L0000633c
+L0000549c               move.w  L000069f4,L000069f6
+L000054a2               lea.l   L0000548c(pc),a0
+L000054a6               bsr.w   L00005470
+L000054aa               move.w  #$54ba,L00003c7c        ; gl_jsr_address
+L000054b0               move.w  #$ffff,L00006342
+L000054b6               clr.w   L00006340
 
 
-
-0000559a 5378 633a                subq.w #$01,$633a [0000]
-0000559e 66f8                     bne.b #$f8 == $00005598 (T)
-000055a0 4a39 0007 c874           tst.b $0007c874 [00]
-000055a6 6600 f818                bne.w #$f818 == $00004dc0 (T)
-000055aa 21fc 0000 4c7c 3c7a      move.l #$00004c7c,$3c7a [00004c7c]
-000055b2 41f8 641b                lea.l $641b,a0
-000055b6 0c78 0050 6340           cmp.w #$0050,$6340 [0000]
-000055bc 6b00 feb2                bmi.w #$feb2 == $00005470 (F)
-000055c0 7c5a                     moveq #$5a,d6
-000055c2 6100 f746                bsr.w #$f746 == $00004d0a
-000055c6 13fc 0004 0007 c874      move.b #$04,$0007c874 [00]
-000055ce 0839 0007 0007 c875      btst.b #$0007,$0007c875 [00]
-000055d6 6606                     bne.b #$06 == $000055de (T)
-000055d8 4ef9 0007 c862           jmp $0007c862
-000055de 4e75                     rts  == $6000001a
-
-
-
-000055e0 4cb8 000c 69ec           movem.w $69ec,d2-d3
-000055e6 d440                     add.w d0,d2
-000055e8 d641                     add.w d1,d3
-000055ea e64a                     lsr.w #$03,d2
-000055ec e64b                     lsr.w #$03,d3
-000055ee c6f9 0000 8002           mulu.w $00008002 [0058],d3
-000055f4 d642                     add.w d2,d3
-000055f6 41f9 0000 807c           lea.l $0000807c,a0
-000055fc 4242                     clr.w d2
-000055fe 1430 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d2
-00005602 4e75                     rts  == $6000001a
+                    ; ------------------- player state falling --------------------
+                    ; The player state execuuted when the player is falling,
+                    ; either between platforms or from ladders/stairs.
+                    ;
+                    ; IN:- 
+                    ;   d0.w - batman_x_offset
+                    ;   d1.w - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_state_falling
+L000054ba               movem.w L0000633c,d4-d5
+L000054c0               move.w  d4,L00006356
+L000054c4               beq.b   L00005504
+L000054c6               sub.w   #$0010,d1
+L000054ca               subq.w  #$04,d0
+L000054cc               add.w   d4,d0
+L000054ce               bsr.w   L000055e0
+L000054d2               movem.w L000069f2,d0-d1
+L000054d8               moveq   #$01,d7
+L000054da               cmp.b   #$03,d2
+L000054de               bcs.b   LL00005500
+L000054e0               move.b  $01(a0,d3.w),d2
+L000054e4               cmp.b   #$03,d2
+L000054e8               bcs.b   L00005500
+L000054ea               add.w   $00008002,d3        ; MAPGR.IFF
+L000054f0               move.b  $00(a0,d3.w),d2
+L000054f4               dbf.w   d7,L000054da
+L000054f8               add.w   d0,d4
+L000054fa               move.w  d4,L000069f2
+L000054fe               bra.b   L00005504
+L00005500               clr.w   L0000633c
+L00005504               cmp.w   #$0010,d5
+L00005508               bpl.b   L0000550c
+L0000550a               addq.w  #$01,d5
+L0000550c               move.w  d5,L0000633e
+L00005510               asr.w   #$02,d5
+L00005512               add.w   d5,d1
+L00005514               move.w  d1,L000069f4
+L00005518               btst.l  #$000f,d1
+L0000551c               beq.b   L00005520
+L0000551e               rts  
 
 
 
+L00005520               bsr.w   L000055e0
+L00005524               cmp.b   #$03,d2
+L00005528               bcc.b   L00005536 
+L0000552a               subq.w  #$07,L000069f4
+L0000552e               movem.w L000069f2,d0-d1
+L00005534               bra.b   L000054ba
+                    ; ---------------------------
+
+L00005536               sub.b   #$50,d2
+L0000553a               bne.b   L00005542
+L0000553c               move.w  #$0070,L00006340
+L00005542               cmp.b   #$11,d2
+                    ; L00005546 - self modified 'nop' or 'or.b d0,d0'
+                    ; when 'nop' ccr is not altered for tile test above. (falling off platform)
+                    ; when 'or.b d0,d0' ccr depends on value of d0. (input fire-down)
+                    ; THIS IS USED TO PREVENT COLLISION OCCURING WITH
+                    ; THE PLATFORM YOU ARE DROPPING THROUGH
+L00005546               nop
+
+L00005548               move.w  sr,d6
+L0000554a               add.w   L00006340,d5
+L0000554e               move.w  d5,L00006340
+L00005552               cmp.w   #$0008,d5
+L00005556               bcs.b   L0000555e
+L00005558               move.w  #$4e71,L00005546
+L0000555e               move.w  d6,sr
+
+L00005560               bcc.b   L0000551e
+L00005562               move.w  #$0028,L000069f6
+L00005568               lea.l   L0000548f,a0
+L0000556c               bsr.w   L00005470
+L00005570               move.l  #$0000559a,L00003c7a    ; gl_jsr_address
+L00005578               clr.w   L0000633e
+L0000557c               move.w  #$0001,L00006342
+L00005582               move.w  #$0002,L0000633a
+L00005588               move.w  L000069ee,d0
+L0000558c               add.w   d1,d0
+L0000558e               and.w   #$0007,d0
+L00005592               sub.w   d0,d1
+L00005594               move.w  d1,L000069f4
+L00005598               rts  
+
+
+                    ; ------------------- player state falling --------------------
+                    ; The state is set when batmman is landing on a platform after
+                    ; falling from above.
+                    ;
+                    ; IN:- 
+                    ;   d0.w - batman_x_offset
+                    ;   d1.w - batman_y_offset
+                    ;
+                    ; Code Checked 3/1/2025
+                    ;
+player_state_fall_landing
+L0000559a               subq.w  #$01,L0000633a
+L0000559e               bne.b   L00005598
+L000055a0               tst.b   $0007c874       ; PANEL_STATUS_1
+L000055a6               bne.w   L00004dc0 
+L000055aa               move.l  #$00004c7c,L00003c7a    ; gl_jsr_address
+L000055b2               lea.l   L0000641b,a0
+L000055b6               cmp.w   #$0050,L00006340 
+L000055bc               bmi.w   L00005470
+L000055c0               moveq   #$5a,d6
+L000055c2               bsr.w   L00004d0a
+L000055c6               move.b  #$04,$0007c874      ; PANEL_STATUS_1
+L000055ce               btst.b  #$0007,$0007c875    ; PANEL_STATUS_2
+L000055d6               bne.b   L000055de
+L000055d8               jmp     $0007c862      ; PANEL_LOSE_LIFE
+                    ; never return (use panel rts) 
+L000055de               rts     
+
+
+                    ;----------------------- get tile at display offset d0 & d1 --------------------
+                    ; using window x,y co-rds and a given pixel offset into the display,
+                    ; return the value for the background map tile at this position.
+                    ; NB: the pixel offsets have a resolution of 2 pixels in this game.
+                    ;
+                    ; IN:-
+                    ;   - D0.w = L000067c2 - x_offset
+                    ;   - D1.w = L000067c4 - y_offset
+                    ; OUT:
+                    ;   - D2.b = Tile Value
+                    ;
+get_map_tile_at_display_offset_d0_d1
+L000055e0               movem.w L000069ec,d2-d3
+L000055e6               add.w   d0,d2
+L000055e8               add.w   d1,d3
+L000055ea               lsr.w   #$03,d2
+L000055ec               lsr.w   #$03,d3
+L000055ee               mulu.w  $00008002,d3            ; MAPGR_BASE
+L000055f4               add.w   d2,d3
+L000055f6               lea.l   $0000807c,a0        ; MAPGR_DATA_ADDRESS
+L000055fc               clr.w   d2
+L000055fe               move.b  $00(a0,d3.w),d2
+L00005602               rts  
+
+; Line 6196 - Code5.s
+                    ;------------------------------------------------------------------------------------------
+                    ; -- Draw Batman and Rope
+                    ;------------------------------------------------------------------------------------------
+                    ; This routine draws the Batman Player and the Rope Swing
+                    ;
+draw_batman_and_rope 
 00005604 3438 6360                move.w $6360 [0000],d2
 00005608 6700 00dc                beq.w #$00dc == $000056e6 (F)
 0000560c 4cb8 0003 69f2           movem.w $69f2,d0-d1
