@@ -7193,6 +7193,7 @@ L00005c12           bne.w   draw_next_sprite                        ; L000045bc
 L00005c16           bsr.b   L00005c42
 L00005c18           move.w  #$e004,d2
 L00005c1c           bra.w   draw_next_sprite                        ; L000045bc
+
 L00005c20           clr.w   d2
 L00005c22           move.w  $0008(a6),d2
 L00005c26           addq.b  #$04,d2
@@ -7600,7 +7601,7 @@ L00005fbc            dc.w $0000, $0000                   ; or.b #$00,d0
 L00005fc0            dc.w $0000, $0000                   ; or.b #$00,d0
 
 L00005fc4           dc.w $0000                          ; data location initially pointed to by ptr above L00005f64
-                    dc.w $0000                          ; 3 words used by level data initialisaiotn
+                    dc.w $0000                          ; 3 words used by level data initialisation
 L00005fc8           dc.w $0000
 
                     dc.w $0000

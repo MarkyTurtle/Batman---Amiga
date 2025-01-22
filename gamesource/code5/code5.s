@@ -6,6 +6,84 @@ TEST_BUILD_LEVEL    SET 1                              ; run a test build with i
 
 
 
+; Loader Constants
+LOADER_TITLE_SCREEN             EQU $00000820                       ; Load Title Screen 
+LOADER_LEVEL_1                  EQU $00000824                       ; Load Level 1
+LOADER_LEVEL_2                  EQU $00000828                       ; Load Level 2
+LOADER_LEVEL_3                  EQU $0000082c                       ; Load Level 3
+LOADER_LEVEL_4                  EQU $00000830                       ; Load Level 4
+LOADER_LEVEL_5                  EQU $00000834                       ; Load Level 5
+
+           
+
+; Code5 - Constants
+;-------------------
+                IFND TEST_BUILD_LEVEL
+STACK_ADDRESS                   EQU $0005a36c
+                ENDC
+                IFD TEST_BUILD_LEVEL
+STACK_ADDRESS                   EQU start                                                       ; set stack to start of program.
+                ENDC
+
+
+CODE1_INITIAL_TIMER_BCD         EQU $0800                                                       ; BCD Vaue for 08:00 minutes
+CODE1_DISPLAY_PIXELSWIDE        EQU $150                                                        ; 336 pixels wide
+CODE1_DISPLAY_BYTESWIDE         EQU (CODE1_DISPLAY_PIXELSWIDE/8)                                ; 42 bytes wide
+CODE1_DISPLAY_LINESHIGH         EQU $ae                                                         ; 174 raster lines high
+CODE1_DISPLAY_BITPLANEBYTES     EQU (CODE1_DISPLAY_BYTESWIDE*CODE1_DISPLAY_LINESHIGH)           ; 7308 bytes per bitplane
+CODE1_DISPLAY_BITPLANEDEPTH     EQU $4                                                          ; 4 bitplanes (16 colour display)
+
+                                ; screen display double buffer
+                                IFND TEST_BUILD_LEVEL
+CODE1_DOUBLE_BUFFER_ADDRESS     EQU $00061b9c                                                   ; original address - start of double buffer display in memory
+                                ENDC
+                                IFD TEST_BUILD_LEVEL
+CODE1_DOUBLE_BUFFER_ADDRESS     EQU chipmem_doublebuffer
+                                ENDC                                
+CODE1_DISPLAY_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BITPLANEBYTES*CODE1_DISPLAY_BITPLANEDEPTH;    ; size of each display buffer in bytes
+CODE1_DOUBLE_BUFFER_BYTESIZE    EQU CODE1_DISPLAY_BUFFER_BYTESIZE*2                             ; size of double buffer display in bytes
+CODE1_DISPLAY_BUFFER1_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS                                 ; Address $61b9c
+CODE1_DISPLAY_BUFFER2_ADDRESS   EQU CODE1_DOUBLE_BUFFER_ADDRESS+CODE1_DISPLAY_BUFFER_BYTESIZE   ; Address $68dcc
+
+                                ; off-screen display buffer (maybe used for composing the back buffer display)
+                                IFND TEST_BUILD_LEVEL
+CODE1_CHIPMEM_BUFFER            EQU $0005a36c                                                   ; original address  $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                                ENDC
+                                IFD TEST_BUILD_LEVEL
+CODE1_CHIPMEM_BUFFER            EQU chipmem_buffer 
+                                ENDC
+
+CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE           
+
+                                even
+
+
+; Code1 - debug_print_word_value constants
+FONT_8x8_HEIGHT     EQU         $8
+ASCII_SPACE         EQU         $20
+
+KEY_F1              EQU         $0081
+KEY_F2              EQU         $0082
+KEY_F10             EQU         $008a
+KEY_ESC             EQU         $001b
+
+
+
+; offscreen, double buffer display sizes
+DISPLAY_MAX_Y           EQU         $57                                         ; max display Y value (87) represents line 174 of the display (87*2)
+DISPLAY_BYTEWIDTH       EQU         $2a                                         ; 42 bytes wide
+DISPLAY_2RASTERS        EQU         DISPLAY_BYTEWIDTH*2                         ; 84 bytes for two raster lines 
+DISPLAY_BUFFER_BYTES    EQU         2*DISPLAY_MAX_Y*DISPLAY_BYTEWIDTH           ; size of display buffer in bytes
+DISPLAY_BUFFER_BPL0_OFFSET  EQU     $0
+DISPLAY_BUFFER_BPL1_OFFSET  EQU     DISPLAY_BUFFER_BYTES
+DISPLAY_BUFFER_BPL2_OFFSET  EQU     DISPLAY_BUFFER_BYTES*2
+DISPLAY_BUFFER_BPL3_OFFSET  EQU     DISPLAY_BUFFER_BYTES*3
+
+
+
+
+
+
                 section code1,code_c
                 
              
@@ -1590,7 +1668,7 @@ L0000417e               bcs.b   L000041ac
 L00004180               move.b  $01(a0,d3.w),d2
 L00004184               btst.b  #$0000,$0001(a6)
 L0000418a               bne.b   L00004190
-L0000418c               move.b  $ff(a0,d3.w),d2
+L0000418c               move.b  -$01(a0,d3.w),d2
 L00004190               cmp.b   #$5f,d2
 L00004194               bcs.b   L000041ac
 L00004196               move.w  #$0002,$0008(a6)
@@ -3407,7 +3485,8 @@ L00004de0               movea.w L0000636e,a0            ; (long) batman_sprite_a
 L00004de4               bsr.w   L00005470
 L00004de8               move.w  a0,L0000636e            ; (long) 
 L00004dec               tst.b   (a0)
-L00004dee               bne.b   L00004d74               ; exit rts
+
+L00004dee               bne     L00004d74
 
 L00004df0               jsr     $0004800c               ; AUDIO_PLAYER_INIT_SFX_2
 L00004df6               move.w  #$0032,d0
@@ -3761,7 +3840,7 @@ L000050f2               bpl.b   L000050f6
 L000050f4               neg.w   d4
 
 L000050f6               clr.w   d3
-L000050f8               move.b  $c0(a1,d4.w),d3
+L000050f8               move.b  -64(a1,d4.w),d3     ; $c0(a1,d4.w),d3
 L000050fc               mulu.w  $0004(a0),d3
 L00005100               btst.l  #$000f,d2
 L00005104               beq.b   L00005108
@@ -3876,7 +3955,7 @@ L0000516a               bclr.b  #$0004,L00006350
 player_state_firing_grappling_hook
 L00005170               lea.l   L0000635c,a0
 L00005174               btst.b  #$0004,L00006350 
-L0000517c               bne.b   L000051fc
+L0000517c               bne     L000051fc
 L0000517e               move.w  $0004(a0),d2
 L00005182               addq.w  #$02,d2
 L00005184               cmp.w   #$0028,d2
@@ -4209,7 +4288,7 @@ L00005314               add.w   d5,d3
 L00005316               move.b  $00(a0,d3.w),d2
 L0000531a               sub.b   #$51,d2
 L0000531e               cmp.b   #$10,d2
-L00005322               bcc.b   L0000538e 
+L00005322               bcc   L0000538e 
 L00005324               move.w  #$4c7c,L00003c7c        ; gl_jsr_address
 L0000532a               bra.w   L00004c7c 
 
@@ -4253,10 +4332,10 @@ L0000537a               and.b   #$03,d5
 L0000537e               move.b  d5,L00006350 
 L00005382               moveq   #$01,d5
 L00005384               asr.w   #$01,d4
-L00005386               bcs.b   L00005314 
+L00005386               bcs   L00005314 
 L00005388               moveq   #$ff,d5
 L0000538a               asr.w   #$01,d4
-L0000538c               bcs.b   L00005314
+L0000538c               bcs   L00005314
 L0000538e               asr.w   #$01,d4
 L00005390               bcc.b   L000053a6
 L00005392               move.w  #$0028,L000069f6
@@ -4476,7 +4555,7 @@ L00005524               cmp.b   #$03,d2
 L00005528               bcc.b   L00005536 
 L0000552a               subq.w  #$07,L000069f4
 L0000552e               movem.w L000069f2,d0-d1
-L00005534               bra.b   L000054ba
+L00005534               bra   L000054ba
                     ; ---------------------------
 
 L00005536               sub.b   #$50,d2
@@ -4574,1497 +4653,1913 @@ L00005602               rts
                     ; This routine draws the Batman Player and the Rope Swing
                     ;
 draw_batman_and_rope 
-00005604 3438 6360                move.w $6360 [0000],d2
-00005608 6700 00dc                beq.w #$00dc == $000056e6 (F)
-0000560c 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00005612 0441 000c                sub.w #$000c,d1
-00005616 5640                     addq.w #$03,d0
-00005618 3438 6336                move.w $6336 [0001],d2
-0000561c 6a02                     bpl.b #$02 == $00005620 (T)
-0000561e 5f40                     subq.w #$07,d0
-00005620 d241                     add.w d1,d1
-00005622 3e01                     move.w d1,d7
-00005624 c2fc 002a                mulu.w #$002a,d1
-00005628 e658                     ror.w #$03,d0
-0000562a 3400                     move.w d0,d2
-0000562c 0242 0fff                and.w #$0fff,d2
-00005630 d442                     add.w d2,d2
-00005632 d242                     add.w d2,d1
-00005634 48c1                     ext.l d1
-00005636 d2b8 36ea                add.l $36ea [00061b9c],d1
-0000563a 4cb8 000c 6362           movem.w $6362,d2-d3
-00005640 d442                     add.w d2,d2
-00005642 d643                     add.w d3,d3
-00005644 6700 00a0                beq.w #$00a0 == $000056e6 (F)
-00005648 0240 e000                and.w #$e000,d0
-0000564c 7805                     moveq #$05,d4
-0000564e 8840                     or.w d0,d4
-00005650 0802 000f                btst.l #$000f,d2
-00005654 6706                     beq.b #$06 == $0000565c (F)
-00005656 4442                     neg.w d2
-00005658 08c4 0003                bset.l #$0003,d4
-0000565c d442                     add.w d2,d2
-0000565e 3a02                     move.w d2,d5
-00005660 9a43                     sub.w d3,d5
-00005662 6a04                     bpl.b #$04 == $00005668 (T)
-00005664 08c4 0006                bset.l #$0006,d4
-00005668 3c05                     move.w d5,d6
-0000566a 9c43                     sub.w d3,d6
-0000566c 9e43                     sub.w d3,d7
-0000566e 5747                     subq.w #$03,d7
-00005670 6a02                     bpl.b #$02 == $00005674 (T)
-00005672 d647                     add.w d7,d3
-00005674 ed43                     asl.w #$06,d3
-00005676 5443                     addq.w #$02,d3
-00005678 0040 0bca                or.w #$0bca,d0
-0000567c 4840                     swap.w d0
-0000567e 3004                     move.w d4,d0
-00005680 4bf9 00df f000           lea.l $00dff000,a5
-00005686 0839 0006 00df f002      btst.b #$0006,$00dff002
-0000568e 66f6                     bne.b #$f6 == $00005686 (T)
-00005690 3b42 0062                move.w d2,(a5,$0062) == $00bfd162
-00005694 3b46 0064                move.w d6,(a5,$0064) == $00bfd164
-00005698 3b7c 002a 0066           move.w #$002a,(a5,$0066) == $00bfd166
-0000569e 3b7c 002a 0060           move.w #$002a,(a5,$0060) == $00bfd160
-000056a4 3b7c c000 0074           move.w #$c000,(a5,$0074) == $00bfd174
-000056aa 2b7c ffff ffff 0044      move.l #$ffffffff,(a5,$0044) == $00bfd144
-000056b2 3c3c eeee                move.w #$eeee,d6
-000056b6 7e03                     moveq #$03,d7
-000056b8 0839 0006 00df f002      btst.b #$0006,$00dff002
-000056c0 66f6                     bne.b #$f6 == $000056b8 (T)
-000056c2 3b45 0052                move.w d5,(a5,$0052) == $00bfd152
-000056c6 2b40 0040                move.l d0,(a5,$0040) == $00bfd140
-000056ca 2b41 0048                move.l d1,(a5,$0048) == $00bfd148
-000056ce 2b41 0054                move.l d1,(a5,$0054) == $00bfd154
-000056d2 3b46 0072                move.w d6,(a5,$0072) == $00bfd172
-000056d6 3b43 0058                move.w d3,(a5,$0058) == $00bfd158
-000056da 0681 0000 1c8c           add.l #$00001c8c,d1
-000056e0 4646                     not.w d6
-000056e2 51cf ffd4                dbf .w d7,#$ffd4 == $000056b8 (F)
-000056e6 4cb8 0003 69f2           movem.w $69f2,d0-d1
-000056ec 3438 6336                move.w $6336 [0001],d2
-000056f0 4244                     clr.w d4
-000056f2 1802                     move.b d2,d4
-000056f4 6700 003c                beq.w #$003c == $00005732 (F)
-000056f8 3601                     move.w d1,d3
-000056fa 41f8 60c4                lea.l $60c4,a0
-000056fe d844                     add.w d4,d4
-00005700 d643                     add.w d3,d3
-00005702 9630 40fe                sub.b (a0,d4.W,$fe) == $00000c77 [00],d3
-00005706 e243                     asr.w #$01,d3
-00005708 31c3 6338                move.w d3,$6338 [0000]
-0000570c 6126                     bsr.b #$26 == $00005734
-0000570e 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00005714 3438 6334                move.w $6334 [0002],d2
-00005718 1402                     move.b d2,d2
-0000571a 6700 0016                beq.w #$0016 == $00005732 (F)
-0000571e 6114                     bsr.b #$14 == $00005734
-00005720 4cb8 0003 69f2           movem.w $69f2,d0-d1
-00005726 3438 6332                move.w $6332 [0005],d2
-0000572a 1402                     move.b d2,d2
-0000572c 6700 0004                beq.w #$0004 == $00005732 (F)
-00005730 6102                     bsr.b #$02 == $00005734
-00005732 4e75                     rts  == $6000001a
+L00005604               move.w  L00006360,d2
+L00005608               beq.w   L000056e6
+L0000560c               movem.w L000069f2,d0-d1
+L00005612               sub.w   #$000c,d1
+L00005616               addq.w  #$03,d0
+L00005618               move.w  L00006336,d2
+L0000561c               bpl.b   L00005620
+L0000561e               subq.w  #$07,d0
+L00005620               add.w   d1,d1
+L00005622               move.w  d1,d7
+L00005624               mulu.w  #$002a,d1
+L00005628               ror.w   #$03,d0
+L0000562a               move.w  d0,d2
+L0000562c               and.w   #$0fff,d2
+L00005630               add.w   d2,d2
+L00005632               add.w   d2,d1
+L00005634               ext.l   d1
+L00005636               add.l   L000036ea,d1
+L0000563a               movem.w L00006362,d2-d3
+L00005640               add.w   d2,d2
+L00005642               add.w   d3,d3
+L00005644               beq.w   L000056e6
+L00005648               and.w   #$e000,d0
+L0000564c               moveq   #$05,d4
+L0000564e               or.w    d0,d4
+L00005650               btst.l  #$000f,d2
+L00005654               beq.b   L0000565c
+L00005656               neg.w   d2
+L00005658               bset.l  #$0003,d4
+L0000565c               add.w   d2,d2
+L0000565e               move.w  d2,d5
+L00005660               sub.w   d3,d5
+L00005662               bpl.b   L00005668
+L00005664               bset.l  #$0006,d4
+L00005668               move.w  d5,d6
+L0000566a               sub.w   d3,d6
+L0000566c               sub.w   d3,d7
+L0000566e               subq.w  #$03,d7
+L00005670               bpl.b   L00005674 
+L00005672               add.w   d7,d3
+L00005674               asl.w   #$06,d3
+L00005676               addq.w  #$02,d3
+L00005678               or.w    #$0bca,d0
+L0000567c               swap.w  d0
+L0000567e               move.w  d4,d0
+L00005680               lea.l   $00dff000,a5
+
+L00005686               btst.b  #$0006,$00dff002
+L0000568e               bne.b   L00005686
+
+L00005690               move.w  d2,$0062(a5)
+L00005694               move.w  d6,$0064(a5)
+L00005698               move.w  #$002a,$0066(a5)
+L0000569e               move.w  #$002a,$0060(a5)
+L000056a4               move.w  #$c000,$0074(a5)
+L000056aa               move.l  #$ffffffff,$0044(a5)
+L000056b2               move.w  #$eeee,d6
+L000056b6               moveq   #$03,d7
+
+L000056b8               btst.b  #$0006,$00dff002
+L000056c0               bne.b   L000056b8
+
+L000056c2               move.w  d5,$0052(a5)
+L000056c6               move.l  d0,$0040(a5)
+L000056ca               move.l  d1,$0048(a5)
+L000056ce               move.l  d1,$0054(a5)
+L000056d2               move.w  d6,$0072(a5)
+L000056d6               move.w  d3,$0058(a5)
+L000056da               add.l   #$00001c8c,d1
+L000056e0               not.w   d6
+L000056e2               dbf.w   d7,L000056b8
+
+draw_batman_sprite
+L000056e6               movem.w L000069f2,d0-d1
+L000056ec               move.w  L00006336,d2
+L000056f0               clr.w   d4
+L000056f2               move.b  d2,d4
+L000056f4               beq.w   L00005732
+L000056f8               move.w  d1,d3
+L000056fa               lea.l   L000060c4,a0
+L000056fe               add.w   d4,d4
+L00005700               add.w   d3,d3
+L00005702               sub.b   -$02(a0,d4.w),d3
+L00005706               asr.w   #$01,d3
+L00005708               move.w  d3,L00006338
+L0000570c               bsr.b   L00005734
+L0000570e               movem.w L000069f2,d0-d1
+L00005714               move.w  L00006334,d2
+L00005718               move.b  d2,d2
+L0000571a               beq.w   L00005732
+L0000571e               bsr.b   L00005734
+L00005720               movem.w L000069f2,d0-d1
+L00005726               move.w  L00006332,d2
+L0000572a               move.b  d2,d2
+L0000572c               beq.w   L00005732
+L00005730               bsr.b   L00005734
+L00005732               rts  
 
 
 
 
-00005734 2278 6346                movea.l $6346 [00010000],a1
-00005738 d241                     add.w d1,d1
-0000573a e742                     asl.w #$03,d2
-0000573c 43f1 20f8                lea.l (a1,d2.W,$f8) == $00003248,a1
-00005740 6422                     bcc.b #$22 == $00005764 (T)
-00005742 1819                     move.b (a1)+ [66],d4
-00005744 4884                     ext.w d4
-00005746 9244                     sub.w d4,d1
-00005748 1819                     move.b (a1)+ [66],d4
-0000574a 4884                     ext.w d4
-0000574c d044                     add.w d4,d0
-0000574e 4242                     clr.w d2
-00005750 1419                     move.b (a1)+ [66],d2
-00005752 3802                     move.w d2,d4
-00005754 e74c                     lsl.w #$03,d4
-00005756 9044                     sub.w d4,d0
-00005758 4243                     clr.w d3
-0000575a 1619                     move.b (a1)+ [66],d3
-0000575c 2059                     movea.l (a1)+ [661e0800],a0
-0000575e d1f8 634a                adda.l $634a [00000000],a0
-00005762 6016                     bra.b #$16 == $0000577a (T)
+                    ;------------------------------------------------------------------------
+                    ; -- Draw Sprite
+                    ;------------------------------------------------------------------------
+                    ; This routine blits a sprite to the destination using a cookie cut blit.
+                    ; There's a lot of faf around clipping sprites and working out shift, mask
+                    ; and blit sizes for clipping around the screen edges.
+                    ; This might be fine for a general sprite blit routine.
+                    ; Could have avoided a lot of the faf by giving sprites a max size and
+                    ; adding a bit of buffer around the screen edge -- maybe???
+                    ;
+                    ; Sprite X & Y is held in a byte value and multipled by 2 to give actual screen position.
+                    ;           Sprites have a position resolution of 2 pixels.
+                    ;
+                    ;   sprite_array_ptr ($62FE) holds a sprite draw structure
+                    ;       Byte 0 - Y Offset (2 pixel resolution)
+                    ;       Byte 1 - X Offset (2 pixel resolution)
+                    ;       Byte 2 - Sprite Width in Words
+                    ;       Byte 3 - Sprite Height in Lines
+                    ;       Long 4-7 - Sprite Data Memory Pointer (Mask, bpl0, bpl1, bpl2, bpl3)
+                    ;
+                    ; in:
+                    ;   d0.w - Sprite X Position 
+                    ;   d1.w - Sprite Y Position
+                    ;   d2.w - Sprite id (1 based array index) - index into table $63fe (8 byte structure)
+                    ;
+draw_sprite 
+L00005734               movea.l L00006346,a1
+L00005738               add.w   d1,d1
+L0000573a               asl.w   #$03,d2
+L0000573c               lea.l   -$08(a1,d2.w),a1
+L00005740               bcc.b   L00005764
+L00005742               move.b  (a1)+,d4
+L00005744               ext.w   d4
+L00005746               sub.w   d4,d1
+L00005748               move.b  (a1)+,d4
+L0000574a               ext.w   d4
+L0000574c               add.w   d4,d0
+L0000574e               clr.w   d2
+L00005750               move.b  (a1)+,d2
+L00005752               move.w  d2,d4
+L00005754               lsl.w   #$03,d4
+L00005756               sub.w   d4,d0
+L00005758               clr.w   d3
+L0000575a               move.b  (a1)+,d3
+L0000575c               movea.l (a1)+,a0
+L0000575e               adda.l  L0000634a,a0
+L00005762               bra.b   L0000577a
 
+                    ; Right Facing Sprite
+L00005764               move.b  (a1)+,d4
+L00005766               ext.w   d4
+L00005768               sub.w   d4,d1
+L0000576a               move.b  (a1)+,d4
+L0000576c               ext.w   d4
+L0000576e               sub.w   d4,d0
+L00005770               clr.w   d2
+L00005772               move.b  (a1)+,d2
+L00005774               clr.w   d3
+L00005776               move.b  (a1)+,d3
+L00005778               movea.l (a1)+,a0
 
-00005764 1819                     move.b (a1)+ [66],d4
-00005766 4884                     ext.w d4
-00005768 9244                     sub.w d4,d1
-0000576a 1819                     move.b (a1)+ [66],d4
-0000576c 4884                     ext.w d4
-0000576e 9044                     sub.w d4,d0
-00005770 4242                     clr.w d2
-00005772 1419                     move.b (a1)+ [66],d2
-00005774 4243                     clr.w d3
-00005776 1619                     move.b (a1)+ [66],d3
-00005778 2059                     movea.l (a1)+ [661e0800],a0
-0000577a 3803                     move.w d3,d4
-0000577c c8c2                     mulu.w d2,d4
-0000577e d884                     add.l d4,d4
-00005780 2244                     movea.l d4,a1
-00005782 3201                     move.w d1,d1
-00005784 6a12                     bpl.b #$12 == $00005798 (T)
-00005786 4441                     neg.w d1
-00005788 9641                     sub.w d1,d3
-0000578a 6300 0106                bls.w #$0106 == $00005892 (F)
-0000578e c2c2                     mulu.w d2,d1
-00005790 d1c1                     adda.l d1,a0
-00005792 d1c1                     adda.l d1,a0
-00005794 7200                     moveq #$00,d1
-00005796 6010                     bra.b #$10 == $000057a8 (T)
+                    ; left/right facing common processing
+L0000577a               move.w  d3,d4
+L0000577c               mulu.w  d2,d4
+L0000577e               add.l   d4,d4
+L00005780               movea.l d4,a1
 
+                    ; sprite Y display clipping
+L00005782               move.w  d1,d1
+L00005784               bpl.b   L00005798
+L00005786               neg.w   d1
+L00005788               sub.w   d1,d3
+L0000578a               bls.w   L00005892
+L0000578e               mulu.w  d2,d1
+L00005790               adda.l  d1,a0
+L00005792               adda.l  d1,a0
+L00005794               moveq   #$00,d1
+L00005796               bra.b   L000057a8
 
-00005798 3c3c 00ad                move.w #$00ad,d6
-0000579c 9c41                     sub.w d1,d6
-0000579e 6300 00f2                bls.w #$00f2 == $00005892 (F)
-000057a2 bc43                     cmp.w d3,d6
-000057a4 6a02                     bpl.b #$02 == $000057a8 (T)
-000057a6 3606                     move.w d6,d3
-000057a8 7eff                     moveq #$ff,d7
-000057aa 3a02                     move.w d2,d5
-000057ac 7c07                     moveq #$07,d6
-000057ae cc40                     and.w d0,d6
-000057b0 6622                     bne.b #$22 == $000057d4 (T)
-000057b2 e640                     asr.w #$03,d0
-000057b4 6a0e                     bpl.b #$0e == $000057c4 (T)
-000057b6 4440                     neg.w d0
-000057b8 9a40                     sub.w d0,d5
-000057ba 6300 00d6                bls.w #$00d6 == $00005892 (F)
-000057be d0c0                     adda.w d0,a0
-000057c0 d0c0                     adda.w d0,a0
-000057c2 7000                     moveq #$00,d0
-000057c4 7814                     moveq #$14,d4
-000057c6 9840                     sub.w d0,d4
-000057c8 6f00 00c8                ble.w #$00c8 == $00005892 (F)
-000057cc ba44                     cmp.w d4,d5
-000057ce 633e                     bls.b #$3e == $0000580e (F)
-000057d0 3a04                     move.w d4,d5
-000057d2 603a                     bra.b #$3a == $0000580e (T)
+                    ; check sprite top co-ord is off bottom of screen
+L00005798               move.w  #$00ad,d6
+L0000579c               sub.w   d1,d6
+L0000579e               bls.w   L00005892
+L000057a2               cmp.w   d3,d6
+L000057a4               bpl.b   L000057a8
+L000057a6               move.w  d6,d3
 
+                    ; Clip Sprite X Axis to the Display Size
+                    ; d0 = X Position
+                    ; d2 = width of sprite (words)
+                    ; d1 = start raster of sprite display - Y co-ord
+                    ; d3 = last raster of sprite display  - Y + height
+                    ; a0 = start address offset of gfx mask data
+L000057a8               moveq   #$ff,d7
+L000057aa               move.w  d2,d5
+L000057ac               moveq   #$07,d6
+L000057ae               and.w   d0,d6
+L000057b0               bne.b   L000057d4
+L000057b2               asr.w   #$03,d0
+L000057b4               bpl.b   L000057c4
+                    ; Clip left display
+L000057b6               neg.w   d0
+L000057b8               sub.w   d0,d5
+L000057ba               bls.w   L00005892
+L000057be               adda.w  d0,a0
+L000057c0               adda.w  d0,a0
+L000057c2               moveq   #$00,d0
+                    ; Clip right display
+L000057c4               moveq   #$14,d4
+L000057c6               sub.w   d0,d4
+L000057c8               ble.w   L00005892
+L000057cc               cmp.w   d4,d5
+L000057ce               bls.b   L0000580e
+L000057d0               move.w  d4,d5
+L000057d2               bra.b   L0000580e
 
-000057d4 4247                     clr.w d7
-000057d6 5245                     addq.w #$01,d5
-000057d8 e640                     asr.w #$03,d0
-000057da 6a1c                     bpl.b #$1c == $000057f8 (T)
-000057dc 4440                     neg.w d0
-000057de 5340                     subq.w #$01,d0
-000057e0 9a40                     sub.w d0,d5
-000057e2 6300 00ae                bls.w #$00ae == $00005892 (F)
-000057e6 d0c0                     adda.w d0,a0
-000057e8 d0c0                     adda.w d0,a0
-000057ea 70ff                     moveq #$ff,d0
-000057ec 7808                     moveq #$08,d4
-000057ee 9846                     sub.w d6,d4
-000057f0 d844                     add.w d4,d4
-000057f2 e868                     lsr.w d4,d0
-000057f4 4840                     swap.w d0
-000057f6 ce80                     and.l d0,d7
-000057f8 7814                     moveq #$14,d4
-000057fa 9840                     sub.w d0,d4
-000057fc 6f00 0094                ble.w #$0094 == $00005892 (F)
-00005800 ba44                     cmp.w d4,d5
-00005802 630a                     bls.b #$0a == $0000580e (F)
-00005804 3a04                     move.w d4,d5
-00005806 78ff                     moveq #$ff,d4
-00005808 ed6c                     lsl.w d6,d4
-0000580a ed6c                     lsl.w d6,d4
-0000580c 3e04                     move.w d4,d7
-0000580e ed43                     asl.w #$06,d3
+                    ; calc shifts and masks
+                    ; shift value is > 0
+                    ; d0 = X Position
+                    ; d2 = width of sprite (words)
+                    ; d1 = start raster of sprite display - Y co-ord
+                    ; d3 = last raster of sprite display  - Y + height
+                    ; d5 = copy of sprite width (words)
+                    ; a0 = start address offset of gfx mask data
+L000057d4               clr.w   d7
+L000057d6               addq.w  #$01,d5
+L000057d8               asr.w   #$03,d0
+L000057da               bpl.b   L000057f8
+L000057dc               neg.w   d0
+L000057de               subq.w  #$01,d0
+L000057e0               sub.w   d0,d5
+L000057e2               bls.w   L00005892
+L000057e6               adda.w  d0,a0
+L000057e8               adda.w  d0,a0
+L000057ea               moveq   #$ff,d0
+L000057ec               moveq   #$08,d4
+L000057ee               sub.w   d6,d4
+L000057f0               add.w   d4,d4
+L000057f2               lsr.w   d4,d0
+L000057f4               swap.w  d0
+L000057f6               and.l   d0,d7
+L000057f8               moveq   #$14,d4
+L000057fa               sub.w   d0,d4
+L000057fc               ble.w   L00005892 
+L00005800               cmp.w   d4,d5
+L00005802               bls.b   L0000580e 
+L00005804               move.w  d4,d5
+L00005806               moveq   #$ff,d4
+L00005808               lsl.w   d6,d4
+L0000580a               lsl.w   d6,d4
+L0000580c               move.w  d4,d7
 
-00005810 d645                     add.w d5,d3
-00005812 9445                     sub.w d5,d2
-00005814 d442                     add.w d2,d2
-00005816 7815                     moveq #$15,d4
-00005818 9845                     sub.w d5,d4
-0000581a d844                     add.w d4,d4
-0000581c 2479 0000 36ea           movea.l $000036ea [00061b9c],a2
-00005822 d040                     add.w d0,d0
-00005824 d4c0                     adda.w d0,a2
-00005826 c2fc 002a                mulu.w #$002a,d1
+                    ; plot sprite positions
+                    ; d0 = X Position
+                    ; d2 = width of sprite (bytes)
+                    ; d1 = start raster of sprite display - Y co-ord
+                    ; d3 = last raster of sprite display  - Y + height
+                    ; a0 = start address offset of gfx mask data
+                    ; d6 = shift value / 2
+                    ; d5 = sprite width (clipped)
+                    ; d7 = Firstword & Lastword mask
+L0000580e               asl.w   #$06,d3
+L00005810               add.w   d5,d3
+L00005812               sub.w   d5,d2
+L00005814               add.w   d2,d2
+L00005816               moveq   #$15,d4
+L00005818               sub.w   d5,d4
+L0000581a               add.w   d4,d4
 
-0000582a d5c1                     adda.l d1,a2
-0000582c 48c6                     ext.l d6
-0000582e e69e                     ror.l #$03,d6
-00005830 2006                     move.l d6,d0
-00005832 4840                     swap.w d0
-00005834 8c80                     or.l d0,d6
-00005836 2a7c 00df f000           movea.l #$00dff000,a5
-0000583c 0086 0fca 0000           or.l #$0fca0000,d6
-00005842 0839 0006 00df f002      btst.b #$0006,$00dff002
-0000584a 66f6                     bne.b #$f6 == $00005842 (T)
+                    ; d3 = blit size
+                    ; d2 = source modulo
+                    ; d4 = destination modulo
+                    ; d0 = x word offset
+                    ; d1 = y line offset
+                    ; Calc destination Ptr
+L0000581c               movea.l L000036ea,a2
+L00005822               add.w   d0,d0
+L00005824               adda.w  d0,a2
+L00005826               mulu.w  #$002a,d1
+L0000582a               adda.l  d1,a2
+L0000582c               ext.l   d6
+L0000582e               ror.l   #$03,d6
+L00005830               move.l  d6,d0
+L00005832               swap.w  d0
+L00005834               or.l    d0,d6
 
-0000584c 3b42 0064                move.w d2,(a5,$0064) == $00bfd164
-00005850 3b42 0062                move.w d2,(a5,$0062) == $00bfd162
-00005854 2b47 0044                move.l d7,(a5,$0044) == $00bfd144
-00005858 3b44 0060                move.w d4,(a5,$0060) == $00bfd160
-0000585c 3b44 0066                move.w d4,(a5,$0066) == $00bfd166
-00005860 2b46 0040                move.l d6,(a5,$0040) == $00bfd140
-00005864 47d0                     lea.l (a0),a3
-00005866 7e03                     moveq #$03,d7
-00005868 0839 0006 00df f002      btst.b #$0006,$00dff002
-00005870 66f6                     bne.b #$f6 == $00005868 (T)
+                    ; blit sprite
+                    ; d2 = source data modulo
+                    ; d4 = dest data modulo
+                    ; d6 = bltcon0 & bltcon1 (shift A & B) (top 3 bits of high word and low word)
+                    ; d7 = first word mask & last word mask
+                    ; a0 = gfx data ptr (starts with mask data)
+                    ; a1 = offset to gfx data (size of mask data)
+L00005836               movea.l #$00dff000,a5
+L0000583c               or.l    #$0fca0000,d6
 
-00005872 41f0 9800                lea.l (a0,a1.L,$00) == $00003f38,a0
-00005876 2b4b 0050                move.l a3,(a5,$0050) == $00bfd150
-0000587a 2b48 004c                move.l a0,(a5,$004c) == $00bfd14c
-0000587e 2b4a 0048                move.l a2,(a5,$0048) == $00bfd148
-00005882 2b4a 0054                move.l a2,(a5,$0054) == $00bfd154
-00005886 3b43 0058                move.w d3,(a5,$0058) == $00bfd158
-0000588a 45ea 1c8c                lea.l (a2,$1c8c) == $00063948,a2
-0000588e 51cf ffd8                dbf .w d7,#$ffd8 == $00005868 (F)
-00005892 4e75                     rts  == $6000001a
+L00005842               btst.b  #$0006,$00dff002
+L0000584a               bne.b   L00005842
 
+L0000584c               move.w d2,$0064(a5)
+L00005850               move.w d2,$0062(a5)
+L00005854               move.l d7,$0044(a5)
+L00005858               move.w d4,$0060(a5)
+L0000585c               move.w d4,$0066(a5)
+L00005860               move.l d6,$0040(a5)
+L00005864               lea.l (a0),a3
+L00005866               moveq #$03,d7
 
+L00005868               btst.b  #$0006,$00dff002
+L00005870               bne.b   L00005868 (T)
 
-00005894 3039 00df f00c           move.w $00dff00c,d0
-0000589a 4202                     clr.b d2
-0000589c 0800 0001                btst.l #$0001,d0
-000058a0 6704                     beq.b #$04 == $000058a6 (F)
-000058a2 08c2 0000                bset.l #$0000,d2
-000058a6 0800 0009                btst.l #$0009,d0
-000058aa 6704                     beq.b #$04 == $000058b0 (F)
-000058ac 08c2 0001                bset.l #$0001,d2
-000058b0 3200                     move.w d0,d1
-000058b2 e249                     lsr.w #$01,d1
-000058b4 b141                     eor.w d0,d1
-000058b6 0801 0000                btst.l #$0000,d1
-000058ba 6704                     beq.b #$04 == $000058c0 (F)
-000058bc 08c2 0002                bset.l #$0002,d2
-000058c0 0801 0008                btst.l #$0008,d1
-000058c4 6704                     beq.b #$04 == $000058ca (F)
-000058c6 08c2 0003                bset.l #$0003,d2
-000058ca 0839 0007 00bf e001      btst.b #$0007,$00bfe001
-000058d2 57c0                     seq.b d0 (F)
-000058d4 1238 6351                move.b $6351 [00],d1
-000058d8 6606                     bne.b #$06 == $000058e0 (T)
-000058da 0240 0010                and.w #$0010,d0
-000058de 8440                     or.w d0,d2
-000058e0 11c0 6351                move.b d0,$6351 [00]
-000058e4 11c2 6350                move.b d2,$6350 [00]
-000058e8 4e75                     rts  == $6000001a
-
-
-
-
-000058ea 4280                     clr.l d0
-000058ec 3038 69ec                move.w $69ec [0000],d0
-000058f0 e648                     lsr.w #$03,d0
-000058f2 d040                     add.w d0,d0
-000058f4 287c 0005 a36c           movea.l #$0005a36c,a4
-000058fa d9c0                     adda.l d0,a4
-000058fc 21cc 6366                move.l a4,$6366 [0005a36c]
-00005900 4278 635a                clr.w $635a [0000]
-00005904 4281                     clr.l d1
-00005906 3238 69ec                move.w $69ec [0000],d1
-0000590a 7e14                     moveq #$14,d7
-0000590c 48e7 4108                movem.l d1/d7/a4,-(a7)
-00005910 6100 f202                bsr.w #$f202 == $00004b14
-00005914 4cdf 1082                movem.l (a7)+,d1/d7/a4
-00005918 5041                     addq.w #$08,d1
-0000591a 548c                     addaq.l #$02,a4
-0000591c 51cf ffee                dbf .w d7,#$ffee == $0000590c (F)
-00005920 4e75                     rts  == $6000001a
-
-
-
-00005922 3e3c 013f                move.w #$013f,d7
-00005926 41f8 6ad0                lea.l $6ad0,a0
-0000592a 1028 0004                move.b (a0,$0004) == $00000c7c [00],d0
-0000592e c028 0001                and.b (a0,$0001) == $00000c79 [3c],d0
-00005932 4600                     not.b d0
-00005934 c028 0002                and.b (a0,$0002) == $00000c7a [00],d0
-00005938 c028 0003                and.b (a0,$0003) == $00000c7b [4a],d0
-0000593c b128 0001                eor.b d0,(a0,$0001) == $00000c79 [3c]
-00005940 5a48                     addaq.w #$05,a0
-00005942 51cf ffe6                dbf .w d7,#$ffe6 == $0000592a (F)
-00005946 41f9 0000 8002           lea.l $00008002,a0
-0000594c 3a18                     move.w (a0)+ [003c],d5
-0000594e 3c18                     move.w (a0)+ [003c],d6
-00005950 41e8 0076                lea.l (a0,$0076) == $00000cee,a0
-00005954 1028 0028                move.b (a0,$0028) == $00000ca0 [00],d0
-00005958 0c00 0003                cmp.b #$03,d0
-0000595c 6424                     bcc.b #$24 == $00005982 (T)
-0000595e 3006                     move.w d6,d0
-00005960 5340                     subq.w #$01,d0
-00005962 c0c5                     mulu.w d5,d0
-00005964 43f0 0800                lea.l (a0,d0.L,$00) == $ffffec08,a1
-00005968 e24e                     lsr.w #$01,d6
-0000596a 5346                     subq.w #$01,d6
-0000596c 3805                     move.w d5,d4
-0000596e 5344                     subq.w #$01,d4
-00005970 1010                     move.b (a0) [00],d0
-00005972 10d1                     move.b (a1) [66],(a0)+ [00]
-
-00005974 12c0                     move.b d0,(a1)+ [66]
-00005976 51cc fff8                dbf .w d4,#$fff8 == $00005970 (F)
-0000597a 92c5                     suba.w d5,a1
-0000597c 92c5                     suba.w d5,a1
-0000597e 51ce ffec                dbf .w d6,#$ffec == $0000596c (F)
-00005982 2278 6346                movea.l $6346 [00010000],a1
-00005986 207c 0001 1002           movea.l #$00011002,a0
-0000598c 45f9 0000 60c4           lea.l $000060c4,a2
-00005992 3e18                     move.w (a0)+ [003c],d7
-00005994 4280                     clr.l d0
-
-00005996 3007                     move.w d7,d0
-00005998 5347                     subq.w #$01,d7
-0000599a 3c07                     move.w d7,d6
-0000599c e740                     asl.w #$03,d0
-0000599e d088                     add.l a0,d0
-000059a0 2a40                     movea.l d0,a5
-000059a2 41e8 0002                lea.l (a0,$0002) == $00000c7a,a0
-000059a6 32da                     move.w (a2)+ [6476],(a1)+ [661e]
-000059a8 1018                     move.b (a0)+ [00],d0
-000059aa e808                     lsr.b #$04,d0
-
-000059ac 5240                     addq.w #$01,d0
-000059ae 12c0                     move.b d0,(a1)+ [66]
-000059b0 1018                     move.b (a0)+ [00],d0
-000059b2 5240                     addq.w #$01,d0
-000059b4 12c0                     move.b d0,(a1)+ [66]
-000059b6 2018                     move.l (a0)+ [003c004a],d0
-000059b8 d08d                     add.l a5,d0
-000059ba 22c0                     move.l d0,(a1)+ [661e0800]
-000059bc 51cf ffe4                dbf .w d7,#$ffe4 == $000059a2 (F)
-000059c0 3e06                     move.w d6,d7
-
-000059c2 2478 6346                movea.l $6346 [00010000],a2
-000059c6 4282                     clr.l d2
-000059c8 544a                     addaq.w #$02,a2
-000059ca 4240                     clr.w d0
-000059cc 101a                     move.b (a2)+ [64],d0
-000059ce 4241                     clr.w d1
-000059d0 121a                     move.b (a2)+ [64],d1
-000059d2 c0c1                     mulu.w d1,d0
-000059d4 d440                     add.w d0,d2
-000059d6 5c4a                     addaq.w #$06,a2
-000059d8 51cf fff0                dbf .w d7,#$fff0 == $000059ca (F)
-000059dc c4fc 000a                mulu.w #$000a,d2
-000059e0 21c2 634a                move.l d2,$634a [00000000]
-000059e4 2278 6346                movea.l $6346 [00010000],a1
-000059e8 2269 0004                movea.l (a1,$0004) == $000032c4 [0001660c],a1
-000059ec 5249                     addaq.w #$01,a1
-000059ee 0811 0000                btst.b #$0000,(a1) [66]
-000059f2 6600 0004                bne.w #$0004 == $000059f8 (T)
-000059f6 4e75                     rts  == $6000001a
+L00005872               lea.l   $00(a0,a1.l),a0
+L00005876               move.l  a3,$0050(a5)
+L0000587a               move.l  a0,$004c(a5)
+L0000587e               move.l  a2,$0048(a5)
+L00005882               move.l  a2,$0054(a5)
+L00005886               move.w  d3,$0058(a5)
+L0000588a               lea.l   $1c8c(a2),a2
+L0000588e               dbf.w   d7,L00005868 
+L00005892               rts
 
 
 
-000059f8 3e06                     move.w d6,d7
-000059fa 2278 6346                movea.l $6346 [00010000],a1
-000059fe 5449                     addaq.w #$02,a1
-00005a00 2a48                     movea.l a0,a5
-00005a02 2648                     movea.l a0,a3
-00005a04 4285                     clr.l d5
-00005a06 4280                     clr.l d0
-00005a08 1019                     move.b (a1)+ [66],d0
-00005a0a 1a11                     move.b (a1) [66],d5
-00005a0c cac0                     mulu.w d0,d5
-00005a0e 2805                     move.l d5,d4
-00005a10 d844                     add.w d4,d4
-00005a12 2604                     move.l d4,d3
-00005a14 d644                     add.w d4,d3
-00005a16 2403                     move.l d3,d2
-00005a18 d444                     add.w d4,d2
-00005a1a 2202                     move.l d2,d1
-00005a1c d244                     add.w d4,d1
-00005a1e 5345                     subq.w #$01,d5
-00005a20 247c 0006 1b9c           movea.l #$00061b9c,a2
-00005a26 3498                     move.w (a0)+ [003c],(a2) [6476]
-00005a28 4652                     not.w (a2) [6476]
-00005a2a 3598 4000                move.w (a0)+ [003c],(a2,d4.W,$00) == $00061cbd [7680]
-00005a2e 3598 3000                move.w (a0)+ [003c],(a2,d3.W,$00) == $00061cbb [fe64]
-00005a32 3598 2000                move.w (a0)+ [003c],(a2,d2.W,$00) == $00061c4c [6799]
-00005a36 3598 1000                move.w (a0)+ [003c],(a2,d1.W,$00) == $00061cbb [fe64]
-00005a3a 544a                     addaq.w #$02,a2
-00005a3c 51cd ffe8                dbf .w d5,#$ffe8 == $00005a26 (F)
-00005a40 383c 0004                move.w #$0004,d4
-00005a44 4245                     clr.w d5
-00005a46 1a11                     move.b (a1) [66],d5
-00005a48 5345                     subq.w #$01,d5
-00005a4a 3400                     move.w d0,d2
-00005a4c 5342                     subq.w #$01,d2
-00005a4e 95c0                     suba.l d0,a2
-00005a50 95c0                     suba.l d0,a2
-00005a52 36da                     move.w (a2)+ [6476],(a3)+ [0000]
-00005a54 51ca fffc                dbf .w d2,#$fffc == $00005a52 (F)
-00005a58 95c0                     suba.l d0,a2
-00005a5a 95c0                     suba.l d0,a2
-00005a5c 51cd ffec                dbf .w d5,#$ffec == $00005a4a (F)
-00005a60 d5c3                     adda.l d3,a2
-00005a62 51cc ffe0                dbf .w d4,#$ffe0 == $00005a44 (F)
-00005a66 43e9 0007                lea.l (a1,$0007) == $000032c7,a1
-00005a6a 51cf ff98                dbf .w d7,#$ff98 == $00005a04 (F)
-00005a6e 284b                     movea.l a3,a4
-00005a70 2278 6346                movea.l $6346 [00010000],a1
-00005a74 3e06                     move.w d6,d7
-00005a76 7c04                     moveq #$04,d6
-00005a78 2069 0004                movea.l (a1,$0004) == $000032c4 [0001660c],a0
-00005a7c 4285                     clr.l d5
-00005a7e 4284                     clr.l d4
-00005a80 1829 0002                move.b (a1,$0002) == $000032c2 [08],d4
-00005a84 1a29 0003                move.b (a1,$0003) == $000032c3 [00],d5
-00005a88 5345                     subq.w #$01,d5
-00005a8a 3604                     move.w d4,d3
-00005a8c d643                     add.w d3,d3
-00005a8e 5343                     subq.w #$01,d3
-00005a90 1030 3000                move.b (a0,d3.W,$00) == $00000c77 [00],d0
-00005a94 7407                     moveq #$07,d2
-00005a96 e210                     roxr.b #$01,d0
-00005a98 e311                     roxl.b #$01,d1
-00005a9a 51ca fffa                dbf .w d2,#$fffa == $00005a96 (F)
-00005a9e 16c1                     move.b d1,(a3)+ [00]
-00005aa0 51cb ffee                dbf .w d3,#$ffee == $00005a90 (F)
-00005aa4 d1c4                     adda.l d4,a0
-00005aa6 d1c4                     adda.l d4,a0
-00005aa8 51cd ffe0                dbf .w d5,#$ffe0 == $00005a8a (F)
-00005aac 51ce ffce                dbf .w d6,#$ffce == $00005a7c (F)
-00005ab0 43e9 0008                lea.l (a1,$0008) == $000032c8,a1
-00005ab4 51cf ffc0                dbf .w d7,#$ffc0 == $00005a76 (F)
-00005ab8 4e75                     rts  == $6000001a
+
+
+
+
+                    ; ----------------- read player input -----------------
+                    ; called from game loop, part of player state update?
+                    ; IN:-
+                    ;   d0.l = #$00000000
+                    ;   d1.l = #$00000000  
+                    ;
+                    ; OUT:-
+                    ;   d0.b = #$00 - not pressed, #$ff - button pressed
+                    ;   d2.b = joystick direction bits
+                    ;               bit 0 = left
+                    ;               bit 1 = right
+                    ;               bit 2 = down
+                    ;               bit 3 = up
+                    ;               bit 4 = pulse when button pressed
+                    ;
+read_player_input   
+L00005894               move.w  $00dff00c,d0
+L0000589a               clr.b   d2
+L0000589c               btst.l  #$0001,d0
+L000058a0               beq.b   L000058a6
+L000058a2               bset.l  #$0000,d2
+L000058a6               btst.l  #$0009,d0
+L000058aa               beq.b   L000058b0
+L000058ac               bset.l  #$0001,d2
+L000058b0               move.w  d0,d1
+L000058b2               lsr.w   #$01,d1
+L000058b4               eor.w   d0,d1
+L000058b6               btst.l  #$0000,d1
+L000058ba               beq.b   L000058c0
+L000058bc               bset.l  #$0002,d2
+L000058c0               btst.l  #$0008,d1
+L000058c4               beq.b   L000058ca
+L000058c6               bset.l  #$0003,d2
+L000058ca               btst.b  #$0007,$00bfe001
+L000058d2               seq.b   d0 
+L000058d4               move.b  L00006351,d1
+L000058d8               bne.b   L000058e0
+L000058da               and.w   #$0010,d0
+L000058de               or.w    d0,d2
+L000058e0               move.b  d0,L00006351
+L000058e4               move.b  d2,L00006350
+L000058e8               rts  
+
+
+
+                    ; -------------------- inititialise offscreen buffer --------------------
+                    ; Draw the initial level bacground into the off-screen back buffer
+                    ; This is the initial background starting point for batman.
+                    ;
+initialise_offscreen_buffer  
+L000058ea               clr.l   d0
+L000058ec               move.w  L000069ec,d0
+L000058f0               lsr.w   #$03,d0
+L000058f2               add.w   d0,d0
+L000058f4               movea.l #$0005a36c,a4
+L000058fa               adda.l  d0,a4
+L000058fc               move.l  a4,L00006366
+L00005900               clr.w   L0000635a
+L00005904               clr.l   d1
+L00005906               move.w  L000069ec,d1
+L0000590a               moveq   #$14,d7
+L0000590c               movem.l d1/d7/a4,-(a7)
+L00005910               bsr.w   L00004b14
+L00005914               movem.l (a7)+,d1/d7/a4
+L00005918               addq.w  #$08,d1
+L0000591a               addq.l  #$02,a4
+L0000591c               dbf.w   d7,L0000590c
+L00005920               rts  
+
+
+                    ; ----------------------- preprocess data ------------------------
+                    ; Preprocess data ready to start the level.
+                    ; 1) preprocess large font for display.
+                    ; 2) preprocess map data (swap/invert level data blocks)
+                    ; 3) preprocess sprites (set up display object lists, format gfx data, create mirrored sprite sheet)
+                    ;
+preprocess_data                                         ; original address L000058e2
+                    
+                    ; --------------- preprocess font gfx ---------------
+                    ; when this routine is skipped it doesn't make any
+                    ; difference to the display of the 'AXIS CHEMICAL FACTORY'
+                    ; display which this font is used to display.
+preproc_font   
+L00005922               move.w  #$013f,d7
+L00005926               lea.l   $6ad0,a0
+L0000592a               move.b  $0004(a0),d0
+L0000592e               and.b   $0001(a0),d0
+L00005932               not.b   d0
+L00005934               and.b   $0002(a0),d0
+L00005938               and.b   $0003(a0),d0
+L0000593c               eor.b   d0,$0001(a0)
+L00005940               addq.w  #$05,a0
+L00005942               dbf.w d7,L0000592a
+
+
+                    ; ------ init map data ------
+                    ; swaps 20 blocks of level data (192 bytes)
+                    ; outermost to inner most blocks are swapped (41 blocks in total)
+                    ; effewctively the blocks are reversed in order in memory.
+                    ; e.g.
+                    ;       A  -----> E
+                    ;       B  -----> D
+                    ;       C  -----> C (middle block not swapped)
+                    ;       D  -----> B
+                    ;       E  -----> A
+                    ;
+                    ; if there is an odd number of blocks (which there are here)
+                    ; then the last block is not swapped (its the middle block)
+                    ;
+                    ; Block No  | Block A       | Block B
+                    ;   1       | 807c - 813c   | 9e7c - 9f3c
+                    ;   2       | 813c - 81fc   | 9dbc - 9e7c
+                    ;   3       | 81fc - 82bc   | 9cfc - 9dbc
+                    ;   4       | 82bc - 837c   | 9c3c - 9cfc
+                    ;   5       | 837c - 843c   | 9b7c - 9c3c
+                    ;   6       | 843c - 84fc   | 9abc - 9b7c
+                    ;   7       | 84fc - 85bc   | 99fc - 9abc
+                    ;   8       | 85bc - 867c   | 993c - 99fc
+                    ;   9       | 867c - 873c   | 987c - 993c
+                    ;   10      | 873c - 87fc   | 97bc - 987c
+                    ;   11      | 87fc - 88bc   | 96fc - 97bc
+                    ;   12      | 88bc - 897c   | 963c - 96fc
+                    ;   13      | 897c - 8a3c   | 957c - 963c
+                    ;   14      | 8a3c - 8afc   | 94bc - 957c
+                    ;   15      | 8afc - 8bbc   | 93fc - 94bc
+                    ;   16      | 8bbc - 8c7c   | 933c - 9efc
+                    ;   17      | 8c7c - 8d3c   | 927c - 933c
+                    ;   18      | 8d3c - 8dfc   | 91bc - 927c
+                    ;   19      | 8dfc - 8ebc   | 90fc - 91bc
+                    ;   20      | 8ebc - 8f7c   | 903c - 90fc
+                    ;
+                    ;middle data block
+                    ;   21      | 8f7c - 903d - NOT SWAPPED (Middle Data Block)
+                    ;
+                    ; These blocks of data are level map blocks,
+                    ; If this code does not run then the level map data is
+                    ; foobar. Maybe the data is in a format suitable
+                    ; for a different platform (atari st maybe?)
+                    ;
+preproc_mapdata    
+L00005946               lea.l   $00008002,a0            ; MAPGR_BLOCK_PARAMS
+L0000594c               move.w  (a0)+,d5
+L0000594e               move.w  (a0)+,d6
+L00005950               lea.l   $0076(a0),a0
+L00005954               move.b  $0028(a0),d0
+L00005958               cmp.b   #$03,d0
+L0000595c               bcc.b   L00005982
+L0000595e               move.w  d6,d0
+L00005960               subq.w  #$01,d0
+L00005962               mulu.w  d5,d0
+L00005964               lea.l   $00(a0,d0.l),a1
+L00005968               lsr.w   #$01,d6
+L0000596a               subq.w  #$01,d6
+L0000596c               move.w  d5,d4
+L0000596e               subq.w  #$01,d4
+L00005970               move.b  (a0),d0
+L00005972               move.b  (a1),(a0)+
+L00005974               move.b  d0,(a1)+ 
+L00005976               dbf.w   d4,L00005970
+L0000597a               suba.w  d5,a1
+L0000597c               suba.w  d5,a1
+L0000597e               dbf.w   d6,L0000596c
+
+
+
+                    ; Initialise list of 305 display objects
+                    ; Create list at $10000 in physical memory
+preproc_display_object_data  
+L00005982               movea.l L00006346,a1
+L00005986               movea.l #$00011002,a0
+L0000598c               lea.l   L000060c4,a2
+
+L00005992               move.w  (a0)+,d7
+L00005994               clr.l   d0
+L00005996               move.w  d7,d0
+L00005998               subq.w  #$01,d7
+L0000599a               move.w  d7,d6
+                    ; calc start of sprite gfx
+L0000599c               asl.w   #$03,d0
+L0000599e               add.l   a0,d0
+L000059a0               movea.l d0,a5
+
+                    ; loop through 10 byte struct
+                    ; first 2 bytes ignored ($800f)
+                    ; next 2 bytes X & Y co-ords
+                    ; next 2 bytes width (words) & height (lines)
+                    ; next 4 bytes gfx start offset from $1198c ($98c in file)
+                    ;
+L000059a2               lea.l   $0002(a0),a0
+L000059a6               move.w  (a2)+,(a1)+
+L000059a8               move.b  (a0)+,d0
+L000059aa               lsr.b   #$04,d0
+L000059ac               addq.w  #$01,d0
+L000059ae               move.b  d0,(a1)+
+L000059b0               move.b  (a0)+,d0
+L000059b2               addq.w  #$01,d0
+L000059b4               move.b  d0,(a1)+
+L000059b6               move.l  (a0)+,d0
+L000059b8               add.l   a5,d0
+L000059ba               move.l  d0,(a1)+
+L000059bc               dbf.w   d7,L000059a2
+
+
+                    ; ------- mirror sprites (left facing) --------
+                    ; 1) calculate the size of the sprite gfx data.
+                    ; 2) calculate the offset to sprite sheet for left facing sprites (mirror image)
+                    ; 3) make the mirror image sprite sheet?
+                    ;
+L000059c0               move.w  d6,d7
+L000059c2               movea.l L00006346,a2
+L000059c6               clr.l   d2
+L000059c8               addq.w  #$02,a2
+L000059ca               clr.w   d0
+L000059cc               move.b  (a2)+,d0
+L000059ce               clr.w   d1
+L000059d0               move.b  (a2)+,d1
+L000059d2               mulu.w  d1,d0
+L000059d4               add.w   d0,d2
+L000059d6               addq.w  #$06,a2
+L000059d8               dbf.w   d7,L000059ca
+L000059dc               mulu.w  #$000a,d2
+L000059e0               move.l  d2,L0000634a
+L000059e4               movea.l L00006346,a1
+L000059e8               movea.l $0004(a1),a1
+L000059ec               addq.w  #$01,a1
+L000059ee               btst.b  #$0000,(a1)
+L000059f2               bne.w   L000059f8
+L000059f6               rts  
+
+
+
+                    ; ---------------- mirror sprite gfx ----------------
+                    ; IN:-
+                    ;   d6.w = number of display objects (305)
+                    ;   a0.l = start of sprite gfx
+                    ;
+                    ; 1) inverts the sprites (upside down?)
+                    ; 2) create mirror image of sprites
+                    ;
+preprocess_sprite_gfx   
+L000059f8               move.w  d6,d7
+L000059fa               movea.l L00006346,a1
+L000059fe               addq.w  #$02,a1
+L00005a00               movea.l a0,a5
+L00005a02               movea.l a0,a3
+L00005a04               clr.l   d5
+L00005a06               clr.l   d0
+L00005a08               move.b  (a1)+,d0
+L00005a0a               move.b  (a1),d5
+L00005a0c               mulu.w  d0,d5
+L00005a0e               move.l  d5,d4
+L00005a10               add.w   d4,d4
+L00005a12               move.l  d4,d3
+L00005a14               add.w   d4,d3
+L00005a16               move.l  d3,d2
+L00005a18               add.w   d4,d2
+L00005a1a               move.l  d2,d1
+L00005a1c               add.w   d4,d1
+L00005a1e               subq.w  #$01,d5
+L00005a20               movea.l #$00061b9c,a2
+L00005a26               move.w  (a0)+,(a2)
+L00005a28               not.w   (a2)
+L00005a2a               move.w  (a0)+,$00(a2,d4.w)
+L00005a2e               move.w  (a0)+,$00(a2,d3.w)
+L00005a32               move.w  (a0)+,$00(a2,d2.w)
+L00005a36               move.w  (a0)+,$00(a2,d1.w)
+L00005a3a               addq.w  #$02,a2
+L00005a3c               dbf.w   d5,L00005a26
+L00005a40               move.w  #$0004,d4
+L00005a44               clr.w   d5
+L00005a46               move.b  (a1),d5
+L00005a48               subq.w  #$01,d5
+L00005a4a               move.w  d0,d2
+L00005a4c               subq.w  #$01,d2
+L00005a4e               suba.l  d0,a2
+L00005a50               suba.l  d0,a2
+L00005a52               move.w  (a2)+,(a3)+
+L00005a54               dbf.w   d2,L00005a52
+L00005a58               suba.l  d0,a2
+L00005a5a               suba.l  d0,a2
+L00005a5c               dbf.w   d5,L00005a4a
+L00005a60               adda.l  d3,a2
+L00005a62               dbf.w   d4,L00005a44 
+L00005a66               lea.l   $0007(a1),a1
+L00005a6a               dbf.w   d7,L00005a04
+L00005a6e               movea.l a3,a4
+L00005a70               movea.l L00006346,a1
+L00005a74               move.w  d6,d7
+L00005a76               moveq   #$04,d6
+L00005a78               movea.l $0004(a1),a0
+L00005a7c               clr.l   d5
+L00005a7e               clr.l   d4
+L00005a80               move.b  $0002(a1),d4
+L00005a84               move.b  $0003(a1),d5
+L00005a88               subq.w  #$01,d5
+L00005a8a               move.w  d4,d3
+L00005a8c               add.w   d3,d3
+L00005a8e               subq.w  #$01,d3
+L00005a90               move.b  $00(a0,d3.w),d0
+L00005a94               moveq   #$07,d2
+L00005a96               roxr.b  #$01,d0
+L00005a98               roxl.b  #$01,d1
+L00005a9a               dbf.w   d2,L00005a96
+L00005a9e               move.b  d1,(a3)+
+L00005aa0               dbf.w   d3,L00005a90
+L00005aa4               adda.l  d4,a0
+L00005aa6               adda.l  d4,a0
+L00005aa8               dbf.w   d5,L00005a8a
+L00005aac               dbf.w   d6,L00005a7c
+L00005ab0               lea.l   $0008(a1),a1
+L00005ab4               dbf.w   d7,L00005a76
+L00005ab8               rts  
 
 
 
 
 
 actor_init_data
-00005ABA 0004 00E8 0012 00C5 0015 0097 0017 0064  ;...............d
-00005ACA 0018 0085 001B 00BC 001F 00C1 0020 0103  ;............. ..
-00005ADA 0021 00FF 00FF 0000 52B6 460C 40F8 404C  ;.!......R.F.@.@L
-00005AEA 40A6 3FFA 40DE 4032 52B6 52B6 52B6 52B6  ;@.?.@.@2R.R.R.R.
-00005AFA 43E2 438C 41AE 4278 446E 4482 44BC 0000  ;C.C.A.BxDnD.D...
-00005B0A 5CB6 5C32 5C4A 4278 5BA4 5B4E 5F00 5F14  ;\.\2\JBx[.[N_._.
-00005B1A 5F8A 6014 6068 5D4C 5D84 5DF8 5B2C 5B36  ;_.`.`h]L].].[,[6
-00005B2A 5B40 
+L00005ABA   dc.w    $0004,$00E8
+            dc.w    $0012,$00C5
+            dc.w    $0015,$0097
+            dc.w    $0017,$0064 
+L00005ACA   dc.w    $0018,$0085
+            dc.w    $001B,$00BC
+            dc.w    $001F,$00C1
+            dc.w    $0020,$0103 
+L00005ADA   dc.w    $0021,$00FF
+            dc.w    $00FF,$0000 
+
+
+                    ; ------- jmp table -----
+                    ; converted from word to long addresses
+                    ; when called the routines have the following
+                    ; IN:-
+                    ;   a6 = L000039c8  - 
+actor_handler_table  
+L00005AE2   dc.l    L000052B6                   ;  $52B6
+            dc.l    L0000460C                   ;  $460C
+            dc.l    L000040F8                   ;  $40F8
+            dc.l    L0000404C                   ;  $404C 
+L00005AEA   dc.l    L000040A6                   ;  $40A6
+            dc.l    L00003FFA                   ;  $3FFA
+            dc.l    L000040DE                   ;  $40DE
+            dc.l    L00004032                   ;  $4032 
+            dc.l    L000052B6                   ;  $52B6 
+            dc.l    L000052B6                   ;  $52B6 
+            dc.l    L000052B6                   ;  $52B6
+            dc.l    L000052B6                   ;  $52B6 
+L00005AFA   dc.l    L000043E2                   ;  $43E2
+            dc.l    L0000438C                   ;  $438C
+            dc.l    L000041AE                   ;  $41AE
+            dc.l    L00004278                   ;  $4278 
+            dc.l    L0000446E                   ;  $446E
+            dc.l    L00004482                   ;  $4482
+            dc.l    L000044BC                   ;  $44BC
+            dc.l    L00000000                   ;  $0000 
+L00005B0A   dc.l    L00005CB6                   ;  $5CB6
+            dc.l    L00005C32                   ;  $5C32
+            dc.l    L00005C4A                   ;  $5C4A
+            dc.l    L00004278                   ;  $4278
+            dc.l    L00005BA4                   ;  $5BA4
+            dc.l    L00005B4E                   ;  $5B4E
+            dc.l    L00005F00                   ;  $5F00
+            dc.l    L00005F14                   ;  $5F14 
+L00005B1A   dc.l    L00005F8A                   ;  $5F8A
+            dc.l    L00006014                   ;  $6014
+            dc.l    L00006068                   ;  $6068
+            dc.l    L00005D4C                   ;  $5D4C 
+            dc.l    L00005D84                   ;  $5D84
+            dc.l    L00005DF8                   ;  $5DF8
+            dc.l    L00005B2C                   ;  $5B2C
+            dc.l    L00005B36                   ;  $5B36 
+L00005B2A   dc.l    L00005B40                   ;  $5B40 
 
 
 
 
-
-00005b2c 7001                     moveq #$01,d0
-00005b2e b078 6344                cmp.w $6344 [0000],d0
-00005b32 6516                     bcs.b #$16 == $00005b4a (F)
-00005b34 6010                     bra.b #$10 == $00005b46 (T)
-
-00005b36 7002                     moveq #$02,d0
-00005b38 b078 6344                cmp.w $6344 [0000],d0
-00005b3c 650c                     bcs.b #$0c == $00005b4a (F)
-00005b3e 6006                     bra.b #$06 == $00005b46 (T)
-
-00005b40 7003                     moveq #$03,d0
-00005b42 b078 6344                cmp.w $6344 [0000],d0
-00005b46 31c0 6344                move.w d0,$6344 [0000]
-00005b4a 4256                     clr.w (a6)
-00005b4c 4e75                     rts  == $6000001a
-
-
-00005b4e 303c 0590                move.w #$0590,d0
-00005b52 9078 69ec                sub.w $69ec [0000],d0
-00005b56 546e 000a                addq.w #$02,(a6,$000a) == $00dff00a
-00005b5a 2a6e 0008                movea.l (a6,$0008) == $00dff008,a5
-00005b5e 3415                     move.w (a5),d2
-00005b60 6a00 ea98                bpl.w #$ea98 == $000045fa (T)
-00005b64 6100 db88                bsr.w #$db88 == $000036ee
-00005b68 7032                     moveq #$32,d0
-00005b6a 6100 0368                bsr.w #$0368 == $00005ed4
-00005b6e 6000 0312                bra.w #$0312 == $00005e82 (T)
+                            ; a6 = actors_list
+set_player_spawn_point_1  
+L00005b2c               moveq   #$01,d0
+L00005b2e               cmp.w   L00006344,d0
+L00005b32               bcs.b   L00005b4a
+L00005b34               bra.b   L00005b46
+L00005b36               moveq   #$02,d0
+L00005b38               cmp.w   L00006344,d0
+L00005b3c               bcs.b   L00005b4a
+L00005b3e               bra.b   L00005b46
+L00005b40               moveq   #$03,d0
+L00005b42               cmp.w   L00006344,d0
+L00005b46               move.w  d0,L00006344
+L00005b4a               clr.w   (a6)
+L00005b4c               rts  
 
 
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_25
+L00005b4e               move.w  #$0590,d0
+L00005b52               sub.w   L000069ec,d0
+L00005b56               addq.w  #$02,$000a(a6)
+L00005b5a               movea.l $0008(a6),a5
+L00005b5e               move.w  (a5),d2
+L00005b60               bpl.w   L000045fa
+L00005b64               bsr.w   L000036ee
+L00005b68               moveq   #$32,d0
+L00005b6a               bsr.w   L00005ed4
+L00005b6e               bra.w   L00005e82 
 
-00005B72 0001 0001 0001 0001 0002 0002 0002 0002  ................
-00005B82 0003 0003 0003 0003 0004 0004 0004 0004  ................
-00005B92 0002 0002 0002 0002 0001 0001 0001 0001  ................
-00005BA2 FFFF
+
+
+L00005B72   dc.w    $0001,$0001
+            dc.w    $0001,$0001
+            dc.w    $0002,$0002
+            dc.w    $0002,$0002 
+L00005B82   dc.w    $0003,$0003
+            dc.w    $0003,$0003
+            dc.w    $0004,$0004
+            dc.w    $0004,$0004 
+L00005B92   dc.w    $0002,$0002
+            dc.w    $0002,$0002
+            dc.w    $0001,$0001
+            dc.w    $0001,$0001 
+L00005BA2   dc.w    $FFFF
 
 ; line 7117 - Code1.s
 
 
 
-
-00005ba4 3d7c 0098 0004           move.w #$0098,(a6,$0004) == $00dff004
-00005baa 4bf8 39bc                lea.l $39bc,a5
-00005bae 343c 0085                move.w #$0085,d2
-00005bb2 7e09                     moveq #$09,d7
-00005bb4 b46d 0006                cmp.w (a5,$0006) == $00bfd106,d2
-00005bb8 670a                     beq.b #$0a == $00005bc4 (F)
-00005bba 4bed 0016                lea.l (a5,$0016) == $00bfd116,a5
-00005bbe 51cf fff4                dbf .w d7,#$fff4 == $00005bb4 (F)
-00005bc2 6004                     bra.b #$04 == $00005bc8 (T)
-
-
-00005bc4 3415                     move.w (a5),d2
-00005bc6 660c                     bne.b #$0c == $00005bd4 (T)
-00005bc8 08b9 0007 0000 6476      bclr.b #$0007,$00006476 [00]
-00005bd0 4256                     clr.w (a6)
-00005bd2 4e75                     rts  == $6000001a
-
-
-
-00005bd4 5342                     subq.w #$01,d2
-00005bd6 66fa                     bne.b #$fa == $00005bd2 (T)
-00005bd8 4eb9 0004 8008           jsr $00048008
-00005bde 08f9 0000 0007 c874      bset.b #$0000,$0007c874 [00]
-00005be6 31fc 52b6 3c7c           move.w #$52b6,$3c7c [4c7c]
-00005bec 4278 6342                clr.w $6342 [0001]
-00005bf0 4278 6360                clr.w $6360 [0000]
-00005bf4 302d 0004                move.w (a5,$0004) == $00bfd104,d0
-00005bf8 0c40 00d4                cmp.w #$00d4,d0
-00005bfc 651c                     bcs.b #$1c == $00005c1a (F)
-00005bfe 3b7c 0081 0006           move.w #$0081,(a5,$0006) == $00bfd106
-00005c04 2b7c 0000 5b70 0008      move.l #$00005b70,(a5,$0008) == $00bfd108
-00005c0c 3abc 0019                move.w #$0019,(a5)
-00005c10 4256                     clr.w (a6)
-00005c12 700b                     moveq #$0b,d0
-00005c14 4ef9 0004 8014           jmp $00048014
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_24
+L00005ba4           move.w  #$0098,$0004(a6)
+L00005baa           lea.l   L000039bc,a5
+L00005bae           move.w  #$0085,d2
+L00005bb2           moveq   #$09,d7
+L00005bb4           cmp.w   $0006(a5),d2
+L00005bb8           beq.b   L00005bc4
+L00005bba           lea.l   $0016(a5),a5
+L00005bbe           dbf.w   d7,L00005bb4
+L00005bc2           bra.b   L00005bc8
+L00005bc4           move.w  (a5),d2
+L00005bc6           bne.b   L00005bd4 
+L00005bc8           bclr.b  #$0007,L00006476
+L00005bd0           clr.w   (a6)
+L00005bd2           rts  
 
 
-
-00005c1a 5378 69f8                subq.w #$01,$69f8 [0050]
-00005c1e 0440 0018                sub.w #$0018,d0
-00005c22 9078 69ee                sub.w $69ee [00f0],d0
-00005c26 4440                     neg.w d0
-00005c28 d078 69f4                add.w $69f4 [0048],d0
-00005c2c 31c0 69f6                move.w d0,$69f6 [0048]
-00005c30 4e75                     rts  == $6000001a
-
-
-
-00005c32 6134                     bsr.b #$34 == $00005c68
-00005c34 0c42 0008                cmp.w #$0008,d2
-00005c38 64f6                     bcc.b #$f6 == $00005c30 (T)
-00005c3a 0c42 0004                cmp.w #$0004,d2
-00005c3e 6600 e9ba                bne.w #$e9ba == $000045fa (T)
-00005c42 6152                     bsr.b #$52 == $00005c96
-00005c44 7404                     moveq #$04,d2
-00005c46 6000 e9b2                bra.w #$e9b2 == $000045fa (T)
-00005c4a 611c                     bsr.b #$1c == $00005c68
-00005c4c 0042 e000                or.w #$e000,d2
-00005c50 0c42 e008                cmp.w #$e008,d2
-00005c54 64da                     bcc.b #$da == $00005c30 (T)
-00005c56 0c42 e004                cmp.w #$e004,d2
+                    ; jack falls & hits the floor?
+L00005bd4           subq.w  #$01,d2
+L00005bd6           bne.b   L00005bd2
+L00005bd8           jsr     $00048008               ; AUDIO_PLAYER_INIT_SFX_1
+L00005bde           bset.b  #$0000,$0007c874        ; PANEL_STATUS_1
+L00005be6           move.w  #$52b6,L00003c7c        ; gl_jsr_address
+L00005bec           clr.w   L00006342
+L00005bf0           clr.w   L00006360
+L00005bf4           move.w  $0004(a5),d0
+L00005bf8           cmp.w   #$00d4,d0
+L00005bfc           bcs.b   L00005c1a
+L00005bfe           move.w  #$0081,$0006(a5)
+L00005c04           move.l  #$00005b70,$0008(a5)
+L00005c0c           move.w  #$0019,(a5)
+L00005c10           clr.w   (a6)
+L00005c12           moveq   #$0b,d0                 ; SFX_SPLASH
+L00005c14           jmp     $00048014               ; AUDIO_PLAYER_INIT_SFX
+                    ; uses rts in audio player
 
 
-00005c5a 6600 e99e                bne.w #$e99e == $000045fa (T)
-00005c5e 612a                     bsr.b #$2a == $00005c8a
-00005c60 343c e004                move.w #$e004,d2
-00005c64 6000 e994                bra.w #$e994 == $000045fa (T)
-00005c68 4242                     clr.w d2
-00005c6a 342e 0008                move.w (a6,$0008) == $00dff008,d2
-00005c6e 5802                     addq.b #$04,d2
-00005c70 6408                     bcc.b #$08 == $00005c7a (T)
-00005c72 7406                     moveq #$06,d2
-00005c74 6100 e87e                bsr.w #$e87e == $000044f4
-
-00005c78 4242                     clr.w d2
-00005c7a 3d42 0008                move.w d2,(a6,$0008) == $00dff008
-00005c7e 0c42 0037                cmp.w #$0037,d2
-00005c82 6404                     bcc.b #$04 == $00005c88 (T)
-00005c84 e64a                     lsr.w #$03,d2
-00005c86 5242                     addq.w #$01,d2
-00005c88 4e75                     rts  == $6000001a
+L00005c1a           subq.w  #$01,L000069f8
+L00005c1e           sub.w   #$0018,d0
+L00005c22           sub.w   L000069ee,d0
+L00005c26           neg.w   d0
+L00005c28           add.w   L000069f4,d0
+L00005c2c           move.w  d0,L000069f6
+L00005c30           rts  
 
 
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_21
+L00005c32           bsr.b   L00005c68
+L00005c34           cmp.w   #$0008,d2
+L00005c38           bcc.b   L00005c30
+L00005c3a           cmp.w   #$0004,d2
+L00005c3e           bne.w   L000045fa
+L00005c42           bsr.b   L00005c96
+L00005c44           moveq   #$04,d2
+L00005c46           bra.w   L000045fa 
 
 
-00005c8a 4cb8 0018 69f2           movem.w $69f2,d3-d4
-00005c90 0643 0010                add.w #$0010,d3
-00005c94 6008                     bra.b #$08 == $00005c9e (T)
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_22
+L00005c4a           bsr.b   L00005c68
+L00005c4c           or.w    #$e000,d2
+L00005c50           cmp.w   #$e008,d2
+L00005c54           bcc.b   L00005c30
+L00005c56           cmp.w   #$e004,d2
+L00005c5a           bne.w   L000045fa
+L00005c5e           bsr.b   L00005c8a
+L00005c60           move.w  #$e004,d2
+L00005c64           bra.w   L000045fa
 
-00005c96 4cb8 0018 69f2           movem.w $69f2,d3-d4
-00005c9c 5843                     addq.w #$04,d3
-00005c9e 9640                     sub.w d0,d3
-00005ca0 0c43 0016                cmp.w #$0016,d3
-00005ca4 64e2                     bcc.b #$e2 == $00005c88 (T)
-00005ca6 b841                     cmp.w d1,d4
-00005ca8 6bde                     bmi.b #$de == $00005c88 (F)
-00005caa b278 6338                cmp.w $6338 [0000],d1
-00005cae 6bd8                     bmi.b #$d8 == $00005c88 (F)
-00005cb0 7c03                     moveq #$03,d6
-00005cb2 6000 f056                bra.w #$f056 == $00004d0a (T)
-00005cb6 362e 000c                move.w (a6,$000c) == $00dff00c,d3
-00005cba 5c03                     addq.b #$06,d3
-00005cbc 3d43 000c                move.w d3,(a6,$000c) == $00dff00c
-00005cc0 0c03 0020                cmp.b #$20,d3
-00005cc4 65c2                     bcs.b #$c2 == $00005c88 (F)
-00005cc6 7401                     moveq #$01,d2
-00005cc8 0c03 0040                cmp.b #$40,d3
-00005ccc 6500 e92c                bcs.w #$e92c == $000045fa (F)
-00005cd0 3a2e 000a                move.w (a6,$000a) == $00dff00a,d5
-
-
-00005cd4 0c45 0010                cmp.w #$0010,d5
-00005cd8 6400 0004                bcc.w #$0004 == $00005cde (T)
-00005cdc 5245                     addq.w #$01,d5
-00005cde 3d45 000a                move.w d5,(a6,$000a) == $00dff00a
-00005ce2 e24d                     lsr.w #$01,d5
-00005ce4 da6e 0008                add.w (a6,$0008) == $00dff008,d5
-00005ce8 3d45 0008                move.w d5,(a6,$0008) == $00dff008
-00005cec d245                     add.w d5,d1
-00005cee 6100 f8f0                bsr.w #$f8f0 == $000055e0
-00005cf2 0c02 0051                cmp.b #$51,d2
-
-00005cf6 6528                     bcs.b #$28 == $00005d20 (F)
-00005cf8 3638 69ee                move.w $69ee [00f0],d3
-00005cfc d641                     add.w d1,d3
-00005cfe 0243 0007                and.w #$0007,d3
-00005d02 4643                     not.w d3
-00005d04 d243                     add.w d3,d1
-00005d06 7404                     moveq #$04,d2
-00005d08 b56e 0002                eor.w d2,(a6,$0002) == $00dff002
-00005d0c 42ae 0008                clr.l (a6,$0008) == $00dff008
-00005d10 426e 000c                clr.w (a6,$000c) == $00dff00c
-
-00005d14 7405                     moveq #$05,d2
-00005d16 6100 e7dc                bsr.w #$e7dc == $000044f4
-00005d1a 7402                     moveq #$02,d2
-00005d1c 6000 e8dc                bra.w #$e8dc == $000045fa (T)
-00005d20 7401                     moveq #$01,d2
-00005d22 3638 69f2                move.w $69f2 [0050],d3
-00005d26 9640                     sub.w d0,d3
-00005d28 5643                     addq.w #$03,d3
-00005d2a 0c43 0007                cmp.w #$0007,d3
-00005d2e 6400 e8ca                bcc.w #$e8ca == $000045fa (T)
->d
-00005d32 b278 6338                cmp.w $6338 [0000],d1
-00005d36 6b00 e8c2                bmi.w #$e8c2 == $000045fa (F)
-00005d3a b278 69f4                cmp.w $69f4 [0048],d1
-00005d3e 6a00 e8ba                bpl.w #$e8ba == $000045fa (T)
-00005d42 7c02                     moveq #$02,d6
-00005d44 6100 efc4                bsr.w #$efc4 == $00004d0a
-00005d48 60bc                     bra.b #$bc == $00005d06 (T)
-00005d4a 4e75                     rts  == $6000001a
-00005d4c 342e 0004                move.w (a6,$0004) == $00dff004,d2
-00005d50 4642                     not.w d2
+L00005c68           clr.w   d2
+L00005c6a           move.w  $0008(a6),d2
+L00005c6e           addq.b  #$04,d2
+L00005c70           bcc.b   L00005c7a
+L00005c72           moveq   #$06,d2
+L00005c74           bsr.w   L000044f4
+L00005c78           clr.w   d2
+L00005c7a           move.w  d2,$0008(a6)
+L00005c7e           cmp.w   #$0037,d2
+L00005c82           bcc.b   L00005c88
+L00005c84           lsr.w   #$03,d2
+L00005c86           addq.w  #$01,d2
+L00005c88           rts  
 
 
->d
-00005d52 0242 0007                and.w #$0007,d2
-00005d56 0882 0002                bclr.l #$0002,d2
-00005d5a 6604                     bne.b #$04 == $00005d60 (T)
-00005d5c 0642 e000                add.w #$e000,d2
-00005d60 3f02                     move.w d2,-(a7) [0c64]
-00005d62 5442                     addq.w #$02,d2
-00005d64 6100 e894                bsr.w #$e894 == $000045fa
-00005d68 341f                     move.w (a7)+ [6000],d2
-00005d6a 0242 e000                and.w #$e000,d2
-00005d6e 5242                     addq.w #$01,d2
->d
-00005d70 6100 e856                bsr.w #$e856 == $000045c8
-00005d74 0838 0000 6375           btst.b #$0000,$6375 [00]
-00005d7a 67ce                     beq.b #$ce == $00005d4a (F)
-00005d7c 536e 0004                subq.w #$01,(a6,$0004) == $00dff004
-00005d80 6b48                     bmi.b #$48 == $00005dca (F)
-00005d82 4e75                     rts  == $6000001a
-00005d84 0838 0000 6375           btst.b #$0000,$6375 [00]
-00005d8a 6710                     beq.b #$10 == $00005d9c (F)
-00005d8c 48e7 c002                movem.l d0-d1/a6,-(a7)
-00005d90 700b                     moveq #$0b,d0
->d
-00005d92 4eb9 0004 8014           jsr $00048014
-00005d98 4cdf 4003                movem.l (a7)+,d0-d1/a6
-00005d9c 3438 6374                move.w $6374 [0000],d2
-00005da0 e44a                     lsr.w #$02,d2
-00005da2 0242 0003                and.w #$0003,d2
-00005da6 5242                     addq.w #$01,d2
-00005da8 6100 e850                bsr.w #$e850 == $000045fa
-00005dac 0441 0010                sub.w #$0010,d1
-00005db0 6aea                     bpl.b #$ea == $00005d9c (T)
-00005db2 4bf8 39bc                lea.l $39bc,a5
->d
-00005db6 343c 0103                move.w #$0103,d2
-00005dba 7e09                     moveq #$09,d7
-00005dbc b46d 0006                cmp.w (a5,$0006) == $00bfd106,d2
-00005dc0 670e                     beq.b #$0e == $00005dd0 (F)
-00005dc2 4bed 0016                lea.l (a5,$0016) == $00bfd116,a5
-00005dc6 51cf fff4                dbf .w d7,#$fff4 == $00005dbc (F)
-00005dca 7c5a                     moveq #$5a,d6
-00005dcc 6000 ef3c                bra.w #$ef3c == $00004d0a (T)
-00005dd0 3415                     move.w (a5),d2
-00005dd2 67f6                     beq.b #$f6 == $00005dca (F)
-
->d
-00005dd4 5342                     subq.w #$01,d2
-00005dd6 6600 ff72                bne.w #$ff72 == $00005d4a (T)
-00005dda 31fc 52b6 3c7c           move.w #$52b6,$3c7c [4c7c]
-00005de0 3abc 0021                move.w #$0021,(a5)
-00005de4 4278 6360                clr.w $6360 [0000]
-00005de8 31fc ffff 6342           move.w #$ffff,$6342 [0001]
-00005dee 13fc 0001 0007 c874      move.b #$01,$0007c874 [00]
-00005df6 4e75                     rts  == $6000001a
-00005df8 3438 69ec                move.w $69ec [0000],d2
-00005dfc 0c42 0230                cmp.w #$0230,d2
->d
-00005e00 6714                     beq.b #$14 == $00005e16 (F)
-00005e02 546e 0002                addq.w #$02,(a6,$0002) == $00dff002
-00005e06 7470                     moveq #$70,d2
-00005e08 9440                     sub.w d0,d2
-00005e0a 0c42 fffd                cmp.w #$fffd,d2
-00005e0e 6402                     bcc.b #$02 == $00005e12 (T)
-00005e10 74fe                     moveq #$fe,d2
-00005e12 d578 69f8                add.w d2,$69f8 [0050]
-00005e16 0c41 0048                cmp.w #$0048,d1
-00005e1a 6452                     bcc.b #$52 == $00005e6e (T)
->d
-00005e1c 362e 000a                move.w (a6,$000a) == $00dff00a,d3
-00005e20 0c43 000e                cmp.w #$000e,d3
-00005e24 6a06                     bpl.b #$06 == $00005e2c (T)
-00005e26 5243                     addq.w #$01,d3
-00005e28 3d43 000a                move.w d3,(a6,$000a) == $00dff00a
-00005e2c e243                     asr.w #$01,d3
-00005e2e d76e 0004                add.w d3,(a6,$0004) == $00dff004
-00005e32 7418                     moveq #$18,d2
-00005e34 9441                     sub.w d1,d2
-00005e36 d578 69f6                add.w d2,$69f6 [0048]
->d
-00005e3a 7406                     moveq #$06,d2
-00005e3c 0c43 0004                cmp.w #$0004,d3
-00005e40 6b16                     bmi.b #$16 == $00005e58 (F)
-00005e42 7407                     moveq #$07,d2
-00005e44 0c42 0007                cmp.w #$0007,d2
-00005e48 6b0e                     bmi.b #$0e == $00005e58 (F)
-00005e4a 740c                     moveq #$0c,d2
-00005e4c c478 6374                and.w $6374 [0000],d2
-00005e50 e44a                     lsr.w #$02,d2
-00005e52 6602                     bne.b #$02 == $00005e56 (T)
 
 
->d
-00005e54 7402                     moveq #$02,d2
-00005e56 5e42                     addq.w #$07,d2
-00005e58 6100 e7a0                bsr.w #$e7a0 == $000045fa
-00005e5c 4eb9 0004 8004           jsr $00048004
-00005e62 203c 0000 0210           move.l #$00000210,d0
-00005e68 4ef9 0007 c82a           jmp $0007c82a
-00005e6e 7250                     moveq #$50,d1
-00005e70 740b                     moveq #$0b,d2
-00005e72 6100 e786                bsr.w #$e786 == $000045fa
-00005e76 6100 d876                bsr.w #$d876 == $000036ee
->d
-00005e7a 08f9 0006 0007 c875      bset.b #$0006,$0007c875 [00]
-00005e82 4eb9 0004 8004           jsr $00048004
-00005e88 7002                     moveq #$02,d0
-00005e8a 4eb9 0004 8010           jsr $00048010
-00005e90 303c 00fa                move.w #$00fa,d0
-00005e94 613e                     bsr.b #$3e == $00005ed4
-00005e96 7064                     moveq #$64,d0
-00005e98 6100 003a                bsr.w #$003a == $00005ed4
-00005e9c 6100 efc8                bsr.w #$efc8 == $00004e66
-00005ea0 41f8 3ab1                lea.l $3ab1,a0
->d
-00005ea4 6100 0b54                bsr.w #$0b54 == $000069fa
-00005ea8 6100 de00                bsr.w #$de00 == $00003caa
-00005eac 7064                     moveq #$64,d0
-00005eae 6100 0024                bsr.w #$0024 == $00005ed4
-00005eb2 6100 efb2                bsr.w #$efb2 == $00004e66
-00005eb6 41f8 3abd                lea.l $3abd,a0
-00005eba 6100 0b3e                bsr.w #$0b3e == $000069fa
-00005ebe 6100 ddea                bsr.w #$ddea == $00003caa
-00005ec2 7064                     moveq #$64,d0
-00005ec4 6100 000e                bsr.w #$000e == $00005ed4
->d
-00005ec8 6100 dddc                bsr.w #$dddc == $00003ca6
-00005ecc 6100 dea8                bsr.w #$dea8 == $00003d76
-00005ed0 6000 a94e                bra.w #$a94e == $00000820 (T)
-00005ed4 d078 36e2                add.w $36e2 [0000],d0
-00005ed8 b078 36e2                cmp.w $36e2 [0000],d0
-00005edc 6afa                     bpl.b #$fa == $00005ed8 (T)
-00005ede 4e75                     rts  == $6000001a
-00005ee0 4cb8 000c 69f2           movem.w $69f2,d2-d3
-00005ee6 9641                     sub.w d1,d3
-00005ee8 0c43 0001                cmp.w #$0001,d3
-
->d
-00005eec 6424                     bcc.b #$24 == $00005f12 (T)
-00005eee 9440                     sub.w d0,d2
-00005ef0 0c42 0020                cmp.w #$0020,d2
-00005ef4 641c                     bcc.b #$1c == $00005f12 (T)
-00005ef6 1438 6337                move.b $6337 [01],d2
-00005efa 0c02 0024                cmp.b #$24,d2
-00005efe 4e75                     rts  == $6000001a
-00005f00 61de                     bsr.b #$de == $00005ee0
-00005f02 640e                     bcc.b #$0e == $00005f12 (T)
-00005f04 31fc 0018 69f6           move.w #$0018,$69f6 [0048]
->d
-00005f0a 5256                     addq.w #$01,(a6)
-00005f0c 3d7c 0020 0008           move.w #$0020,(a6,$0008) == $00dff008
-00005f12 4e75                     rts  == $6000001a
-00005f14 536e 0008                subq.w #$01,(a6,$0008) == $00dff008
-00005f18 6726                     beq.b #$26 == $00005f40 (F)
-00005f1a 7427                     moveq #$27,d2
-00005f1c 946e 0008                sub.w (a6,$0008) == $00dff008,d2
-00005f20 e64a                     lsr.w #$03,d2
-00005f22 3f02                     move.w d2,-(a7) [0c64]
-00005f24 6100 e6d4                bsr.w #$e6d4 == $000045fa
->d
-00005f28 5040                     addq.w #$08,d0
-00005f2a 3417                     move.w (a7) [6000],d2
-00005f2c 6100 e6cc                bsr.w #$e6cc == $000045fa
-00005f30 5040                     addq.w #$08,d0
-00005f32 3417                     move.w (a7) [6000],d2
-00005f34 6100 e6c4                bsr.w #$e6c4 == $000045fa
-00005f38 5040                     addq.w #$08,d0
-00005f3a 341f                     move.w (a7)+ [6000],d2
-00005f3c 6000 e6bc                bra.w #$e6bc == $000045fa (T)
-00005f40 4256                     clr.w (a6)
->d
-00005f42 6100 f69c                bsr.w #$f69c == $000055e0
-00005f46 e14a                     lsl.w #$08,d2
-00005f48 1430 3001                move.b (a0,d3.W,$01) == $00000c78 [00],d2
-00005f4c 1830 3002                move.b (a0,d3.W,$02) == $00000c79 [3c],d4
-00005f50 e14c                     lsl.w #$08,d4
-00005f52 1830 3003                move.b (a0,d3.W,$03) == $00000c7a [00],d4
-00005f56 2a78 5fac                movea.l $5fac [0000600c],a5
-00005f5a 48a5 3800                movem.w d2-d4,-(a5)
-00005f5e 21cd 5fac                move.l a5,$5fac [0000600c]
-00005f62 11bc 004f 3000           move.b #$4f,(a0,d3.W,$00) == $00000c77 [00]
+L00005c8a           movem.w L000069f2,d3-d4
+L00005c90           add.w   #$0010,d3
+L00005c94           bra.b   L00005c9e
+L00005c96           movem.w L000069f2,d3-d4
+L00005c9c           addq.w  #$04,d3
+L00005c9e           sub.w   d0,d3
+L00005ca0           cmp.w   #$0016,d3
+L00005ca4           bcc.b   L00005c88 
+L00005ca6           cmp.w   d1,d4
+L00005ca8           bmi.b   L00005c88
+L00005caa           cmp.w   L00006338,d1
+L00005cae           bmi.b   L00005c88
+L00005cb0           moveq   #$03,d6
+L00005cb2           bra.w   L00004d0a
 
 
->d
-00005f68 11bc 004f 3001           move.b #$4f,(a0,d3.W,$01) == $00000c78 [00]
-00005f6e 11bc 004f 3002           move.b #$4f,(a0,d3.W,$02) == $00000c79 [3c]
-00005f74 11bc 004f 3003           move.b #$4f,(a0,d3.W,$03) == $00000c7a [00]
-00005f7a 6100 ff64                bsr.w #$ff64 == $00005ee0
-00005f7e 640a                     bcc.b #$0a == $00005f8a (T)
-00005f80 31fc 540e 3c7c           move.w #$540e,$3c7c [4c7c]
-00005f86 4278 6360                clr.w $6360 [0000]
-00005f8a 7405                     moveq #$05,d2
-00005f8c 6100 e66c                bsr.w #$e66c == $000045fa
-00005f90 7405                     moveq #$05,d2
->d
-00005f92 5040                     addq.w #$08,d0
-00005f94 6100 e664                bsr.w #$e664 == $000045fa
-00005f98 7405                     moveq #$05,d2
-00005f9a 5040                     addq.w #$08,d0
-00005f9c 6100 e65c                bsr.w #$e65c == $000045fa
-00005fa0 7405                     moveq #$05,d2
-00005fa2 5040                     addq.w #$08,d0
-00005fa4 6100 e654                bsr.w #$e654 == $000045fa
-00005fa8 6000 f940                bra.w #$f940 == $000058ea (T)
-
->m 5fac
-00005FAC 0000 600C 0000 0000 0000 0000 0000 0000  ..`.............
-00005FBC 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00005FCC 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00005FDC 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00005FEC 0000 0000 0000 0000 0000 0000 0000 0000  ................
-00005FFC 0000 0000 0000 0000 0000 0000 0000 0000  ................
-0000600C 0000 0000 0000 0000
-
-
-; line 7616 - code1.s
-
->d 6014
-00006014 0c40 00c0                cmp.w #$00c0,d0
-00006018 6a40                     bpl.b #$40 == $0000605a (T)
-0000601a 0244 0007                and.w #$0007,d4
-0000601e 660e                     bne.b #$0e == $0000602e (T)
-00006020 5040                     addq.w #$08,d0
-00006022 6100 f5bc                bsr.w #$f5bc == $000055e0
-00006026 5140                     subq.w #$08,d0
-00006028 0c02 0051                cmp.b #$51,d2
-0000602c 652c                     bcs.b #$2c == $0000605a (F)
-0000602e 526e 0002                addq.w #$01,(a6,$0002) == $00dff002
->d
-00006032 536e 0008                subq.w #$01,(a6,$0008) == $00dff008
-00006036 6a26                     bpl.b #$26 == $0000605e (T)
-00006038 4cb8 000c 69f2           movem.w $69f2,d2-d3
-0000603e 9440                     sub.w d0,d2
-00006040 0c42 0008                cmp.w #$0008,d2
-00006044 6418                     bcc.b #$18 == $0000605e (T)
-00006046 9641                     sub.w d1,d3
-00006048 0c43 0013                cmp.w #$0013,d3
-0000604c 6410                     bcc.b #$10 == $0000605e (T)
-0000604e 3d7c 0019 0008           move.w #$0019,(a6,$0008) == $00dff008
->d
-00006054 7c02                     moveq #$02,d6
-00006056 6100 ecb2                bsr.w #$ecb2 == $00004d0a
-0000605a 3cbc 001e                move.w #$001e,(a6)
-0000605e 3404                     move.w d4,d2
-00006060 e24a                     lsr.w #$01,d2
-00006062 5242                     addq.w #$01,d2
-00006064 6000 e594                bra.w #$e594 == $000045fa (T)
-00006068 0c40 ffc0                cmp.w #$ffc0,d0
-0000606c 6b44                     bmi.b #$44 == $000060b2 (F)
-0000606e 0244 0007                and.w #$0007,d4
->d
-00006072 6612                     bne.b #$12 == $00006086 (T)
-00006074 0440 0010                sub.w #$0010,d0
-00006078 6100 f566                bsr.w #$f566 == $000055e0
-0000607c 0640 0010                add.w #$0010,d0
-00006080 0c02 0051                cmp.b #$51,d2
-00006084 652c                     bcs.b #$2c == $000060b2 (F)
-00006086 536e 0002                subq.w #$01,(a6,$0002) == $00dff002
-0000608a 536e 0008                subq.w #$01,(a6,$0008) == $00dff008
-0000608e 6a26                     bpl.b #$26 == $000060b6 (T)
-00006090 4cb8 000c 69f2           movem.w $69f2,d2-d3
->d
-00006096 9440                     sub.w d0,d2
-00006098 0642 000a                add.w #$000a,d2
-0000609c 6418                     bcc.b #$18 == $000060b6 (T)
-0000609e 9641                     sub.w d1,d3
-000060a0 0c43 0013                cmp.w #$0013,d3
-000060a4 6410                     bcc.b #$10 == $000060b6 (T)
-000060a6 3d7c 0019 0008           move.w #$0019,(a6,$0008) == $00dff008
-000060ac 7c02                     moveq #$02,d6
-000060ae 6100 ec5a                bsr.w #$ec5a == $00004d0a
-000060b2 3cbc 001d                move.w #$001d,(a6)
-
->d
-000060b6 343c e003                move.w #$e003,d2
-000060ba e24c                     lsr.w #$01,d4
-000060bc b942                     eor.w d4,d2
-000060be 5242                     addq.w #$01,d2
-000060c0 6000 e538                bra.w #$e538 == $000045fa (T)
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_20
+L00005cb6            move.w  $000c(a6),d3
+L00005cba            addq.b  #$06,d3
+L00005cbc            move.w  d3,$000c(a6)
+L00005cc0            cmp.b   #$20,d3
+L00005cc4            bcs.b   L00005c88
+L00005cc6            moveq   #$01,d2
+L00005cc8            cmp.b   #$40,d3
+L00005ccc            bcs.w   L000045fa 
+L00005cd0            move.w  $000a(a6),d5
+L00005cd4            cmp.w   #$0010,d5
+L00005cd8            bcc.w   L00005cde 
+L00005cdc            addq.w  #$01,d5
+L00005cde            move.w  d5,$000a(a6)
+L00005ce2            lsr.w   #$01,d5
+L00005ce4            add.w   $0008(a6),d5
+L00005ce8            move.w  d5,$0008(a6)
+L00005cec            add.w   d5,d1
+L00005cee            bsr.w   L000055e0
+L00005cf2            cmp.b   #$51,d2
+L00005cf6            bcs.b   L00005d20
+L00005cf8            move.w  L000069ee,d3
+L00005cfc            add.w   d1,d3
+L00005cfe            and.w   #$0007,d3
+L00005d02            not.w   d3
+L00005d04            add.w   d3,d1
+L00005d06            moveq   #$04,d2
+L00005d08            eor.w   d2,$0002(a6)
+L00005d0c            clr.l   $0008(a6)
+L00005d10            clr.w   $000c(a6)
+L00005d14            moveq   #$05,d2
+L00005d16            bsr.w   L000044f4
+L00005d1a            moveq   #$02,d2
+L00005d1c            bra.w   L000045fa
+L00005d20            moveq   #$01,d2
+L00005d22            move.w  L000069f2,d3
+L00005d26            sub.w   d0,d3
+L00005d28            addq.w  #$03,d3
+L00005d2a            cmp.w   #$0007,d3
+L00005d2e            bcc.w   L000045fa 
+L00005d32            cmp.w   L00006338,d1
+L00005d36            bmi.w   L000045fa
+L00005d3a            cmp.w   L000069f4,d1
+L00005d3e            bpl.w   L000045fa 
+L00005d42            moveq   #$02,d6
+L00005d44            bsr.w   L00004d0a
+L00005d48            bra.b   L00005d06
+L00005d4a            rts  
 
 
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_31
+L00005d4c           move.w  $0004(a6),d2
+L00005d50           not.w   d2
+L00005d52           and.w   #$0007,d2
+L00005d56           bclr.l  #$0002,d2
+L00005d5a           bne.b   L00005d60
+L00005d5c           add.w   #$e000,d2
+L00005d60           move.w  d2,-(a7)
+L00005d62           addq.w  #$02,d2
+L00005d64           bsr.w   L000045fa
+L00005d68           move.w  (a7)+,d2
+L00005d6a           and.w   #$e000,d2
+L00005d6e           addq.w  #$01,d2
+L00005d70           bsr.w   L000045c8
+L00005d74           btst.b  #$0000,L00006375
+L00005d7a           beq.b   L00005d4a
+L00005d7c           subq.w  #$01,$0004(a6) 
+L00005d80           bmi.b   L00005dca
+L00005d82           rts 
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+
+                    ; jack falls hits the floor?
+actor_cmd_32_jackvat
+L00005d84           btst.b  #$0000,L00006375
+L00005d8a           beq.b   L00005d9c
+L00005d8c           movem.l d0-d1/a6,-(a7)
+L00005d90           moveq   #$0b,d0
+L00005d92           jsr     $00048014                   ; AUDIO PLAYER
+L00005d98           movem.l (a7)+,d0-d1/a6
+L00005d9c           move.w  L00006374,d2
+L00005da0           lsr.w   #$02,d2
+L00005da2           and.w   #$0003,d2
+L00005da6           addq.w  #$01,d2
+L00005da8           bsr.w   L000045fa
+L00005dac           sub.w   #$0010,d1
+L00005db0           bpl.b   L00005d9c
+L00005db2           lea.l   L000039bc,a5
+L00005db6           move.w  #$0103,d2
+L00005dba           moveq   #$09,d7
+L00005dbc           cmp.w   $0006(a5),d2
+L00005dc0           beq.b   L00005dd0 
+L00005dc2           lea.l   $0016(a5),a5
+L00005dc6           dbf.w   d7,L00005dbc
+L00005dca           moveq   #$5a,d6
+L00005dcc           bra.w   L00004d0a
+
+
+L00005dd0           move.w  (a5),d2
+L00005dd2           beq.b   L00005dca 
+L00005dd4           subq.w  #$01,d2
+L00005dd6           bne.w   L00005d4a 
+L00005dda           move.w  #$52b6,L00003c7c
+L00005de0           move.w  #$0021,(a5)
+L00005de4           clr.w   L00006360
+L00005de8           move.w  #$ffff,L00006342
+L00005dee           move.b  #$01,$0007c874      ; PANEL
+L00005df6           rts  
+
+
+
+L00005df8           move.w  L000069ec,d2
+L00005dfc           cmp.w   #$0230,d2
+L00005e00           beq.b   L00005e16
+L00005e02           addq.w  #$02,$0002(a6)
+L00005e06           moveq   #$70,d2
+L00005e08           sub.w   d0,d2
+L00005e0a           cmp.w   #$fffd,d2
+L00005e0e           bcc.b   L00005e12
+L00005e10           moveq   #$fe,d2
+L00005e12           add.w   d2,L000069f8
+                    ; check level complete
+L00005e16           cmp.w   #$0048,d1
+L00005e1a           bcc.b   L00005e6e
+
+L00005e1c           move.w  $000a(a6),d3
+L00005e20           cmp.w   #$000e,d3
+L00005e24           bpl.b   L00005e2c
+L00005e26           addq.w  #$01,d3
+L00005e28           move.w  d3,$000a(a6)
+L00005e2c           asr.w   #$01,d3
+L00005e2e           add.w   d3,$0004(a6)
+L00005e32           moveq   #$18,d2
+L00005e34           sub.w   d1,d2
+L00005e36           add.w   d2,L000069f6
+L00005e3a           moveq   #$06,d2
+L00005e3c           cmp.w   #$0004,d3
+L00005e40           bmi.b   L00005e58
+L00005e42           moveq   #$07,d2
+L00005e44           cmp.w   #$0007,d2
+L00005e48           bmi.b   L00005e58
+L00005e4a           moveq   #$0c,d2
+L00005e4c           and.w   L00006374,d2
+L00005e50           lsr.w   #$02,d2
+L00005e52           bne.b   L00005e56
+L00005e54           moveq   #$02,d2
+L00005e56           addq.w  #$07,d2
+L00005e58           bsr.w   L000045fa
+L00005e5c           jsr     $00048004               ; AUDIO_PLAYER
+L00005e62           move.l  #$00000210,d0
+L00005e68           jmp     $0007c82a               ; PANEL_ADD_SCORE
+
+
+
+                    ; ------------------------ level completed ------------------------
+                    ; IN:
+                    ;   d0.w - Sprite X
+                    ;   a6.l - address of object/sprite structure
+level_completed    
+L00005e6e           moveq   #$50,d1
+L00005e70           moveq   #$0b,d2
+L00005e72           bsr.w   L000045fa
+L00005e76           bsr.w   L000036ee
+L00005e7a           bset.b  #$0006,$0007c875
+                    ; fall through to 'load_level_2'
+
+
+
+                    ; -------------------------- load title screen ------------------------
+                    ; do level completed sequence of displaying the text:
+                    ;   - Jack is Dead
+                    ;   - The Joker Lives
+                    ; then clear the screen and load the title screen
+                    ;
+Load_title_screen  
+L00005e82           jsr     $00048004
+L00005e88           moveq   #$02,d0
+L00005e8a           jsr     $00048010
+L00005e90           move.w  #$00fa,d0
+L00005e94           bsr.b   L00005ed4
+L00005e96           moveq   #$64,d0
+L00005e98           bsr.w   L00005ed4
+L00005e9c           bsr.w   L00004e66
+L00005ea0           lea.l   L00003ab1,a0
+L00005ea4           bsr.w   l000069fa
+L00005ea8           bsr.w   l00003caa
+L00005eac           moveq   #$64,d0
+L00005eae           bsr.w   L00005ed4
+L00005eb2           bsr.w   L00004e66
+L00005eb6           lea.l   L00003abd,a0
+L00005eba           bsr.w   L000069fa
+L00005ebe           bsr.w   L00003caa
+L00005ec2           moveq   #$64,d0
+L00005ec4           bsr.w   L00005ed4
+L00005ec8           bsr.w   L00003ca6
+L00005ecc           bsr.w   L00003d76
+L00005ed0           bra.w   L00000820     ;LOADER_TITLE_SCREEN
+
+
+                    ; -------- wait for frame count ---------
+wait_for_frame_count    
+L00005ed4           add.w   L000036e2,d0
+L00005ed8           cmp.w   L000036e2,d0
+L00005edc           bpl.b   L00005ed8
+L00005ede           rts  
+
+
+L00005ee0           movem.w L000069f2,d2-d3
+L00005ee6           sub.w   d1,d3
+L00005ee8           cmp.w   #$0001,d3
+L00005eec           bcc.b   L00005f12
+L00005eee           sub.w   d0,d2
+L00005ef0           cmp.w   #$0020,d2
+L00005ef4           bcc.b   L00005f12
+L00005ef6           move.b  L00006337,d2
+L00005efa           cmp.b   #$24,d2
+L00005efe           rts  
+
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_26
+L00005f00           bsr.b   L00005ee0
+L00005f02           bcc.b   L00005f12
+L00005f04           move.w  #$0018,L000069f6
+L00005f0a           addq.w  #$01,(a6)
+L00005f0c           move.w  #$0020,$0008(a6) 
+L00005f12           rts  
+
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_27
+L00005f14           subq.w  #$01,$0008(a6)
+L00005f18           beq.b   L00005f40
+L00005f1a           moveq   #$27,d2
+L00005f1c           sub.w   $0008(a6),d2
+L00005f20           lsr.w   #$03,d2
+L00005f22           move.w  d2,-(a7)
+L00005f24           bsr.w   L000045fa
+L00005f28           addq.w  #$08,d0
+L00005f2a           move.w  (a7),d2
+L00005f2c           bsr.w   L000045fa
+L00005f30           addq.w  #$08,d0
+L00005f32           move.w  (a7),d2
+L00005f34           bsr.w   L000045fa
+L00005f38           addq.w  #$08,d0
+L00005f3a           move.w  (a7)+,d2
+L00005f3c           bra.w   L000045fa 
+
+                    ; IN:-
+                    ;   a0.l = level data index?
+L00005f40           clr.w   (a6)
+L00005f42           bsr.w   L000055e0
+L00005f46           lsl.w   #$08,d2
+L00005f48           move.b  $01(a0,d3.w),d2
+L00005f4c           move.b  $02(a0,d3.w),d4
+L00005f50           lsl.w   #$08,d4
+L00005f52           move.b  $03(a0,d3.w),d4
+L00005f56           movea.l L00005fac,a5
+L00005f5a           movem.w d2-d4,-(a5)
+L00005f5e           move.l  a5,L00005fac
+L00005f62           move.b  #$4f,$00(a0,d3.w)
+L00005f68           move.b  #$4f,$01(a0,d3.w)
+L00005f6e           move.b  #$4f,$02(a0,d3.w)
+L00005f74           move.b  #$4f,$03(a0,d3.w)
+L00005f7a           bsr.w   L00005ee0
+L00005f7e           bcc.b   L00005f8a 
+L00005f80           move.w  #$540e,L00003c7c
+L00005f86           clr.w   L00006360
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_28
+L00005f8a           moveq   #$05,d2
+L00005f8c           bsr.w   L000045fa
+L00005f90           moveq   #$05,d2
+L00005f92           addq.w  #$08,d0
+L00005f94           bsr.w   L000045fa
+L00005f98           moveq   #$05,d2
+L00005f9a           addq.w  #$08,d0
+L00005f9c           bsr.w   L000045fa
+L00005fa0           moveq   #$05,d2
+L00005fa2           addq.w  #$08,d0
+L00005fa4           bsr.w   L000045fa
+L00005fa8           bra.w   L000058ea 
+
+
+
+
+L00005FAC       dc.l    L0000600C       ;                   ; a ptr used with map data - to location down below
+
+l00005FB0       dc.w    $0000,$0000 
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000 
+L00005FBC       dc.w    $0000,$0000 
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000 
+L00005FCC       dc.w    $0000,$0000 
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000 
+L00005FDC       dc.w    $0000,$0000 
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000 
+L00005FEC       dc.w    $0000,$0000 
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000 
+L00005FFC       dc.w    $0000,$0000 
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000
+                dc.w    $0000,$0000 
+
+L0000600C       dc.w    $0000,$0000                 ; data location initially pointed to by ptr above L00005f64
+L00006010       dc.w    $0000                       ; 3 words used by level data initialisation
+                dc.w    $0000
+
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_29
+; Line 7616 - code1.s
+L00006014           cmp.w   #$00c0,d0
+L00006018           bpl.b   L0000605a
+L0000601a           and.w   #$0007,d4
+L0000601e           bne.b   L0000602e
+L00006020           addq.w  #$08,d0
+L00006022           bsr.w   L000055e0
+L00006026           subq.w  #$08,d0
+L00006028           cmp.b   #$51,d2
+L0000602c           bcs.b   L0000605a
+L0000602e           addq.w  #$01,$0002(a6)
+L00006032           subq.w  #$01,$0008(a6)
+L00006036           bpl.b   L0000605e
+L00006038           movem.w L000069f2,d2-d3
+L0000603e           sub.w   d0,d2
+L00006040           cmp.w   #$0008,d2
+L00006044           bcc.b   L0000605e
+L00006046           sub.w   d1,d3
+L00006048           cmp.w   #$0013,d3
+L0000604c           bcc.b   L0000605e
+L0000604e           move.w  #$0019,$0008(a6)
+L00006054           moveq   #$02,d6
+L00006056           bsr.w   L00004d0a
+L0000605a           move.w  #$001e,(a6)
+L0000605e           move.w  d4,d2
+L00006060           lsr.w   #$01,d2
+L00006062           addq.w  #$01,d2
+L00006064           bra.w   L000045fa
+
+
+
+
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+actor_cmd_30
+L00006068           cmp.w   #$ffc0,d0
+L0000606c           bmi.b   L000060b2
+L0000606e           and.w   #$0007,d4
+L00006072           bne.b   L00006086
+L00006074           sub.w   #$0010,d0
+L00006078           bsr.w   L000055e0
+L0000607c           add.w   #$0010,d0
+L00006080           cmp.b   #$51,d2
+L00006084           bcs.b   L000060b2
+L00006086           subq.w  #$01,$0002(a6)
+L0000608a           subq.w  #$01,$0008(a6)
+L0000608e           bpl.b   L000060b6
+L00006090           movem.w L000069f2,d2-d3
+L00006096           sub.w   d0,d2
+L00006098           add.w   #$000a,d2
+L0000609c           bcc.b   L000060b6
+L0000609e           sub.w   d1,d3
+L000060a0           cmp.w   #$0013,d3
+L000060a4           bcc.b   L000060b6 
+L000060a6           move.w  #$0019,$0008(a6)
+L000060ac           moveq   #$02,d6
+L000060ae           bsr.w   L00004d0a
+L000060b2           move.w  #$001d,(a6)
+L000060b6           move.w  #$e003,d2
+L000060ba           lsr.w   #$01,d4
+L000060bc           eor.w   d4,d2
+L000060be           addq.w  #$01,d2
+L000060c0           bra.w   L000045fa
+
+                    even
+
+;Line 7686 - Code1.s
                     ; ---------------- display object co-ordinates ---------------
                     ; Start of 305 (sprite x & y positions - initialisation data)
 display_object_coords 
->m 60c4
-000060C4 2A02 2005 2005 2004 1505 1506 1506 1507  *. . . .........
-000060D4 1507 1506 1507 1507 2C10 2C08 1402 210D  ........,.,...!.
-000060E4 2B05 1905 2504 1706 1702 2005 0F06 0006  +...%..... .....
-000060F4 2405 1507 1C05 1007 1207 1B03 1308 2C07  $.............,.
-00006104 2C07 2C07 2C07 2904 1A06 03FE 2902 2008  ,.,.,.).....). .
-00006114 1306 2A08 2007 2A04 2A02 24FA 1405 2A03  ..*. .*.*.$...*.
-00006124 2A08 0F05 0F05 0F05 0F05 2A07 1507 1508  *.........*.....
-00006134 1507 1508 0200 0201 0202 0000 0100 0100  ................
-00006144 0101 0604 0B07 0F07 0C07 0B06 2005 1208  ............ ...
-00006154 1200 2903 2206 2205 2204 1506 1507 1508  ..).".".".......
-00006164 1504 1504 1506 1507 1504 2904 25FD 1305  ..........).%...
-00006174 2904 2CFD 2904 1BFD 2004 1CFD 0C07 2805  ).,.)... .....(.
-00006184 1503 1503 1503 1503 0301 0301 0601 0401  ................
-00006194 0400 04FD 04FA 1D05 1108 0809 2903 2006  ............). .
-000061A4 2005 2004 1506 1507 1508 1504 1504 1506   . .............
-000061B4 1507 1504 2906 1306 2A07 2904 2EFC 2904  ....)...*.)...).
-000061C4 25FB 0C0F 2211 3416 2C16 2009 1208 0B08  %...".4.,. .....
-000061D4 2903 2005 2004 2004 1505 1506 1507 1503  ). . . .........
-000061E4 1504 1505 1506 1503 2903 25FC 1405 0800  ........).%.....
-000061F4 0303 2904 1BFD 2004 1CFD 0C07 2004 1207  ..)... ..... ...
->m
-00006204 0B07 2904 2006 2005 2004 1506 1507 1508  ..). . . .......
-00006214 1504 1504 1506 1507 1504 2904 25FD 1405  ..........).%...
-00006224 2B04 2FFD 2904 18FC 2004 1CFD 0C07 2806  +./.)... .....(.
-00006234 1803 1803 1803 1803 0000 0000 0000 0000  ................
-00006244 0000 0908 0908 0908 0808 1D05 1308 0809  ................
-00006254 2904 2006 2005 2004 1506 1507 1508 1504  ). . . .........
-00006264 1504 1506 1507 1503 2904 25FD 1505 2B04  ........).%...+.
-00006274 2FFE 2904 19FD 2202 1EFC 1005 2805 1504  /.)...".....(...
-00006284 1504 1504 1504 2906 1503 1503 1503 1503  ......).........
-00006294 1505 0A08 0009 2903 2005 2004 2004 1405  ......). . . ...
-000062A4 1406 1407 1404 1404 1405 1406 1402 2906  ..............).
-000062B4 1506 2906 2A07 2903 2EFC 2903 24FC 2004  ..).*.)...).$. .
-000062C4 2004 2004 2004 2706 1304 1304 1304 1303   . . .'.........
-000062D4 190B 0F09 120D 130D 1309 0B0F 1D05 1208  ................
-000062E4 0808 2903 2005 2004 2004 1405 1406 1407  ..). . . .......
-000062F4 1404 1404 1405 1406 1402 2903 25FD 1306  ..........).%...
-00006304 2B04 2FFD 2903 18FC 2202 1EFC 1005 2805  +./.)...".....(.
-00006314 1504 1504 1504 1504 2906 1503 1503 1503  ........).......
-00006324 1503 
+L000060C4           dc.w    $2A02,$2005,$2005,$2004,$1505,$1506,$1506,$1507
+L000060D4           dc.w    $1507,$1506,$1507,$1507,$2C10,$2C08,$1402,$210D
+L000060E4           dc.w    $2B05,$1905,$2504,$1706,$1702,$2005,$0F06,$0006
+L000060F4           dc.w    $2405,$1507,$1C05,$1007,$1207,$1B03,$1308,$2C07
+L00006104           dc.w    $2C07,$2C07,$2C07,$2904,$1A06,$03FE,$2902,$2008
+L00006114           dc.w    $1306,$2A08,$2007,$2A04,$2A02,$24FA,$1405,$2A03
+L00006124           dc.w    $2A08,$0F05,$0F05,$0F05,$0F05,$2A07,$1507,$1508
+L00006134           dc.w    $1507,$1508,$0200,$0201,$0202,$0000,$0100,$0100
+L00006144           dc.w    $0101,$0604,$0B07,$0F07,$0C07,$0B06,$2005,$1208
+L00006154           dc.w    $1200,$2903,$2206,$2205,$2204,$1506,$1507,$1508
+L00006164           dc.w    $1504,$1504,$1506,$1507,$1504,$2904,$25FD,$1305
+L00006174           dc.w    $2904,$2CFD,$2904,$1BFD,$2004,$1CFD,$0C07,$2805
+L00006184           dc.w    $1503,$1503,$1503,$1503,$0301,$0301,$0601,$0401
+L00006194           dc.w    $0400,$04FD,$04FA,$1D05,$1108,$0809,$2903,$2006
+L000061A4           dc.w    $2005,$2004,$1506,$1507,$1508,$1504,$1504,$1506
+L000061B4           dc.w    $1507,$1504,$2906,$1306,$2A07,$2904,$2EFC,$2904
+L000061C4           dc.w    $25FB,$0C0F,$2211,$3416,$2C16,$2009,$1208,$0B08
+L000061D4           dc.w    $2903,$2005,$2004,$2004,$1505,$1506,$1507,$1503
+L000061E4           dc.w    $1504,$1505,$1506,$1503,$2903,$25FC,$1405,$0800
+L000061F4           dc.w    $0303,$2904,$1BFD,$2004,$1CFD,$0C07,$2004,$1207
+L00006204           dc.w    $0B07,$2904,$2006,$2005,$2004,$1506,$1507,$1508
+L00006214           dc.w    $1504,$1504,$1506,$1507,$1504,$2904,$25FD,$1405
+L00006224           dc.w    $2B04,$2FFD,$2904,$18FC,$2004,$1CFD,$0C07,$2806
+L00006234           dc.w    $1803,$1803,$1803,$1803,$0000,$0000,$0000,$0000
+L00006244           dc.w    $0000,$0908,$0908,$0908,$0808,$1D05,$1308,$0809
+L00006254           dc.w    $2904,$2006,$2005,$2004,$1506,$1507,$1508,$1504
+L00006264           dc.w    $1504,$1506,$1507,$1503,$2904,$25FD,$1505,$2B04
+L00006274           dc.w    $2FFE,$2904,$19FD,$2202,$1EFC,$1005,$2805,$1504
+L00006284           dc.w    $1504,$1504,$1504,$2906,$1503,$1503,$1503,$1503
+L00006294           dc.w    $1505,$0A08,$0009,$2903,$2005,$2004,$2004,$1405
+L000062A4           dc.w    $1406,$1407,$1404,$1404,$1405,$1406,$1402,$2906
+L000062B4           dc.w    $1506,$2906,$2A07,$2903,$2EFC,$2903,$24FC,$2004
+L000062C4           dc.w    $2004,$2004,$2004,$2706,$1304,$1304,$1304,$1303
+L000062D4           dc.w    $190B,$0F09,$120D,$130D,$1309,$0B0F,$1D05,$1208
+L000062E4           dc.w    $0808,$2903,$2005,$2004,$2004,$1405,$1406,$1407
+L000062F4           dc.w    $1404,$1404,$1405,$1406,$1402,$2903,$25FD,$1306
+L00006304           dc.w    $2B04,$2FFD,$2903,$18FC,$2202,$1EFC,$1005,$2805
+L00006314           dc.w    $1504,$1504,$1504,$1504,$2906,$1503,$1503,$1503
+L00006324           dc.w    $1503 
+; End of 305 (sprite x & y positions - initialisation data)
 
-00006326 0001 0002 0003 0004 0005 0007 
+L00006326           dc.w    $0001,$0002,$0003,$0004,$0005,$0007 
 
 batman_sprite3_id
-00006332 0005 
+L00006332           dc.w    $0005 
 batman_sprite2_id
-00006334 0002
+L00006334           dc.w    $0002
 batman_sprite1_id
-00006336 0001 
+L00006336           dc.w    $0001 
 
 batman_y_bottom
-00006338 0000 
+L00006338           dc.w    $0000 
 
 state_parameter
-0000633A 0000 
+L0000633a           dc.w    $0000 
 
 batman_swing_fall_speed
 batman_swing_speed
-0000633C 0000 
+L0000633c           dc.w    $0000 
 
 batman_fall_speed
-0000633E 0000 
+L0000633E           dc.w    $0000 
 
 batman_fall_distance
-00006340 0000   
+L00006340           dc.w    $0000   
 
-00006342 0001
+L00006342           dc.w    $0001
 
 level_spawn_point_index
-00006344 0000 0001 0000 0000 0000 0000 0000 0000  
-00006354 C77C 0000 0000 0000 0000 0000 0000 0000  
-00006364 0034 0005 A36C 0000 3DEC 0000 0000 0000  
-00006374 0000 
+L00006344           dc.w    $0000 
 
-00006376 2221 201F 1E1D 1C1B 1A19 1817 1615  
-00006384 1413 1211 100F 0E0D 0C0B 0A09 0807 0605  
-00006394 0403 0201 0003 0609 0D10 1316 191C 1F22  
-000063A4 2529 2C2F 3235 383B 3E41 4447 4A4D 5053  
-000063B4 5659 5C5F 6264 676A 6D70 7375 787B 7E80  
-00006344 0000 
 
 sprite_array_ptr
-00006346 0001 0000 
+L00006346           dc.l    $00010000 ; $00010000      ; ptr to an array of sprite definition data structures
+                                        ; structure def:
+                                        ;  byte offset | description
+                                        ;           0  | Y Offset
+                                        ;           1  | X Offset
+                                        ;           2  | Width in Words
+                                        ;           3  | Height in Lines
+                                        ;         4-7  | Long Pointer to GFX Data (Mask, BPL0, BPL1, BPL2, BPL3)
 
-sprite_gfx_left_offset
-0000634A 0000 0000 
 
-0000634E 0000 
-00006350 0000 
+L0000634A           dc.l    $00000000 
+
+L0000634E           dc.w    $0000
+                    dc.w    $0000
+                    
 
 player_input_command
-00006352 00 
+L00006352            dc.b $00                        ; bit 0 = left
+                                                    ; bit 1 = right
+                                                    ; bit 2 = down
+                                                    ; bit 3 = up
+                                                    ; bit 4 = pulse when button pressed
+
 player_button_pressed
-00006353 00
+L00006353            dc.b $00            ; #$00 = not pressed, #$ff = button pressed
+
 
 background_gfx_base
-00006354 C77C 
+L00006354           dc.l    $0000C77C      ; MAPGR_GFX_ADDRESS
 
-00006356 0000 
-00006358 0000 
-0000635A 0000
+L00006356           dc.w    $0000 
+
+vertical_scroll_increments
+L00006358           dc.w    $0000           ; the number of increments +/- the window has scrolled this frame.
+
+offscreen_y_coord 
+L0000635A           dc.w    $0000           ; Y co-ord into offscreen buffer (circular buffer).
 
 grappling_hook_params
-0000635C 0000 
-0000635E 0000 
+L0000635C           dc.w    $0000 
+L0000635E           dc.w    $0000 
 grappling_hook_height
-00006360 0000 
-00006362 0000 
-00006364 0034 
+L00006360           dc.w    $0000 
+L00006362           dc.w    $0000 
+L00006364           dc.w    $0034 
 
 offscreen_display_buffer_ptr
-00006366 0005 A36C 
+L00006366           dc.l    $0005A36C       ; CODE1_CHIPMEM_BUFFER
 
-0000636A 0000 3DEC      ; trigger_new_actors
+L0000636a           dc.l    $00003DEC      ; trigger_new_actors
 
 batman_sprite_anim_ptr  ; modified to long (haven't yet)
-0000636E 0000 
+L0000636E           dc.l    $00000000 
+;L0000636E           dc.w    $0000 
 
-00006370 0000 
-00006372 0000 
+L00006370           dc.w    $0000 
+L00006372           dc.w    $0000 
 
 playfield_swap_count
-00006374 0000
+L00006374           dc.w    $0000
 
-00006376 2221 201F 1E1D 1C1B 1A19 1817 1615 
-00006384 1413 1211 100F 0E0D 0C0B 0A09 0807 0605 
-00006394 0403 0201 
+L00006376           dc.w    $2221,$201F,$1E1D,$1C1B,$1A19,$1817,$1615 
+L00006384           dc.w    $1413,$1211,$100F,$0E0D,$0C0B,$0A09,$0807,$0605 
+L00006394           dc.w    $0403,$0201 
 
-00006398 0003 0609 0D10 1316 191C 1F22 
-000063A4 2529 2C2F 3235 383B 3E41 4447 4A4D 5053 
-000063B4 5659 5C5F 6264 676A 6D70 7375 787B 7E80 
-000063C4 8386 888B 8E90 9395 989A 9D9F A2A4 A7A9 
-000063D4 ABAE B0B2 
-000063D8 B4B7 B9BB BDBF C1C3 C5C7 C9CB 
-000063E4 CDCF D0D2 D4D6 D7D9 DBDC DEDF E1E2 E4E5 
-000063F4 E7E8 E9EA ECED EEEF F0F1 F2F3 F4F5 F6F7 
-00006404 F7F8 F9F9 FAFB FBFC FCFD FDFD FEFE FEFF 
-00006414 FFFF FFFF 
+L00006398           dc.w    $0003,$0609,$0D10,$1316,$191C,$1F22 
+L000063A4           dc.w    $2529,$2C2F,$3235,$383B,$3E41,$4447,$4A4D,$5053 
+L000063B4           dc.w    $5659,$5C5F,$6264,$676A,$6D70,$7375,$787B,$7E80 
+L000063C4           dc.w    $8386,$888B,$8E90,$9395,$989A,$9D9F,$A2A4,$A7A9 
+L000063D4           dc.w    $ABAE,$B0B2 
+; 000063D8 = L0000635C + $7c (grappling hook code) - is this swing data?
+L000063D8           dc.w    $B4B7,$B9BB$,BDBF,$C1C3,$C5C7,$C9CB 
+L000063E4           dc.w    $CDCF,$D0D2$,D4D6,$D7D9,$DBDC,$DEDF,$E1E2,$E4E5 
+L000063F4           dc.w    $E7E8,$E9EA$,ECED,$EEEF,$F0F1,$F2F3,$F4F5,$F6F7 
+L00006404           dc.w    $F7F8,$F9F9$,FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF 
+L00006414           dc.w    $FFFF,$FFFF 
 
+
+                    ; sprite 3 array structure
+                    ; byte 0 = initial sprite id
+                    ; byte 1 = second sprite offset
+                    ; byte 2 = third sprite offset
 batman_sprite_anim_fire_hook
-00006418    30 D2 04
+L00006418           dc.b    $30,$D2,$04
 
 batman_sprite_anim_standing
-0000641B    01 02 07 
+L0000641B           dc.b    $01,$02,$07 
 
 batman_sprite_anim_ducking
-0000641e    19 01 E6
+L0000641e           dc.b    $19,$01,$E6
 
 batman_sprite_anim_ducked
-00006421    1E 01 E1  
+L00006421           dc.b    $1E,$01,$E1  
 
 batman_sprite_anim_life_lost
-00006424    19 01 E6
-            19 01 E6 
-            19 01 E6
-            1B 01 E4 
-            1B 01 E4
-            1B 01 E4 
-            1B 01 E4
-            1B 01 E4 
-            1B 01 E4
-            1B 01 E4 
-            1B 01 E4
-            1D E3 00 
-            1D E3 00
-            1D E3 00 
-            1D E3 00
-            1D E3 00  
-00006454    1D E3 00
-            1D E3 00 
-            1D E3 00
-            00 
+L00006424           dc.b    $19,$01,$E6
+                    dc.b    $19,$01,$E6 
+                    dc.b    $19,$01,$E6
+                    dc.b    $1B,$01,$E4 
+                    dc.b    $1B,$01,$E4
+                    dc.b    $1B,$01,$E4 
+                    dc.b    $1B,$01,$E4
+                    dc.b    $1B,$01,$E4 
+                    dc.b    $1B,$01,$E4
+                    dc.b    $1B,$01,$E4 
+                    dc.b    $1B,$01,$E4
+                    dc.b    $1D,$E3,$00 
+                    dc.b    $1D,$E3,$00
+                    dc.b    $1D,$E3,$00 
+                    dc.b    $1D,$E3,$00
+                    dc.b    $1D,$E3,$00  
+L00006454           dc.b    $1D,$E3,$00
+                    dc.b    $1D,$E3,$00 
+                    dc.b    $1D,$E3,$00
+                    dc.b    $00 
 
 batman_sprite_anim_07
-0000645E    24 01 01
+L0000645E           dc.b    $24,$01,$01
 
 batman_sprite_anim_firing
-00006461    27 01 01  
-00006464    2A 01 FE
-            2C FD D7 
-            2D 01 01
-            00 
+L00006461           dc.b    $27,$01,$01  
+L00006464           dc.b    $2A,$01,$FE
+                    dc.b    $2C,$FD,$D7 
+                    dc.b    $2D,$01,$01
+                    dc.b    $00 
 
-0000646E    13 01 01 
-            16 01 01 
-00006474    00
+L0000646E           dc.b    $13,$01,$01 
+                    dc.b    $16,$01,$01 
+L00006474           dc.b    $00
 
-00006475    E4 
+L00006475           dc.b    $E4 
 
-00006476    0050 041E 0001 0022 0080 0400 
-            0190 0260 0001 0023 0160 0260
-            0040 0610 0003 0003 00A8 0628 000F 00A8 0648 000F 00B8 0648 
-            0080 05F0 0003 000E 0040 05E8 000F 00C0 05E8 000F 00C0 05A8 
-            00E0 0580 0002 0002 0040 05A8 0003 00F0 05A8 
-            0130 05D2 0002 000E 0128 05E8 0002 00A4 05A8 
-            0130 0612 0001 000F 0140 0648 
-            01A6 0640 0002 000F 01C0 0648 000E 0100 0648 
-            0144 0580 0002 000E 00A2 05A8 000F 00A0 05A8 
-            01FA 0640 0003 000E 0160 0628 000F 0208 0628 0002 0240 0648 
-            0220 0600 0002 000F 0240 05E8 0003 0260 0648 
-            02B0 057A 0001 000F 0230 05E8 
-            0070 04F0 0001 0002 0110 0548  
-            0050 04CE 0003 000F 0110 04E8 000F 0108 04E8 000F 0118 04E8
-            0150 04CE 0002 000F 0160 04E8 000F 0060 04E8
-            0180 04FF 0001 0003 019F 0528
-            01A0 0500 0001 0003 01D0 0548 
-            01F8 0530 0002 000E 0150 0528 0002 0150 0548
-            01A0 05C5 0001 000F 01B8 05E8  
-000065B4    01E0 0583 0001 0003 0200 05A8 
-            0201 0580 0003 000F 0220 05A8 000F 022C 05A8 000F 0238 05A8 
-            0218 0570 0002 000F 0240 0568 000F 0260 05A8 
-            0218 0549 0002 000F 0230 0548 000F 0210 0528 
-            0240 051F 0002 000F 01F8 0508 000F 01E0 0508 
-            0240 04F0 0003 000F 0250 04E8 000F 0238 04E8 000F 0220 04E8 
-            01AB 04A0 0001 0003 0258 04E8 
-            0130 0440 0002 000F 0148 04A8 000E 01A0 04A8  
-00006644    00E0 0468 0002 000F 00D0 0468 000E 0068 04A8 
-            0088 0481 0002 000F 0068 04A8 000F 0088 0468 
-            0080 03C0 0001 0003 0120 0408  
-00006674    0159 03E0 0003 000E 0188 03E8 000E 0180 0408 0002 01A0 03E8 
-            01B4 03E0 0002 000E 00F4 0408 000E 00E8 0408 
-            01F8 0411 0001 000F 0238 0448 
-            0240 03E4 0003 000E 0200 03E8 000E 0210 03E8 000E 0220 03E8 
-            0240 03C0 0003 000F 0240 03A8 000F 0230 03A8 000F 0220 03A8
-            01E0 0390 0006 0002 01F0 0388 000E 01A0 03A8 000E 01F0 0348 000E 0200 0348 000E 01F0 03A8 000E 01F8 03A8  
-00006704    01A0 02A8 0001 0002 01A0 0288 
-            015E 0250 0002 000F 0218 0288 000F 020C 0288 
-            010C 02C0 0002 0002 00E0 02E8 0002 00F0 02E8 
-            00EA 03AA 0003 000F 0110 03A8 000F 0100 03A8 0003 01C0 03A8
-            00EA 0398 0002 000F 013C 0408 000F 014C 0408 
-            00D0 0330 0002 000F 01AC 0348 000F 01A0 0348 
-            00B0 0380 0002 0003 015C 03A8 000E 0088 019E 
-            0070 0380 0002 000F 0128 03A8 000F 0138 03A8 
-00006794    0126 0350 0001 0003 0158 0348 
-            0189 0350 0002 000E 00E8 0348 000F 0198 0348
-            00C0 029B 0002 000E 0120 0288 000E 0140 0268 
-000067C4    00C0 025E 0003 0003 0150 0268 000F 00F0 0248 000E 00F0 0248
-            00CC 021F 0002 000F 00F0 0208 000E 00F0 0208 
-            00CC 01D0 0001 000F 00F0 01C8 
-            0146 01A0 0001 0003 0160 01C8
-            018A 0190 0001 000F 01A0 01A8 
-            01B3 0180 0001 000F 01D8 01C8 
-            0210 018C 0003 000E 00A8 0288 000F 0198 0248 0002 01C8 0228
-            01C0 01F1 0002 000E 01C8 01E8 000E 01D8 01E8 
-            0235 01F8 0002 000E 01C8 01E8 000E 01D8 01E8 
-            0235 01CE 0002 000E 0180 01A8 000E 0188 01A8
-            0200 019F 0001 0003 0160 01A8 
-            014C 0170 0002 000F 0120 0168 0003 0130 0168
-            018A 0100 0002 0002 00E8 0128 0003 01A0 0128 
-            0124 0120 0003 0002 00E8 0128 000F 0124 0128 000F 01A0 01A8 
-000068B4    01B0 0100 0002 000E 01D0 0108 0003 01D0 0148 
-            0194 00C8 0001 0002 0140 00C8 
-            0180 0080 0004 000E 0120 00C8 000E 0114 00C8 000E 0108 00C8 0002 00F0 00A8 
-            0107 00A0 0003 000E 00E8 00C8 000E 00E8 00A8 0003 01C0 00C8 
-            0140 000F 0002 0003 0168 0048 0003 0178 0048 
-            0184 0020 0003 000F 01B0 0048 000F 01A0 0048 000E 00E8 0048 
-            01A6 0020 0002 0020 01C0 0048 001F 01C0 0038 
+
+                    ; referenced during game_start
+                    ; appears to be a data structure where word at offet 4 is a multiple of 6 bytes to start of next structure.
+                    ; each line of data below appears to be the start of a variable length data structure.
+                    ; 
+                    ; The MSB of byte offset 0 is a flag which is reset at level start.
+                    ;
+                    ;   Offset  |   Description
+                    ;   --------|---------------
+                    ;      0-1  | Possibly Actor/Trigger X Value in low byte  
+                    ;           | MSB (bit 7) - flag
+                    ;           |  
+                    ;      2-3  | Possibly Actor/Trigger Y value in low byte
+                    ;           |
+                    ;      4-5  | Number of actors to trigger. 
+                    ;           |
+                    ;      (x)  | Remaining bytes ( 6 bytes per Actor Data ) -(type?, X co-ord, Y co-ord)
+                    ;           |
+                    ;
+                    ;
+                    even
+                    ; I think these maybe trigger-points for (x) number of bad guys to appear on the level.
+                    ; e.g. - 
+trigger_definitions_list  
+L00006476           dc.w    $0050,$041E,$0001,$0022,$0080,$0400 
+                    dc.w    $0190,$0260,$0001,$0023,$0160,$0260
+                    dc.w    $0040,$0610,$0003,$0003,$00A8,$0628,$000F,$00A8,$0648,$000F,$00B8,$0648 
+                    dc.w    $0080,$05F0,$0003,$000E,$0040,$05E8,$000F,$00C0,$05E8,$000F,$00C0,$05A8 
+                    dc.w    $00E0,$0580,$0002,$0002,$0040,$05A8,$0003,$00F0,$05A8 
+                    dc.w    $0130,$05D2,$0002,$000E,$0128,$05E8,$0002,$00A4,$05A8 
+                    dc.w    $0130,$0612,$0001,$000F,$0140,$0648 
+                    dc.w    $01A6,$0640,$0002,$000F,$01C0,$0648,$000E,$0100,$0648 
+                    dc.w    $0144,$0580,$0002,$000E,$00A2,$05A8,$000F,$00A0,$05A8 
+                    dc.w    $01FA,$0640,$0003,$000E,$0160,$0628,$000F,$0208,$0628,$0002,$0240,$0648 
+                    dc.w    $0220,$0600,$0002,$000F,$0240,$05E8,$0003,$0260,$0648 
+                    dc.w    $02B0,$057A,$0001,$000F,$0230,$05E8 
+                    dc.w    $0070,$04F0,$0001,$0002,$0110,$0548  
+                    dc.w    $0050,$04CE,$0003,$000F,$0110,$04E8,$000F,$0108,$04E8,$000F,$0118,$04E8
+                    dc.w    $0150,$04CE,$0002,$000F,$0160,$04E8,$000F,$0060,$04E8
+                    dc.w    $0180,$04FF,$0001,$0003,$019F,$0528
+                    dc.w    $01A0,$0500,$0001,$0003,$01D0,$0548 
+                    dc.w    $01F8,$0530,$0002,$000E,$0150,$0528 0002 0150 0548
+                    dc.w    $01A0,$05C5,$0001,$000F,$01B8,$05E8  
+L000065B4           dc.w    $01E0,$0583,$0001,$0003,$0200,$05A8 
+                    dc.w    $0201,$0580,$0003,$000F,$0220,$05A8,$000F,$022C,$05A8,$000F,$0238,$05A8 
+                    dc.w    $0218,$0570,$0002,$000F,$0240,$0568,$000F,$0260,$05A8 
+                    dc.w    $0218,$0549,$0002,$000F,$0230,$0548,$000F,$0210,$0528 
+                    dc.w    $0240,$051F,$0002,$000F,$01F8,$0508,$000F,$01E0,$0508 
+                    dc.w    $0240,$04F0,$0003,$000F,$0250,$04E8,$000F,$0238,$04E8,$000F,$0220,$04E8 
+                    dc.w    $01AB,$04A0,$0001,$0003,$0258,$04E8 
+                    dc.w    $0130,$0440,$0002,$000F,$0148,$04A8,$000E,$01A0,$04A8  
+L0006644            dc.w    $00E0,$0468,$0002,$000F,$00D0,$0468,$000E,$0068,$04A8 
+                    dc.w    $0088,$0481,$0002,$000F,$0068,$04A8,$000F,$0088,$0468 
+                    dc.w    $0080,$03C0,$0001,$0003,$0120,$0408  
+L00006674           dc.w    $0159,$03E0,$0003,$000E,$0188,$03E8,$000E,$0180,$0408,$0002,$01A0,$03E8 
+                    dc.w    $01B4,$03E0,$0002,$000E,$00F4,$0408,$000E,$00E8,$0408 
+                    dc.w    $01F8,$0411,$0001,$000F,$0238,$0448 
+                    dc.w    $0240,$03E4,$0003,$000E,$0200,$03E8,$000E,$0210,$03E8,$000E,$0220,$03E8 
+                    dc.w    $0240,$03C0,$0003,$000F,$0240,$03A8,$000F,$0230,$03A8,$000F,$0220,$03A8
+                    dc.w    $01E0,$0390,$0006,$0002,$01F0,$0388,$000E,$01A0,$03A8,$000E,$01F0,$0348,$000E,$0200,$0348,$000E,$01F0,$03A8,$000E,$01F8,$03A8  
+L00006704           dc.w    $01A0,$02A8,$0001,$0002,$01A0,$0288 
+                    dc.w    $015E,$0250,$0002,$000F,$0218,$0288,$000F,$020C,$0288 
+                    dc.w    $010C,$02C0,$0002,$0002,$00E0,$02E8,$0002,$00F0,$02E8 
+                    dc.w    $00EA,$03AA,$0003,$000F,$0110,$03A8,$000F,$0100,$03A8,$0003,$01C0,$03A8
+                    dc.w    $00EA,$0398,$0002,$000F,$013C,$0408,$000F,$014C,$0408 
+                    dc.w    $00D0,$0330,$0002,$000F,$01AC,$0348,$000F,$01A0,$0348 
+                    dc.w    $00B0,$0380,$0002,$0003,$015C,$03A8,$000E,$0088,$019E 
+                    dc.w    $0070,$0380,$0002,$000F,$0128,$03A8,$000F,$0138,$03A8 
+L00006794           dc.w    $0126,$0350,$0001,$0003,$0158,$0348 
+                    dc.w    $0189,$0350,$0002,$000E,$00E8,$0348,$000F,$0198,$0348
+                    dc.w    $00C0,$029B,$0002,$000E,$0120,$0288,$000E,$0140,$0268 
+L000067C4           dc.w    $00C0,$025E,$0003,$0003,$0150,$0268,$000F,$00F0,$0248,$000E,$00F0,$0248
+                    dc.w    $00CC,$021F,$0002,$000F,$00F0,$0208,$000E,$00F0,$0208 
+                    dc.w    $00CC,$01D0,$0001,$000F,$00F0,$01C8 
+                    dc.w    $0146,$01A0,$0001,$0003,$0160,$01C8
+                    dc.w    $018A,$0190,$0001,$000F,$01A0,$01A8 
+                    dc.w    $01B3,$0180,$0001,$000F,$01D8,$01C8 
+                    dc.w    $0210,$018C,$0003,$000E,$00A8,$0288,$000F,$0198,$0248,$0002,$01C8,$0228
+                    dc.w    $01C0,$01F1,$0002,$000E,$01C8,$01E8,$000E,$01D8,$01E8 
+                    dc.w    $0235,$01F8,$0002,$000E,$01C8,$01E8,$000E,$01D8,$01E8 
+                    dc.w    $0235,$01CE,$0002,$000E,$0180,$01A8,$000E,$0188,$01A8
+                    dc.w    $0200,$019F,$0001,$0003,$0160,$01A8 
+                    dc.w    $014C,$0170,$0002,$000F,$0120,$0168,$0003,$0130,$0168
+                    dc.w    $018A,$0100,$0002,$0002,$00E8,$0128,$0003,$01A0,$0128 
+                    dc.w    $0124,$0120,$0003,$0002,$00E8,$0128,$000F,$0124,$0128,$000F,$01A0,$01A8 
+L000068B4           dc.w    $01B0,$0100,$0002,$000E,$01D0,$0108,$0003,$01D0,$0148 
+                    dc.w    $0194,$00C8,$0001,$0002,$0140,$00C8 
+                    dc.w    $0180,$0080,$0004,$000E,$0120,$00C8,$000E,$0114,$00C8,$000E,$0108,$00C8,$0002,$00F0,$00A8 
+                    dc.w    $0107,$00A0,$0003,$000E,$00E8,$00C8,$000E,$00E8,$00A8,$0003,$01C0,$00C8 
+                    dc.w    $0140,$000F,$0002,$0003,$0168,$0048,$0003,$0178,$0048 
+                    dc.w    $0184,$0020,$0003,$000F,$01B0,$0048,$000F,$01A0,$0048,$000E,$00E8,$0048 
+                    dc.w    $01A6,$0020,$0002,$0020,$01C0,$0048,$001F,$01C0,$0038 
 end_of_trigger_list     ; 00006944
 
-00006944    001D 0120 0088 
-            001D 0120 00A8 
-            001D 0180 0248 
-            001D 01B0 01C8 
-            001E 0190 0348 
-            001E 0180 02A8 
-            001E 01F0 02C8 
-            001E 0220 0648  
-00006974    001D 0200 0628
-            001D 0220 05E8 
-            001E 0140 04E8 
-            001A 00A0 0548 
-            001A 00A0 0568 
-            001A 0120 0588 
-            001A 01C0 03E8 
-            001A 01C0 0408  
-000069A4    001A 01C0 0428 
-            001A 01C0 0308 
-            001A 0160 01C8 
-            001D 0240 0488 
-            001D 0120 04A8 
+                    ; 3 word/ 6 byte data structure list
+                    ; MSB of byte 0 is cleared on game_start
+                    ; 21 - entries in list
+                    ; Type, X co-ord, y co-ord?
+trigger_gas_drips   ; original address L00006722
+L00006944           dc.w    $001D,$0120,$0088 
+                    dc.w    $001D,$0120,$00A8 
+                    dc.w    $001D,$0180,$0248 
+                    dc.w    $001D,$01B0,$01C8 
+                    dc.w    $001E,$0190,$0348 
+                    dc.w    $001E,$0180,$02A8 
+                    dc.w    $001E,$01F0,$02C8 
+                    dc.w    $001E,$0220,$0648  
+L00006974           dc.w    $001D,$0200,$0628
+                    dc.w    $001D,$0220,$05E8 
+                    dc.w    $001E,$0140,$04E8 
+                    dc.w    $001A,$00A0,$0548 
+                    dc.w    $001A,$00A0,$0568 
+                    dc.w    $001A,$0120,$0588 
+                    dc.w    $001A,$01C0,$03E8 
+                    dc.w    $001A,$01C0,$0408  
+L000069A4           dc.w    $001A,$01C0,$0428 
+                    dc.w    $001A,$01C0,$0308 
+                    dc.w    $001A,$0160,$01C8 
+                    dc.w    $001D,$0240,$0488 
+                    dc.w    $001D,$0120,$04A8 
 end_of_actors       ; 000069C2
 
+                    ; ---------- Start level_parameters on game_start ----------
 default_level_parameters
-000069C2    0000 
-000069C4    0600 
-            0648 
-            0050 
-            0048 
-            0048 
-            0050 
+L000069C2           dc.w    $0000 
+L000069C4           dc.w    $0600 
+                    dc.w    $0648 
+                    dc.w    $0050 
+                    dc.w    $0048 
+                    dc.w    $0048 
+                    dc.w    $0050 
 
 spawn_point_parameters_1           
-000069D0    0040 
-            0440  
-000069D4    0468 
-            0050 
-            0028 
-            0028 
-            0050 
+L000069D0           dc.w    $0040 
+                    dc.w    $0440  
+L000069D4           dc.w    $0468 
+                    dc.w    $0050 
+                    dc.w    $0028 
+                    dc.w    $0028 
+                    dc.w    $0050 
 
 spawn_point_parameters_2            
-000069DE    01A0 
-            0260 
-            0288 
-000069E4    0050 
-            0028 
-            0028 
-            0050 
+L000069DE           dc.w    $01A0 
+                    dc.w    $0260 
+                    dc.w    $0288 
+L000069E4           dc.w    $0050 
+                    dc.w    $0028 
+                    dc.w    $0028 
+                    dc.w    $0050 
 
 
 level_parameters
 scroll_window_xy_coords
 scroll_window_x_coord
-000069EC    0000 
+L000069EC           dc.w    $0000 
 
 scroll_window_y_coord
-000069EE    00F0 
+L000069EE           dc.w    $00F0 
 
 scroll_window_max_x_coord
-000069F0    0000 
+L000069F0           dc.w    $0000 
 
 batman_xy_offset
 batman_x_offset
-000069F2    0050 
+L000069F2           dc.w    $0050 
 
 batman_y_offset
-000069F4    0048 
+L000069F4           dc.w    $0048 
 
 target_window_y_offset
-000069F6    0048 
+L000069F6           dc.w    $0048 
 
 target_window_x_offset
-000069F8    0050 
+L000069F8           dc.w    $0050 
 
->d 69fa
-000069fa 1018                     move.b (a0)+ [00],d0
-000069fc 6b00 00d0                bmi.w #$00d0 == $00006ace (F)
-00006a00 0240 00ff                and.w #$00ff,d0
-00006a04 c0fc 002a                mulu.w #$002a,d0
-00006a08 1218                     move.b (a0)+ [00],d1
-00006a0a 4881                     ext.w d1
-00006a0c d041                     add.w d1,d0
-00006a0e 2279 0000 36ea           movea.l $000036ea [00061b9c],a1
-00006a14 43f1 0000                lea.l (a1,d0.W,$00) == $00001250,a1
-00006a18 7000                     moveq #$00,d0
-
->d
-00006a1a 1018                     move.b (a0)+ [00],d0
-00006a1c 67dc                     beq.b #$dc == $000069fa (F)
-00006a1e 0c00 0020                cmp.b #$20,d0
-00006a22 6700 00a2                beq.w #$00a2 == $00006ac6 (F)
-00006a26 72cd                     moveq #$cd,d1
-00006a28 0c00 0041                cmp.b #$41,d0
-00006a2c 6424                     bcc.b #$24 == $00006a52 (T)
-00006a2e 72d4                     moveq #$d4,d1
-00006a30 0c00 0030                cmp.b #$30,d0
-00006a34 641c                     bcc.b #$1c == $00006a52 (T)
->d
-00006a36 7200                     moveq #$00,d1
-00006a38 0c00 0021                cmp.b #$21,d0
-00006a3c 671a                     beq.b #$1a == $00006a58 (F)
-00006a3e 7201                     moveq #$01,d1
-00006a40 0c00 0028                cmp.b #$28,d0
-00006a44 6712                     beq.b #$12 == $00006a58 (F)
-00006a46 7202                     moveq #$02,d1
-00006a48 0c00 0029                cmp.b #$29,d0
-00006a4c 670a                     beq.b #$0a == $00006a58 (F)
-00006a4e 7203                     moveq #$03,d1
->d
-00006a50 6006                     bra.b #$06 == $00006a58 (T)
-00006a52 d200                     add.b d0,d1
-00006a54 0241 00ff                and.w #$00ff,d1
-00006a58 c2fc 0028                mulu.w #$0028,d1
-00006a5c 45f9 0000 6ad0           lea.l $00006ad0,a2
-00006a62 45f2 1000                lea.l (a2,d1.W,$00) == $00061cbb,a2
-00006a66 7e07                     moveq #$07,d7
-00006a68 2649                     movea.l a1,a3
-00006a6a 121a                     move.b (a2)+ [64],d1
-00006a6c c313                     and.b d1,(a3) [00]
->d
-00006a6e 141a                     move.b (a2)+ [64],d2
-00006a70 8513                     or.b d2,(a3) [00]
-00006a72 c32b 1c8c                and.b d1,(a3,$1c8c) == $000415f4 [80]
-00006a76 141a                     move.b (a2)+ [64],d2
-00006a78 852b 1c8c                or.b d2,(a3,$1c8c) == $000415f4 [80]
-00006a7c c32b 3918                and.b d1,(a3,$3918) == $00043280 [70]
-00006a80 141a                     move.b (a2)+ [64],d2
-00006a82 852b 3918                or.b d2,(a3,$3918) == $00043280 [70]
-00006a86 c32b 55a4                and.b d1,(a3,$55a4) == $00044f0c [ce]
-00006a8a 141a                     move.b (a2)+ [64],d2
+                    even
 
 
->d
-00006a8c 852b 55a4                or.b d2,(a3,$55a4) == $00044f0c [ce]
-00006a90 47eb 002a                lea.l (a3,$002a) == $0003f992,a3
-00006a94 45ea fffb                lea.l (a2,-$0005) == $00061cb7,a2
-00006a98 121a                     move.b (a2)+ [64],d1
-00006a9a c313                     and.b d1,(a3) [00]
-00006a9c 141a                     move.b (a2)+ [64],d2
-00006a9e 8513                     or.b d2,(a3) [00]
-00006aa0 c32b 1c8c                and.b d1,(a3,$1c8c) == $000415f4 [80]
-00006aa4 141a                     move.b (a2)+ [64],d2
-00006aa6 852b 1c8c                or.b d2,(a3,$1c8c) == $000415f4 [80]
->d
-00006aaa c32b 3918                and.b d1,(a3,$3918) == $00043280 [70]
-00006aae 141a                     move.b (a2)+ [64],d2
-00006ab0 852b 3918                or.b d2,(a3,$3918) == $00043280 [70]
-00006ab4 c32b 55a4                and.b d1,(a3,$55a4) == $00044f0c [ce]
-00006ab8 141a                     move.b (a2)+ [64],d2
-00006aba 852b 55a4                or.b d2,(a3,$55a4) == $00044f0c [ce]
-00006abe 47eb 002a                lea.l (a3,$002a) == $0003f992,a3
-00006ac2 51cf ffa6                dbf .w d7,#$ffa6 == $00006a6a (F)
-00006ac6 43e9 0001                lea.l (a1,$0001) == $000032c1,a1
-00006aca 6000 ff4c                bra.w #$ff4c == $00006a18 (T)
->d
-00006ace 4e75                     rts  == $6000001a
+                ; -------------------------- Large Text Plotter --------------------------
+                ; Use to display large text on black background at:-
+                ; - Start Level
+                ; - Game Over
+                ; - Time Up
+                ; - Level Completed
+                ; 
+                ; Uses an 8*8 font to display 8*16 font by doubling the font height.
+                ;
+                ; Data structure:
+                ; raster line (y co-ord), byte offset (x co-ord), null terminated string
+                ; raster line, byte offset, null terminated string
+                ; ...
+                ; terminate print loop
+                ;
+                ;   e.g
+                ;   dc.b $50,$10        -- (Y,X co-ords)
+                ;   dc.b 'DISPLAY STRING'
+                ;   dc.b $00,$ff        -- Terminator
+                ;
+large_text_plotter    
+L000069fa               move.b  (a0)+,d0
+L000069fc               bmi.w   L00006ace
+L00006a00               and.w   #$00ff,d0
+L00006a04               mulu.w  #$002a,d0
+L00006a08               move.b  (a0)+,d1
+L00006a0a               ext.w   d1
+L00006a0c               add.w   d1,d0
+L00006a0e               movea.l L000036ea,a1
+L00006a14               lea.l   $00(a1,d0.w),a1
+L00006a18               moveq   #$00,d0
+L00006a1a               move.b  (a0)+,d0
+L00006a1c               beq.b   L000069fa
+L00006a1e               cmp.b   #$20,d0
+L00006a22               beq.w   L00006ac6 
+L00006a26               moveq   #$cd,d1
+L00006a28               cmp.b   #$41,d0
+L00006a2c               bcc.b   L00006a52 
+L00006a2e               moveq   #$d4,d1
+L00006a30               cmp.b   #$30,d0
+L00006a34               bcc.b   L00006a52
+L00006a36               moveq   #$00,d1
+L00006a38               cmp.b   #$21,d0
+L00006a3c               beq.b   L00006a58
+L00006a3e               moveq   #$01,d1
+L00006a40               cmp.b   #$28,d0
+L00006a44               beq.b   L00006a58 
+L00006a46               moveq   #$02,d1
+L00006a48               cmp.b   #$29,d0
+L00006a4c               beq.b   L00006a58
+L00006a4e               moveq   #$03,d1
+L00006a50               bra.b   L00006a58
+L00006a52               add.b   d0,d1
+L00006a54               and.w   #$00ff,d1
+L00006a58               mulu.w  #$0028,d1
+L00006a5c               lea.l   L00006ad0,a2
+L00006a62               lea.l   $00(a2,d1.w),a2
+L00006a66               moveq   #$07,d7
+L00006a68               movea.l a1,a3
+L00006a6a               move.b  (a2)+,d1
+L00006a6c               and.b   d1,(a3)
+L00006a6e               move.b  (a2)+,d2
+L00006a70               or.b    d2,(a3)
+L00006a72               and.b   d1,$1c8c(a3)
+L00006a76               move.b  (a2)+,d2
+L00006a78               or.b    d2,$1c8c(a3)
+L00006a7c               and.b   d1,$3918(a3)
+L00006a80               move.b  (a2)+,d2
+L00006a82               or.b    d2,$3918(a3)
+L00006a86               and.b   d1,$55a4(a3)
+L00006a8a               move.b  (a2)+,d2
+L00006a8c               or.b    d2,$55a4(a3)
+L00006a90               lea.l   $002a(a3),a3
+L00006a94               lea.l   -$0005(a2),a2
+L00006a98               move.b  (a2)+,d1
+L00006a9a               and.b   d1,(a3)
+L00006a9c               move.b  (a2)+,d2
+L00006a9e               or.b    d2,(a3)
+L00006aa0               and.b   d1,$1c8c(a3)
+L00006aa4               move.b  (a2)+,d2
+L00006aa6               or.b    d2,$1c8c(a3)
+L00006aaa               and.b   d1,$3918(a3)
+L00006aae               move.b  (a2)+,d2
+L00006ab0               or.b    d2,$3918(a3)
+L00006ab4               and.b   d1,$55a4(a3)
+L00006ab8               move.b  (a2)+,d2
+L00006aba               or.b    d2,$55a4(a3)
+L00006abe               lea.l   $002a(a3),a3
+L00006ac2               dbf.w   d7,L00006a6a
+L00006ac6               lea.l   $0001(a1),a1
+L00006aca               bra.w   L00006a18
+L00006ace               rts  
 
-large_character_gfx
+
+large_chaacter_gfx
                 ; include font8x8x4.s
 
->m 6ad0
-00006AD0 CF30 3000 00C7 3038 0800 C730 3808 00C7  .00...08...08...
-00006AE0 3038 0800 C730 3808 00E7 0018 1800 CF30  08...08........0
-00006AF0 3000 00E7 0018 1800 F30C 0C00 00E1 181E  0...............
-00006B00 0600 E318 1C04 00E3 181C 0400 E318 1C04  ................
-00006B10 00E3 181C 0400 F30C 0C00 00F9 0006 0600  ................
-00006B20 9F60 6000 00CF 3030 0000 C730 3808 00C7  .``...00...08...
-00006B30 3038 0800 C730 3808 00C7 3038 0800 8760  08...08...08...`
-00006B40 7818 00CF 0030 3000 FF00 0000 00FF 0000  x....00.........
-00006B50 0000 FF00 0000 00FF 0000 0000 FF00 0000  ................
-00006B60 009F 6060 0000 8F60 7010 00CF 0030 3000  ..``...`p....00.
-00006B70 837C 7C00 0001 C6FE 3800 10CE EF21 0000  .||.....8....!..
-00006B80 D6FF 2900 08E6 F711 0018 C6E7 2100 807C  ..).........!..|
-00006B90 7F03 00C1 003E 3E00 C738 3800 00C3 383C  .....>>..88...8<
-00006BA0 0400 E318 1C04 00E3 181C 0400 E318 1C04  ................
-00006BB0 00E3 181C 0400 E318 1C04 00F3 000C 0C00  ................
-00006BC0 837C 7C00 0001 C6FE 3800 900C 6F63 00E1  .||.....8...oc..
-00006BD0 181E 0600 C330 3C0C 0087 6078 1800 00FE  .....0<...`x....
-00006BE0 FF01 0080 007F 7F00 837C 7C00 0001 C6FE  .........||.....
-00006BF0 3800 9806 6761 00C0 3C3F 0300 E106 1E18  8...ga..<?......
-00006C00 0038 C6C7 0100 807C 7F03 00C1 003E 3E00  .8.....|.....>>.
->m
-00006C10 E31C 1C00 00C1 3C3E 0200 816C 7E12 0001  ......<>...l~...
-00006C20 CCFE 3200 01FE FE00 0080 0C7F 7300 F10C  ..2.........s...
-00006C30 0E02 00F9 0006 0600 00FE FF00 0000 C0FF  ................
-00006C40 3F00 1FC0 E020 0003 FCFC 0000 8006 7F79  ?.... .........y
-00006C50 0038 C6C7 0100 807C 7F03 00C1 003E 3E00  .8.....|.....>>.
-00006C60 837C 7C00 0001 C6FE 3800 1CC0 E323 0003  .||.....8....#..
-00006C70 FCFC 0000 01C6 FE38 0018 C6E7 2100 807C  .......8....!..|
-00006C80 7F03 00C1 003E 3E00 01FE FE00 0080 067F  .....>>.........
-00006C90 7900 F00C 0F03 00E1 181E 0600 E318 1C04  y...............
-00006CA0 00C7 3038 0800 C730 3808 00E7 0018 1800  ..08...08.......
-00006CB0 837C 7C00 0001 C6FE 3800 18C6 E721 0080  .||.....8....!..
-00006CC0 7C7F 0300 01C6 FE38 0018 C6E7 2100 807C  |......8....!..|
-00006CD0 7F03 00C1 003E 3E00 837C 7C00 0001 C6FE  .....>>..||.....
-00006CE0 3800 18C6 E721 0080 7E7F 0100 C006 3F39  8....!..~.....?9
-00006CF0 0038 C6C7 0100 807C 7F03 00C1 003E 3E00  .8.....|.....>>.
-00006D00 EF10 1000 00C7 3838 0000 C338 3C04 0083  ......88...8<...
-00006D10 6C7C 1000 817C 7E02 0001 C6FE 3800 18C6  l|...|~.....8...
-00006D20 E721 009C 0063 6300 03FC FC00 0001 C6FE  .!...cc.........
-00006D30 3800 18C6 E721 0000 FCFF 0300 01C6 FE38  8....!.........8
-00006D40 0018 C6E7 2100 00FC FF03 0081 007E 7E00  ....!........~~.
->m
-00006D50 837C 7C00 0001 C6FE 3800 1CC0 E323 001F  .||.....8....#..
-00006D60 C0E0 2000 1FC0 E020 0019 C6E6 2000 807C  .. .... .... ..|
-00006D70 7F03 00C1 003E 3E00 07F8 F800 0003 CCFC  .....>>.........
-00006D80 3000 19C6 E620 0018 C6E7 2100 18C6 E721  0.... ....!....!
-00006D90 0010 CCEF 2300 01F8 FE06 0083 007C 7C00  ....#........||.
-00006DA0 01FE FE00 0000 C0FF 3F00 1FC0 E020 0007  ........?.... ..
-00006DB0 F8F8 0000 03C0 FC3C 001F C0E0 2000 01FE  .......<.... ...
-00006DC0 FE00 0080 007F 7F00 01FE FE00 0000 C0FF  ................
-00006DD0 3F00 1FC0 E020 0007 F8F8 0000 03C0 FC3C  ?.... .........<
-00006DE0 001F C0E0 2000 1FC0 E020 009F 0060 6000  .... .... ...``.
-00006DF0 837C 7C00 0001 C6FE 3800 1CC0 E323 0001  .||.....8....#..
-00006E00 DEFE 2000 10C6 EF29 0018 C6E7 2100 807E  .. ....)....!..~
-00006E10 7F01 00C0 003F 3F00 39C6 C600 0018 C6E7  .....??.9.......
-00006E20 2100 18C6 E721 0000 FEFF 0100 00C6 FF39  !....!.........9
-00006E30 0018 C6E7 2100 18C6 E721 009C 0063 6300  ....!....!...cc.
-00006E40 8778 7800 00C3 303C 0C00 C730 3808 00C7  .xx...0<...08...
-00006E50 3038 0800 C730 3808 00C7 3038 0800 8778  08...08...08...x
-00006E60 7800 00C3 003C 3C00 F906 0600 00F8 0607  x....<<.........
-00006E70 0100 F806 0701 00F8 0607 0100 38C6 C701  ............8...
-00006E80 0018 C6E7 2100 807C 7F03 00C1 003E 3E00  ....!..|.....>>.
->m
-00006E90 39C6 C600 0010 CCEF 2300 01D8 FE26 0003  9.......#....&..
-00006EA0 F0FC 0C00 07D8 F820 0013 CCEC 2000 19C6  ....... .... ...
-00006EB0 E620 009C 0063 6300 3FC0 C000 001F C0E0  . ...cc.?.......
-00006EC0 2000 1FC0 E020 001F C0E0 2000 1FC0 E020   .... .... ....
-00006ED0 0019 C6E6 2000 00FE FF01 0080 007F 7F00  .... ...........
-00006EE0 39C6 C600 0010 EEEF 0100 00FE FF01 0000  9...............
-00006EF0 D6FF 2900 10C6 EF29 0018 C6E7 2100 18C6  ..)....)....!...
-00006F00 E721 009C 0063 6300 39C6 C600 0018 E6E7  .!...cc.9.......
-00006F10 0100 08F6 F701 0000 DEFF 2100 10CE EF21  ..........!....!
-00006F20 0018 C6E7 2100 18C6 E721 009C 0063 6300  ....!....!...cc.
-00006F30 837C 7C00 0001 C6FE 3800 18C6 E721 0018  .||.....8....!..
-00006F40 C6E7 2100 18C6 E721 0018 C6E7 2100 807C  ..!....!....!..|
-00006F50 7F03 00C1 003E 3E00 03FC FC00 0001 C6FE  .....>>.........
-00006F60 3800 18C6 E721 0000 FCFF 0300 01C0 FE3E  8....!.........>
-00006F70 001F C0E0 2000 1FC0 E020 009F 0060 6000  .... .... ...``.
-00006F80 837C 7C00 0001 C6FE 3800 18C6 E721 0018  .||.....8....!..
-00006F90 C6E7 2100 00DA FF25 0000 CCFF 3300 8176  ..!....%....3..v
-00006FA0 7E08 00C4 003B 3B00 03FC FC00 0001 C6FE  ~....;;.........
-00006FB0 3800 18C6 E721 0000 FCFF 0300 01CC FE32  8....!.........2
-00006FC0 0018 C6E7 2100 18C6 E721 009C 0063 6300  ....!....!...cc.
 
->m
-00007110 11EE EE22 0081 7E7E 0600 C33C 3C0C 00C7  ..."..~~...<<...
-00007120 3838 0800 C738 3808 00E7 1818 1800 03FC  88...88.........
-00007130 FC00 0001 FEFE 3200 817E 7E66 00C3 3C3C  ......2..~~f..<<
-00007140 0C00 8778 7818 0003 FCFC 3000 01FE FE02  ...xx.....0.....
-00007150 0081 7E7E 7E00 0404 0505 0505 0505 0404  ..~~~...........
-00007160 0404 0405 0504 0505 0404 0404 0404 0404  ................
-00007170 0301 0100 00FF 0001 0101 0000 0102 0302  ................
-00007180 0202 0304 0505 0504 0404 0302 01FF FDFD  ................
-00007190 FCFC FCFB F9FA FAFC FDFD FDFC FDFD FF00  ................
-000071A0 0101 0101 0000 FFFE FEFD FEFD FCFB FCFC  ................
-000071B0 FBFC FDFC FEFE FEFE FFFE FEFF FFFE FEFF  ................
-000071C0 FFFF 00FF 0000 0000 FF00 FF00 FFFE FFFE  ................
-000071D0 FFFD FEFE FEFD FDFD FDFD FDFD FEFE FEFD  ................
-000071E0 FDFE FF00 0000 0000 0100 0001 0001 FFFF  ................
-000071F0 FFFE FEFE FEFE FEFD FDFC FCFC FCFC FCFD  ................
-00007200 FCFC FDFD FEFF FFFF 00FF FFFE FFFE FF00  ................
-00007210 0000 0001 0203 0201 0202 0200 FFFD FEFF  ................
-00007220 FFFF FEFE 0000 0000 0101 0000 0102 0202  ................
-00007230 0203 0404 0303 0505 0504 0303 0301 FDFD  ................
-00007240 FEFF FDFD FCFD FEFE FFFF 0202 0201 0304  ................
-
->m
-00007250 0404 0304 0404 0302 0302 0100 FEFF FEFE  ................
-00007260 FCFC FDFD FDFD FCFC FCFD FEFF 0001 0000  ................
-00007270 0101 0100 0101 0201 FF00 00FF 00FE FEFF  ................
-00007280 FEFF FEFF 00FF FEFF FFFF 0000 0000 0101  ................
-00007290 0101 0203 0203 0303 0303 0303 0304 0403  ................
-000072A0 0302 0100 FFFF FEFF 0001 0101 0303 0303  ................
-000072B0 0203 0203 0404 0404 0506 0504 0303 0203  ................
-000072C0 0201 0100 FEFE FFFF FF00 0001 0202 0100  ................
-000072D0 FF00 FFFF FEFE FEFD FEFF 0100 0000 0102  ................
-000072E0 0100 00FF FEFC FDFE FF00 FFFC FCFC FCFC  ................
-000072F0 FCFD FFFF 0101 0101 0203 0303 0405 0506  ................
+L00006AD0           dc.w $CF30,$3000,$00C7,$3038,$0800,$C730,$3808,$00C7 
+L00006AE0           dc.w $3038,$0800,$C730,$3808,$00E7,$0018,$1800,$CF30 
+L00006AF0           dc.w $3000,$00E7,$0018,$1800,$F30C,$0C00,$00E1,$181E 
+L00006B00           dc.w $0600,$E318,$1C04,$00E3,$181C,$0400,$E318,$1C04 
+L00006B10           dc.w $00E3,$181C,$0400,$F30C,$0C00,$00F9,$0006,$0600 
+L00006B20           dc.w $9F60,$6000,$00CF,$3030,$0000,$C730,$3808,$00C7 
+L00006B30           dc.w $3038,$0800,$C730,$3808,$00C7,$3038,$0800,$8760 
+L00006B40           dc.w $7818,$00CF,$0030,$3000,$FF00,$0000,$00FF,$0000 
+L00006B50           dc.w $0000,$FF00,$0000,$00FF,$0000,$0000,$FF00,$0000 
+L00006B60           dc.w $009F,$6060,$0000,$8F60,$7010,$00CF,$0030,$3000 
+L00006B70           dc.w $837C,$7C00,$0001,$C6FE,$3800,$10CE,$EF21,$0000 
+L00006B80           dc.w $D6FF,$2900,$08E6,$F711,$0018,$C6E7,$2100,$807C 
+L00006B90           dc.w $7F03,$00C1,$003E,$3E00,$C738,$3800,$00C3,$383C 
+L00006BA0           dc.w $0400,$E318,$1C04,$00E3,$181C,$0400,$E318,$1C04 
+L00006BB0           dc.w $00E3,$181C,$0400,$E318,$1C04,$00F3,$000C,$0C00 
+L00006BC0           dc.w $837C,$7C00,$0001,$C6FE,$3800,$900C,$6F63,$00E1 
+L00006BD0           dc.w $181E,$0600,$C330,$3C0C,$0087,$6078,$1800,$00FE 
+L00006BE0           dc.w $FF01,$0080,$007F,$7F00,$837C,$7C00,$0001,$C6FE 
+L00006BF0           dc.w $3800,$9806,$6761,$00C0,$3C3F,$0300,$E106,$1E18 
+L00006C00           dc.w $0038,$C6C7,$0100,$807C,$7F03,$00C1,$003E,$3E00 
+L00006C10           dc.w $E31C,$1C00,$00C1,$3C3E,$0200,$816C,$7E12,$0001 
+L00006C20           dc.w $CCFE,$3200,$01FE,$FE00,$0080,$0C7F,$7300,$F10C 
+L00006C30           dc.w $0E02,$00F9,$0006,$0600,$00FE,$FF00,$0000,$C0FF 
+L00006C40           dc.w $3F00,$1FC0,$E020,$0003,$FCFC,$0000,$8006,$7F79 
+L00006C50           dc.w $0038,$C6C7,$0100,$807C,$7F03,$00C1,$003E,$3E00 
+L00006C60           dc.w $837C,$7C00,$0001,$C6FE,$3800,$1CC0,$E323,$0003 
+L00006C70           dc.w $FCFC,$0000,$01C6,$FE38,$0018,$C6E7,$2100,$807C 
+L00006C80           dc.w $7F03,$00C1,$003E,$3E00,$01FE,$FE00,$0080,$067F 
+L00006C90           dc.w $7900,$F00C,$0F03,$00E1,$181E,$0600,$E318,$1C04 
+L00006CA0           dc.w $00C7,$3038,$0800,$C730,$3808,$00E7,$0018,$1800 
+L00006CB0           dc.w $837C,$7C00,$0001,$C6FE,$3800,$18C6,$E721,$0080 
+L00006CC0           dc.w $7C7F,$0300,$01C6,$FE38,$0018,$C6E7,$2100,$807C 
+L00006CD0           dc.w $7F03,$00C1,$003E,$3E00,$837C,$7C00,$0001,$C6FE 
+L00006CE0           dc.w $3800,$18C6,$E721,$0080,$7E7F,$0100,$C006,$3F39 
+L00006CF0           dc.w $0038,$C6C7,$0100,$807C,$7F03,$00C1,$003E,$3E00 
+L00006D00           dc.w $EF10,$1000,$00C7,$3838,$0000,$C338,$3C04,$0083 
+L00006D10           dc.w $6C7C,$1000,$817C,$7E02,$0001,$C6FE,$3800,$18C6 
+L00006D20           dc.w $E721,$009C,$0063,$6300,$03FC,$FC00,$0001,$C6FE 
+L00006D30           dc.w $3800,$18C6,$E721,$0000,$FCFF,$0300,$01C6,$FE38 
+L00006D40           dc.w $0018,$C6E7,$2100,$00FC,$FF03,$0081,$007E,$7E00 
+L00006D50           dc.w $837C,$7C00,$0001,$C6FE,$3800,$1CC0,$E323,$001F 
+L00006D60           dc.w $C0E0,$2000,$1FC0,$E020,$0019,$C6E6,$2000,$807C  
+L00006D70           dc.w $7F03,$00C1,$003E,$3E00,$07F8,$F800,$0003,$CCFC  
+L00006D80           dc.w $3000,$19C6,$E620,$0018,$C6E7,$2100,$18C6,$E721  
+L00006D90           dc.w $0010,$CCEF,$2300,$01F8,$FE06,$0083,$007C,$7C00  
+L00006DA0           dc.w $01FE,$FE00,$0000,$C0FF,$3F00,$1FC0,$E020,$0007  
+L00006DB0           dc.w $F8F8,$0000,$03C0,$FC3C,$001F,$C0E0,$2000,$01FE  
+L00006DC0           dc.w $FE00,$0080,$007F,$7F00,$01FE,$FE00,$0000,$C0FF  
+L00006DD0           dc.w $3F00,$1FC0,$E020,$0007,$F8F8,$0000,$03C0,$FC3C  
+L00006DE0           dc.w $001F,$C0E0,$2000,$1FC0,$E020,$009F,$0060,$6000  
+L00006DF0           dc.w $837C,$7C00,$0001,$C6FE,$3800,$1CC0,$E323,$0001  
+L00006E00           dc.w $DEFE,$2000,$10C6,$EF29,$0018,$C6E7,$2100,$807E  
+L00006E10           dc.w $7F01,$00C0,$003F,$3F00,$39C6,$C600,$0018,$C6E7  
+L00006E20           dc.w $2100,$18C6,$E721,$0000,$FEFF,$0100,$00C6,$FF39  
+L00006E30           dc.w $0018,$C6E7,$2100,$18C6,$E721,$009C,$0063,$6300  
+L00006E40           dc.w $8778,$7800,$00C3,$303C,$0C00,$C730,$3808,$00C7  
+L00006E50           dc.w $3038,$0800,$C730,$3808,$00C7,$3038,$0800,$8778  
+L00006E60           dc.w $7800,$00C3,$003C,$3C00,$F906,$0600,$00F8,$0607  
+L00006E70           dc.w $0100,$F806,$0701,$00F8,$0607,$0100,$38C6,$C701  
+L00006E80           dc.w $0018,$C6E7,$2100,$807C,$7F03,$00C1,$003E,$3E00  
+L00006E90           dc.w $39C6,$C600,$0010,$CCEF,$2300,$01D8,$FE26,$0003  
+L00006EA0           dc.w $F0FC,$0C00,$07D8,$F820,$0013,$CCEC,$2000,$19C6  
+L00006EB0           dc.w $E620,$009C,$0063,$6300,$3FC0,$C000,$001F,$C0E0  
+L00006EC0           dc.w $2000,$1FC0,$E020,$001F,$C0E0,$2000,$1FC0,$E020  
+L00006ED0           dc.w $0019,$C6E6,$2000,$00FE,$FF01,$0080,$007F,$7F00  
+L00006EE0           dc.w $39C6,$C600,$0010,$EEEF,$0100,$00FE,$FF01,$0000  
+L00006EF0           dc.w $D6FF,$2900,$10C6,$EF29,$0018,$C6E7,$2100,$18C6  
+L00006F00           dc.w $E721,$009C,$0063,$6300,$39C6,$C600,$0018,$E6E7  
+L00006F10           dc.w $0100,$08F6,$F701,$0000,$DEFF,$2100,$10CE,$EF21  
+L00006F20           dc.w $0018,$C6E7,$2100,$18C6,$E721,$009C,$0063,$6300  
+L00006F30           dc.w $837C,$7C00,$0001,$C6FE,$3800,$18C6,$E721,$0018  
+L00006F40           dc.w $C6E7,$2100,$18C6,$E721,$0018,$C6E7,$2100,$807C  
+L00006F50           dc.w $7F03,$00C1,$003E,$3E00,$03FC,$FC00,$0001,$C6FE  
+L00006F60           dc.w $3800,$18C6,$E721,$0000,$FCFF,$0300,$01C0,$FE3E  
+L00006F70           dc.w $001F,$C0E0,$2000,$1FC0,$E020,$009F,$0060,$6000  
+L00006F80           dc.w $837C,$7C00,$0001,$C6FE,$3800,$18C6,$E721,$0018  
+L00006F90           dc.w $C6E7,$2100,$00DA,$FF25,$0000,$CCFF,$3300,$8176  
+L00006FA0           dc.w $7E08,$00C4,$003B,$3B00,$03FC,$FC00,$0001,$C6FE  
+L00006FB0           dc.w $3800,$18C6,$E721,$0000,$FCFF,$0300,$01CC,$FE32  
+L00006FC0           dc.w $0018,$C6E7,$2100,$18C6,$E721,$009C,$0063,$6300  
+L00007110           dc.w $11EE,$EE22,$0081,$7E7E,$0600,$C33C,$3C0C,$00C7  
+L00007120           dc.w $3838,$0800,$C738,$3808,$00E7,$1818,$1800,$03FC  
+L00007130           dc.w $FC00,$0001,$FEFE,$3200,$817E,$7E66,$00C3,$3C3C  
+L00007140           dc.w $0C00,$8778,$7818,$0003,$FCFC,$3000,$01FE,$FE02  
+L00007150           dc.w $0081,$7E7E,$7E00,$0404,$0505,$0505,$0505,$0404  
+L00007160           dc.w $0404,$0405,$0504,$0505,$0404,$0404,$0404,$0404  
+L00007170           dc.w $0301,$0100,$00FF,$0001,$0101,$0000,$0102,$0302  
+L00007180           dc.w $0202,$0304,$0505,$0504,$0404,$0302,$01FF,$FDFD  
+L00007190           dc.w $FCFC,$FCFB,$F9FA,$FAFC,$FDFD,$FDFC,$FDFD,$FF00  
+L000071A0           dc.w $0101,$0101,$0000,$FFFE,$FEFD,$FEFD,$FCFB,$FCFC  
+L000071B0           dc.w $FBFC,$FDFC,$FEFE,$FEFE,$FFFE,$FEFF,$FFFE,$FEFF  
+L000071C0           dc.w $FFFF,$00FF,$0000,$0000,$FF00,$FF00,$FFFE,$FFFE  
+L000071D0           dc.w $FFFD,$FEFE,$FEFD,$FDFD,$FDFD,$FDFD,$FEFE,$FEFD  
+L000071E0           dc.w $FDFE,$FF00,$0000,$0000,$0100,$0001,$0001,$FFFF  
+L000071F0           dc.w $FFFE,$FEFE,$FEFE,$FEFD,$FDFC,$FCFC,$FCFC,$FCFD  
+L00007200           dc.w $FCFC,$FDFD,$FEFF,$FFFF,$00FF,$FFFE,$FFFE,$FF00  
+L00007210           dc.w $0000,$0001,$0203,$0201,$0202,$0200,$FFFD,$FEFF  
+L00007220           dc.w $FFFF,$FEFE,$0000,$0000,$0101,$0000,$0102,$0202  
+L00007230           dc.w $0203,$0404,$0303,$0505,$0504,$0303,$0301,$FDFD  
+L00007240           dc.w $FEFF,$FDFD,$FCFD,$FEFE,$FFFF,$0202,$0201,$0304  
+L00007250           dc.w $0404,$0304,$0404,$0302,$0302,$0100,$FEFF,$FEFE  
+L00007260           dc.w $FCFC,$FDFD,$FDFD,$FCFC,$FCFD,$FEFF,$0001,$0000  
+L00007270           dc.w $0101,$0100,$0101,$0201,$FF00,$00FF,$00FE,$FEFF  
+L00007280           dc.w $FEFF,$FEFF,$00FF,$FEFF,$FFFF,$0000,$0000,$0101  
+L00007290           dc.w $0101,$0203,$0203,$0303,$0303,$0303,$0304,$0403  
+L000072A0           dc.w $0302,$0100,$FFFF,$FEFF,$0001,$0101,$0303,$0303  
+L000072B0           dc.w $0203,$0203,$0404,$0404,$0506,$0504,$0303,$0203  
+L000072C0           dc.w $0201,$0100,$FEFE,$FFFF,$FF00,$0001,$0202,$0100  
+L000072D0           dc.w $FF00,$FFFF,$FEFE,$FEFD,$FEFF,$0100,$0000,$0102  
+L000072E0           dc.w $0100,$00FF,$FEFC,$FDFE,$FF00,$FFFC,$FCFC,$FCFC  
+L000072F0           dc.w $FCFD,$FFFF,$0101,$0101,$0203,$0303,$0405,$0506  
 
 
 
