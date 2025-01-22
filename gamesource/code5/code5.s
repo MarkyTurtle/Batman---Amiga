@@ -26,7 +26,7 @@ STACK_ADDRESS                   EQU start                                       
                 ENDC
 
 
-CODE1_INITIAL_TIMER_BCD         EQU $0800                                                       ; BCD Vaue for 08:00 minutes
+CODE1_INITIAL_TIMER_BCD         EQU $1200                                                       ; BCD Vaue for 08:00 minutes
 CODE1_DISPLAY_PIXELSWIDE        EQU $150                                                        ; 336 pixels wide
 CODE1_DISPLAY_BYTESWIDE         EQU (CODE1_DISPLAY_PIXELSWIDE/8)                                ; 42 bytes wide
 CODE1_DISPLAY_LINESHIGH         EQU $ae                                                         ; 174 raster lines high
@@ -111,56 +111,62 @@ start               ; added for testing
 
 
 original_start:  
-                    dc.l    $00002FFC                           ; original address $00002ffc
+                    dc.l    $00003000                           ; original address $00002ffc
 
 game_start          ; original address $00003000
 initialise_system   ; original address $00003000 
-L00003000            MOVE.L  #$00000000,D0
-L00003002            MOVE.W  #$1fff,$00dff09a
-L0000300A            MOVE.W  #$1fff,$00dff096
-L00003012            MOVE.W  #$0200,$00dff100
-L0000301A            MOVE.L  D0,$00dff102
-L00003020            MOVE.W  #$4000,$00dff024
-L00003028            MOVE.L  D0,$00dff040
-L0000302E            MOVE.W  #$0041,$00dff058
+                    ; kill the system & initialise h/w
+                    moveq   #$00,D0
+                    move.w  #$1fff,$00dff09a
+                    move.w  #$1fff,$00dff096
+                    move.w  #$0200,$00dff100
+                    move.l  D0,$00dff102
+                    move.w  #$4000,$00dff024
+                    move.l  D0,$00dff040
+                    move.w  #$0041,$00dff058
 
-L00003036            MOVE.W  #$8340,$00dff096
-L0000303E            MOVE.W  #$7fff,$00dff09e
+                    move.w  #$8340,$00dff096
+                    move.w  #$7fff,$00dff09e
 
-L00003046            MOVE.L  #$00000007,D7
-L00003048            LEA.L   $00dff140,A0
+                    ; clear all sprite postions - L00003046
+                    moveq.l #$07,D7
+                    lea.l   $00dff140,A0
 
-L0000304E            MOVE.W  D0,(A0)
-L00003050            ADDA.W  #$00000008,A0
-L00003052            DBF.W   D7,L0000304e
+L0000304E            move.w  D0,(A0)
+                     adda.w  #$00000008,A0
+                     dbf.w   D7,L0000304E
 
-L00003056            MOVE.L  #$00000003,D7
-L00003058            LEA.L   $00dff0a8,A0
+                    ; clear all audio volume - L00003056
+                    moveq.l #$03,D7
+                    lea.l   $00dff0a8,A0
 
-L0000305E            MOVE.W  D0,(A0)
-L00003060            LEA.L   $0010(A0),A0
-L00003064            DBF.W   D7,L0000305e
+L0000305E            move.w  D0,(A0)
+                     lea.l   $0010(A0),A0
+                     dbf.w   D7,L0000305E
 
-L00003068            LEA.L   $00dff180,A0
-L0000306E            MOVE.L  #$0000001f,D7
-L00003070            MOVE.W  D0,(A0)+
-L00003072            DBF.W   D7,L00003070
+                    ; all colour regs to black -L00003068
+                     lea.l   $00dff180,A0
+                     moveq.l #$1f,D7
+L00003070            move.w  D0,(A0)+
+                     dbf.w   D7,L00003070
 
-L00003076            MOVE.B  #$7f,$00bfed01
-L0000307E            MOVE.B  D0,$00bfee01
-L00003084            MOVE.B  D0,$00bfef01
-L0000308A            MOVE.B  D0,$00bfe001
-L00003090            MOVE.B  #$03,$00bfe201
-L00003098            MOVE.B  D0,$00bfe101
-L0000309E            MOVE.B  #$ff,$00bfe301
+                    ; reset CIAA - L00003076
+                    move.b  #$7f,$00bfed01
+                    move.b  D0,$00bfee01
+                    move.b  D0,$00bfef01
+                    move.b  D0,$00bfe001
+                    move.b  #$03,$00bfe201
+                    move.b  D0,$00bfe101
+                    move.b  #$ff,$00bfe301
 
-L000030A6            MOVE.B  #$7f,$00bfdd00
-L000030AE            MOVE.B  D0,$00bfde00
-L000030B4            MOVE.B  D0,$00bfdf00
-L000030BA            MOVE.B  #$c0,$00bfd000
-L000030C2            MOVE.B  #$c0,$00bfd200
-L000030CA            MOVE.B  #$ff,$00bfd100
-L000030D2            MOVE.B  #$ff,$00bfd300
+                    ; reset CIAB - L000030A6
+                    move.b  #$7f,$00bfdd00
+                    move.b  D0,$00bfde00
+                    move.b  D0,$00bfdf00
+                    move.b  #$c0,$00bfd000
+                    move.b  #$c0,$00bfd200
+                    move.b  #$ff,$00bfd100
+                    move.b  #$ff,$00bfd300
 
                     ; ------ enter supervisor mode -------
 .enter_supervisor   LEA.L   .supervisor_trap(PC),A0         ; A0 = address of supervisor trap $00001F58
@@ -174,259 +180,362 @@ L000030D2            MOVE.B  #$ff,$00bfd300
 
                     ;jsr     _DEBUG_COLOURS
 
-                    ; set stack address
-L000030DA            LEA.L   $0005a36c,A7                    ; STACK
+                    ; set stack address - L000030DA
+                    LEA.L   STACK_ADDRESS,A7                ; STACK
 
-L000030E0            MOVE.L  #$00000002,D7
-L000030E2            LEA.L   L000031a4,A0
-L000030E8            LEA.L   $00000064,A1
+                    ; set interrupt handlers (only level 1,2 & 3)
+                    ; odd as additional handlers exist
+                    MOVEQ.L #$02,D7
+                    LEA.L   interrupt_handlers_table,A0
+                    LEA.L   $00000064,A1
+L000030EE           MOVE.L  (A0)+,(A1)+
+                    DBF.W   D7,L000030ee
 
-L000030EE            MOVE.L  (A0)+,(A1)+
-L000030F0            DBF.W   D7,L000030ee
-
-
-L000030F4            MOVE.W  #$ff00,$00dff034
-L000030FC            MOVE.W  D0,$00dff036
-L00003102            OR.B    #$ff,$00bfd100
-L0000310A            AND.B   #$87,$00bfd100
-L00003112            AND.B   #$87,$00bfd100
-L0000311A            OR.B    #$ff,$00bfd100
-L00003122            MOVE.B  #$f0,$00bfe601
-L0000312A            MOVE.B  #$37,$00bfeb01
-L00003132            MOVE.B  #$11,$00bfef01
-
-L0000313A            MOVE.B  #$91,$00bfd600
-L00003142            MOVE.B  D0,$00bfdb00
-L00003148            MOVE.B  D0,$00bfdf00
-
-L0000314E            MOVE.W  #$7fff,$00dff09c
-L00003156            TST.B   $00bfed01
-L0000315C            MOVE.B  #$8a,$00bfed01
-L00003164            TST.B   $00bfdd00
-L0000316A            MOVE.B  #$93,$00bfdd00
-L00003172            MOVE.W  #$e078,$00dff09a
-
-L0000317A            MOVE.W  #$1200,D0 ; timer 12:00 BCD
-L0000317E            JSR     $0007c80e                       ; PANEL
-L00003184            JSR     $0007c854                       ; PANEL
-
-L0000318A            BSR.W   L0000373a
-L0000318E            LEA.L   L000031bc,A0 ; Copper
-L00003194            BSR.W   L0000367e
-L00003198            BSR.W   L000036ee
-L0000319C            BRA.W   L00003ad4 ; Initialise game
+                    ; Initialise CIA Timers 
+                    MOVE.W  #$ff00,$00dff034
+                    MOVE.W  D0,$00dff036
+                    OR.B    #$ff,$00bfd100
+                    AND.B   #$87,$00bfd100
+                    AND.B   #$87,$00bfd100
+                    OR.B    #$ff,$00bfd100
+                    MOVE.B  #$f0,$00bfe601
+                    MOVE.B  #$37,$00bfeb01
+                    MOVE.B  #$11,$00bfef01
+                    ; CIAA - Timer B Low = $f0      ; 0.33 second
+                    MOVE.B  #$91,$00bfd600
+                    MOVE.B  D0,$00bfdb00
+                    MOVE.B  D0,$00bfdf00
+                    ; CIAB - Timer B Low = $00
+                    MOVE.W  #$7fff,$00dff09c
+                    TST.B   $00bfed01
+                    MOVE.B  #$8a,$00bfed01
+                    TST.B   $00bfdd00
+                    MOVE.B  #$93,$00bfdd00
+                    MOVE.W  #$e078,$00dff09a
 
 
+                    ; start initialising the game 
+                IFD TEST_BUILD_LEVEL
+                    jsr     PANEL_INIT_LIVES                ; Panel - Initialise Player Lives - $0007c838
+                    jsr     PANEL_INIT_SCORE                ; Panel - Initialise Player Score to 0 - $0007c81c
+    
+                ENDC
+                    ; set initial level timer value
+                    MOVE.W  #CODE1_INITIAL_TIMER_BCD,D0    ; timer 12:00 BCD
+                    JSR     PANEL_INIT_TIMER               ; $0007c80e                       ; PANEL
+                    JSR     PANEL_INIT_ENERGY              ; $0007c854  ; PANEL
+
+                    BSR.W   clear_display_memory           ; L0000373a
+                    LEA.L   copper_list,a0                 ; L000031bc,A0 ; Copper
+                    BSR.W   reset_display                  ; L0000367e
+                    BSR.W   double_buffer_playfield        ; L000036ee
+                    BRA.W   initialise_game                ; L00003ad4 
+
+
+                    ; maybe intended as a second copper list
 L000031A0           dc.w    $ffff 
 L000031A2           dc.w    $fffe 
 
-interrupt_handlers_table
-L000031A4           dc.l    L000032b4
-L000031A8           dc.l    L000032ec
-L000031AC           dc.l    L00003312
-L000031B0           dc.l    L0000334e
-L000031B4           dc.l    L00003364
-L000031B8           dc.l    L0000338a
 
-copper_list
-L000031BC           dc.w    $2c01,$fffe
-L000031C0           dc.w    $010a,$0002
-L000031C4           dc.w    $0108,$0002
-L000031C8           dc.w    $00e2,$8dce
-L000031CC           dc.w    $00e0,$0006
-                    dc.w    $00e6,$aa5a 
-L000031D4           dc.w    $00e4,$0006
-                    dc.w    $00ea,$c6e6
-L000031DC           dc.w    $00e8,$0006
-                    dc.w    $00ee,$e372
-L000031E4           dc.w    $00ec,$0006
-                    dc.w    $0182,$0446
-                    dc.w    $0184,$088a
-L000031F0           dc.w    $0186,$0cce 
-L000031F4           dc.w    $0188,$0048
-L000031F8           dc.w    $018a,$028c
-L000031FC           dc.w    $018c,$0c64
-L00003200           dc.w    $018e,$0a22
-L00003204           dc.w    $0190,$06a6
-                    dc.w    $0192,$0c4a
-L0000320C           dc.w    $0194,$0ec6
-L00003210           dc.w    $0196,$0e88 
-L00003214           dc.w    $0198,$0600
-                    dc.w    $019a,$0262
-                    dc.w    $019c,$0668
-                    dc.w    $019e,$06ae
-L00003224           dc.w    $da01,$fffe
-L00003228           dc.w    $010a,$0000
-L0000322C           dc.w    $0108,$0000
-L00003230           dc.w    $00e2,$c89a
-L00003234           dc.w    $00e0,$0007
-                    dc.w    $00e6,$d01a
-L0000323C           dc.w    $00e4,$0007
-                    dc.w    $00ea,$d79a
-L00003244           dc.w    $00e8,$0007
-                    dc.w    $00ee,$df1a
-L0000324C           dc.w    $00ec,$0007
-                    dc.w    $0180,$0000
-                    dc.w    $0182,$0060
-                    dc.w    $0184,$0fff
-L0000325C           dc.w    $0186,$0008
-L00003260           dc.w    $0188,$0a22
-L00003264           dc.w    $018a,$0444
-L00003268           dc.w    $018c,$0862
-L0000326C           dc.w    $018e,$0666
-L00003270           dc.w    $0190,$0888
-L00003274           dc.w    $0192,$0aaa 
-                    dc.w    $0194,$0a40
-                    dc.w    $0196,$0c60
-                    dc.w    $0198,$0e80
-L00003284           dc.w    $019a,$0ea0 
-L00003288           dc.w    $019c,$0ec0
-L0000328C           dc.w    $019e,$0eee 
+interrupt_handlers_table    ; original address L000031A4
+                    dc.l    level1_interrupt_handler        ; L000032b4
+                    dc.l    level2_interrupt_handler        ; L000032ec
+                    dc.l    level3_interrupt_handler        ; L00003312
+                    dc.l    level4_interrupt_handler        ; L0000334e
+                    dc.l    level5_interrupt_handler        ; L00003364
+                    dc.l    level6_interrupt_handler        ; L0000338a
+
+
+
+
+                    ; -------------------- copper list -------------------
+                    ; Playfield Display
+                    ; ($67680) - Bitplane1 size = $2260 (8800) (336*209 @ 42 bytes per raster)
+                    ; ($698e0) - Bitplane2 size = $2260 (8800) (336*209 @ 42 bytes per raster)  
+                    ; ($6bb40) - Bitplane3 size = $2260 (8800) (336*209 @ 42 bytes per raster) 
+                    ; ($6dda0) - Bitplane4 size = $2260 (8800) (336*209 @ 42 bytes per raster) 
+                    ;
+                    ; Panel Display
+                    ; ($67680) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)  
+                    ; ($698e0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)  
+                    ; ($6bb40) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)   
+                    ; ($6dda0) - Bitplane size = $2260 (8800) (336*209 @ 42 bytes per raster)
+                    ; 
+copper_list         ;       original address L000031BC
+                    ; ---- playfield display (scroll area) ---
+                    dc.w    $2c01,$fffe
+                    dc.w    BPL2MOD,$0002
+                    dc.w    BPL1MOD,$0002
+copper_playfield_planes     ; original address L000031C8
+                    dc.w    BPL1PTL,$8dce
+                    dc.w    BPL1PTH,$0006
+                    dc.w    BPL2PTL,$aa5a 
+                    dc.w    BPL2PTH,$0006
+                    dc.w    BPL3PTL,$c6e6
+                    dc.w    BPL3PTH,$0006
+                    dc.w    BPL4PTL,$e372
+                    dc.w    BPL4PTH,$0006
+                    dc.w    COLOR01,$0446
+                    dc.w    COLOR02,$088a
+                    dc.w    COLOR03,$0cce 
+                    dc.w    COLOR04,$0048
+                    dc.w    COLOR05,$028c
+                    dc.w    COLOR06,$0c64
+                    dc.w    COLOR07,$0a22
+                    dc.w    COLOR08,$06a6
+                    dc.w    COLOR09,$0c4a
+                    dc.w    COLOR10,$0ec6
+                    dc.w    COLOR11,$0e88 
+                    dc.w    COLOR12,$0600
+                    dc.w    COLOR13,$0262
+                    dc.w    COLOR14,$0668
+                    dc.w    COLOR15,$06ae
+
+                    ; ---- panel display (bottom score/energy etc) ---- 
+                    ; original address L00003224                   
+                    dc.w    $da01,$fffe
+                    dc.w    BPL2MOD,$0000
+                    dc.w    BPL1MOD,$0000
+copper_panel_planes ; original address L00003230
+L00003230           dc.w    BPL1PTL,$c89a
+L00003234           dc.w    BPL1PTH,$0007
+                    dc.w    BPL2PTL,$d01a
+L0000323C           dc.w    BPL2PTH,$0007
+                    dc.w    BPL3PTL,$d79a
+L00003244           dc.w    BPL3PTH,$0007
+                    dc.w    BPL4PTL,$df1a
+L0000324C           dc.w    BPL4PTH,$0007
+copper_panel_colors ; original address L00003250
+                    dc.w    COLOR00,$0000
+                    dc.w    COLOR01,$0060
+                    dc.w    COLOR02,$0fff
+                    dc.w    COLOR03,$0008
+                    dc.w    COLOR04,$0a22
+                    dc.w    COLOR05,$0444
+                    dc.w    COLOR06,$0862
+                    dc.w    COLOR07,$0666
+                    dc.w    COLOR08,$0888
+                    dc.w    COLOR09,$0aaa 
+                    dc.w    COLOR10,$0a40
+                    dc.w    COLOR11,$0c60
+                    dc.w    COLOR12,$0e80
+                    dc.w    COLOR13,$0ea0 
+                    dc.w    COLOR14,$0ec0
+                    dc.w    COLOR15,$0eee 
                     dc.w    $ffff,$fffe
-L00003290           dc.w    $ffff,$fffe
+                    dc.w    $ffff,$fffe
 
 
                     ;------------------- 16 colours for the Panel ---------------------
-panel_colours                                       ; original address L00003294
+panel_colours       ; original address L00003294
 L00003294           dc.w    $0000,$0060,$0fff,$0008
                     dc.w    $0a22,$0444,$0862,$0666
                     dc.w    $0888,$0aaa,$0a40,$0c60
                     dc.w    $0e80,$0ea0,$0ec0,$0eee
 
+
+
+
                     ; -------------------- level 1 - interrupt handler --------------------
                     ; TBE, DSKBLK, SOFT - Interrupts, just clear the bits from INTREQ
                     ;  NB: not enabled by init_system above
                     ;
-level1_interrupt_handler                            ; original addr: 000032B4
-L000032B4               MOVE.L  D0,-(A7)
-L000032B6               MOVE.W  $00dff01e,D0
-L000032BC               BTST.L  #$0002,D0
-L000032C0               BNE.B   L000032e0
-L000032C2               BTST.L  #$0001,D0
-L000032C6               BNE.B   L000032d4
-L000032C8               MOVE.W  #$0001,$00dff09c
-L000032D0               MOVE.L  (A7)+,D0
-L000032D2               RTE 
+level1_interrupt_handler    ; original addr: 000032B4
+                        MOVE.L  D0,-(A7)
+                        MOVE.W  $00dff01e,D0
+                        BTST.L  #$0002,D0
+                        BNE.B   .L000032e0
+                        BTST.L  #$0001,D0
+                        BNE.B   .L000032d4
+                        MOVE.W  #$0001,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L000032D4               MOVE.W  #$0002,$00dff09c
-L000032DC               MOVE.L  (A7)+,D0
-L000032DE               RTE 
+.L000032D4               MOVE.W  #$0002,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L000032E0               MOVE.W  #$0004,$00dff09c
-L000032E8               MOVE.L  (A7)+,D0
-L000032EA               RTE 
+.L000032E0               MOVE.W  #$0004,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L000032EC               MOVE.L  D0,-(A7)
-L000032EE               MOVE.B  $00bfed01,D0
-L000032F4               BPL.B   L00003306
-L000032F6               BSR.W   L000033c8
-L000032FA               MOVE.W  #$0008,$00dff09c
-L00003302               MOVE.L  (A7)+,D0
-L00003304               RTE 
 
-L00003306               MOVE.W  #$0008,$00dff09c
-L0000330E               MOVE.L  (A7)+,D0
-L00003310               RTE 
 
-L00003312               MOVE.L  D0,-(A7)
-L00003314               MOVE.W  $00dff01e,D0
-L0000331A               BTST.L  #$0004,D0
-L0000331E               BNE.B   L00003342
-L00003320               BTST.L  #$0005,D0
-L00003324               BNE.B   L00003332
-L00003326               MOVE.W  #$0040,$00dff09c
-L0000332E               MOVE.L  (A7)+,D0
-L00003330               RTE 
 
-L00003332               BSR.W   L0000351a
-L00003336               MOVE.W  #$0020,$00dff09c
-L0000333E               MOVE.L  (A7)+,D0
-L00003340               RTE 
+                    ; -------------------- level 2 - interrupt handler --------------------
+                    ; CIA Ports & Timers
+                    ; - Enabled by 'init_system' above
+                    ; 
+level2_interrupt_handler    ; original address L000032EC
+                        MOVE.L  D0,-(A7)
+                        MOVE.B  $00bfed01,D0
+                        BPL.B   .L00003306
+                        BSR.W   lvl2_CIAA_Interrupt             ; L000033c8
+                        MOVE.W  #$0008,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L00003342               MOVE.W  #$0010,$00dff09c
-L0000334A               MOVE.L  (A7)+,D0
-L0000334C               RTE 
+.L00003306              MOVE.W  #$0008,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L0000334E               MOVE.L  D0,-(A7)
-L00003350               MOVE.W  $00dff01e,D0
-L00003356               AND.W   #$0780,D0
-L0000335A               MOVE.W  D0,$00dff09a
-L00003360               MOVE.L  (A7)+,D0
-L00003362               RTE 
 
-L00003364               MOVE.L  D0,-(A7)
-L00003366               MOVE.W  $00dff01e,D0
-L0000336C               BTST.L  #$000c,D0
-L00003370               BNE.B   L0000337e
-L00003372               MOVE.W  #$0800,$00dff09c
-L0000337A               MOVE.L  (A7)+,D0
-L0000337C               RTE 
 
-L0000337E               MOVE.W  #$1000,$00dff09c
-L00003386               MOVE.L  (A7)+,D0
-L00003388               RTE 
 
-L0000338A               MOVE.L  D0,-(A7)
-L0000338C               MOVE.W  $00dff01e,D0
-L00003392               BTST.L  #$000e,D0
-L00003396               BNE.B   L000033bc
-L00003398               MOVE.B  $00bfdd00,D0
-L0000339E               BPL.B   L000033b0
-L000033A0               BSR.W   L00003508
-L000033A4               MOVE.W  #$2000,$00dff09c
-L000033AC               MOVE.L  (A7)+,D0
-L000033AE               RTE 
+                    ; -------------------- level 3 - interrupt handler --------------------
+                    ; COPER, VERTB, BLIT - interrupts
+                    ; - Enabled by 'init_system' above
+                    ;
+level3_interrupt_handler    ; original address L00003312
+                        MOVE.L  D0,-(A7)
+                        MOVE.W  $00dff01e,D0
+                        BTST.L  #$0004,D0
+                        BNE.B   .L00003342
+                        BTST.L  #$0005,D0
+                        BNE.B   .L00003332
+                        MOVE.W  #$0040,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L000033B0               MOVE.W  #$2000,$00dff09c
-L000033B8               MOVE.L  (A7)+,D0
-L000033BA               RTE 
+.L00003332              BSR.W   lvl_3_update_sound_player           ; L0000351a
+                        MOVE.W  #$0020,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L000033BC               MOVE.W  #$4000,$00dff09c
-L000033C4               MOVE.L  (A7)+,D0
-L000033C6               RTE 
+.L00003342              MOVE.W  #$0010,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
 
-L000033C8               LSR.B   #$00000002,D0
-L000033CA               BCC.B   L000033d0
-L000033CC               BSR.W   L00003538
-L000033D0               LSR.B   #$00000002,D0
-L000033D2               BCC.B   L00003442
-L000033D4               MOVEM.L D1-D2/A0,-(A7)
-L000033D8               MOVE.B  $00bfec01,D1
-L000033DE               NOT.B   D1
-L000033E0               LSR.B   #$00000001,D1
-L000033E2               BCC.B   L000033fa
-L000033E4               LEA.L   L000034e8,A0
-L000033EA               EXT.W   D1
-L000033EC               MOVE.B  $56(PC,D1.w),D1
-L000033F0               MOVE.W  D1,D2
-L000033F2               LSR.W   #$00000003,D2
-L000033F4               BCLR.B  D1,$00(A0,D2.w)
-L000033F8               BRA.B   L00003436
 
-L000033FA               LEA.L   L000034e8,A0
-L00003400               EXT.W   D1
-L00003402               MOVE.B  $40(PC,D1.w),D1
-L00003406               MOVE.W  D1,D2
-L00003408               LSR.W   #$00000003,D2
-L0000340A               BSET.B  D1,$00(A0,D2.w)
-L0000340E               TST.B   D1
-L00003410               BEQ.B   L00003436
-L00003412               LEA.L   L000034c4,A0
-L00003418               MOVE.W  L000034e4,D2
-L0000341E               MOVE.B  D1,$00(A0,D2.w)
-L00003422               ADD.W   #$00000001,D2
-L00003424               AND.W   #$001f,D2
-L00003428               CMP.W   L000034e6,D2
-L0000342E               BEQ.B   L00003436
-L00003430               MOVE.W  D2,L000034e4
-L00003436               MOVE.B  #$40,$00bfee01
-L0000343E               MOVEM.L (A7)+,D1-D2/A0
-L00003442               RTS 
+
+
+                    ; ------------------------ level 4 - interrupt handler ------------------------- 
+                    ; not installed to autovector by the game init
+                    ; unused handler
+                    ; if used would clear raised audio interrupts.
+level4_interrupt_handler    ; original address L0000334E
+                    MOVE.L  D0,-(A7)
+                    MOVE.W  $00dff01e,D0
+                    AND.W   #$0780,D0
+                    MOVE.W  D0,$00dff09a
+                    MOVE.L  (A7)+,D0
+                    RTE 
+
+
+
+
+                    ; ----------------------- level 5 - interrupt handler -------------------------- 
+                    ; not installed to autovector by the game init
+                    ; unused handler
+                    ; if used, then it would clear the disk sync interrupt & serial port interrupt
+                    ;
+level5_interrupt_handler    ; original address L00003364
+                        MOVE.L  D0,-(A7)
+                        MOVE.W  $00dff01e,D0
+                        BTST.L  #$000c,D0
+                        BNE.B   .L0000337e
+                        MOVE.W  #$0800,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
+
+.L0000337E              MOVE.W  #$1000,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
+
+
+
+
+                    ; -------------------- level 6 - interrupt handler -------------------- 
+                    ; not installed to autovector by the game init
+                    ; NB: level 6 is enabled by 'init_system' but is not raised during 
+                    ;     level 1 play.
+                    ;
+                    ; The Vector is still pointing to $2182 (the loader level6 handler)
+                    ; a bug or intentional?
+                    ;
+                    ; unused handler
+                    ;
+level6_interrupt_handler    ; original address L0000338A
+                        MOVE.L  D0,-(A7)
+                        MOVE.W  $00dff01e,D0
+                        BTST.L  #$000e,D0
+                        BNE.B   .L000033bc
+                        MOVE.B  $00bfdd00,D0
+                        BPL.B   .L000033b0
+                        BSR.W   lvl6_timerb_interrupt           ; L00003508
+                        MOVE.W  #$2000,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
+
+.L000033B0              MOVE.W  #$2000,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
+
+.L000033BC              MOVE.W  #$4000,$00dff09c
+                        MOVE.L  (A7)+,D0
+                        RTE 
+
+
+
+
+                    ; ------------------ level 2 - CIAA - Interrupt Handler ------------------
+                    ; Handles:
+                    ;   CIAA - Timer B
+                    ;   Reading the keybaord (adding ascii codes to the keyboard queue)
+                    ;
+                    ; IN:
+                    ;  - D0 - CIAA - ICR
+                    ;
+lvl2_CIAA_Interrupt ; original address L000033C8
+                        LSR.B   #$02,D0
+                        BCC.B   .L000033D0
+                        BSR.W   lvl2_CIAB_TimerB_Handler            ; L00003538
+
+.L000033D0              LSR.B   #$02,D0
+                        BCC.B   .L00003442
+
+                    ; keyboard interrupt
+.L000033D4              MOVEM.L D1-D2/A0,-(A7)
+                        MOVE.B  $00bfec01,D1
+                        NOT.B   D1
+                        LSR.B   #$01,D1
+                        BCC.B   .L000033FA
+                    ; key released (d1 = keycode) 
+                    ; get ascii code and clear key pressed in bitmap table
+.L000033E4              LEA.L   keyboard_bitmap,a0              ; L000034e8,A0
+                        EXT.W   D1
+                        MOVE.B  acsii_lookup_table(PC,D1.w),D1
+                        MOVE.W  D1,D2
+                        LSR.W   #$03,D2
+                        BCLR.B  D1,$00(A0,D2.w)
+                        BRA.B   .L00003436
+                    ; key pressed (d1 = keycode) 
+.L000033FA              LEA.L   keyboard_bitmap,a0              ; L000034e8,A0
+                        EXT.W   D1
+                        MOVE.B  acsii_lookup_table(PC,D1.w),D1
+                        MOVE.W  D1,D2
+                        LSR.W   #$03,D2
+                        BSET.B  D1,$00(A0,D2.w)
+                        TST.B   D1
+                        BEQ.B   .L00003436
+                    ; enqueue the pressed key
+.L00003412              LEA.L   keyboard_buffer,A0
+                        MOVE.W  keyboard_queue_head,d2          ; L000034e4,D2
+                        MOVE.B  D1,$00(A0,D2.w)
+                        ADDQ.W  #$01,D2
+                        AND.W   #$001f,D2
+                        CMP.W   keyboard_queue_tail,d2          ; L000034e6,D2
+                        BEQ.B   .L00003436
+                        MOVE.W  D2,keyboard_queue_head          ; L000034e4
+
+.L00003436              MOVE.B  #$40,$00bfee01
+                        MOVEM.L (A7)+,D1-D2/A0
+.L00003442              RTS 
 
 
                     ; raw key code translation table (raw keycode index into the table, ascii lookup)
                     ; keycode in range $00 - $7f
-acsii_lookup_table                          ; original address 00003444
+acsii_lookup_table  ; original address 00003444
 L00003444                
                         dc.b $27
                         dc.b $31 
@@ -558,73 +667,149 @@ L00003444
                         dc.b $00
                     ; End of Keycode - Ascii lookup table
 
-L000034C2                   dc.b $00,$00,$00,$00,$00,$00,$00,$00 
+
+                    ; --------------- keyboard buffer ------------------
+                    ; 32 byte keyboard buffer queue.
+                    ;
+keyboard_buffer     ; original address L000034C4  
+L000034C4                   dc.b $00,$00,$00,$00,$00,$00,$00,$00 
                             dc.b $00,$00,$00,$00,$00,$00,$00,$00
                             dc.b $00,$00,$00,$00,$00,$00,$00,$00
                             dc.b $00,$00,$00,$00,$00,$00,$00,$00 
 
-L000034E2                   dc.w $0000
+
+                    ; Keyboard buffer index (where new keycodes are queued into)
+keyboard_queue_head ; original address L000034E2 
+L000034E4                   dc.w $0000
+
+                    ; Keyboard buffer index (where keycodes are dequeued from)
+keyboard_queue_tail ; original address L000034E6
 L000034E6                   dc.w $0000 
 
+
+                    ; A bitmap of the keys currently pressed on the keyboard
+                    ; each bit records the key press or release status of the key.
+                    ; range = $00 - $7f (16 bytes of bitmap data)
+keyboard_bitmap     ; original address L000034E8
 L000034E8                   dc.w $0000,$0000,$0000,$0000
                             dc.w $0000,$0000,$0000,$0000 
-
+                    ; extended bitmap for control keys (Function keys etc)
+                    ; ascii codes $80-$ff
 L000034F8                   dc.w $0000,$0000,$0000,$0000 
                             dc.w $0000,$0000,$0000,$0000 
 
 
-L00003508                   LSR.B   #$00000002,D0
-L0000350A                   BCC.B   L00003514
-L0000350C                   MOVE.B  #$00,$00bfee01
-L00003514                   RTS 
 
-L00003516                   dc.l    $00003536                 ; L00003542 ; unused ptr to 'rts' below
 
-L0000351A                   MOVEM.L D1-D7/A0-A6,-(A7)
-L0000351E                   ADD.W   #$00000001,L000036e2
-L00003524                   JSR     $00048018               ; AUDIO
-L0000352A                   MOVE.B  #$00,$00bfee01
-L00003532                   MOVEM.L (A7)+,D1-D7/A0-A6
+
+                    ;----------------------------------------------------------------------------
+                    ; never called because a level 6 interrupt never genrated by level 1 code
+                    ; IN:
+                    ;   d0.b = CIAB - ICR
+                    ;
+lvl6_timerb_interrupt       ; original address L00003508 
+                            LSR.B   #$02,D0
+                            BCC.B   .L00003514
+                            MOVE.B  #$00,$00bfee01
+.L00003514                  RTS 
+
+                    ; unreferenced ptr?
+L00003516                   dc.l    lvl_3_sfx_exit              ;  unused ptr to 'rts' below
+
+
+
+
+
+                    ; ---------------------- update music/sfx player ---------------------------
+                    ; called from lvl3 vertb handler
+                    ;   - increments the frame counter
+                    ;   - play's current sfx/music
+                    ;   - writes '$00' to CIAA CRA (this does nothing due to bit 7 being set/clr)
+                    ;       - so it doesn't actuall clear any bits?
+                    ;
+lvl_3_update_sound_player   ;original address L0000351A  
+                            MOVEM.L D1-D7/A0-A6,-(A7)
+                            ADDQ.W  #$01,frame_counter          ; L000036e2
+                            JSR     AUDIO_PLAYER_UPDATE         ; $00048018  ; AUDIO PLAYER
+                            MOVE.B  #$00,$00bfee01
+                            MOVEM.L (A7)+,D1-D7/A0-A6
+lvl_3_sfx_exit              ; original address L00003536                           
 L00003536                   RTS 
 
-L00003538                   MOVEM.L D0-D7/A0-A6,-(A7)
-L0000353C                   BSR.W   L0000355a
-L00003540                   ADD.W   #$00000001,L00003558
-L00003546                   MOVEA.L L00003554,A0
-L0000354C                   JSR (A0)
-L0000354E                   MOVEM.L (A7)+,D0-D7/A0-A6
-L00003552                   RTS 
-
-L00003554                   dc.l $00003536                 ; L00003542 ; CIAB - Timer B - Handler Routine - Default ptr to 'rts' @ $00003542
-L00003558                   dc.w $06e6                     ; CIAB - Timer B - Ticker Count 
-
-L0000355A                   MOVE.W  $00dff00a,D0
-L00003560                   MOVE.W  L00003624,D1
-L00003566                   MOVE.W  D0,$00003624
-L0000356C                   BSR.W   L000035ee
-L00003570                   MOVE.B  D0,L0000362b
-L00003576                   ADD.W   D1,L0000363a
-L0000357C                   ADD.W   D2,L0000363c
-L00003582                   BTST.B  #$0006,$00bfe001
-L0000358A                   SEQ.B   L0000362a
-L00003590                   SEQ.B   L00003638
-L00003596                   BTST.B  #$0002,$00dff016
-L0000359E                   SEQ.B   L00003639
-L000035A4                   MOVE.W  $00dff00c,D0
-L000035AA                   MOVE.W  L00003626,D1
-L000035B0                   MOVE.W  D0,L00003626
-L000035B6                   BSR.B   L000035ee
-L000035B8                   MOVE.B  D0,L0000362f
-L000035BE                   ADD.W   D1,L00003640
-L000035C4                   ADD.W   D2,L00003642
-L000035CA                   BTST.B  #$0007,$00bfe001
-L000035D2                   SEQ.B   L0000362e
-L000035D8                   SEQ.B   L0000363e
-L000035DE                   BTST.B  #$0006,$00dff016
-L000035E6                   SEQ.B   L0000363f
-L000035EC                   RTS 
 
 
+
+                    ; --------------------- Level 2 - CIAB Timer B Handler -------------------
+                    ; CIAB - Timer B underflow handler (read joystick/mouse counters)
+                    ;       - calls function ptr set at 'ciab_timerb_function_ptr'
+                    ;       - default this is rts.
+                    ;
+lvl2_CIAB_TimerB_Handler    ; original address L00003538
+                            MOVEM.L D0-D7/A0-A6,-(A7)
+                            BSR.W   ciab_timerb_function            ; L0000355A
+                            ADDQ.W  #$01,ciab_timerb_ticker         ; L00003558
+                            MOVEA.L ciab_timerb_function_ptr,a0     ; L00003554,A0
+                            JSR (A0)
+                            MOVEM.L (A7)+,D0-D7/A0-A6
+                            RTS 
+
+ciab_timerb_function_ptr    ; original address L00003554
+L00003554                   dc.l lvl_3_sfx_exit            ; CIAB - Timer B - Handler Routine - Default ptr to 'rts' @ $00003542
+
+ciab_timerb_ticker          ; original address L00003558
+L00003558                   dc.w $0000                     ; CIAB - Timer B - Ticker Count 
+
+
+
+
+                    ; --------------------- level 2 - Timer B - read ports -----------------------
+                    ; read buttons and pot counters for joystick ports 0 and 1
+                    ;
+ciab_timerb_function    ; original address L0000355A
+                            ; joystick 0 counters
+                            MOVE.W  $00dff00a,D0
+                            MOVE.W  Joystick_0,d1                   ; L00003624,D1
+                            MOVE.W  d0,Joystick_0                   ; D0,$00003624
+                            BSR.W   calc_counter_deltas             ; L000035ee
+                            MOVE.B  D0,joy0_random                  ; L0000362b
+                            ADD.W   D1,pot0_horizontal              ; L0000363a
+                            ADD.W   D2,pot0_vertical                ; L0000363c
+                            BTST.B  #$0006,$00bfe001
+                            SEQ.B   joy0_button0                    ; L0000362a
+                            SEQ.B   joy0_button0b                   ; L00003638
+                            BTST.B  #$0002,$00dff016
+                            SEQ.B   joy0_button1b                   ; L00003639
+
+                            ; joystick 1 counters
+                            MOVE.W  $00dff00c,D0
+                            MOVE.W  Joystick_1,d1                   ; L00003626,D1
+                            MOVE.W  d0,Joystick_1                   ; D0,L00003626
+                            BSR.B   calc_counter_deltas             ; L000035ee
+                            MOVE.B  D0,joy1_random                  ; L0000362f
+                            ADD.W   D1,pot1_horizontal              ; L00003640
+                            ADD.W   D2,pot1_vertical                ; L00003642
+                            BTST.B  #$0007,$00bfe001
+                            SEQ.B   joy1_button0                    ; L0000362e
+                            SEQ.B   joy1_button0b                   ; L0000363e
+                            BTST.B  #$0006,$00dff016
+                            SEQ.B   joy1_button1b                   ; L0000363f
+                            RTS 
+
+
+
+                    ; --------------------- calculate mouse counter deltas --------------------
+                    ; calculate delta differences for x,y pot counters.
+                    ; also generate a pseudo random number $00 - $0f 
+                    ;
+                    ; IN:
+                    ; d0.w = JOYxDAT - h/w register read value (current value)
+                    ; d1.w = JOYxDAT - h/w register read value (previous value)
+                    ; OUT:
+                    ;   d0.b    = lookup table value (random number lookup?)
+                    ;   d1.w    = Horizontal Counter Difference#
+                    ;   d2.w    = Vertical Counter Difference
+                    ; 
+calc_counter_deltas     ; original address L000035EE
 L000035EE                   MOVE.W  D0,D3
 L000035F0                   MOVE.W  D1,D2
 L000035F2                   SUB.B   D3,D1
@@ -643,7 +828,14 @@ L0000360C                   OR.W    D3,D0
 L0000360E                   MOVE.B  $04(PC,D0.w),D0
 L00003612                   RTS 
 
+
                 ; Data - Joystick stuff (largely unused)
+                    ; ----------- 16 byte lookup table above ------------
+                    ; used by above routine to return a value beteen
+                    ; $00 - $0f depending on mouse counter values.
+                    ; could be a randomnumber seed or similar.
+                    ; 
+random_lookup       ; original address
 L00003614                   dc.b    $00
                             dc.b    $04 
                             dc.b    $05
@@ -661,32 +853,59 @@ L0000361A                   dc.b    $0d
                             dc.b    $07
                             dc.b    $03 
 
-L00003624                   dc.w    $d98c     
-L00003626                   dc.w    $0000 
-L00003628                   dc.w    $0000
+Joystick_0          ; original address L00003624
+L00003624                   dc.w    $d98c 
+
+Joystick_1          ; original address L00003626 
+L00003626                   dc.w    $0000
+
+L00003628                   dc.w    $0000                      ; unreferenced word
+
+joy0_button0        ; original address L0000362A
 L0000362A                   dc.b    $00
-                            dc.b    $08      
-L0000362C                   dc.w    $0000 
+joy0_random         ; original address L0000362B
+L0000362B                   dc.b    $08 
+
+L0000362C                   dc.w    $0000                      ; unreferenced word
+
+joy1_button0        ; original address L0000362E
 L0000362E                   dc.b    $00
-                            dc.b    $00
-L00003630                   dc.w    $0000 
-L00003632                   dc.w    $0000
-L00003634                   dc.w    $0000 
-L00003636                   dc.w    $0000
+joy1_random         ; original address L0000362F
+L0000362F                   dc.b    $00
+
+L00003630                   dc.w    $0000                      ; unreferenced word 
+L00003632                   dc.w    $0000                      ; unreferenced word
+L00003634                   dc.w    $0000                      ; unreferenced word 
+L00003636                   dc.w    $0000                      ; unreferenced word
+
+joy0_button0b       ; original address L00003638
 L00003638                   dc.b    $00
-                            dc.b    $00 
+joy0_button1b       ; original address L00003639
+L00003639                   dc.b    $00 
+
+pot0_horizontal     ; original address L0000363A
 L0000363A                   dc.w    $f48c
-L0000363C                   dc.w    $fdd9      
+
+pot0_vertical       ; original address L0000363C
+L0000363C                   dc.w    $fdd9 
+
+joy1_button0b       ; original address L0000363E  
 L0000363E                   dc.b    $00
-                            dc.b    $00 
+joy1_button1b       ; original address L0000363F
+L0000363F                   dc.b    $00 
+
+pot1_horizontal     ; original address L00003640
 L00003640                   dc.w    $0000
+pot1_vertical       ; original address L00003642
 L00003642                   dc.w    $0000 
+
 
 
 
                     ; -------------------- wait key --------------------
                     ; wait/loop until a key is pressed
                     ;
+waitkey             ; original address L00003644
 L00003644                   MOVE.L  D0,-(A7)
 L00003646                   BSR.B   L0000364e
 L00003648                   BNE.B   L00003646
@@ -703,15 +922,15 @@ L0000364C                   RTS
                     ;           - Z = 1 if queue is empty
                     ;
 L0000364E                   MOVEM.L D1-D2/A0,-(A7)
-L00003652                   LEA.L   L000034c4,A0
+L00003652                   LEA.L   keyboard_buffer,a0              ; L000034c4,A0
 L00003658                   MOVE.L  #$00000000,D0
-L0000365A                   MOVEM.W L000034e4,D1-D2
+L0000365A                   MOVEM.W keyboard_queue_head,d1-d2       ; L000034e4,D1-D2
 L00003662                   CMP.W   D1,D2
 L00003664                   BEQ.B   L00003676
 L00003666                   MOVE.B  $00(A0,D2.w),D0
 L0000366A                   ADD.W   #$00000001,D2
 L0000366C                   AND.W   #$001f,D2
-L00003670                   MOVE.W  D2,L000034e6
+L00003670                   MOVE.W  D2,keyboard_queue_tail          ; L000034e6
 L00003676                   TST.B   D0
 L00003678                   MOVEM.L (A7)+,D1-D2/A0
 L0000367C                   RTS 
@@ -727,6 +946,7 @@ L0000367C                   RTS
                     ; IN:
                     ;   a0 = copper list address
                     ;
+reset_display
 L0000367E                   MOVE.W  #$0080,$00dff096
 L00003686                   MOVE.L  A0,$00dff080
 L0000368C                   MOVE.W  A0,$00dff088
@@ -737,16 +957,54 @@ L000036AA                   MOVE.W  #$00d0,$00dff094
 L000036B2                   MOVE.W  #$3080,$00dff08e
 L000036BA                   MOVE.W  #$0ac0,$00dff090
 L000036C2                   MOVE.W  #$4200,$00dff100
-L000036CA                   CLR.W   $000036e2
-L000036D0                   TST.W   $000036e2
+
+ 
+                    ; set bitplane ptrs if running a test build
+                IFD     TEST_BUILD_LEVEL
+                    lea     copper_panel_planes,a0
+                    move.l  #PANEL_GFX,d0
+                    move.w  d0,2(a0)
+                    swap.w  d0
+                    move.w  d0,6(a0)
+                    swap.w  d0
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$0a(a0)
+                    swap.w  d0
+                    move.w  d0,$0e(a0)
+                    swap.w  d0  
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$12(a0)
+                    swap.w  d0
+                    move.w  d0,$16(a0)
+                    swap.w  d0        
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$1a(a0)
+                    swap.w  d0
+                    move.w  d0,$1e(a0)
+                    swap.w  d0       
+                ENDC
+
+
+L000036CA                   CLR.W   frame_counter               ; $000036e2
+L000036D0                   TST.W   frame_counter               ; $000036e2
 L000036D6                   BEQ.B   L000036d0
-L000036D8                   MOVE.W  #$8180,$00dff096
+L000036D8                   MOVE.W  #$8180,$00dff096         ; Enable - Copper DMA
 L000036E0                   RTS 
 
+
+frame_counter_and_target_counter
+frame_counter               ; original address L000036E2
 L000036E2                   dc.w $0000
+
+target_frame_count          ; original address L000036E4
 L000036E4                   dc.w $0000
-L000036E6                   dc.l $00068dce 
-L000036EA                   dc.l $00061b9c 
+
+
+playfield_buffer_ptrs       ; original address L000036E6
+playfield_buffer_1          ; original address L000036E6
+L000036E6                   dc.l CODE1_DISPLAY_BUFFER2_ADDRESS           ; double buffered playfield ptr 1 (current display by copper)
+playfield_buffer_2          ; original address L000036EA
+L000036EA                   dc.l CODE1_DISPLAY_BUFFER1_ADDRESS           ; double buffered playfield ptr 2 (back buffer)
 
 
 
@@ -755,20 +1013,26 @@ L000036EA                   dc.l $00061b9c
                     ; swap display buffer pointers and update the copper list display.
                     ; can wait for future frame count, typically waits for top of next frame.
                     ;
-L000036EE                   MOVE.W  L000036e2,D0
-L000036F2                   CMP.W   L000036e2,D0
+double_buffer_playfield     ; original address L000036EE
+L000036EE                   MOVE.W  frame_counter,D0
+L000036F2                   CMP.W   frame_counter,D0
 L000036F6                   BEQ.B   L000036f2
-L000036F8                   MOVE.W  L000036e4,D1
+
+L000036F8                   MOVE.W  target_frame_count,D1
 L000036FC                   CMP.W   D0,D1
-L000036FE                   BPL.B   L000036ee 
+L000036FE                   BPL.B   double_buffer_playfield         ; L000036ee 
+
 L00003700                   ADD.W   #$0001,D0
-L00003704                   MOVE.W  D0,L000036e4
-L00003708                   MOVEM.L L000036e6,D0-D1
+L00003704                   MOVE.W  D0,target_frame_count
+
+L00003708                   MOVEM.L playfield_buffer_ptrs,D0-D1
 L0000370E                   EXG.L   D0,D1
-L00003710                   MOVEM.L D0-D1,L000036e6
-L00003716                   LEA.L   L000031ca,A0
-L0000371A                   MOVE.L  #$00001c8c,D1
-L00003720                   MOVE.L  #$00000003,D7
+L00003710                   MOVEM.L D0-D1,playfield_buffer_ptrs
+
+L00003716                   LEA.L   copper_playfield_planes+2,A0
+L0000371A                   MOVE.L  #CODE1_DISPLAY_BITPLANEBYTES,D1
+L00003720                   MOVE.L  #CODE1_DISPLAY_BITPLANEDEPTH-1,D7
+
 L00003722                   MOVE.W  D0,(A0)
 L00003724                   ADDA.W  #$00000004,A0
 L00003726                   SWAP.W  D0
@@ -777,7 +1041,8 @@ L0000372A                   ADDA.W  #$00000004,A0
 L0000372C                   SWAP.W  D0
 L0000372E                   ADD.L   D1,D0
 L00003730                   DBF.W   D7,L00003722
-L00003734                   ADD.W   #$00000001,L00006374
+
+L00003734                   ADDQ.W   #$01,playfield_swap_count
 L00003738                   RTS 
 
 
@@ -787,12 +1052,13 @@ L00003738                   RTS
                     ; Clear Double Buffer Display (back & front)
                     ; Clear Off-Screen Displaty Buffer
                     ;
-L0000373A                   LEA.L   $00061b9c,A0        ; Screen Buffer
-L00003740                   MOVE.W  #$3917,D7
+clear_display_memory
+L0000373A                   LEA.L   CODE1_DOUBLE_BUFFER_ADDRESS,A0              ; Screen Buffer
+L00003740                   MOVE.W  #(CODE1_DOUBLE_BUFFER_BYTESIZE/4)-1,d7      ; #$3917,D7
 L00003744                   CLR.L   (A0)+
 L00003746                   DBF.W   D7,L00003744
-L0000374A                   LEA.L   $0005a36c,A0        ; Screen Buffer
-L00003750                   MOVE.W  #$1c8b,D7
+L0000374A                   LEA.L   CODE1_CHIPMEM_BUFFER,A0        ; Screen Buffer
+L00003750                   MOVE.W  #(CODE1_DISPLAY_BUFFER_BYTESIZE/4)-1        ; #$1c8b,D7
 L00003754                   CLR.L   (A0)+
 L00003756                   DBF.W   D7,L00003754
 L0000375A                   RTS 
@@ -918,13 +1184,13 @@ L00003AC4   dc.w $4845,$2054,$494D,$4520,$4245,$494E,$472E,$00FF  ;HE TIME BEING
                     ;
 initialise_game    
 L00003AD4               CLR.L   $000036e2
-L00003ADA               BSR.W   L000036ee
+L00003ADA               BSR.W   double_buffer_playfield         ; L000036ee
 L00003ADE               BSR.W   L00005922
 L00003AE2               JSR     $00048000       ; Audio
 L00003AE8               CLR.W   L00006344
 L00003AEC               CLR.W   L00006360
 L00003AF0               CLR.L   L000036e2
-L00003AF6               BSR.W   L0000373a
+L00003AF6               BSR.W   clear_display_memory            ; L0000373a
 L00003AFA               MOVE.W  #$1200,D0
 L00003AFE               JSR     L0007c80e       ; Panel
 L00003B04               JSR     L0007c854       ; Panel
@@ -992,7 +1258,7 @@ L00003BA4               DBF.W   D7,L00003ba2
 L00003BA8               DBF.W   D6,L00003b9c
 L00003BAC               LEA.L   L00003a98,A0
 L00003BB0               BSR.W   L000069fa
-L00003BB4               BSR.W   L000036ee
+L00003BB4               BSR.W   double_buffer_playfield         ; L000036ee
 L00003BB8               BSR.W   L000058ea
 L00003BBC               BSR.W   L00004ba0
 L00003BC0               BSR.W   L00005604
@@ -1059,8 +1325,8 @@ L00003C8E               BSR.W   L00005604
 L00003C92               BSR.W   L00003ed4
 L00003C96               BSR.W   L00004696
 L00003C9A               BSR.W   L0000463c
-L00003C9E               BSR.W   L000036ee
-L00003CA2               BRA.W   L00003be4      ; game_loop
+L00003C9E               BSR.W   double_buffer_playfield         ; L000036ee
+L00003CA2               BRA.W   L00003be4                       ; game_loop
 
                     ;-----------------------------------------------------
                     ;------------------ End of Game Loop -----------------
@@ -3614,7 +3880,7 @@ L00004f10               moveq   #$03,d6
 L00004f12               cmp.w   #$0014,d6
 L00004f16               bcc.b   L00004f1a 
 L00004f18               moveq   #$01,d6
-L00004f1a               and.w   L00006374,d6
+L00004f1a               and.w   playfield_swap_count,d6         ; L00006374,d6
 L00004f1e               bne.b   L00004f2a
 L00004f20               and.w   #$0003,d4
 L00004f24               asr.w   #$01,d4
@@ -5388,7 +5654,7 @@ L00005b56               addq.w  #$02,$000a(a6)
 L00005b5a               movea.l $0008(a6),a5
 L00005b5e               move.w  (a5),d2
 L00005b60               bpl.w   L000045fa
-L00005b64               bsr.w   L000036ee
+L00005b64               bsr.w   double_buffer_playfield         ; L000036ee
 L00005b68               moveq   #$32,d0
 L00005b6a               bsr.w   L00005ed4
 L00005b6e               bra.w   L00005e82 
@@ -5630,7 +5896,7 @@ L00005d8c           movem.l d0-d1/a6,-(a7)
 L00005d90           moveq   #$0b,d0
 L00005d92           jsr     $00048014                   ; AUDIO PLAYER
 L00005d98           movem.l (a7)+,d0-d1/a6
-L00005d9c           move.w  L00006374,d2
+L00005d9c           move.w  playfield_swap_count,d2         ; L00006374,d2
 L00005da0           lsr.w   #$02,d2
 L00005da2           and.w   #$0003,d2
 L00005da6           addq.w  #$01,d2
@@ -5692,7 +5958,7 @@ L00005e42           moveq   #$07,d2
 L00005e44           cmp.w   #$0007,d2
 L00005e48           bmi.b   L00005e58
 L00005e4a           moveq   #$0c,d2
-L00005e4c           and.w   L00006374,d2
+L00005e4c           and.w   playfield_swap_count,d2         ; L00006374,d2
 L00005e50           lsr.w   #$02,d2
 L00005e52           bne.b   L00005e56
 L00005e54           moveq   #$02,d2
@@ -5712,7 +5978,7 @@ level_completed
 L00005e6e           moveq   #$50,d1
 L00005e70           moveq   #$0b,d2
 L00005e72           bsr.w   L000045fa
-L00005e76           bsr.w   L000036ee
+L00005e76           bsr.w   double_buffer_playfield                     ; L000036ee
 L00005e7a           bset.b  #$0006,$0007c875
                     ; fall through to 'load_level_2'
 
@@ -6099,8 +6365,8 @@ L0000636E           dc.l    $00000000
 L00006370           dc.w    $0000 
 L00006372           dc.w    $0000 
 
-playfield_swap_count
-L00006374           dc.w    $0000
+playfield_swap_count    ; original address L00006374
+L00006374               dc.w    $0000
 
 L00006376           dc.w    $2221,$201F,$1E1D,$1C1B,$1A19,$1817,$1615 
 L00006384           dc.w    $1413,$1211,$100F,$0E0D,$0C0B,$0A09,$0807,$0605 

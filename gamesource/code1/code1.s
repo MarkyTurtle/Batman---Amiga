@@ -968,7 +968,7 @@ ciab_timerb_ticker                          ; original address $00003564
                     ; read buttons and pot counters for joystick ports 0 and 1
                     ;
 ciab_timerb_function                                ; original address $00003566
-                    ; joystick 1 counters
+                    ; joystick 0 counters
                     move.w  $00dff00a,d0            ; d0 = JOY0DAT
                     move.w  Joystick_0,d1           ; L00003630 ; d1 = last JOY0DAT
                     move.w  d0,Joystick_0           ; L00003630 ; store new JOY0DAT
