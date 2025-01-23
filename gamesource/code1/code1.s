@@ -6696,7 +6696,7 @@ char884_bpl3        rs.b    1
                     ; 2) preprocess map data (swap/invert level data blocks)
                     ; 3) preprocess sprites (set up display object lists, format gfx data, create mirrored sprite sheet)
                     ;
-preprocess_data                                         ; original address L000058e2
+preprocess_data     ; original address L000058e2
                     
                     ; --------------- preprocess font gfx ---------------
                     ; when this routine is skipped it doesn't make any
