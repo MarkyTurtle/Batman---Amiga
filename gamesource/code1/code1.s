@@ -7303,7 +7303,7 @@ L00005d22           and.w   #$e000,d2
 L00005d26           addq.w  #$01,d2
 L00005d28           bsr.w   actor_collision_and_sprite1             ; L0000458a
 L00005d2c           btst.b  #$0000,playfield_swap_count+1           ; test even/odd playfield buffer swap value
-L00005d32           beq.b   L00005d02
+L00005d32           beq.b   L00005d02                               ; exit rts
 L00005d34           subq.w  #$01,$0004(a6)
 L00005d38           bmi.b   L00005d82
 L00005d3a           rts 
@@ -7346,7 +7346,7 @@ L00005d84           bra.w   batman_lose_energy
 L00005d88           move.w  (a5),d2
 L00005d8a           beq.b   L00005d82
 L00005d8c           subq.w  #$01,d2
-L00005d8e           bne.w   L00005d02
+L00005d8e           bne.w   L00005d02                               ; exit rts
 L00005d92           move.l  #player_input_cmd_nop,gl_jsr_address    ; L00003c90 ; Set Self Modifying Code JSR in game_loop
 L00005d98           move.w  #$0021,(a5)
 L00005d9c           clr.w   grappling_hook_height                   ; L00006318

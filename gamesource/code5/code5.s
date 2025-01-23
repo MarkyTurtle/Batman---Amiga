@@ -825,7 +825,7 @@ L00003604                   AND.W   D0,D3
 L00003606                   LSR.W   #$00000006,D0
 L00003608                   AND.W   #$000c,D0
 L0000360C                   OR.W    D3,D0
-L0000360E                   MOVE.B  $04(PC,D0.w),D0
+L0000360E                   MOVE.B  random_lookup(PC,D0.w),D0
 L00003612                   RTS 
 
 
@@ -835,7 +835,7 @@ L00003612                   RTS
                     ; $00 - $0f depending on mouse counter values.
                     ; could be a randomnumber seed or similar.
                     ; 
-random_lookup       ; original address
+random_lookup       ; original address L00003614
 L00003614                   dc.b    $00
                             dc.b    $04 
                             dc.b    $05
@@ -1170,10 +1170,23 @@ L00003A54   dc.w $0000,$0000,$00A0,$0038,$0046,$0000,$0000,$0000  ;.......8.F...
 L00003A64   dc.w $0000,$0000,$0000,$0000,$0000,$00A0,$0038,$0046  ;.............8.F
 L00003A74   dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  ;................
 L00003A84   dc.w $00A0,$0038,$0046,$0000,$0000,$0000,$0000,$0000  ;...8.F..........
-L00003A94   dc.w $0000,$0000,$5009,$474F,$5448,$414D,$2043,$4954  ;....P.GOTHAM CIT
-L00003AA4   dc.w $5920,$4341,$5448,$4544,$5241,$4C00,$FF40,$1054  ;Y CATHEDRAL..@.T
-L00003AB4   dc.w $4845,$2045,$4E44,$2E00,$FF60,$0B46,$4F52,$2054  ;HE END...`.FOR T
-L00003AC4   dc.w $4845,$2054,$494D,$4520,$4245,$494E,$472E,$00FF  ;HE TIME BEING...
+L00003A94   dc.w $0000,$0000
+
+gotham_cathedral_text   ; original address L00003A98
+L00003A98   dc.b $50,$09
+            dc.b 'GOTHAM CITY CATHEDRAL'
+
+the_end_text            ; original address L00003AB1
+L00003AB1   dc.b $40,$10
+            dc.b 'THE END.'
+            dc.b $00,$FF
+
+time_being_text         ; original address L00003ABD
+L00003ABD   dc.b $60,$0B
+            dc.b 'FOR THE TIME BEING.'
+            dc.b $00,$FF
+
+            even
 
 
 
@@ -1184,13 +1197,13 @@ L00003AC4   dc.w $4845,$2054,$494D,$4520,$4245,$494E,$472E,$00FF  ;HE TIME BEING
                     ;
 initialise_game    
 L00003AD4               CLR.L   $000036e2
-L00003ADA               BSR.W   double_buffer_playfield     ;L000036ee
+L00003ADA               BSR.W   double_buffer_playfield             ;L000036ee
 L00003ADE               BSR.W   L00005922
 L00003AE2               JSR     $00048000       ; Audio
 L00003AE8               CLR.W   L00006344
-L00003AEC               CLR.W   grappling_hook_height       ;L00006360
-L00003AF0               CLR.L   L000036e2
-L00003AF6               BSR.W   clear_display_memory        ;L0000373a
+L00003AEC               CLR.W   grappling_hook_height               ;L00006360
+L00003AF0               CLR.L   frame_counter_and_target_counter    ;L000036e2
+L00003AF6               BSR.W   clear_display_memory                ;L0000373a
 L00003AFA               MOVE.W  #$1200,D0
 L00003AFE               JSR     L0007c80e       ; Panel
 L00003B04               JSR     L0007c854       ; Panel
@@ -1248,28 +1261,28 @@ L00003B86               LEA.L   L0000641b,A0
 L00003B8A               BSR.W   L00005470
 
 
-L00003B8E               MOVE.W  #$4c7c,L00003c7c
+L00003B8E               MOVE.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7c
 L00003B94               LEA.L   L000069c2,A0
 L00003B98               MOVE.W  L00006344,D6
 L00003B9C               MOVE.L  #$00000006,D7
-L00003B9E               LEA.L   L000069ec,A1
+L00003B9E               LEA.L   level_parameters,a1                     ;L000069ec,A1
 L00003BA2               MOVE.W  (A0)+,(A1)+
 L00003BA4               DBF.W   D7,L00003ba2
 L00003BA8               DBF.W   D6,L00003b9c
-L00003BAC               LEA.L   L00003a98,A0
-L00003BB0               BSR.W   L000069fa
-L00003BB4               BSR.W   double_buffer_playfield         ;L000036ee
-L00003BB8               BSR.W   initialise_offscreen_buffer     ;L000058ea
+L00003BAC               LEA.L   gotham_cathedral_text,a0                ;L00003a98,A0
+L00003BB0               BSR.W   large_text_plotter                      ;L000069fa
+L00003BB4               BSR.W   double_buffer_playfield                 ;L000036ee
+L00003BB8               BSR.W   initialise_offscreen_buffer             ;L000058ea
 L00003BBC               BSR.W   L00004ba0
 L00003BC0               BSR.W   L00005604
 L00003BC4               MOVE.L  #$00000032,D0
-L00003BC6               BSR.W   L00005ed4
+L00003BC6               BSR.W   wait_for_frame_count                    ;L00005ed4
 L00003BCA               BTST.B  #$0000,$0007c875    ; Panel
 L00003BD2               BNE.B   L00003bdc
 L00003BD4               MOVE.L  #$00000001,D0
 L00003BD6               JSR     $00048010           ; Audio?
-L00003BDC               BSR.W   L00003caa
-L00003BE0               CLR.L   L000036e2
+L00003BDC               BSR.W   screen_wipe_to_backbuffer               ;L00003caa
+L00003BE0               CLR.L   frame_counter_and_target_counter        ;L000036e2
 
 game_loop
 L00003BE4               BSR.W   L0000364e
@@ -1280,7 +1293,7 @@ L00003BF0               BSR.W   L0000364e
 L00003BF4               BEQ.B   L00003bf0
 L00003BF6               CMP.W   #$001b,D0
 L00003BFA               BNE.B   L00003c0c
-L00003BFC               BSR.W   L00003ca6
+L00003BFC               BSR.W   screen_wipe_to_black        ;L00003ca6
 L00003C00               BSET.B  #$0005,$0007c875           ; Panel
 L00003C08               BRA.W   L00004e3e
 L00003C0C               CMP.W   #$0082,D0
@@ -1313,8 +1326,10 @@ L00003C72               MOVEM.W batman_xy_offset,d0-d1  ; L000069f2,D0-D1
                     ; updated all over the place to run an alternative routine.
                     ; a bit of a state machine kinda update routine.
 ;L00003C78               JSR     L00004c7c
-L00003C78               dc.w    $4eb9
-L00003C7A               dc.l    $00000000
+gl_jsr_instuction       ; original address L00003C78
+L00003C78               dc.w    $4eb9                   ; JSR.L - opcode value
+gl_jsr_address          ; original address L00003C7A
+L00003C7A               dc.l    $00000000               ; Dest Address - Self Modified Code
                     ; ----- END OF SELF MODIFYING CODE -----
 
 L00003C7E               BSR.W   L00004974
@@ -1339,8 +1354,8 @@ L00003CA2               BRA.W   L00003be4                       ; game_loop
                     ;   - Clears back buffer
                     ;   - falls through to screen_wipe_to_backbuffer
                     ;
-screen_wipe_to_black
-L00003ca6               bsr.w L00004e66
+screen_wipe_to_black    ; original address L00003ca6
+L00003ca6               bsr.w clear_backbuffer_playfield        ;L00004e66
 
                     ; ---------------- Wipe Screen to Back buffer ---------------------
                     ; Gradually replace the current display buffer with the gfx from
@@ -1357,7 +1372,7 @@ L00003ca6               bsr.w L00004e66
                     ;   
                     ;   for now, knowing what the routine does it good enough.
                     ; 
-screen_wipe_to_backbuffer
+screen_wipe_to_backbuffer   ; original address l00003caa
 L00003caa               move.w  #$002a,d0
 L00003cae               move.w  #$00ae,d1
 L00003cb2               movem.l L000036e6,a0-a1
@@ -1435,9 +1450,9 @@ L00003d54               add.w   #$0100,d0
 L00003d58               move.w  d0,(a0)
 L00003d5a               addq.w  #$04,a0
 L00003d5c               dbf.w   d6,L00003d36
-L00003d60               move.w  L000036e2,d0
+L00003d60               move.w  frame_counter,d0            ; L000036e2,d0
 L00003d66               addq.w  #$04,d0
-L00003d68               cmp.w   L000036e2,d0
+L00003d68               cmp.w   frame_counter,d0            ; L000036e2,d0
 L00003d6e               bne.b   L00003d68
 L00003d70               dbf.w   d7,L00003d2c
 L00003d74               rts
@@ -1448,7 +1463,7 @@ L00003d74               rts
                     ; waits 4 frames between each fade loop.
                     ; loops 16 times, 64 frames fade in. approx 1 seconds.
                     ;
-panel_fade_out    
+panel_fade_out      ; original address L00003d76
 L00003d76               moveq   #$0f,d7
 L00003d78               lea.l   L00003252,a0
 L00003d7c               moveq   #$0f,d6
@@ -1468,9 +1483,9 @@ L00003d9c               sub.w   #$0100,d0
 L00003da0               move.w  d0,(a0)
 L00003da2               addq.w  #$04,a0
 L00003da4               dbf.w   d6,L00003d7e
-L00003da8               move.w  L000036e2,d0
+L00003da8               move.w  frame_counter,d0            ;L000036e2,d0
 L00003dae               addq.w  #$04,d0
-L00003db0               cmp.w   L000036e2,d0
+L00003db0               cmp.w   frame_counter,d0            ;L000036e2,d0
 L00003db6               bne.b   L00003db0
 L00003db8               dbf.w   d7,L00003d78
 L00003dbc               rts  
@@ -1506,7 +1521,7 @@ L00003dea               rts
                     ; Code Checked 9/1/2025
                     ;
 trigger_new_actors 
-L00003dec               movem.w L000069ec,d0-d1
+L00003dec               movem.w scroll_window_xy_coord,d0-d1     ;L000069ec,d0-d1
 L00003df2               lea.l   L00006476,a0
 L00003df6               movem.w (a0)+,d2-d3
 L00003dfa               sub.w   d0,d2
@@ -1638,7 +1653,7 @@ L00003eda               move.w  (a6),d6
 L00003edc               beq.w   L00003f96
 L00003ee0               movem.w $0002(a6),d0-d1
 L00003ee6               move.w  d0,d4
-L00003ee8               movem.w L000069ec,d2-d3
+L00003ee8               movem.w scroll_window_xy_coord,d2-d3     lL000069ec,d2-d3
 L00003eee               sub.w   d2,d0
 L00003ef0               sub.w   d3,d1
 L00003ef2               cmp.w   #$0140,d0
@@ -3215,12 +3230,12 @@ L00004a26               bsr.w   L00004a9c       ; draw_background_vertical_scrol
 
                     ; ------- do horizontal scroll -------
 do_horizontal_scroll
-L00004a2a               move.w  batman_x_offset,d0     ; L000069f2,d0
-L00004a2e               sub.w   L000069f8,d0
+L00004a2a               move.w  batman_x_offset,d0              ;L000069f2,d0
+L00004a2e               sub.w   target_window_x_offset,d0       ;L000069f8,d0
 L00004a32               move.w  d0,L00006356
 L00004a36               beq.w   L00004a9a
 
-L00004a3a               move.w  L000069ec,d1
+L00004a3a               move.w  scroll_window_x_coord,d1        ;L000069ec,d1
 
 .test_min_X         ; test window min X value (0)
 L00004a3e               move.w  d1,d2
@@ -3243,9 +3258,9 @@ L00004a56               sub.w   d0,d1
 L00004a58               exg.l   d1,d0
 
 .cont_horiz_scroll  ; calc amount of horizontal scroll  
-L00004a5a               add.w   L000069f8,d0
-L00004a5e               move.w  d0,batman_x_offset     ; L000069f2
-L00004a62               move.w  d1,L000069ec
+L00004a5a               add.w   target_window_x_offset,d0       ;L000069f8,d0
+L00004a5e               move.w  d0,batman_x_offset              ;L000069f2
+L00004a62               move.w  d1,scroll_window_x_coord        ;L000069ec
 L00004a66               move.w  d1,d3
 L00004a68               sub.w   d2,d3
 L00004a6a               move.w  d3,L00006356
@@ -3321,7 +3336,7 @@ L00004ab0               lea.l   $00008002,a0            ; MAPGR_BASE
 L00004ab6               mulu.w  (a0),d4
 
                     ; calc X offset into map tile map data
-L00004ab8               move.w  L000069ec,d0
+L00004ab8               move.w  scroll_window_x_coord,d0        ;L000069ec,d0
 L00004abc               lsr.w   #$03,d0
 
                     ; calc total offset into tile map data
@@ -3475,7 +3490,7 @@ L00004bb2               move.w  L0000635a,d1
 L00004bb6               clr.l   d6
 L00004bb8               subq.w  #$01,d6
 L00004bba               swap.w  d6
-L00004bbc               move.w  L000069ec,d2
+L00004bbc               move.w  scroll_window_x_coord,d2        ;L000069ec,d2
 L00004bc0               and.w   #$0007,d2
 L00004bc4               beq.b   L00004bca 
 L00004bc6               ror.l   d2,d6
@@ -3565,7 +3580,7 @@ L00004c7a               rts
                     ; 
                     ; Code Checked 3/1/2025
                     ;
-player_move_commands  
+player_move_commands    ; original address L00004c7c
 L00004c7c               clr.w   d2
 L00004c7e               move.b  L00006350,d2
 L00004c82               asl.w   #$02,d2
@@ -3581,38 +3596,38 @@ L00004c88               jmp     (a0)
                     ;
 player_input_cmd_table 
 
-L00004C8A           dc.l $000052B6  
+L00004C8A           dc.l player_input_cmd_nop           ; $000052B6  
                     dc.l $0000526C 
                     dc.l $000052C2 
-                    dc.l $000052B6  
+                    dc.l player_input_cmd_nop           ; $000052B6  
 L00004C9A           dc.l $0000542C 
                     dc.l $00005266 
                     dc.l $000052B8 
-                    dc.l $000052B6  
+                    dc.l player_input_cmd_nop           ; $000052B6  
 L00004CAA           dc.l $00005236 
                     dc.l $0000526A 
                     dc.l $000052BE 
-                    dc.l $000052B6  
-L00004CBA           dc.l $000052B6 
-                    dc.l $000052B6 
-                    dc.l $000052B6 
-                    dc.l $000052B6  
+                    dc.l player_input_cmd_nop           ; $000052B6  
+L00004CBA           dc.l player_input_cmd_nop           ; $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6  
 L00004CCA           dc.l $0000501E 
                     dc.l $0000501E 
                     dc.l $0000501E 
                     dc.l $0000501E  
-L00004CDA           dc.l $0000540E 
-                    dc.l $0000540E 
-                    dc.l $0000540E 
-                    dc.l $0000540E  
+L00004CDA           dc.l player_input_cmd_fire_down     ; $0000540E 
+                    dc.l player_input_cmd_fire_down     ; $0000540E 
+                    dc.l player_input_cmd_fire_down     ; $0000540E 
+                    dc.l player_input_cmd_fire_down     ; $0000540E  
 L00004CEA           dc.l $00005136 
                     dc.l $00005124 
                     dc.l $0000512C 
-                    dc.l $000052B6  
-L00004CFA           dc.l $000052B6 
-                    dc.l $000052B6 
-                    dc.l $000052B6 
-                    dc.l $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6  
+L00004CFA           dc.l player_input_cmd_nop           ; $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6 
+                    dc.l player_input_cmd_nop           ; $000052B6 
 
 
                     ; ------------------------- batman lose energy ---------------------------
@@ -3646,25 +3661,25 @@ L00004d1e               movem.l (a7)+,d0-d7/a5-a6
                     ; Code Checked 7/1/2025
                     ;
 batman_collision_state_machine
-L00004d22               move.w  L0003c7c,d2     ; gl_jsr_address
-L00004d26               cmp.w   #$54ba,d2
+L00004d22               move.l  gl_jsr_address,d2                           ;L0003c7c,d2 
+L00004d26               cmp.l   #player_state_falling,d2                    ;$000054ba,d2
 L00004d2a               beq.b   L00004d74
-L00004d2c               move.w  #$4e78,d3
+L00004d2c               move.l  #player_state_actor_collide_on_batrope,d3   ;#$00004e78,d3
 L00004d30               cmp.w   d3,d2
 L00004d32               beq.b   L00004d5a
-L00004d34               cmp.w   #$4ea2,d2
+L00004d34               cmp.l   #player_state_grappling_hook_attached,d2    ;#$00004ea2,d2
 L00004d38               beq.b   L00004d5a
-L00004d3a               cmp.w   #$5096,d2
+L00004d3a               cmp.l   #player_state_climb_onto_platform,d2        ;#$00005096,d2
 L00004d3e               beq.b   L00004d76
-L00004d40               move.w  #$4d86,d3
-L00004d44               cmp.w   #$532e,d2
+L00004d40               move.l  #player_state_actor_collide_on_ladder,d3    ;#$00004d86,d3
+L00004d44               cmp.l   #state_climbing_stairs,d2                   ;#$0000532e,d2
 L00004d48               beq.b   L00004d5a
-L00004d4a               cmp.w   d2,d3
+L00004d4a               cmp.l   d2,d3
 L00004d4c               beq.b   L00004d5a
-L00004d4e               lea.l   $548f,a0
+L00004d4e               lea.l   batman_sprite_anim_fall_landing,a0          ;$0000548f,a0
 L00004d52               bsr.w   L00005470
-L00004d56               move.w  #$4d94,d3
-L00004d5a               move.w  d3,L00003c7c
+L00004d56               move.l  #player_state_check_actor_collision,d3      ;#$00004d94,d3
+L00004d5a               move.l  d3,gl_jsr_address                           ; L00003c7c
 L00004d5e               move.w  L0000634e,d2
 L00004d62               add.w   d6,d6
 L00004d64               add.w   d6,d6
@@ -3690,10 +3705,10 @@ L00004d84               rts
                     ; This state gets called when Batman collides with an actor when
                     ; climbing a ladder.
                     ;
-player_state_actor_collide_on_ladder  
+player_state_actor_collide_on_ladder    ; original address L00004d86
 L00004d86               subq.w  #$01,L0000634e
 L00004d8a               bne.b   L00004d74
-L00004d8c               move.w  #$532e,L00003c7c
+L00004d8c               move.l  #state_climbing_stairs,gl_jsr_address       ;#$0000532e,L00003c7c
 L00004d92               bra.b   L00004db8
 
 
@@ -3705,14 +3720,14 @@ L00004d92               bra.b   L00004db8
                     ; climbing a ladder or swinging on a rope..
                     ;
                     ;
-player_state_check_actor_collision  
-L00004d94               tst.w   grappling_hook_height   ;L00006360
+player_state_check_actor_collision  ;original address L00004d94
+L00004d94               tst.w   grappling_hook_height                   ;L00006360
 L00004d98               beq.b   L00004d9e
-L00004d9a               bsr.w   L000051ee
+L00004d9a               bsr.w   player_state_retract_grappling_hook     ;L000051ee
 L00004d9e               subq.w  #$01,L0000634e
 L00004da2               bne.b   L00004d74
-L00004da4               move.w  #$4c7c,L00003c7c
-L00004daa               tst.w   grappling_hook_height   ;L00006360
+L00004da4               move.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7c
+L00004daa               tst.w   grappling_hook_height                   ;L00006360
 L00004dae               beq.b   L00004db4
 L00004db0               bsr.w   L000051e6
 
@@ -3731,12 +3746,12 @@ L00004dbe               beq.b   L00004d74       ; exit rts
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
 set_state_player_life_lost 
-L00004dc0               jsr     $00048004           ; AUDIO_PLAYER_SILENCE
-L00004dc6               clr.w   grappling_hook_height   ;L00006360
-L00004dca               moveq   #$03,d0             ; SFX_LIFE_LOST
-L00004dcc               jsr     $00048010           ; AUDIO_PLAYER_INIT_SONG
-L00004dd2               move.w  #$4de0,L00003c7c    ; gl_jsr_address
-L00004dd8               move.w  #$6424,L0000636e    ; batman_sprite_anim_ptr
+L00004dc0               jsr     $00048004                               ; AUDIO_PLAYER_SILENCE
+L00004dc6               clr.w   grappling_hook_height                   ;L00006360
+L00004dca               moveq   #$03,d0                                 ; SFX_LIFE_LOST
+L00004dcc               jsr     $00048010                               ; AUDIO_PLAYER_INIT_SONG
+L00004dd2               move.l  #player_state_life_lost,gl_jsr_address  ;#$00004de0,L00003c7c 
+L00004dd8               move.w  #$6424,L0000636e                        ; batman_sprite_anim_ptr
 L00004dde               rts 
 
 
@@ -3746,31 +3761,31 @@ L00004dde               rts
                     ;
                     ; Code Checked 4/1/2025
                     ;
-player_state_life_lost 
-L00004de0               movea.w L0000636e,a0            ; (long) batman_sprite_anim_ptr
+player_state_life_lost  ; original address L00004de0
+L00004de0               movea.w L0000636e,a0                    ; (long) batman_sprite_anim_ptr
 L00004de4               bsr.w   L00005470
-L00004de8               move.w  a0,L0000636e            ; (long) 
+L00004de8               move.w  a0,L0000636e                    ; (long) 
 L00004dec               tst.b   (a0)
 
 L00004dee               bne     L00004d74
 
-L00004df0               jsr     $0004800c               ; AUDIO_PLAYER_INIT_SFX_2
+L00004df0               jsr     $0004800c                       ; AUDIO_PLAYER_INIT_SFX_2
 L00004df6               move.w  #$0032,d0
-L00004dfa               bsr.w   L00005ed4
-L00004dfe               bsr.w   L00004e66
-L00004e02               btst.b  #$0000,$0007c874        ; PANEL_STATUS_1
+L00004dfa               bsr.w   wait_for_frame_count            ;L00005ed4
+L00004dfe               bsr.w   clear_backbuffer_playfield      ;L00004e66
+L00004e02               btst.b  #$0000,$0007c874                ; PANEL_STATUS_1
 L00004e0a               beq.b   L00004e14
 L00004e0c               lea.l   L00004e5a,a0
-L00004e10               bsr.w   L000069fa
-L00004e14               btst.b  #$0001,$0007c874        ; PANEL_STATUS_1
+L00004e10               bsr.w   large_text_plotter              ;L000069fa
+L00004e14               btst.b  #$0001,$0007c874                ; PANEL_STATUS_1
 L00004e1c               beq.b   L00004e26
 L00004e1e               lea.l   L00004e4c,a0
-L00004e22               bsr.w   L000069fa
-L00004e26               bsr.w   L00003caa
+L00004e22               bsr.w   large_text_plotter              ;L000069fa
+L00004e26               bsr.w   screen_wipe_to_backbuffer       ;L00003caa
 L00004e2a               move.w  #$001e,d0
-L00004e2e               bsr.w   L00005ed4
-L00004e32               btst.b  #$0001,$0007c874        ; PANEL_STATUS_1
-L00004e3a               beq.w   L00003AEC               ; restart level
+L00004e2e               bsr.w   wait_for_frame_count            ;L00005ed4
+L00004e32               btst.b  #$0001,$0007c874                ; PANEL_STATUS_1
+L00004e3a               beq.w   L00003AEC                       ; restart level
                     ; Fall through to return to Title Screen
                     ; if 'Game Over'
 
@@ -3782,7 +3797,7 @@ L00004e3a               beq.w   L00003AEC               ; restart level
                     ;
 return_to_title_screen 
 L00004e3e               jsr     $00048004               ; AUDIO_PLAYER_SILENCE
-L00004e44               bsr.w   L00003d76
+L00004e44               bsr.w   panel_fade_out          ; L00003d76
 
                     IFD TEST_BUILD_LEVEL
                         jsr _DEBUG_COLOURS
@@ -3795,36 +3810,40 @@ L00004e48               bra.w   L00000820           ; load title screen
                     ; *************************************
 
 
-text_game_over  
-L00004E4C       dc.b $5F,$0F
-                dc.b 'GAME  OVER'
-                dc.b $00,$FF 
+text_game_over  ; original address L00004E4C
+L00004E4C           dc.b $5F,$0F
+                    dc.b 'GAME  OVER'
+                    dc.b $00,$FF 
 
-text_time_up                
-L00004E5A       dc.b $43,$10
-L00004E5C       dc.b 'TIME  UP'
-                dc.b $00,$FF
+text_time_up    ; original address L00004E5A          
+L00004E5A           dc.b $43,$10
+L00004E5C           dc.b 'TIME  UP'
+                    dc.b $00,$FF
 
                 even
 
 
-clear_backbuffer_playfield 
-L00004e66       movea.l L000036ea,a0
-L00004e6c       move.w  #$1c8b,d7
-L00004e70       clr.l   (a0)+
-L00004e72       dbf.w   d7,L00004e70
-L00004e76       rts 
+                    ; ------------- clear back buffer playfield ------------
+clear_backbuffer_playfield  ; original address L00004e66
+                        movea.l playfield_buffer_2,a0       ;L000036ea,a0
+                        move.w  #$1c8b,d7
+                        clr.l   (a0)+
+                        dbf.w   d7,L00004e70
+                        rts 
+
+
+
 
 
                     ; -------------- player state - actor collide on batrope -----------
                     ; game_loop - Self Modified JSR Address
                     ; set at line of code L00004cee
                     ; ---- player state - actor Collision on batrope ------
-player_state_actor_collide_on_batrope 
+player_state_actor_collide_on_batrope   ; original address L00004e78
 L00004e78               moveq   #$10,d3
 L00004e7a               tst.b   $0007c874
 L00004e80               bne.b   L00004e9e
-L00004e82               lea.l   grappling_hook_height,a0    ;L00006360,a0
+L00004e82               lea.l   grappling_hook_height,a0        ;L00006360,a0
 L00004e86               move.w  (a0),d2
 L00004e88               cmp.w   #$0050,d2
 L00004e8c               bcc.b   L00004e9e 
@@ -3832,25 +3851,25 @@ L00004e8e               addq.w  #$01,(a0)
 L00004e90               clr.w   d3
 L00004e92               subq.w  #$01,L0000634e 
 L00004e96               bne.b   L00004e9e 
-L00004e98               move.w  #$4ea2,L00003c7c        ; gl_jsr_address
+L00004e98               move.L  #player_state_grappling_hook_attached,gl_jsr_address    ;#$00004ea2,00003c7c 
 
                     ; update control command
 L00004e9e               move.b  d3,L00006350
 
                     ; --------- player state - grappling hook attached -----------
-player_state_grappling_hook_attached  
-L00004ea2               lea.l   grappling_hook_height,a0    ;L00006360,a0
+player_state_grappling_hook_attached    ; original address L00004ea2
+L00004ea2               lea.l   grappling_hook_height,a0            ;L00006360,a0
 L00004ea6               move.w  (a0),d5
 L00004ea8               move.b  L00006350,d4
 L00004eac               btst.l  #$0003,d4
 L00004eb0               beq.b   L00004ee6 
-L00004eb2               move.w  #$0048,L000069f6 
+L00004eb2               move.w  #$0048,target_window_y_offset       ;L000069f6 
 L00004eb8               subq.w  #$01,d5
 L00004eba               bhi.b   L00004ee4 
 L00004ebc               clr.w   (a0) 
-L00004ebe               move.w  #$5096,L00003c7c        ; gl_jsr_address
+L00004ebe               move.l  #player_state_climb_onto_platform,gl_jsr_address    ;#$00005096,L00003c7c
 L00004ec4               move.w  #$0005,L0000633a
-L00004eca               move.w  #$646e,L0000636e        ; (long)
+L00004eca               move.w  #$646e,L0000636e                    ; (long)
 L00004ed0               move.w  d1,d2
 L00004ed2               add.w   L000069ee,d2
 L00004ed6               subq.w  #$02,d2
@@ -3865,7 +3884,7 @@ L00004ee2               rts
 L00004ee4               move.w  d5,(a0)
 L00004ee6               btst.l  #$0002,d4                   ; PLAYER_INPUT_DOWN
 L00004eea               beq.w   L00004efe
-L00004eee               move.w  #$0028,L000069f6
+L00004eee               move.w  #$0028,target_window_y_offset       ; L000069f6
 L00004ef4               addq.w  #$01,d5
 L00004ef6               cmp.w   #$0050,d5
 L00004efa               bcc.b   L00004efe
@@ -3983,9 +4002,9 @@ L0000501a               bra.w   L0000549c
                     ;
 player_input_cmd_fire  
 L0000501e           move.w  #$6461,L0000636e
-L00005026           move.w  #$5034,L00003c7c
-L0000502c           moveq   #$08,d0                 ; SFX_BATARANG
-L0000502e           jsr     $00048014               ; AUDIO_PLAYER_INIT_SFX
+L00005026           move.l  #player_state_firing,gl_jsr_address ;#$00005034,L00003c7c
+L0000502c           moveq   #$08,d0                             ; SFX_BATARANG
+L0000502e           jsr     $00048014                           ; AUDIO_PLAYER_INIT_SFX
                     ; fall through to player_state_firing below...
 
 
@@ -3999,14 +4018,14 @@ L0000502e           jsr     $00048014               ; AUDIO_PLAYER_INIT_SFX
                     ;                    ; 
                     ; Code Checked 4/1/2025
                     ;
-player_state_firing 
+player_state_firing     ; original address L00005034
 L00005034               movea.w L0000636e,a0
 L00005038               bsr.w   L00005470
 L0000503c               move.w  a0,L0000636e
 L00005040               tst.b   (a0)
 L00005042               bne.b   L00005072 
 L00005044               move.w  #$0008,L0000633a 
-L0000504a               move.w  #$5074,L00003c7c        ; gl_jsr_address
+L0000504a               move.l  #player_state_fired,gl_jsr_address      ;#$00005074,L00003c7c 
 L00005050               bsr.w   L0000467c
 L00005054               sub.w   #$0007,d0
 L00005058               move.w  L00006336,d2
@@ -4036,15 +4055,15 @@ L00005072               rts
                     ;                    ; 
                     ; Code Checked 4/1/2025
                     ;
-player_state_fired
+player_state_fired      ; original address L00005074
 L00005074               move.b  L00006350,d4
 L0000507a               bne.w   L0000508c
 L0000507e               subq.w  #$01,L0000633a
 L00005082               bne.b   L00005072 
 L00005084               lea.l   L0000641b,a0
 L00005088               bra.w   L00005470
-L0000508c               move.w  #$4c7c,L00003c7c            ; gl_jsr_address
-L00005092               bra.w   L00004c7c 
+L0000508c               move.l  #player_move_commands,gl_jsr_address        ;#$00004c7c,L00003c7c  
+L00005092               bra.w   player_move_commands                        ;L00004c7c 
                     ; use 'rts' in player_move_commands to return
 
 
@@ -4059,7 +4078,7 @@ L00005092               bra.w   L00004c7c
                     ; game_loop - collision state update, increments state_parameter by 3
                     ;               on each game loop cycle.
                     ;
-player_state_climb_onto_platform  
+player_state_climb_onto_platform    ; original address L00005096 
 L00005096               subq.w  #$01,L0000633a
 L0000509a               bne.b   L00005072 
 L0000509c               move.w  #$0006,L0000633a
@@ -4068,22 +4087,22 @@ L000050a6               subq.w  #$04,d1
 L000050a8               move.w  L00006336,d2
 L000050ac               bmi.b   L000050c0 
 L000050ae               addq.w  #$07,d0
-L000050b0               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+L000050b0               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000050b4               cmp.b   #$03,d2
 L000050b8               bcs.b   L000050d0
-L000050ba               addq.w  #$01,batman_x_offset       ;L000069f2
+L000050ba               addq.w  #$01,batman_x_offset                    ;L000069f2
 L000050be               bra.b   L000050d0
 L000050c0               subq.w  #$06,d0
-L000050c2               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+L000050c2               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000050c6               cmp.b   #$03,d2
 L000050ca               bcs.b   L000050d0
-L000050cc               subq.w  #$01,batman_x_offset   ; L000069f2
+L000050cc               subq.w  #$01,batman_x_offset                    ;L000069f2
 L000050d0               movea.w L0000636e,a0
 L000050d4               bsr.w   L00005470
 L000050d8               move.w  a0,L0000636e
 L000050dc               move.b  (a0),d7
 L000050de               bne.b   L000050e6
-L000050e0               move.w  #$544c,L00003c7c            ; gl_jsr_address
+L000050e0               move.l  #return_to_standing,gl_jsr_address      ;#$0000544c,L00003c7c 
 L000050e6               rts  
 
 
@@ -4189,18 +4208,18 @@ L00005136               clr.w d0
                     ; Code Checked 6/1/2025
                     ;
 player_input_fire_up_common 
-L00005138               move.w  #$0048,L000069f6
+L00005138               move.w  #$0048,target_window_y_offset       ;L000069f6
 L0000513e               lea.l   L0000635c,a0
 L00005142               move.w  d0,(a0)
 L00005144               clr.l   (a0)+ 
 L00005146               bsr.w   L0000467c
 L0000514a               move.w  #$0001,(a0)
-L0000514e               move.w  #$5170,L00003c7c            ; gl_jsr_address
+L0000514e               move.l  #player_state_firing_grappling_hook,gl_jsr_address  ;#$00005170,L00003c7c
 L00005154               lea.l   L00006418,a0
 L00005158               bsr.w   L00005470
 L0000515c               moveq   #$07,d0
-L0000515e               jsr     $00048014               ; AUDIO_PLAYER_INIT_SFX
-L00005164               movem.w batman_xy_offset,d0-d1  ; L000069f2,d0-d1
+L0000515e               jsr     $00048014                           ; AUDIO_PLAYER_INIT_SFX
+L00005164               movem.w batman_xy_offset,d0-d1              ; L000069f2,d0-d1
 L0000516a               bclr.b  #$0004,L00006350
                     ; fall through to 'player_state_firing_grappling_hook' below
 
@@ -4218,7 +4237,7 @@ L0000516a               bclr.b  #$0004,L00006350
                     ;
                     ;
                     ;
-player_state_firing_grappling_hook
+player_state_firing_grappling_hook  ; original address L00005170
 L00005170               lea.l   L0000635c,a0
 L00005174               btst.b  #$0004,L00006350 
 L0000517c               bne     L000051fc
@@ -4244,18 +4263,18 @@ L000051b2               add.w   d1,d5
 L000051b4               btst.l  #$0002,d5
 L000051b8               bne.b   L000051ec
 L000051ba               add.w   d3,d0
-L000051bc               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+L000051bc               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000051c0               cmp.b   #$03,d2
 L000051c4               bcs.b   L000051e6 
 L000051c6               cmp.b   #$5f,d2
 L000051ca               bcc.b   L000051e6 
 L000051cc               cmp.b   #$51,d2
 L000051d0               bcs.b   L000051ec 
-L000051d2               move.w  #$4ea2,L00003c7c 
+L000051d2               move.l  #player_state_grappling_hook_attached,gl_jsr_address    ;#$00004ea2,00003c7c 
 L000051d8               move.l  L00006362,L00006370
 L000051de               lea.l   L0000645e,a0
 L000051e2               bra.w   L00005470 
-L000051e6               move.w  #$51ee,L00003c7c
+L000051e6               move.l  #player_state_retract_grappling_hook,gl_jsr_address     ;#$000051ee,L00003c7c
 L000051ec               rts 
 
 
@@ -4270,7 +4289,7 @@ L000051ec               rts
                     ;   - D3.w = window x?
                     ;   - D4.w = window y?
                     ;
-player_state_retract_grappling_hook 
+player_state_retract_grappling_hook     ; original address L000051ee
 L000051ee               lea.l   L0000635c,a0
 L000051f2               btst.b  #$0004,L00006350
 L000051fa               beq.b   L00005202
@@ -4282,7 +4301,7 @@ L00005208               bra.w   L000050e8
 
 exit_fire_grappling_hook_state 
 L0000520c               clr.w   $0004(a0)
-L00005210               move.w  #$4c7c,L00003c7c
+L00005210               move.l  #player_move_commands,gl_jsr_address        ;#$00004c7c,L00003c7c
 L00005216               lea.l   L0000641b,a0
 L0000521a               bra.w   L00005470 
 L0000521e               rts  
@@ -4305,7 +4324,7 @@ L0000521e               rts
                     ; Code Checked 3/1/2025
                     ;
 player_check_climb_down 
-L00005220               move.w  #$0028,L000069f6
+L00005220               move.w  #$0028,target_window_y_offset           ; L000069f6
 L00005226               addq.w  #$04,d0
 L00005228               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
 L0000522c               subq.w  #$04,d0
@@ -4347,7 +4366,7 @@ L00005238               bra.w   L00005468
                     ; Code Checked 4/1/2025
                     ;
 input_up_common 
-L0000523c               move.w  #$0048,L000069f6
+L0000523c               move.w  #$0048,target_window_y_offset           ;L000069f6
 L00005242               addq.w  #$04,d0
 L00005244               subq.w  #$04,d1
 L00005246               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
@@ -4374,8 +4393,8 @@ L00005252               bne.b   L0000521e
 set_player_state_climbing
 L00005254               addq.w  #$04,a7
 L00005256               and.b   #$0c,L00006350
-L0000525c               move.w  #$532e,L00003c7c        ; gl_jsr_address
-L00005262               bra.w   L0000532e 
+L0000525c               move.l  #state_climbing_stairs,gl_jsr_address       ;#$000532e,L00003c7c
+L00005262               bra.w   state_climbing_stairs                       ;L0000532e 
 
 
                     ; -------------------- player input command - down right --------------------
@@ -4427,18 +4446,18 @@ L0000526a               bsr.b L0000523c
 player_input_cmd_right  
 L0000526c               addq.w  #$04,d0
 L0000526e               subq.w  #$02,d1
-L00005270               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+L00005270               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L00005274               cmp.b   #$03,d2
-L00005278               bcs.b   L000052b6 
-L0000527a               addq.w  #$01,batman_x_offset   ; L000069f2
+L00005278               bcs.b   early_exit_rts                          ; exit rts - L000052b6 
+L0000527a               addq.w  #$01,batman_x_offset                    ; L000069f2
 L0000527e               addq.w  #$07,d1
 L00005280               subq.w  #$05,d0
-L00005282               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+L00005282               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L00005286               sub.b   #$51,d2
 L0000528a               cmp.b   #$10,d2
 L0000528e               bcc.w   L00005492
 L00005292               lea.l   L00006332,a0
-L00005296               add.w   L000069ec,d0
+L00005296               add.w   scroll_window_x_coord,d0                ;L000069ec,d0
 L0000529a               lsr.w   #$01,d0
 L0000529c               and.w   #$0007,d0
 L000052a0               addq.w  #$05,d0
@@ -4450,6 +4469,10 @@ L000052ac               moveq   #$02,d0
 L000052ae               addq.w  #$01,d0
 L000052b0               move.w  d0,(a0)+ 
 L000052b2               move.w  #$0001,(a0) 
+
+early_exit_rts          ; original address L000052b6
+actor_handler_cmd_nop   ; original address L000052b6
+player_input_cmd_nop    ; original address L000052b6
 L000052b6               rts 
 
 
@@ -4506,18 +4529,18 @@ L000052be               bsr.w   L0000523c
 player_input_cmd_left 
 L000052c2               subq.w  #$05,d0
 L000052c4               subq.w  #$02,d1
-L000052c6               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+L000052c6               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000052ca               cmp.b   #$03,d2
-L000052ce               bcs.b   L000052b6 
-L000052d0               subq.w  #$01,batman_x_offset       ;L000069f2
+L000052ce               bcs.b   early_exit_rts                          ; exit rts - L000052b6 
+L000052d0               subq.w  #$01,batman_x_offset                    ;L000069f2
 L000052d4               addq.w  #$07,d1
 L000052d6               addq.w  #$05,d0
-L000052d8               bsr.w   get_map_tile_at_display_offset_d0_d1     ; L000055e0
+L000052d8               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000052dc               sub.b   #$51,d2
 L000052e0               cmp.b   #$10,d2
 L000052e4               bcc.w   L00005492 
 L000052e8               lea.l   L00006332,a0
-L000052ec               add.w   L000069ec,d0
+L000052ec               add.w   scroll_window_x_coord,d0                ;L000069ec,d0
 L000052f0               not.w   d0
 L000052f2               lsr.w   #$01,d0
 L000052f4               and.w   #$0007,d0
@@ -4554,9 +4577,9 @@ L00005314               add.w   d5,d3
 L00005316               move.b  $00(a0,d3.w),d2
 L0000531a               sub.b   #$51,d2
 L0000531e               cmp.b   #$10,d2
-L00005322               bcc   L0000538e 
-L00005324               move.w  #$4c7c,L00003c7c        ; gl_jsr_address
-L0000532a               bra.w   L00004c7c 
+L00005322               bcc     L0000538e 
+L00005324               move.l  #player_move_commands,gl_jsr_address        ;#$0004c7c,L00003c7c
+L0000532a               bra.w   player_move_commands                        ;L00004c7c 
 
 
 
@@ -4571,7 +4594,7 @@ L0000532a               bra.w   L00004c7c
                     ;
                     ; Code Check 3/1/2025
                     ;
-state_climbing_stairs  
+state_climbing_stairs   ; original address L0000532e
 L0000532e               btst.b  #$0004,L00006350
 L00005334               bne.w   L00005492
 L00005338               btst.b  #$0000,L00006375 
@@ -4585,11 +4608,11 @@ L00005350               beq.b   L00005374
 L00005352               btst.l  #$0002,d4
 L00005356               beq.b   L00005360 
 L00005358               addq.w  #$01,d1
-L0000535a               move.w  #$0028,L000069f6
+L0000535a               move.w  #$0028,target_window_y_offset           ; L000069f6
 L00005360               btst.l  #$0003,d4
 L00005364               beq.b   L0000536e
 L00005366               subq.w  #$01,d1
-L00005368               move.w  #$0048,L000069f6
+L00005368               move.w  #$0048,target_window_y_offset           ; L000069f6
 L0000536e               move.w  d1,L000069f4
 L00005372               bra.b   L000053c8 
 L00005374               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
@@ -4604,14 +4627,14 @@ L0000538a               asr.w   #$01,d4
 L0000538c               bcs   L00005314
 L0000538e               asr.w   #$01,d4
 L00005390               bcc.b   L000053a6
-L00005392               move.w  #$0028,L000069f6
+L00005392               move.w  #$0028,target_window_y_offset           ; L000069f6
 L00005398               cmp.b   #$5f,d2
 L0000539c               bcs.w   L00005406
 L000053a0               addq.w  #$01,L000069f4
 L000053a4               bra.b   L000053c8 
 L000053a6               asr.w   #$01,d4
 L000053a8               bcc.b   L00005404 
-L000053aa               move.w  #$0048,L000069f6 
+L000053aa               move.w  #$0048,target_window_y_offset           ; L000069f6 
 L000053b0               move.w  $00008002,d5            ; MAPGR.IFF
 L000053b6               sub.w   d5,d3
 L000053b8               move.b  $00(a0,d3.w),d2
@@ -4643,7 +4666,7 @@ L00005404               rts
 
 
 set_player_move_commands_state
-L00005406                move.w #$4c7c,L00003c7c     ; gl_jsr_address
+L00005406                move.l #player_move_commands,gl_jsr_address        ;#$0004c7c,L00003c7c
 L0000540c                rts 
 
 
@@ -4659,7 +4682,7 @@ L0000540c                rts
                     ;
                     ; Code Check 4/1/2025
                     ;
-player_input_cmd_fire_down 
+player_input_cmd_fire_down  ;original address L0000540e
 L0000540e               add.w   #$0008,d1
 L00005412               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
 L00005416               movem.w $69f2,d0-d1
@@ -4685,7 +4708,7 @@ player_input_cmd_down
 L0000542c               bsr.w   L00005220
 L00005430               lea.l   L0000641e,a0
 L00005434               bsr.b   L00005470
-L00005436               move.w  #$543e,L00003c7c    ; gl_jsr_address
+L00005436               move.l  #player_state_ducking,gl_jsr_address        ;#$000543e,L00003c7c
 L0000543c               rts  
 
 
@@ -4695,16 +4718,18 @@ L0000543c               rts
                     ;
                     ; Code Checked 4/1/2025
                     ;
-player_state_ducking 
+player_state_ducking    ; original address L0000543e
 L0000543e               lea.l   L00006421,a0
 L00005442               bsr.b   L00005470
 L00005444               btst.b  #$0002,L00006350
 L0000544a               bne.b   L00005458
-L0000544c               move.w  #$5462,L00003c7c
+
+return_to_standing  ; original address L0000544c
+L0000544c               move.l  #set_player_state_standing,gl_jsr_address   ;#$0005462,L00003c7c
 L00005452               lea.l   L0000641e,a0
 L00005456               bra.b   L00005470
 L00005458               btst.b  #$0004,L00006350 
-L0000545e               bne.b   L0000540e
+L0000545e               bne.b   player_input_cmd_fire_down                  ;L0000540e
 L00005460               rts  
 
 
@@ -4714,8 +4739,8 @@ L00005460               rts
                     ;
                     ; Code Checked 4/1/2025
                     ;
-set_player_state_standing 
-L00005462               move.w  #$4c7c,L00003c7c
+set_player_state_standing   ; original address L00005462
+L00005462               move.l  #player_move_commands,gl_jsr_address        ;#$0004c7c,L00003c7c
 L00005468               lea.l   L0000641b,a0
 L0000546c               bra.w   L00005470
                     ; use 'rts' in set_batman_sprites to return
@@ -4761,12 +4786,12 @@ L0000548f   dc.b $11,$ff,$02
                     ; Code Checked 3/1/2025
                     ;
 set_player_state_falling  
-L00005492               movem.w batman_xy_offset,d0-d1  ;L000069f2,d0-d1
+L00005492               movem.w batman_xy_offset,d0-d1                  ;L000069f2,d0-d1
 L00005498               clr.l   L0000633c
-L0000549c               move.w  L000069f4,L000069f6
+L0000549c               move.w  L000069f4,target_window_y_offset        ;L000069f6
 L000054a2               lea.l   L0000548c(pc),a0
 L000054a6               bsr.w   L00005470
-L000054aa               move.w  #$54ba,L00003c7c        ; gl_jsr_address
+L000054aa               move.l  #player_state_falling,gl_jsr_address    ;#$00054ba,L00003c7c
 L000054b0               move.w  #$ffff,L00006342
 L000054b6               clr.w   L00006340
 
@@ -4781,7 +4806,7 @@ L000054b6               clr.w   L00006340
                     ;
                     ; Code Checked 3/1/2025
                     ;
-player_state_falling
+player_state_falling    ; original address L000054ba
 L000054ba               movem.w L0000633c,d4-d5
 L000054c0               move.w  d4,L00006356
 L000054c4               beq.b   L00005504
@@ -4820,8 +4845,8 @@ L00005520               bsr.w   get_map_tile_at_display_offset_d0_d1     ; L0000
 L00005524               cmp.b   #$03,d2
 L00005528               bcc.b   L00005536 
 L0000552a               subq.w  #$07,L000069f4
-L0000552e               movem.w batman_xy_offset,d0-d1  ;L000069f2,d0-d1
-L00005534               bra     L000054ba
+L0000552e               movem.w batman_xy_offset,d0-d1                  ;L000069f2,d0-d1
+L00005534               bra     player_state_falling                    ;L000054ba
                     ; ---------------------------
 
 L00005536               sub.b   #$50,d2
@@ -4844,10 +4869,10 @@ L00005558               move.w  #$4e71,L00005546
 L0000555e               move.w  d6,sr
 
 L00005560               bcc.b   L0000551e
-L00005562               move.w  #$0028,L000069f6
-L00005568               lea.l   L0000548f,a0
+L00005562               move.w  #$0028,target_window_y_offset               ;L000069f6
+L00005568               lea.l   batman_sprite_anim_fall_landing.a0          ;L0000548f,a0
 L0000556c               bsr.w   L00005470
-L00005570               move.l  #$0000559a,L00003c7a    ; gl_jsr_address
+L00005570               move.l  #player_state_fall_landing,gl_jsr_address   ;#$0000559a,L00003c7a
 L00005578               clr.w   L0000633e
 L0000557c               move.w  #$0001,L00006342
 L00005582               move.w  #$0002,L0000633a
@@ -4869,21 +4894,21 @@ L00005598               rts
                     ;
                     ; Code Checked 3/1/2025
                     ;
-player_state_fall_landing
+player_state_fall_landing   ; original address L0000559a
 L0000559a               subq.w  #$01,L0000633a
 L0000559e               bne.b   L00005598
-L000055a0               tst.b   $0007c874       ; PANEL_STATUS_1
+L000055a0               tst.b   $0007c874                               ;PANEL_STATUS_1
 L000055a6               bne.w   L00004dc0 
-L000055aa               move.l  #$00004c7c,L00003c7a    ; gl_jsr_address
+L000055aa               move.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7a
 L000055b2               lea.l   L0000641b,a0
 L000055b6               cmp.w   #$0050,L00006340 
 L000055bc               bmi.w   L00005470
 L000055c0               moveq   #$5a,d6
-L000055c2               bsr.w   batman_lose_energy      ;L00004d0a
-L000055c6               move.b  #$04,$0007c874      ; PANEL_STATUS_1
-L000055ce               btst.b  #$0007,$0007c875    ; PANEL_STATUS_2
+L000055c2               bsr.w   batman_lose_energy                      ;L00004d0a
+L000055c6               move.b  #$04,$0007c874                          ;PANEL_STATUS_1
+L000055ce               btst.b  #$0007,$0007c875                        ;PANEL_STATUS_2
 L000055d6               bne.b   L000055de
-L000055d8               jmp     $0007c862      ; PANEL_LOSE_LIFE
+L000055d8               jmp     $0007c862                               ; PANEL_LOSE_LIFE
                     ; never return (use panel rts) 
 L000055de               rts     
 
@@ -5298,7 +5323,7 @@ L000058e8               rts
                     ;
 initialise_offscreen_buffer  ; original address L000058ea
 L000058ea               clr.l   d0
-L000058ec               move.w  L000069ec,d0
+L000058ec               move.w  scroll_window_x_coord,d0            ;L000069ec,d0
 L000058f0               lsr.w   #$03,d0
 L000058f2               add.w   d0,d0
 L000058f4               movea.l #$0005a36c,a4
@@ -5306,7 +5331,7 @@ L000058fa               adda.l  d0,a4
 L000058fc               move.l  a4,L00006366
 L00005900               clr.w   L0000635a
 L00005904               clr.l   d1
-L00005906               move.w  L000069ec,d1
+L00005906               move.w  scroll_window_x_coord,d1            ;L000069ec,d1
 L0000590a               moveq   #$14,d7
 L0000590c               movem.l d1/d7/a4,-(a7)
 L00005910               bsr.w   L00004b14
@@ -5583,7 +5608,7 @@ L00005ADA   dc.w    $0021,$00FF
                     ; IN:-
                     ;   a6 = L000039c8  - 
 actor_handler_table  
-L00005AE2   dc.l    L000052B6                   ;  $52B6
+L00005AE2   dc.l    actor_handler_cmd_nop        ; L000052B6                   ;  $52B6
             dc.l    L0000460C                   ;  $460C
             dc.l    L000040F8                   ;  $40F8
             dc.l    L0000404C                   ;  $404C 
@@ -5591,10 +5616,10 @@ L00005AEA   dc.l    L000040A6                   ;  $40A6
             dc.l    L00003FFA                   ;  $3FFA
             dc.l    L000040DE                   ;  $40DE
             dc.l    L00004032                   ;  $4032 
-            dc.l    L000052B6                   ;  $52B6 
-            dc.l    L000052B6                   ;  $52B6 
-            dc.l    L000052B6                   ;  $52B6
-            dc.l    L000052B6                   ;  $52B6 
+            dc.l    actor_handler_cmd_nop        ; L000052B6                   ;  $52B6 
+            dc.l    actor_handler_cmd_nop        ; L000052B6                   ;  $52B6 
+            dc.l    actor_handler_cmd_nop        ; L000052B6                   ;  $52B6
+            dc.l    actor_handler_cmd_nop        ; L000052B6                   ;  $52B6 
 L00005AFA   dc.l    L000043E2                   ;  $43E2
             dc.l    L0000438C                   ;  $438C
             dc.l    L000041AE                   ;  $41AE
@@ -5624,6 +5649,7 @@ L00005B2A   dc.l    L00005B40                   ;  $5B40
 
 
 
+
                             ; a6 = actors_list
 set_player_spawn_point_1  
 L00005b2c               moveq   #$01,d0
@@ -5649,17 +5675,19 @@ L00005b4c               rts
                     ; d4 = actor WorldX
 actor_cmd_25
 L00005b4e               move.w  #$0590,d0
-L00005b52               sub.w   L000069ec,d0
+L00005b52               sub.w   scroll_window_x_coord,d0        ;L000069ec,d0
 L00005b56               addq.w  #$02,$000a(a6)
 L00005b5a               movea.l $0008(a6),a5
 L00005b5e               move.w  (a5),d2
-L00005b60               bpl.w   draw_next_sprite            ;L000045fa
-L00005b64               bsr.w   double_buffer_playfield     ;L000036ee
+L00005b60               bpl.w   draw_next_sprite                ;L000045fa
+L00005b64               bsr.w   double_buffer_playfield         ;L000036ee
 L00005b68               moveq   #$32,d0
-L00005b6a               bsr.w   L00005ed4
-L00005b6e               bra.w   L00005e82 
-
-
+L00005b6a               bsr.w   wait_for_frame_count            ;L00005ed4
+L00005b6e               bra.w   Load_title_screen               ;L00005e82 
+                        ;******************************
+                        ;       LOAD TITLE SCREEN
+                        ;     NEVER RETURN FROM HERE
+                        ;******************************
 
 L00005B72   dc.w    $0001,$0001
             dc.w    $0001,$0001
@@ -5705,11 +5733,11 @@ L00005bd2           rts
                     ; jack falls & hits the floor?
 L00005bd4           subq.w  #$01,d2
 L00005bd6           bne.b   L00005bd2
-L00005bd8           jsr     $00048008               ; AUDIO_PLAYER_INIT_SFX_1
-L00005bde           bset.b  #$0000,$0007c874        ; PANEL_STATUS_1
-L00005be6           move.w  #$52b6,L00003c7c        ; gl_jsr_address
+L00005bd8           jsr     $00048008                               ; AUDIO_PLAYER_INIT_SFX_1
+L00005bde           bset.b  #$0000,$0007c874                        ; PANEL_STATUS_1
+L00005be6           move.l  #actor_handler_cmd_nop,gl_jsr_address    ;#$000052b6,L00003c7c
 L00005bec           clr.w   L00006342
-L00005bf0           clr.w   grappling_hook_height   ;L00006360
+L00005bf0           clr.w   grappling_hook_height                   ;L00006360
 L00005bf4           move.w  $0004(a5),d0
 L00005bf8           cmp.w   #$00d4,d0
 L00005bfc           bcs.b   L00005c1a
@@ -5717,17 +5745,17 @@ L00005bfe           move.w  #$0081,$0006(a5)
 L00005c04           move.l  #$00005b70,$0008(a5)
 L00005c0c           move.w  #$0019,(a5)
 L00005c10           clr.w   (a6)
-L00005c12           moveq   #$0b,d0                 ; SFX_SPLASH
-L00005c14           jmp     $00048014               ; AUDIO_PLAYER_INIT_SFX
+L00005c12           moveq   #$0b,d0                                 ; SFX_SPLASH
+L00005c14           jmp     $00048014                               ; AUDIO_PLAYER_INIT_SFX
                     ; uses rts in audio player
 
 
-L00005c1a           subq.w  #$01,L000069f8
+L00005c1a           subq.w  #$01,target_window_x_offset     ;L000069f8
 L00005c1e           sub.w   #$0018,d0
 L00005c22           sub.w   L000069ee,d0
 L00005c26           neg.w   d0
 L00005c28           add.w   L000069f4,d0
-L00005c2c           move.w  d0,L000069f6
+L00005c2c           move.w  d0,target_window_y_offset       ;L000069f6
 L00005c30           rts  
 
 
@@ -5875,7 +5903,7 @@ L00005d6a           and.w   #$e000,d2
 L00005d6e           addq.w  #$01,d2
 L00005d70           bsr.w   L000045c8
 L00005d74           btst.b  #$0000,L00006375
-L00005d7a           beq.b   L00005d4a
+L00005d7a           beq.b   L00005d4a               ; exit rts
 L00005d7c           subq.w  #$01,$0004(a6) 
 L00005d80           bmi.b   L00005dca
 L00005d82           rts 
@@ -5917,17 +5945,27 @@ L00005dcc           bra.w   batman_lose_energy      ;L00004d0a
 L00005dd0           move.w  (a5),d2
 L00005dd2           beq.b   L00005dca 
 L00005dd4           subq.w  #$01,d2
-L00005dd6           bne.w   L00005d4a 
-L00005dda           move.w  #$52b6,L00003c7c
+L00005dd6           bne.w   L00005d4a                               ; exit rts
+L00005dda           move.l  #actor_handler_cmd_nop,gl_jsr_address    ;#$000052b6,L00003c7c
 L00005de0           move.w  #$0021,(a5)
-L00005de4           clr.w   grappling_hook_height   ;L00006360
+L00005de4           clr.w   grappling_hook_height                   ;L00006360
 L00005de8           move.w  #$ffff,L00006342
-L00005dee           move.b  #$01,$0007c874      ; PANEL
+L00005dee           move.b  #$01,$0007c874                          ; PANEL
 L00005df6           rts  
 
 
-
-L00005df8           move.w  L000069ec,d2
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
+                    ; IN:
+                    ;   d0.w - Sprite X co-ord
+                    ;   d1.w - Unknown - maybe Sprite Y
+                    ;   a6.l - object/sprite structure ptr
+actor_cmd_33_level_complete ; original address L00005df8
+L00005df8           move.w  scroll_window_x_coord,d2        ;L000069ec,d2
 L00005dfc           cmp.w   #$0230,d2
 L00005e00           beq.b   L00005e16
 L00005e02           addq.w  #$02,$0002(a6)
@@ -5935,11 +5973,12 @@ L00005e06           moveq   #$70,d2
 L00005e08           sub.w   d0,d2
 L00005e0a           cmp.w   #$fffd,d2
 L00005e0e           bcc.b   L00005e12
-L00005e10           moveq   #$fe,d2
-L00005e12           add.w   d2,L000069f8
+L00005e10           moveq.l #$fffffffe,d2
+L00005e12           add.w   d2,target_window_x_offset       ;L000069f8
+
                     ; check level complete
 L00005e16           cmp.w   #$0048,d1
-L00005e1a           bcc.b   L00005e6e
+L00005e1a           bcc.b   level_completed                 ;L00005e6e
 
 L00005e1c           move.w  $000a(a6),d3
 L00005e20           cmp.w   #$000e,d3
@@ -5950,7 +5989,7 @@ L00005e2c           asr.w   #$01,d3
 L00005e2e           add.w   d3,$0004(a6)
 L00005e32           moveq   #$18,d2
 L00005e34           sub.w   d1,d2
-L00005e36           add.w   d2,L000069f6
+L00005e36           add.w   d2,target_window_y_offset       ;L000069f6
 L00005e3a           moveq   #$06,d2
 L00005e3c           cmp.w   #$0004,d3
 L00005e40           bmi.b   L00005e58
@@ -5958,15 +5997,15 @@ L00005e42           moveq   #$07,d2
 L00005e44           cmp.w   #$0007,d2
 L00005e48           bmi.b   L00005e58
 L00005e4a           moveq   #$0c,d2
-L00005e4c           and.w   playfield_swap_count,d2         ; L00006374,d2
+L00005e4c           and.w   playfield_swap_count,d2         ;L00006374,d2
 L00005e50           lsr.w   #$02,d2
 L00005e52           bne.b   L00005e56
 L00005e54           moveq   #$02,d2
 L00005e56           addq.w  #$07,d2
-L00005e58           bsr.w   draw_next_sprite        ;L000045fa
-L00005e5c           jsr     $00048004               ; AUDIO_PLAYER
+L00005e58           bsr.w   draw_next_sprite                ;L000045fa
+L00005e5c           jsr     AUDIO_PLAYER_SILENCE            ;$00048004               ; AUDIO_PLAYER
 L00005e62           move.l  #$00000210,d0
-L00005e68           jmp     $0007c82a               ; PANEL_ADD_SCORE
+L00005e68           jmp     PANEL_ADD_SCORE                 ;$0007c82a               ; PANEL_ADD_SCORE
 
 
 
@@ -5974,53 +6013,71 @@ L00005e68           jmp     $0007c82a               ; PANEL_ADD_SCORE
                     ; IN:
                     ;   d0.w - Sprite X
                     ;   a6.l - address of object/sprite structure
-level_completed    
-L00005e6e           moveq   #$50,d1
-L00005e70           moveq   #$0b,d2
-L00005e72           bsr.w   draw_next_sprite            ;L000045fa
-L00005e76           bsr.w   double_buffer_playfield                     ; L000036ee
-L00005e7a           bset.b  #$0006,$0007c875
+level_completed     ; original address L00005e6e 
+                    moveq   #$50,d1
+                    moveq   #$0b,d2
+                    bsr.w   draw_next_sprite                            ;L000045fa
+                    bsr.w   double_buffer_playfield                     ;L000036ee
+                    bset.b  #PANEL_ST2_LEVEL_COMPLETE,PANEL_STATUS_2    ;#$0006,$0007c875
                     ; fall through to 'load_level_2'
+
 
 
 
                     ; -------------------------- load title screen ------------------------
                     ; do level completed sequence of displaying the text:
-                    ;   - Jack is Dead
-                    ;   - The Joker Lives
+                    ;   - The End.
+                    ;   - For the time being.
                     ; then clear the screen and load the title screen
                     ;
-Load_title_screen  
-L00005e82           jsr     $00048004
-L00005e88           moveq   #$02,d0
-L00005e8a           jsr     $00048010
-L00005e90           move.w  #$00fa,d0
-L00005e94           bsr.b   L00005ed4
-L00005e96           moveq   #$64,d0
-L00005e98           bsr.w   L00005ed4
-L00005e9c           bsr.w   L00004e66
-L00005ea0           lea.l   L00003ab1,a0
-L00005ea4           bsr.w   l000069fa
-L00005ea8           bsr.w   l00003caa
-L00005eac           moveq   #$64,d0
-L00005eae           bsr.w   L00005ed4
-L00005eb2           bsr.w   L00004e66
-L00005eb6           lea.l   L00003abd,a0
-L00005eba           bsr.w   L000069fa
-L00005ebe           bsr.w   L00003caa
-L00005ec2           moveq   #$64,d0
-L00005ec4           bsr.w   L00005ed4
-L00005ec8           bsr.w   L00003ca6
-L00005ecc           bsr.w   L00003d76
-L00005ed0           bra.w   L00000820     ;LOADER_TITLE_SCREEN
+Load_title_screen   ; original address L00005e82
+                    jsr     AUDIO_PLAYER_SILENCE                ;$00048004
+                    moveq   #SFX_LEVEL_COMPLETE,d0              ;#$02,d0
+                    jsr     AUDIO_PLAYER_INIT_SONG              ;$00048010
+                    ; pause
+                    move.w  #$00fa,d0
+                    bsr.b   wait_for_frame_count                ;L00005ed4
+                    ; pause
+                    moveq   #$64,d0
+                    bsr.w   wait_for_frame_count                ;L00005ed4
+                    ; display 'The End.'
+                    bsr.w   clear_backbuffer_playfield          ;L00004e66
+                    lea.l   the_end_text,a0                     ;L00003ab1,a0
+                    bsr.w   large_text_plotter                  ;l000069fa
+                    bsr.w   screen_wipe_to_backbuffer           ;l00003caa
+                    ; pause
+                    moveq   #$64,d0
+                    bsr.w   wait_for_frame_count                ;L00005ed4
+                    ; display 'For the time being.'
+                    bsr.w   clear_backbuffer_playfield          ;L00004e66
+                    lea.l   time_being_text,a0                  ;L00003abd,a0
+                    bsr.w   large_text_plotter                  ;L000069fa
+                    bsr.w   screen_wipe_to_backbuffer           ;L00003caa
+                    ; pause
+                    moveq   #$64,d0
+                    bsr.w   wait_for_frame_count                ;L00005ed4
+                    ; clear screen
+                    bsr.w   screen_wipe_to_black                ;L00003ca6
+                    bsr.w   panel_fade_out                      ;L00003d76
+                    ; load & execute title screen
+                    bra.w   LOADER_TITLE_SCREEN                 ;L00000820     
+                    ;*******************************
+                    ;       LOAD TITLE SCREEN
+                    ;         NEVER RETURNS
+                    ;*******************************
+
 
 
                     ; -------- wait for frame count ---------
-wait_for_frame_count    
-L00005ed4           add.w   L000036e2,d0
-L00005ed8           cmp.w   L000036e2,d0
-L00005edc           bpl.b   L00005ed8
-L00005ede           rts  
+wait_for_frame_count    ; original address L00005ed4
+                    add.w   frame_counter,d0            ;L000036e2,d0
+.wait_loop          ;L00005ed8
+                    cmp.w   frame_counter,d0            ;L000036e2,d0
+                    bpl.b   .wait_loop                  ;L00005ed8
+                    rts  
+
+
+
 
                     ; IN:
                     ;   d0 = actorX - display
@@ -6047,8 +6104,8 @@ L00005efe           rts
                     ; d4 = actor WorldX
 actor_cmd_26        ; original address L00005f00
 L00005f00           bsr.b   L00005ee0
-L00005f02           bcc.b   L00005f12               ; exit rts
-L00005f04           move.w  #$0018,L000069f6
+L00005f02           bcc.b   L00005f12                           ; exit rts
+L00005f04           move.w  #$0018,target_window_y_offset       ;L000069f6
 L00005f0a           addq.w  #$01,(a6)
 L00005f0c           move.w  #$0020,$0008(a6) 
 L00005f12           rts  
@@ -6061,7 +6118,7 @@ L00005f12           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-actor_cmd_27
+actor_cmd_27        ; original address L00005f14
 L00005f14           subq.w  #$01,$0008(a6)
 L00005f18           beq.b   L00005f40
 L00005f1a           moveq   #$27,d2
@@ -6097,9 +6154,9 @@ L00005f68           move.b  #$4f,$01(a0,d3.w)
 L00005f6e           move.b  #$4f,$02(a0,d3.w)
 L00005f74           move.b  #$4f,$03(a0,d3.w)
 L00005f7a           bsr.w   L00005ee0
-L00005f7e           bcc.b   actor_cmd_28            ;L00005f8a 
-L00005f80           move.w  #$540e,L00003c7c        ;gl_jsr_address
-L00005f86           clr.w   grappling_hook_height   ;L00006360
+L00005f7e           bcc.b   actor_cmd_28                                    ;L00005f8a 
+L00005f80           move.l  #player_input_cmd_fire_down,gl_jsr_address      ;#$0000540e,00003c7c
+L00005f86           clr.w   grappling_hook_height                           ;L00006360
 
 
                     ; a6 = actor list struct ptr
