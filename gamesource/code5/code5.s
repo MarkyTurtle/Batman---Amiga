@@ -1058,7 +1058,7 @@ L00003740                   MOVE.W  #(CODE1_DOUBLE_BUFFER_BYTESIZE/4)-1,d7      
 L00003744                   CLR.L   (A0)+
 L00003746                   DBF.W   D7,L00003744
 L0000374A                   LEA.L   CODE1_CHIPMEM_BUFFER,A0        ; Screen Buffer
-L00003750                   MOVE.W  #(CODE1_DISPLAY_BUFFER_BYTESIZE/4)-1        ; #$1c8b,D7
+L00003750                   MOVE.W  #(CODE1_DISPLAY_BUFFER_BYTESIZE/4)-1,d7        ; #$1c8b,D7
 L00003754                   CLR.L   (A0)+
 L00003756                   DBF.W   D7,L00003754
 L0000375A                   RTS 
@@ -6233,7 +6233,7 @@ L000060c0           bra.w   L000045fa
 ;Line 7686 - Code1.s
                     ; ---------------- display object co-ordinates ---------------
                     ; Start of 305 (sprite x & y positions - initialisation data)
-display_object_coords 
+display_object_coords       ; original address L000060C4
 L000060C4           dc.w    $2A02,$2005,$2005,$2004,$1505,$1506,$1506,$1507
 L000060D4           dc.w    $1507,$1506,$1507,$1507,$2C10,$2C08,$1402,$210D
 L000060E4           dc.w    $2B05,$1905,$2504,$1706,$1702,$2005,$0F06,$0006
@@ -6277,36 +6277,36 @@ L00006324           dc.w    $1503
 
 L00006326           dc.w    $0001,$0002,$0003,$0004,$0005,$0007 
 
-batman_sprite3_id
+batman_sprite3_id       ; original address L00006332
 L00006332           dc.w    $0005 
-batman_sprite2_id
+batman_sprite2_id       ; original address L00006334
 L00006334           dc.w    $0002
-batman_sprite1_id
+batman_sprite1_id       ; original address L00006336
 L00006336           dc.w    $0001 
 
-batman_y_bottom
+batman_y_bottom         ; original address L00006338
 L00006338           dc.w    $0000 
 
-state_parameter
+state_parameter         ; original address L0000633a
 L0000633a           dc.w    $0000 
 
-batman_swing_fall_speed
-batman_swing_speed
+batman_swing_fall_speed ; original address L0000633c
+batman_swing_speed      ; original address L0000633c
 L0000633c           dc.w    $0000 
 
-batman_fall_speed
+batman_fall_speed       ; original address L0000633E
 L0000633E           dc.w    $0000 
 
-batman_fall_distance
+batman_fall_distance    ; original address L00006340
 L00006340           dc.w    $0000   
 
 L00006342           dc.w    $0001
 
-level_spawn_point_index
+level_spawn_point_index ; original address L00006344
 L00006344           dc.w    $0000 
 
 
-sprite_array_ptr
+sprite_array_ptr        ; original address L00006346
 L00006346           dc.l    $00010000 ; $00010000      ; ptr to an array of sprite definition data structures
                                         ; structure def:
                                         ;  byte offset | description
@@ -6323,42 +6323,42 @@ L0000634E           dc.w    $0000
                     dc.w    $0000
                     
 
-player_input_command
+player_input_command    ; original address L00006352
 L00006352            dc.b $00                        ; bit 0 = left
                                                     ; bit 1 = right
                                                     ; bit 2 = down
                                                     ; bit 3 = up
                                                     ; bit 4 = pulse when button pressed
 
-player_button_pressed
+player_button_pressed   ; original address L00006353
 L00006353            dc.b $00            ; #$00 = not pressed, #$ff = button pressed
 
 
-background_gfx_base
+background_gfx_base     ; original address L00006354
 L00006354           dc.l    $0000C77C      ; MAPGR_GFX_ADDRESS
 
 L00006356           dc.w    $0000 
 
-vertical_scroll_increments
+vertical_scroll_increments  ; original address 
 L00006358           dc.w    $0000           ; the number of increments +/- the window has scrolled this frame.
 
-offscreen_y_coord 
+offscreen_y_coord       ; original address L00006358
 L0000635A           dc.w    $0000           ; Y co-ord into offscreen buffer (circular buffer).
 
-grappling_hook_params
+grappling_hook_params   ; original address L0000635C
 L0000635C           dc.w    $0000 
 L0000635E           dc.w    $0000 
-grappling_hook_height
+grappling_hook_height   ; original address 
 L00006360           dc.w    $0000 
 L00006362           dc.w    $0000 
 L00006364           dc.w    $0034 
 
-offscreen_display_buffer_ptr
+offscreen_display_buffer_ptr    ; original address L00006366
 L00006366           dc.l    $0005A36C       ; CODE1_CHIPMEM_BUFFER
 
 L0000636a           dc.l    $00003DEC      ; trigger_new_actors
 
-batman_sprite_anim_ptr  ; modified to long (haven't yet)
+batman_sprite_anim_ptr  ; original address L0000636E  ; modified to long (haven't yet)
 L0000636E           dc.l    $00000000 
 ;L0000636E           dc.w    $0000 
 
@@ -6389,19 +6389,19 @@ L00006414           dc.w    $FFFF,$FFFF
                     ; byte 0 = initial sprite id
                     ; byte 1 = second sprite offset
                     ; byte 2 = third sprite offset
-batman_sprite_anim_fire_hook
+batman_sprite_anim_fire_hook    ; original address L00006418
 L00006418           dc.b    $30,$D2,$04
 
-batman_sprite_anim_standing
+batman_sprite_anim_standing     ; original address L0000641B
 L0000641B           dc.b    $01,$02,$07 
 
-batman_sprite_anim_ducking
+batman_sprite_anim_ducking      ; original address L0000641e
 L0000641e           dc.b    $19,$01,$E6
 
-batman_sprite_anim_ducked
+batman_sprite_anim_ducked       ; original address L00006421
 L00006421           dc.b    $1E,$01,$E1  
 
-batman_sprite_anim_life_lost
+batman_sprite_anim_life_lost    ; original address L00006424
 L00006424           dc.b    $19,$01,$E6
                     dc.b    $19,$01,$E6 
                     dc.b    $19,$01,$E6
@@ -6423,10 +6423,10 @@ L00006454           dc.b    $1D,$E3,$00
                     dc.b    $1D,$E3,$00
                     dc.b    $00 
 
-batman_sprite_anim_07
+batman_sprite_anim_07       ; original address L0000645E
 L0000645E           dc.b    $24,$01,$01
 
-batman_sprite_anim_firing
+batman_sprite_anim_firing   ; original address L00006461
 L00006461           dc.b    $27,$01,$01  
 L00006464           dc.b    $2A,$01,$FE
                     dc.b    $2C,$FD,$D7 
@@ -6462,7 +6462,7 @@ L00006475           dc.b    $E4
                     even
                     ; I think these maybe trigger-points for (x) number of bad guys to appear on the level.
                     ; e.g. - 
-trigger_definitions_list  
+trigger_definitions_list    ; original address L00006476
 L00006476           dc.w    $0050,$041E,$0001,$0022,$0080,$0400 
                     dc.w    $0190,$0260,$0001,$0023,$0160,$0260
                     dc.w    $0040,$0610,$0003,$0003,$00A8,$0628,$000F,$00A8,$0648,$000F,$00B8,$0648 
@@ -6531,7 +6531,7 @@ L000068B4           dc.w    $01B0,$0100,$0002,$000E,$01D0,$0108,$0003,$01D0,$014
                     dc.w    $0140,$000F,$0002,$0003,$0168,$0048,$0003,$0178,$0048 
                     dc.w    $0184,$0020,$0003,$000F,$01B0,$0048,$000F,$01A0,$0048,$000E,$00E8,$0048 
                     dc.w    $01A6,$0020,$0002,$0020,$01C0,$0048,$001F,$01C0,$0038 
-end_of_trigger_list     ; 00006944
+end_of_trigger_list     ; original address  00006944
 
                     ; 3 word/ 6 byte data structure list
                     ; MSB of byte 0 is cleared on game_start
@@ -6559,10 +6559,10 @@ L000069A4           dc.w    $001A,$01C0,$0428
                     dc.w    $001A,$0160,$01C8 
                     dc.w    $001D,$0240,$0488 
                     dc.w    $001D,$0120,$04A8 
-end_of_actors       ; 000069C2
+end_of_actors       ; original address  000069C2
 
                     ; ---------- Start level_parameters on game_start ----------
-default_level_parameters
+default_level_parameters    ; original address L000069C2
 L000069C2           dc.w    $0000 
 L000069C4           dc.w    $0600 
                     dc.w    $0648 
@@ -6571,7 +6571,7 @@ L000069C4           dc.w    $0600
                     dc.w    $0048 
                     dc.w    $0050 
 
-spawn_point_parameters_1           
+spawn_point_parameters_1   ; original address L000069D0       
 L000069D0           dc.w    $0040 
                     dc.w    $0440  
 L000069D4           dc.w    $0468 
@@ -6580,7 +6580,7 @@ L000069D4           dc.w    $0468
                     dc.w    $0028 
                     dc.w    $0050 
 
-spawn_point_parameters_2            
+spawn_point_parameters_2   ; original address L000069DE         
 L000069DE           dc.w    $01A0 
                     dc.w    $0260 
                     dc.w    $0288 
@@ -6591,27 +6591,27 @@ L000069E4           dc.w    $0050
 
 
 level_parameters
-scroll_window_xy_coords
-scroll_window_x_coord
+scroll_window_xy_coords     ; original address L000069EC
+scroll_window_x_coord       ; original address L000069EC
 L000069EC           dc.w    $0000 
 
-scroll_window_y_coord
+scroll_window_y_coord       ; original address L000069EE
 L000069EE           dc.w    $00F0 
 
-scroll_window_max_x_coord
+scroll_window_max_x_coord   ; original address L000069F0
 L000069F0           dc.w    $0000 
 
-batman_xy_offset
-batman_x_offset
+batman_xy_offset            ; original address L000069F2
+batman_x_offset             ; original address L000069F2
 L000069F2           dc.w    $0050 
 
-batman_y_offset
+batman_y_offset             ; original address L000069F4
 L000069F4           dc.w    $0048 
 
-target_window_y_offset
+target_window_y_offset      ; original address L000069F6
 L000069F6           dc.w    $0048 
 
-target_window_x_offset
+target_window_x_offset      ; original address L000069F8
 L000069F8           dc.w    $0050 
 
                     even
@@ -6637,7 +6637,7 @@ L000069F8           dc.w    $0050
                 ;   dc.b 'DISPLAY STRING'
                 ;   dc.b $00,$ff        -- Terminator
                 ;
-large_text_plotter    
+large_text_plotter      ; original address L000069fa 
 L000069fa               move.b  (a0)+,d0
 L000069fc               bmi.w   L00006ace
 L00006a00               and.w   #$00ff,d0
@@ -6712,120 +6712,9 @@ L00006ace               rts
 
 
 large_chaacter_gfx
-                ; include font8x8x4.s
+                    include "./gfx/font8x8x4.s"
 
 
-L00006AD0           dc.w $CF30,$3000,$00C7,$3038,$0800,$C730,$3808,$00C7 
-L00006AE0           dc.w $3038,$0800,$C730,$3808,$00E7,$0018,$1800,$CF30 
-L00006AF0           dc.w $3000,$00E7,$0018,$1800,$F30C,$0C00,$00E1,$181E 
-L00006B00           dc.w $0600,$E318,$1C04,$00E3,$181C,$0400,$E318,$1C04 
-L00006B10           dc.w $00E3,$181C,$0400,$F30C,$0C00,$00F9,$0006,$0600 
-L00006B20           dc.w $9F60,$6000,$00CF,$3030,$0000,$C730,$3808,$00C7 
-L00006B30           dc.w $3038,$0800,$C730,$3808,$00C7,$3038,$0800,$8760 
-L00006B40           dc.w $7818,$00CF,$0030,$3000,$FF00,$0000,$00FF,$0000 
-L00006B50           dc.w $0000,$FF00,$0000,$00FF,$0000,$0000,$FF00,$0000 
-L00006B60           dc.w $009F,$6060,$0000,$8F60,$7010,$00CF,$0030,$3000 
-L00006B70           dc.w $837C,$7C00,$0001,$C6FE,$3800,$10CE,$EF21,$0000 
-L00006B80           dc.w $D6FF,$2900,$08E6,$F711,$0018,$C6E7,$2100,$807C 
-L00006B90           dc.w $7F03,$00C1,$003E,$3E00,$C738,$3800,$00C3,$383C 
-L00006BA0           dc.w $0400,$E318,$1C04,$00E3,$181C,$0400,$E318,$1C04 
-L00006BB0           dc.w $00E3,$181C,$0400,$E318,$1C04,$00F3,$000C,$0C00 
-L00006BC0           dc.w $837C,$7C00,$0001,$C6FE,$3800,$900C,$6F63,$00E1 
-L00006BD0           dc.w $181E,$0600,$C330,$3C0C,$0087,$6078,$1800,$00FE 
-L00006BE0           dc.w $FF01,$0080,$007F,$7F00,$837C,$7C00,$0001,$C6FE 
-L00006BF0           dc.w $3800,$9806,$6761,$00C0,$3C3F,$0300,$E106,$1E18 
-L00006C00           dc.w $0038,$C6C7,$0100,$807C,$7F03,$00C1,$003E,$3E00 
-L00006C10           dc.w $E31C,$1C00,$00C1,$3C3E,$0200,$816C,$7E12,$0001 
-L00006C20           dc.w $CCFE,$3200,$01FE,$FE00,$0080,$0C7F,$7300,$F10C 
-L00006C30           dc.w $0E02,$00F9,$0006,$0600,$00FE,$FF00,$0000,$C0FF 
-L00006C40           dc.w $3F00,$1FC0,$E020,$0003,$FCFC,$0000,$8006,$7F79 
-L00006C50           dc.w $0038,$C6C7,$0100,$807C,$7F03,$00C1,$003E,$3E00 
-L00006C60           dc.w $837C,$7C00,$0001,$C6FE,$3800,$1CC0,$E323,$0003 
-L00006C70           dc.w $FCFC,$0000,$01C6,$FE38,$0018,$C6E7,$2100,$807C 
-L00006C80           dc.w $7F03,$00C1,$003E,$3E00,$01FE,$FE00,$0080,$067F 
-L00006C90           dc.w $7900,$F00C,$0F03,$00E1,$181E,$0600,$E318,$1C04 
-L00006CA0           dc.w $00C7,$3038,$0800,$C730,$3808,$00E7,$0018,$1800 
-L00006CB0           dc.w $837C,$7C00,$0001,$C6FE,$3800,$18C6,$E721,$0080 
-L00006CC0           dc.w $7C7F,$0300,$01C6,$FE38,$0018,$C6E7,$2100,$807C 
-L00006CD0           dc.w $7F03,$00C1,$003E,$3E00,$837C,$7C00,$0001,$C6FE 
-L00006CE0           dc.w $3800,$18C6,$E721,$0080,$7E7F,$0100,$C006,$3F39 
-L00006CF0           dc.w $0038,$C6C7,$0100,$807C,$7F03,$00C1,$003E,$3E00 
-L00006D00           dc.w $EF10,$1000,$00C7,$3838,$0000,$C338,$3C04,$0083 
-L00006D10           dc.w $6C7C,$1000,$817C,$7E02,$0001,$C6FE,$3800,$18C6 
-L00006D20           dc.w $E721,$009C,$0063,$6300,$03FC,$FC00,$0001,$C6FE 
-L00006D30           dc.w $3800,$18C6,$E721,$0000,$FCFF,$0300,$01C6,$FE38 
-L00006D40           dc.w $0018,$C6E7,$2100,$00FC,$FF03,$0081,$007E,$7E00 
-L00006D50           dc.w $837C,$7C00,$0001,$C6FE,$3800,$1CC0,$E323,$001F 
-L00006D60           dc.w $C0E0,$2000,$1FC0,$E020,$0019,$C6E6,$2000,$807C  
-L00006D70           dc.w $7F03,$00C1,$003E,$3E00,$07F8,$F800,$0003,$CCFC  
-L00006D80           dc.w $3000,$19C6,$E620,$0018,$C6E7,$2100,$18C6,$E721  
-L00006D90           dc.w $0010,$CCEF,$2300,$01F8,$FE06,$0083,$007C,$7C00  
-L00006DA0           dc.w $01FE,$FE00,$0000,$C0FF,$3F00,$1FC0,$E020,$0007  
-L00006DB0           dc.w $F8F8,$0000,$03C0,$FC3C,$001F,$C0E0,$2000,$01FE  
-L00006DC0           dc.w $FE00,$0080,$007F,$7F00,$01FE,$FE00,$0000,$C0FF  
-L00006DD0           dc.w $3F00,$1FC0,$E020,$0007,$F8F8,$0000,$03C0,$FC3C  
-L00006DE0           dc.w $001F,$C0E0,$2000,$1FC0,$E020,$009F,$0060,$6000  
-L00006DF0           dc.w $837C,$7C00,$0001,$C6FE,$3800,$1CC0,$E323,$0001  
-L00006E00           dc.w $DEFE,$2000,$10C6,$EF29,$0018,$C6E7,$2100,$807E  
-L00006E10           dc.w $7F01,$00C0,$003F,$3F00,$39C6,$C600,$0018,$C6E7  
-L00006E20           dc.w $2100,$18C6,$E721,$0000,$FEFF,$0100,$00C6,$FF39  
-L00006E30           dc.w $0018,$C6E7,$2100,$18C6,$E721,$009C,$0063,$6300  
-L00006E40           dc.w $8778,$7800,$00C3,$303C,$0C00,$C730,$3808,$00C7  
-L00006E50           dc.w $3038,$0800,$C730,$3808,$00C7,$3038,$0800,$8778  
-L00006E60           dc.w $7800,$00C3,$003C,$3C00,$F906,$0600,$00F8,$0607  
-L00006E70           dc.w $0100,$F806,$0701,$00F8,$0607,$0100,$38C6,$C701  
-L00006E80           dc.w $0018,$C6E7,$2100,$807C,$7F03,$00C1,$003E,$3E00  
-L00006E90           dc.w $39C6,$C600,$0010,$CCEF,$2300,$01D8,$FE26,$0003  
-L00006EA0           dc.w $F0FC,$0C00,$07D8,$F820,$0013,$CCEC,$2000,$19C6  
-L00006EB0           dc.w $E620,$009C,$0063,$6300,$3FC0,$C000,$001F,$C0E0  
-L00006EC0           dc.w $2000,$1FC0,$E020,$001F,$C0E0,$2000,$1FC0,$E020  
-L00006ED0           dc.w $0019,$C6E6,$2000,$00FE,$FF01,$0080,$007F,$7F00  
-L00006EE0           dc.w $39C6,$C600,$0010,$EEEF,$0100,$00FE,$FF01,$0000  
-L00006EF0           dc.w $D6FF,$2900,$10C6,$EF29,$0018,$C6E7,$2100,$18C6  
-L00006F00           dc.w $E721,$009C,$0063,$6300,$39C6,$C600,$0018,$E6E7  
-L00006F10           dc.w $0100,$08F6,$F701,$0000,$DEFF,$2100,$10CE,$EF21  
-L00006F20           dc.w $0018,$C6E7,$2100,$18C6,$E721,$009C,$0063,$6300  
-L00006F30           dc.w $837C,$7C00,$0001,$C6FE,$3800,$18C6,$E721,$0018  
-L00006F40           dc.w $C6E7,$2100,$18C6,$E721,$0018,$C6E7,$2100,$807C  
-L00006F50           dc.w $7F03,$00C1,$003E,$3E00,$03FC,$FC00,$0001,$C6FE  
-L00006F60           dc.w $3800,$18C6,$E721,$0000,$FCFF,$0300,$01C0,$FE3E  
-L00006F70           dc.w $001F,$C0E0,$2000,$1FC0,$E020,$009F,$0060,$6000  
-L00006F80           dc.w $837C,$7C00,$0001,$C6FE,$3800,$18C6,$E721,$0018  
-L00006F90           dc.w $C6E7,$2100,$00DA,$FF25,$0000,$CCFF,$3300,$8176  
-L00006FA0           dc.w $7E08,$00C4,$003B,$3B00,$03FC,$FC00,$0001,$C6FE  
-L00006FB0           dc.w $3800,$18C6,$E721,$0000,$FCFF,$0300,$01CC,$FE32  
-L00006FC0           dc.w $0018,$C6E7,$2100,$18C6,$E721,$009C,$0063,$6300  
-L00007110           dc.w $11EE,$EE22,$0081,$7E7E,$0600,$C33C,$3C0C,$00C7  
-L00007120           dc.w $3838,$0800,$C738,$3808,$00E7,$1818,$1800,$03FC  
-L00007130           dc.w $FC00,$0001,$FEFE,$3200,$817E,$7E66,$00C3,$3C3C  
-L00007140           dc.w $0C00,$8778,$7818,$0003,$FCFC,$3000,$01FE,$FE02  
-L00007150           dc.w $0081,$7E7E,$7E00,$0404,$0505,$0505,$0505,$0404  
-L00007160           dc.w $0404,$0405,$0504,$0505,$0404,$0404,$0404,$0404  
-L00007170           dc.w $0301,$0100,$00FF,$0001,$0101,$0000,$0102,$0302  
-L00007180           dc.w $0202,$0304,$0505,$0504,$0404,$0302,$01FF,$FDFD  
-L00007190           dc.w $FCFC,$FCFB,$F9FA,$FAFC,$FDFD,$FDFC,$FDFD,$FF00  
-L000071A0           dc.w $0101,$0101,$0000,$FFFE,$FEFD,$FEFD,$FCFB,$FCFC  
-L000071B0           dc.w $FBFC,$FDFC,$FEFE,$FEFE,$FFFE,$FEFF,$FFFE,$FEFF  
-L000071C0           dc.w $FFFF,$00FF,$0000,$0000,$FF00,$FF00,$FFFE,$FFFE  
-L000071D0           dc.w $FFFD,$FEFE,$FEFD,$FDFD,$FDFD,$FDFD,$FEFE,$FEFD  
-L000071E0           dc.w $FDFE,$FF00,$0000,$0000,$0100,$0001,$0001,$FFFF  
-L000071F0           dc.w $FFFE,$FEFE,$FEFE,$FEFD,$FDFC,$FCFC,$FCFC,$FCFD  
-L00007200           dc.w $FCFC,$FDFD,$FEFF,$FFFF,$00FF,$FFFE,$FFFE,$FF00  
-L00007210           dc.w $0000,$0001,$0203,$0201,$0202,$0200,$FFFD,$FEFF  
-L00007220           dc.w $FFFF,$FEFE,$0000,$0000,$0101,$0000,$0102,$0202  
-L00007230           dc.w $0203,$0404,$0303,$0505,$0504,$0303,$0301,$FDFD  
-L00007240           dc.w $FEFF,$FDFD,$FCFD,$FEFE,$FFFF,$0202,$0201,$0304  
-L00007250           dc.w $0404,$0304,$0404,$0302,$0302,$0100,$FEFF,$FEFE  
-L00007260           dc.w $FCFC,$FDFD,$FDFD,$FCFC,$FCFD,$FEFF,$0001,$0000  
-L00007270           dc.w $0101,$0100,$0101,$0201,$FF00,$00FF,$00FE,$FEFF  
-L00007280           dc.w $FEFF,$FEFF,$00FF,$FEFF,$FFFF,$0000,$0000,$0101  
-L00007290           dc.w $0101,$0203,$0203,$0303,$0303,$0303,$0304,$0403  
-L000072A0           dc.w $0302,$0100,$FFFF,$FEFF,$0001,$0101,$0303,$0303  
-L000072B0           dc.w $0203,$0203,$0404,$0404,$0506,$0504,$0303,$0203  
-L000072C0           dc.w $0201,$0100,$FEFE,$FFFF,$FF00,$0001,$0202,$0100  
-L000072D0           dc.w $FF00,$FFFF,$FEFE,$FEFD,$FEFF,$0100,$0000,$0102  
-L000072E0           dc.w $0100,$00FF,$FEFC,$FDFE,$FF00,$FFFC,$FCFC,$FCFC  
-L000072F0           dc.w $FCFD,$FFFF,$0101,$0101,$0203,$0303,$0405,$0506  
 
 
 
