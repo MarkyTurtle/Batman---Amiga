@@ -7574,31 +7574,31 @@ L00005f5c           bsr.w   draw_next_sprite                ; L000045bc
 L00005f60           bra.w   initialise_offscreen_buffer         ; draw full background screen to offscreen buffer - L000058aa
 
 
-L00005f64            dc.l $00005fc4                     ; a ptr used with map data - to location down below
+L00005f64            dc.l L00005fc4 ;$00005fc4                     ; a ptr used with map data - to location down below
 
-L00005f68            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f6c            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f70            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f74            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f78            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f7c            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f80            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f84            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f88            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f8c            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f90            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f94            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f98            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005f9c            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fa0            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fa4            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fa8            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fac            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fb0            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fb4            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fb8            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fbc            dc.w $0000, $0000                   ; or.b #$00,d0
-L00005fc0            dc.w $0000, $0000                   ; or.b #$00,d0
+L00005f68            dc.w $0000,$0000 
+L00005f6c            dc.w $0000,$0000 
+L00005f70            dc.w $0000,$0000 
+L00005f74            dc.w $0000,$0000 
+L00005f78            dc.w $0000,$0000 
+L00005f7c            dc.w $0000,$0000 
+L00005f80            dc.w $0000,$0000 
+L00005f84            dc.w $0000,$0000 
+L00005f88            dc.w $0000,$0000 
+L00005f8c            dc.w $0000,$0000 
+L00005f90            dc.w $0000,$0000 
+L00005f94            dc.w $0000,$0000 
+L00005f98            dc.w $0000,$0000 
+L00005f9c            dc.w $0000,$0000 
+L00005fa0            dc.w $0000,$0000 
+L00005fa4            dc.w $0000,$0000 
+L00005fa8            dc.w $0000,$0000 
+L00005fac            dc.w $0000,$0000 
+L00005fb0            dc.w $0000,$0000 
+L00005fb4            dc.w $0000,$0000 
+L00005fb8            dc.w $0000,$0000 
+L00005fbc            dc.w $0000,$0000 
+L00005fc0            dc.w $0000,$0000 
 
 L00005fc4           dc.w $0000                          ; data location initially pointed to by ptr above L00005f64
                     dc.w $0000                          ; 3 words used by level data initialisation
