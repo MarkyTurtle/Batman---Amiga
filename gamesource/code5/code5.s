@@ -4032,7 +4032,7 @@ L00004ef4               addq.w  #$01,d5
 L00004ef6               cmp.w   #$0050,d5
 L00004efa               bcc.b   L00004efe
 L00004efc               move.w  d5,(a0)
-L00004efe               lea.l   L0000635c,a0
+L00004efe               lea.l   grappling_hook_params,a0            ;L0000635c,a0
 L00004f02               movem.w (a0),d2-d3
 L00004f06               clr.w   d7
 L00004f08               moveq   #$07,d6
@@ -4067,8 +4067,8 @@ L00004f50               bra.b   L00004f54
 L00004f52               moveq   #$7f,d2
 L00004f54               movem.w d2-d3,(a0)
 
-L00004f58               lea.l   L0000635c,a0
-L00004f5c               lea.l   batman_xy_offset,a2     ;L000069f2,a2
+L00004f58               lea.l   grappling_hook_params,a0                ;L0000635c,a0
+L00004f5c               lea.l   batman_xy_offset,a2                     ;L000069f2,a2
 L00004f60               bsr.w   L000050e8
 
 L00004f64               movem.w batman_xy_offset,d0-d1                  ;L000069f2,d0-d1
@@ -4352,7 +4352,7 @@ L00005136               clr.w d0
                     ;
 player_input_fire_up_common 
 L00005138               move.w  #$0048,target_window_y_offset       ;L000069f6
-L0000513e               lea.l   L0000635c,a0
+L0000513e               lea.l   grappling_hook_params,a0            ;L0000635c,a0
 L00005142               move.w  d0,(a0)
 L00005144               clr.l   (a0)+ 
 L00005146               bsr.w   L0000467c
@@ -4381,44 +4381,73 @@ L0000516a               bclr.b  #$0004,player_input_command         ;L00006350
                     ;
                     ;
 player_state_firing_grappling_hook  ; original address L00005170
-L00005170               lea.l   L0000635c,a0
-L00005174               btst.b  #$0004,player_input_command             ;L00006350 
-L0000517c               bne     L000051fc
+L00005170               lea.l   grappling_hook_params,a0                ;L0000635c,a0
+L00005174               btst.b  #PLAYER_INPUT_FIRE,player_input_command             ;L00006350 
+L0000517c               bne     stop_grappling_hook                     ;L000051fc
+
 L0000517e               move.w  $0004(a0),d2
+                    ; increment len
+                    ; make batrope longer (slows down as it get longer)
+                    ; if longer than 40 then increment = 2.
+                    ; if between 20 and 40 then increment by 3.
+                    ; if shorter than 20 increment by 4.
 L00005182               addq.w  #$02,d2
+
 L00005184               cmp.w   #$0028,d2
 L00005188               bcc.b   L00005194 
+                        ; increment len
 L0000518a               addq.w  #$01,d2
+
 L0000518c               cmp.w   #$0014,d2
-L00005190               bcc.b   L00005194 
+L00005190               bcc.b   L00005194
+                        ; increment len
 L00005192               addq.w  #$01,d2
+
 L00005194               move.w  d2,$0004(a0)
 L00005198               bsr.w   L000050e8
+
 L0000519c               addq.w  #$03,d3
 L0000519e               move.w  batman_sprite1_id,d7                    ;L00006336,d7
 L000051a2               bpl.b   L000051a6
+
 L000051a4               subq.w  #$07,d3
+
 L000051a6               add.w   #$000a,d4
 L000051aa               sub.w   d4,d1
-L000051ac               bcs.b   L000051e6
+L000051ac               bcs.b   L000051e6       ; set retract hook
+
 L000051ae               move.w  scroll_window_y_coord,d5                ;L000069ee,d5
 L000051b2               add.w   d1,d5
 L000051b4               btst.l  #$0002,d5
-L000051b8               bne.b   L000051ec
+L000051b8               bne.b   L000051ec       ; exit
 L000051ba               add.w   d3,d0
+
+                    ; tilemap collision
 L000051bc               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000051c0               cmp.b   #$03,d2
-L000051c4               bcs.b   L000051e6 
+L000051c4               bcs.b   L000051e6       ; set retract hook 
+
 L000051c6               cmp.b   #$5f,d2
-L000051ca               bcc.b   L000051e6 
+L000051ca               bcc.b   L000051e6       ; set retract hook 
+
 L000051cc               cmp.b   #$51,d2
-L000051d0               bcs.b   L000051ec 
+L000051d0               bcs.b   L000051ec       ; exit
+
+                    ; grabed platform
 L000051d2               move.l  #player_state_grappling_hook_attached,gl_jsr_address    ;#$00004ea2,00003c7c 
 L000051d8               move.l  L00006362,L00006370
-L000051de               lea.l   L0000645e,a0
+
+L000051de               lea.l   batman_sprite_anim_07,a0        ;L0000645e,a0
 L000051e2               bra.w   set_batman_sprites                                      ;L00005470 
+                    ; use 'rts' in set_batman_sprites to return
+
+                    ; wall, ladder, collision
+                    ; retract grappling hook state
 L000051e6               move.l  #player_state_retract_grappling_hook,gl_jsr_address     ;#$000051ee,L00003c7c
 L000051ec               rts 
+
+
+
 
 
                     ; ------------- player state - retract grappling hook --------------
@@ -4433,16 +4462,26 @@ L000051ec               rts
                     ;   - D4.w = window y?
                     ;
 player_state_retract_grappling_hook     ; original address L000051ee
-L000051ee               lea.l   L0000635c,a0
-L000051f2               btst.b  #$0004,player_input_command                 ;L00006350
-L000051fa               beq.b   L00005202
+L000051ee               lea.l   grappling_hook_params,a0                    ;L0000635c,a0
+L000051f2               btst.b  #PLAYER_INPUT_FIRE,player_input_command                 ;L00006350
+L000051fa               beq.b   shorten_grappling_hook          ;L00005202
+                    ; if fire is pressed then shortcut the retraction.
+                    ; fall through to stop_grappling_hook
 
+                    ; IN:-
+                    ;   a0.l = L00006314  (offset 4 = grappling hook height)
+                    ;                    
+stop_grappling_hook     ; original address L000051fc                    
 L000051fc               move.w  #$0002,$0004(a0)
+shorten_grappling_hook  ; original address L00005202
 L00005202               subq.w  #$03,$0004(a0)
-L00005206               bls.b   L0000520c 
+L00005206               bls.b   exit_fire_grappling_hook_state      ;L0000520c 
 L00005208               bra.w   L000050e8 
 
-exit_fire_grappling_hook_state 
+
+
+
+exit_fire_grappling_hook_state  ; original address L0000520c
 L0000520c               clr.w   $0004(a0)
 L00005210               move.l  #player_move_commands,gl_jsr_address        ;#$00004c7c,L00003c7c
 L00005216               lea.l   batman_sprite_anim_standing,a0              ;L0000641b,a0
@@ -4471,7 +4510,7 @@ L00005228               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L00005
 L0000522c               subq.w  #$04,d0
 L0000522e               cmp.b   #$5f,d2
 L00005232               bne.b   L0000521e        ; exit
-L00005234               bra.b   L00005254 
+L00005234               bra.b   set_player_state_climbing               ;L00005254 
 
 
 
