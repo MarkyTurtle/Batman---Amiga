@@ -6220,7 +6220,7 @@ L000055e0           add.w   d1,d1
                     ext.l   d1
                     add.l   playfield_buffer_2,d1       ;  L000036f6,d1
 
-                    movem.w L0000631a,d2-d3
+                    movem.w L0000631a,d2-d3         ; hook details (hook point?)
                     add.w   d2,d2
                     add.w   d3,d3
                     beq.w   draw_batman_sprite          ; L000056a6                   ; Jmp Draw Batman Sprite
@@ -6346,7 +6346,6 @@ draw_sprite                                         ; original address $L000056f
 L000056f4           movea.l sprite_array_ptr,a1     ; L000062fe,a1        ; Sprite Structure Data Pointer
                     add.w   d1,d1                   ; d1 = d1 * 2
                     asl.w   #$03,d2                 ; d2 = d2 * 8 (sprite structure 8 bytes?)
-
                     lea.l   -8(a1,d2.W),a1          ; a1 = sprite data structure.
                     bcc.b   right_facing_sprite     ; L00005724 ; if d2 < 8192 (8k) then JMP 5724
 

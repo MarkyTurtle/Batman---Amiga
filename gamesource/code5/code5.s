@@ -1399,7 +1399,7 @@ L00003B7C               CLR.W   (A0)+
 L00003B7E               DBF.W   D7,L00003b7c
 
                     ; ------ Set initial batman sprite ids ----- 
-L00003B82               CLR.W   L00006336
+L00003B82               CLR.W   batman_sprite1_id       ; L00006336
 L00003B86               LEA.L   L0000641b,A0
 L00003B8A               BSR.W   L00005470
 
@@ -1417,7 +1417,7 @@ L00003BB0               BSR.W   large_text_plotter                      ;L000069
 L00003BB4               BSR.W   double_buffer_playfield                 ;L000036ee
 L00003BB8               BSR.W   initialise_offscreen_buffer             ;L000058ea
 L00003BBC               BSR.W   L00004ba0
-L00003BC0               BSR.W   L00005604
+L00003BC0               BSR.W   draw_batman_and_rope                    ;L00005604
 L00003BC4               MOVE.L  #$00000032,D0
 L00003BC6               BSR.W   wait_for_frame_count                    ;L00005ed4
 L00003BCA               BTST.B  #$0000,$0007c875    ; Panel
@@ -1479,7 +1479,7 @@ L00003C7E               BSR.W   L00004974
 L00003C82               BSR.W   L00003dbe
 L00003C86               BSR.W   L00003dec
 L00003C8A               BSR.W   L00004ba0
-L00003C8E               BSR.W   L00005604
+L00003C8E               BSR.W   draw_batman_and_rope            ;L00005604
 L00003C92               BSR.W   L00003ed4
 L00003C96               BSR.W   L00004696
 L00003C9A               BSR.W   L0000463c
@@ -2536,7 +2536,7 @@ L000045e4               asr.w   #$01,d4
 L000045e6               movem.w d0-d1/d4,$000e(a6)
                         ; draw sprite
 L000045ec               movem.w d0-d1/a5-a6,-(a7)
-L000045f0               bsr.w   L00005734           ; draw_sprite
+L000045f0               bsr.w   draw_sprite                     ;L00005734
 L000045f4               movem.w (a7)+,d0-d1/a5-a6
 L000045f8               rts  
 
@@ -2551,7 +2551,7 @@ L000045f8               rts
 draw_next_sprite    ; original address L000045fa
 L000045fa               add.w   $0006(a6),d2
 L000045fe               movem.w d0-d1/a5-a6,-(a7)
-L00004602               bsr.w   L00005734               ; draw_sprite
+L00004602               bsr.w   draw_sprite             ;L00005734
 L00004606               movem.w (a7)+,d0-d1/a5-a6
 L0000460a               rts  
 
@@ -2633,7 +2633,7 @@ L00004660               ror.w   #$01,d2
 L00004662               bpl.b   L00004668
 L00004664               or.w    #$e000,d2
 L00004668               add.w   #$003b,d2
-L0000466c               bsr.w   L00005734               ; draw_sprite
+L0000466c               bsr.w   draw_sprite             ;L00005734
 L00004670               move.w  (a7)+,d7
 L00004672               movea.l (a7)+,a6
 L00004674               addq.w  #$06,a6                 ; #PROJECTILE_LISTITEM_SIZE-2
@@ -2991,7 +2991,7 @@ L000047a2               add.w   L00006362,d0
 L000047a6               sub.w   L00006364,d1
 L000047aa               sub.w   #$000c,d1
 L000047ae               addq.w  #$05,d0
-L000047b0               tst.w   L00006336
+L000047b0               tst.w   batman_sprite1_id           ;L00006336
 L000047b4               bpl.b   L000047b8
 L000047b6               subq.w  #$07,d0
 L000047b8               movem.w d0-d1,(a6)
@@ -3344,7 +3344,7 @@ L000049ee               bmi.b   L00004a12
 
 scroll_display_window_down 
 L000049f0               add.w   #$0057,d3
-L000049f4               move.w  L0000635a,d2
+L000049f4               move.w  offscreen_y_coord,d2        ;L0000635a,d2
 L000049f8               move.w  d1,d4
 L000049fa               add.w   d2,d4
 L000049fc               cmp.w   #$0057,d4
@@ -3352,7 +3352,7 @@ L00004a00               bcs.b   L00004a06
 .is_display_wrap
 L00004a02               sub.w   #$0057,d4
 .no_display_wrap
-L00004a06               move.w  d4,L0000635a
+L00004a06               move.w  d4,offscreen_y_coord        ;L0000635a
 L00004a0a               bsr.w   L00004a9c
 L00004a0e               bra.w   L00004a2a
                     ;---------------------------------------
@@ -3360,13 +3360,13 @@ L00004a0e               bra.w   L00004a2a
                     ; scroll display up (e.g. climbing upwards)
                     ; NB: d1 is negative
 scroll_display_window_up 
-L00004a12               move.w  L0000635a,d2
+L00004a12               move.w  offscreen_y_coord,d2    ;L0000635a,d2
 L00004a16               add.w   d1,d2
 L00004a18               bpl.b   L00004a1e
 .is_enderflow_wrap
 L00004a1a               add.w   #$0057,d2
 .no_underflow_wrap 
-L00004a1e               move.w  d2,L0000635a
+L00004a1e               move.w  d2,offscreen_y_coord    ;L0000635a
 L00004a22               add.w   d1,d3
 L00004a24               neg.w   d1
 L00004a26               bsr.w   L00004a9c       ; draw_background_vertical_scroll
@@ -3564,7 +3564,7 @@ L00004b3a               mulu.w  d4,d1
 L00004b3c               add.w   d2,d1
 L00004b3e               lea.l   $7a(a0,d1.w),a0     ; MAPGR_TILEDATA_OFFSET
 L00004b42               moveq   #$56,d7
-L00004b44               move.w  L0000635a,d1
+L00004b44               move.w  offscreen_y_coord,d1    ;L0000635a,d1
 L00004b48               moveq   #$56,d6
 L00004b4a               sub.w   d1,d6
 L00004b4c               mulu.w  #$0054,d1
@@ -3626,10 +3626,10 @@ L00004b9e               rts
                     ;
 copy_offscreen_to_backbuffer 
 L00004ba0               move.w  #$8400,$00dff096
-L00004ba8               movea.l L000036ea,a6
+L00004ba8               movea.l playfield_buffer_2,a6               ;L000036ea,a6
 L00004bac               subq.w  #$02,a6
 L00004bae               movea.l offscreen_display_buffer_ptr,a5     ;L00006366,a5
-L00004bb2               move.w  L0000635a,d1
+L00004bb2               move.w  offscreen_y_coord,d1                ;L0000635a,d1
 L00004bb6               clr.l   d6
 L00004bb8               subq.w  #$01,d6
 L00004bba               swap.w  d6
@@ -4171,7 +4171,7 @@ L00005044               move.w  #$0008,L0000633a
 L0000504a               move.l  #player_state_fired,gl_jsr_address      ;#$00005074,L00003c7c 
 L00005050               bsr.w   L0000467c
 L00005054               sub.w   #$0007,d0
-L00005058               move.w  L00006336,d2
+L00005058               move.w  batman_sprite1_id,d2                    ;L00006336,d2
 L0000505c               spl.b   d2 (T)
 L0000505e               ext.w   d2
 L00005060               bpl.b   L00005066
@@ -4227,7 +4227,7 @@ L0000509a               bne.b   L00005072
 L0000509c               move.w  #$0006,L0000633a
 L000050a2               subq.w  #$05,batman_y_offset                    ;L000069f4 
 L000050a6               subq.w  #$04,d1
-L000050a8               move.w  L00006336,d2
+L000050a8               move.w  batman_sprite1_id,d2                    ;L00006336,d2
 L000050ac               bmi.b   L000050c0 
 L000050ae               addq.w  #$07,d0
 L000050b0               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
@@ -4300,7 +4300,7 @@ L00005122               rts
                     ;
                     ;
 player_input_cmd_fire_up_right
-L00005124               clr.w   L00006336
+L00005124               clr.w   batman_sprite1_id               ;L00006336
 L00005128               moveq   #$7f,d0
 L0000512a               bra.b   L00005138
 
@@ -4317,7 +4317,7 @@ L0000512a               bra.b   L00005138
                     ; Code Checked 6/1/2025
                     ;
 player_input_cmd_fire_up_left 
-L0000512c               move.w  #$e000,L00006336
+L0000512c               move.w  #$e000,batman_sprite1_id            ;L00006336
 L00005132               moveq   #$81,d0
 L00005134               bra.b   L00005138 
 
@@ -4395,7 +4395,7 @@ L00005192               addq.w  #$01,d2
 L00005194               move.w  d2,$0004(a0)
 L00005198               bsr.w   L000050e8
 L0000519c               addq.w  #$03,d3
-L0000519e               move.w  L00006336,d7
+L0000519e               move.w  batman_sprite1_id,d7                    ;L00006336,d7
 L000051a2               bpl.b   L000051a6
 L000051a4               subq.w  #$07,d3
 L000051a6               add.w   #$000a,d4
@@ -4599,7 +4599,7 @@ L00005282               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055
 L00005286               sub.b   #$51,d2
 L0000528a               cmp.b   #$10,d2
 L0000528e               bcc.w   L00005492
-L00005292               lea.l   L00006332,a0
+L00005292               lea.l   batman_sprite3_id,a0                    ;L00006332,a0
 L00005296               add.w   scroll_window_x_coord,d0                ;L000069ec,d0
 L0000529a               lsr.w   #$01,d0
 L0000529c               and.w   #$0007,d0
@@ -4682,7 +4682,7 @@ L000052d8               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055
 L000052dc               sub.b   #$51,d2
 L000052e0               cmp.b   #$10,d2
 L000052e4               bcc.w   L00005492 
-L000052e8               lea.l   L00006332,a0
+L000052e8               lea.l   batman_sprite3_id,a0                    ;L00006332,a0
 L000052ec               add.w   scroll_window_x_coord,d0                ;L000069ec,d0
 L000052f0               not.w   d0
 L000052f2               lsr.w   #$01,d0
@@ -4801,7 +4801,7 @@ L000053f0               beq.b   L000053f6
 L000053f2               add.w   #$e000,d3
 L000053f6               addq.w  #$01,d2
 L000053f8               add.w   d3,d2
-L000053fa               lea.l   L00006332,a0
+L000053fa               lea.l   batman_sprite3_id,a0                    ;L00006332,a0
 L000053fe               clr.w   (a0)+ 
 L00005400               move.w  d2,(a0)+ 
 L00005402               move.w  d3,(a0) 
@@ -4898,7 +4898,7 @@ L0000546c               bra.w   L00005470
                     ; 
 set_batman_sprites 
 L00005470               move.w  d7,-(a7)
-L00005472               lea.l   L00006336,a1
+L00005472               lea.l   batman_sprite1_id,a1        ;L00006336,a1
 L00005476               move.w  (a1),d7
 L00005478               and.w   #$e000,d7
 L0000547c               add.b   (a0)+,d7
@@ -5086,29 +5086,31 @@ L00005602               rts
                     ;------------------------------------------------------------------------------------------
                     ; This routine draws the Batman Player and the Rope Swing
                     ;
-draw_batman_and_rope 
+draw_batman_and_rope    ; original address L00005604
 L00005604               move.w  grappling_hook_height,d2    ;L00006360,d2
-L00005608               beq.w   L000056e6
+L00005608               beq.w   draw_batman_sprite          ;L000056e6
 L0000560c               movem.w batman_xy_offset,d0-d1      ;L000069f2,d0-d1
 L00005612               sub.w   #$000c,d1
 L00005616               addq.w  #$03,d0
-L00005618               move.w  L00006336,d2
+L00005618               move.w  batman_sprite1_id,d2        ;L00006336,d2
 L0000561c               bpl.b   L00005620
 L0000561e               subq.w  #$07,d0
 L00005620               add.w   d1,d1
 L00005622               move.w  d1,d7
-L00005624               mulu.w  #$002a,d1
+L00005624               mulu.w  #DISPLAY_BYTEWIDTH,d1       ;#$002a,d1
 L00005628               ror.w   #$03,d0
 L0000562a               move.w  d0,d2
 L0000562c               and.w   #$0fff,d2
 L00005630               add.w   d2,d2
 L00005632               add.w   d2,d1
 L00005634               ext.l   d1
-L00005636               add.l   L000036ea,d1
-L0000563a               movem.w L00006362,d2-d3
+L00005636               add.l   playfield_buffer_2,d1       ;L000036ea,d1
+
+L0000563a               movem.w L00006362,d2-d3     ; hook details (hook point?)
 L00005640               add.w   d2,d2
 L00005642               add.w   d3,d3
-L00005644               beq.w   L000056e6
+L00005644               beq.w   draw_batman_sprite          ;L000056e6
+                        ; draw bat rope (line draw)
 L00005648               and.w   #$e000,d0
 L0000564c               moveq   #$05,d4
 L0000564e               or.w    d0,d4
@@ -5132,11 +5134,12 @@ L00005676               addq.w  #$02,d3
 L00005678               or.w    #$0bca,d0
 L0000567c               swap.w  d0
 L0000567e               move.w  d4,d0
-L00005680               lea.l   $00dff000,a5
 
+L00005680               lea.l   $00dff000,a5
+                        ; blit wait
 L00005686               btst.b  #$0006,$00dff002
 L0000568e               bne.b   L00005686
-
+                        ; set blitter for line draw
 L00005690               move.w  d2,$0062(a5)
 L00005694               move.w  d6,$0064(a5)
 L00005698               move.w  #$002a,$0066(a5)
@@ -5145,26 +5148,28 @@ L000056a4               move.w  #$c000,$0074(a5)
 L000056aa               move.l  #$ffffffff,$0044(a5)
 L000056b2               move.w  #$eeee,d6
 L000056b6               moveq   #$03,d7
-
+                        ; per bitplane loop
+                        ; blit wait
 L000056b8               btst.b  #$0006,$00dff002
 L000056c0               bne.b   L000056b8
-
+                        ; draw rope (Line Draw)
 L000056c2               move.w  d5,$0052(a5)
 L000056c6               move.l  d0,$0040(a5)
 L000056ca               move.l  d1,$0048(a5)
 L000056ce               move.l  d1,$0054(a5)
 L000056d2               move.w  d6,$0072(a5)
 L000056d6               move.w  d3,$0058(a5)
-L000056da               add.l   #$00001c8c,d1
+L000056da               add.l   #DISPLAY_BUFFER_BYTES,d1    ;#$00001c8c,d1
 L000056e0               not.w   d6
 L000056e2               dbf.w   d7,L000056b8
 
-draw_batman_sprite
+                        ; draw first Batman Sprite
+draw_batman_sprite      ;original address L000056e6
 L000056e6               movem.w batman_xy_offset,d0-d1  ; L000069f2,d0-d1
-L000056ec               move.w  L00006336,d2
+L000056ec               move.w  batman_sprite1_id,d2    ;L00006336,d2
 L000056f0               clr.w   d4
 L000056f2               move.b  d2,d4
-L000056f4               beq.w   L00005732
+L000056f4               beq.w   L00005732               ; exit rts
 L000056f8               move.w  d1,d3
 L000056fa               lea.l   display_object_coords,a0        ;L000060c4,a0
 L000056fe               add.w   d4,d4
@@ -5172,17 +5177,19 @@ L00005700               add.w   d3,d3
 L00005702               sub.b   -$02(a0,d4.w),d3
 L00005706               asr.w   #$01,d3
 L00005708               move.w  d3,batman_y_bottom      ;L00006338
-L0000570c               bsr.b   L00005734
+L0000570c               bsr.b   draw_sprite             ;L00005734
+                        ; draw 2nd sprite
 L0000570e               movem.w batman_xy_offset,d0-d1  ;L000069f2,d0-d1
-L00005714               move.w  L00006334,d2
+L00005714               move.w  batman_sprite2_id,d2    ;L00006334,d2
 L00005718               move.b  d2,d2
-L0000571a               beq.w   L00005732
-L0000571e               bsr.b   L00005734
+L0000571a               beq.w   L00005732               ; exit rts
+L0000571e               bsr.b   draw_sprite             ;L00005734
+                        ; draw 3rd sprite
 L00005720               movem.w batman_xy_offset,d0-d1  ;L000069f2,d0-d1
-L00005726               move.w  L00006332,d2
+L00005726               move.w  batman_sprite3_id,d2    ;L00006332,d2
 L0000572a               move.b  d2,d2
-L0000572c               beq.w   L00005732
-L00005730               bsr.b   L00005734
+L0000572c               beq.w   L00005732               ; exit rts
+L00005730               bsr.b   draw_sprite             ;L00005734
 L00005732               rts  
 
 
@@ -5213,12 +5220,14 @@ L00005732               rts
                     ;   d1.w - Sprite Y Position
                     ;   d2.w - Sprite id (1 based array index) - index into table $63fe (8 byte structure)
                     ;
-draw_sprite 
+draw_sprite         ; original address L00005734
 L00005734               movea.l sprite_array_ptr,a1         ;L00006346,a1
 L00005738               add.w   d1,d1
 L0000573a               asl.w   #$03,d2
 L0000573c               lea.l   -$08(a1,d2.w),a1
 L00005740               bcc.b   L00005764
+                    ; left facing sprite
+                    ; update x,y with sprite offset
 L00005742               move.b  (a1)+,d4
 L00005744               ext.w   d4
 L00005746               sub.w   d4,d1
@@ -5226,6 +5235,8 @@ L00005748               move.b  (a1)+,d4
 L0000574a               ext.w   d4
 L0000574c               add.w   d4,d0
 L0000574e               clr.w   d2
+
+                    ; get sprite width,height,gfx ptr
 L00005750               move.b  (a1)+,d2
 L00005752               move.w  d2,d4
 L00005754               lsl.w   #$03,d4
@@ -5281,7 +5292,7 @@ L000057a6               move.w  d6,d3
                     ; d1 = start raster of sprite display - Y co-ord
                     ; d3 = last raster of sprite display  - Y + height
                     ; a0 = start address offset of gfx mask data
-L000057a8               moveq   #$ff,d7
+L000057a8               moveq.l #$ffffffff,d7
 L000057aa               move.w  d2,d5
 L000057ac               moveq   #$07,d6
 L000057ae               and.w   d0,d6
@@ -5316,26 +5327,31 @@ L000057d4               clr.w   d7
 L000057d6               addq.w  #$01,d5
 L000057d8               asr.w   #$03,d0
 L000057da               bpl.b   L000057f8
+                        ; sprite is off left hand side (x-axis)
 L000057dc               neg.w   d0
 L000057de               subq.w  #$01,d0
 L000057e0               sub.w   d0,d5
 L000057e2               bls.w   L00005892
+                        ; sprite is on screen
 L000057e6               adda.w  d0,a0
 L000057e8               adda.w  d0,a0
-L000057ea               moveq   #$ff,d0
+L000057ea               moveq.l #$ffffffff,d0
 L000057ec               moveq   #$08,d4
 L000057ee               sub.w   d6,d4
 L000057f0               add.w   d4,d4
 L000057f2               lsr.w   d4,d0
 L000057f4               swap.w  d0
 L000057f6               and.l   d0,d7
+                        ; left hand of sprite is on screen
 L000057f8               moveq   #$14,d4
 L000057fa               sub.w   d0,d4
 L000057fc               ble.w   L00005892 
+                        ; is sprite on screen (x-axis)
 L00005800               cmp.w   d4,d5
 L00005802               bls.b   L0000580e 
+                        ; clip right hand side
 L00005804               move.w  d4,d5
-L00005806               moveq   #$ff,d4
+L00005806               moveq.l   #$ffffffff,d4
 L00005808               lsl.w   d6,d4
 L0000580a               lsl.w   d6,d4
 L0000580c               move.w  d4,d7
@@ -5363,7 +5379,7 @@ L0000581a               add.w   d4,d4
                     ; d0 = x word offset
                     ; d1 = y line offset
                     ; Calc destination Ptr
-L0000581c               movea.l L000036ea,a2
+L0000581c               movea.l playfield_buffer_2,a2       ;L000036ea,a2
 L00005822               add.w   d0,d0
 L00005824               adda.w  d0,a2
 L00005826               mulu.w  #$002a,d1
@@ -5395,7 +5411,7 @@ L0000585c               move.w d4,$0066(a5)
 L00005860               move.l d6,$0040(a5)
 L00005864               lea.l (a0),a3
 L00005866               moveq #$03,d7
-
+                        ; bitplane blit loop
 L00005868               btst.b  #$0006,$00dff002
 L00005870               bne.b   L00005868 (T)
 
@@ -5430,32 +5446,35 @@ L00005892               rts
                     ;               bit 3 = up
                     ;               bit 4 = pulse when button pressed
                     ;
-read_player_input   
+read_player_input   ; original address L00005894
 L00005894               move.w  $00dff00c,d0
 L0000589a               clr.b   d2
+                        ; detect left/right
 L0000589c               btst.l  #$0001,d0
 L000058a0               beq.b   L000058a6
-L000058a2               bset.l  #$0000,d2
+L000058a2               bset.l  #PLAYER_INPUT_RIGHT,d2      ;#$0000,d2
 L000058a6               btst.l  #$0009,d0
 L000058aa               beq.b   L000058b0
-L000058ac               bset.l  #$0001,d2
+L000058ac               bset.l  #PLAYER_INPUT_LEFT,d2       ;#$0001,d2
+                        ; detect up/down
 L000058b0               move.w  d0,d1
 L000058b2               lsr.w   #$01,d1
 L000058b4               eor.w   d0,d1
 L000058b6               btst.l  #$0000,d1
 L000058ba               beq.b   L000058c0
-L000058bc               bset.l  #$0002,d2
+L000058bc               bset.l  #PLAYER_INPUT_DOWN,d2       ;#$0002,d2
 L000058c0               btst.l  #$0008,d1
 L000058c4               beq.b   L000058ca
-L000058c6               bset.l  #$0003,d2
+L000058c6               bset.l  #PLAYER_INPUT_UP,d2         ;#$0003,d2
+                        ; detect fire button
 L000058ca               btst.b  #$0007,$00bfe001
 L000058d2               seq.b   d0 
-L000058d4               move.b  L00006351,d1
+L000058d4               move.b  player_button_pressed,d1    ;L00006351,d1
 L000058d8               bne.b   L000058e0
 L000058da               and.w   #$0010,d0
 L000058de               or.w    d0,d2
-L000058e0               move.b  d0,L00006351
-L000058e4               move.b  d2,L00006350
+L000058e0               move.b  d0,player_button_pressed    ;L00006351
+L000058e4               move.b  d2,player_input_command     ;L00006350
 L000058e8               rts  
 
 
@@ -5473,7 +5492,7 @@ L000058f4               movea.l #CODE1_CHIPMEM_BUFFER,a4            ;#$0005a36c,
 L000058fa               adda.l  d0,a4
 L000058fc               move.l  a4,offscreen_display_buffer_ptr     ;L00006366
                         ; init draw loop
-L00005900               clr.w   L0000635a
+L00005900               clr.w   offscreen_y_coord                   ;L0000635a
 L00005904               clr.l   d1
 L00005906               move.w  scroll_window_x_coord,d1            ;L000069ec,d1
 L0000590a               moveq   #$14,d7
@@ -5872,7 +5891,7 @@ L00005B92   dc.w    $0002,$0002
             dc.w    $0001,$0001 
 L00005BA2   dc.w    $FFFF
 
-; line 7117 - Code1.s
+; line 7107 - Code1.s
 
 
 
@@ -6548,29 +6567,29 @@ sprite_gfx_left_offset  ; original address L0000634A
 L0000634A           dc.l    $00000000 
 
 L0000634E           dc.w    $0000
-                    dc.w    $0000
+                    ;dc.w    $0000
                     
 
-player_input_command    ; original address L00006352
-L00006352            dc.b $00                        ; bit 0 = left
+player_input_command    ; original address L00006350
+L00006350            dc.b $00                        ; bit 0 = left
                                                     ; bit 1 = right
                                                     ; bit 2 = down
                                                     ; bit 3 = up
                                                     ; bit 4 = pulse when button pressed
 
-player_button_pressed   ; original address L00006353
-L00006353            dc.b $00            ; #$00 = not pressed, #$ff = button pressed
+player_button_pressed   ; original address L00006351
+L00006351            dc.b $00            ; #$00 = not pressed, #$ff = button pressed
 
 
 background_gfx_base     ; original address L00006354
-L00006354           dc.l    $0000C77C      ; MAPGR_GFX_ADDRESS
+L00006352           dc.l    $0000C77C      ; MAPGR_GFX_ADDRESS
 
 L00006356           dc.w    $0000 
 
-vertical_scroll_increments  ; original address 
+vertical_scroll_increments  ; original address L00006358
 L00006358           dc.w    $0000           ; the number of increments +/- the window has scrolled this frame.
 
-offscreen_y_coord       ; original address L00006358
+offscreen_y_coord       ; original address L0000635A
 L0000635A           dc.w    $0000           ; Y co-ord into offscreen buffer (circular buffer).
 
 grappling_hook_params   ; original address L0000635C
