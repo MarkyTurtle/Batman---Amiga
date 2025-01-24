@@ -6036,7 +6036,7 @@ player_state_falling    ; original address L00005482
                     bcs.b   .L000054c8               ; is wall tile?
 
                     ; L000054a8
-                    move.b  $01(a0,d3.w),d2         ; check nnext map tile
+                    move.b  $01(a0,d3.w),d2         ; check next map tile
                     cmp.b   #$17,d2                 ; test wall tile
                     bcs.b   .L000054c8               ; is wall tile
 

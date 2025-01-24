@@ -1399,9 +1399,9 @@ L00003B7C               CLR.W   (A0)+
 L00003B7E               DBF.W   D7,L00003b7c
 
                     ; ------ Set initial batman sprite ids ----- 
-L00003B82               CLR.W   batman_sprite1_id       ; L00006336
-L00003B86               LEA.L   L0000641b,A0
-L00003B8A               BSR.W   L00005470
+L00003B82               CLR.W   batman_sprite1_id                       ; L00006336
+L00003B86               LEA.L   batman_sprite_anim_standing,a0          ;L0000641b,A0
+L00003B8A               BSR.W   set_batman_sprites                      ;L00005470
 
 
 L00003B8E               MOVE.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7c
@@ -1850,7 +1850,7 @@ L00003f7c               tst.w   L00006342
 L00003f80               bmi.b   L00003f94
 L00003f82               tst.w   grappling_hook_height   ;L00006360
 L00003f86               beq.b   L00003f8e
-L00003f88               tst.w   L0000633c
+L00003f88               tst.w   batman_swing_speed      ;L0000633c
 L00003f8c               bne.b   L00003f94
 L00003f8e               moveq   #$05,d6
 L00003f90               bsr.w   batman_lose_energy      ;L00004d0a
@@ -3725,7 +3725,7 @@ L00004c7a               rts
                     ;
 player_move_commands    ; original address L00004c7c
 L00004c7c               clr.w   d2
-L00004c7e               move.b  L00006350,d2
+L00004c7e               move.b  player_input_command,d2                 ;L00006350,d2
 L00004c82               asl.w   #$02,d2
 L00004c84               movea.l player_input_cmd_table(pc,d2.w),a0      ; $00004c8a
 L00004c88               jmp     (a0)
@@ -3820,7 +3820,7 @@ L00004d48               beq.b   L00004d5a
 L00004d4a               cmp.l   d2,d3
 L00004d4c               beq.b   L00004d5a
 L00004d4e               lea.l   batman_sprite_anim_fall_landing,a0          ;$0000548f,a0
-L00004d52               bsr.w   L00005470
+L00004d52               bsr.w   set_batman_sprites                          ;L00005470
 L00004d56               move.l  #player_state_check_actor_collision,d3      ;#$00004d94,d3
 L00004d5a               move.l  d3,gl_jsr_address                           ; L00003c7c
 L00004d5e               move.w  L0000634e,d2
@@ -3836,11 +3836,11 @@ L00004d74               rts
 
 
                     ; if 'climbing onto platform'
-L00004d76               move.w  L0000633a,d2
+L00004d76               move.w  state_parameter,d2      ; L0000633a,d2
 L00004d7a               add.w   d6,d2
 L00004d7c               add.w   d6,d2
 L00004d7e               add.w   d6,d2
-L00004d80               move.w  d2,L0000633a
+L00004d80               move.w  d2,state_parameter      ;L0000633a
 L00004d84               rts  
 
 
@@ -3906,7 +3906,7 @@ L00004dde               rts
                     ;
 player_state_life_lost  ; original address L00004de0
 L00004de0               movea.w L0000636e,a0                    ; (long) batman_sprite_anim_ptr
-L00004de4               bsr.w   L00005470
+L00004de4               bsr.w   set_batman_sprites              ;L00005470
 L00004de8               move.w  a0,L0000636e                    ; (long) 
 L00004dec               tst.b   (a0)
 
@@ -3997,13 +3997,13 @@ L00004e96               bne.b   L00004e9e
 L00004e98               move.L  #player_state_grappling_hook_attached,gl_jsr_address    ;#$00004ea2,00003c7c 
 
                     ; update control command
-L00004e9e               move.b  d3,L00006350
+L00004e9e               move.b  d3,player_input_command         ;L00006350
 
                     ; --------- player state - grappling hook attached -----------
 player_state_grappling_hook_attached    ; original address L00004ea2
 L00004ea2               lea.l   grappling_hook_height,a0            ;L00006360,a0
 L00004ea6               move.w  (a0),d5
-L00004ea8               move.b  L00006350,d4
+L00004ea8               move.b  player_input_command,d4             ;L00006350,d4
 L00004eac               btst.l  #$0003,d4
 L00004eb0               beq.b   L00004ee6 
 L00004eb2               move.w  #$0048,target_window_y_offset       ;L000069f6 
@@ -4011,7 +4011,7 @@ L00004eb8               subq.w  #$01,d5
 L00004eba               bhi.b   L00004ee4 
 L00004ebc               clr.w   (a0) 
 L00004ebe               move.l  #player_state_climb_onto_platform,gl_jsr_address    ;#$00005096,L00003c7c
-L00004ec4               move.w  #$0005,L0000633a
+L00004ec4               move.w  #$0005,state_parameter              ;L0000633a
 L00004eca               move.w  #$646e,L0000636e                    ; (long)
 L00004ed0               move.w  d1,d2
 L00004ed2               add.w   scroll_window_y_coord,d2            ;L000069ee,d2
@@ -4071,13 +4071,13 @@ L00004f58               lea.l   L0000635c,a0
 L00004f5c               lea.l   batman_xy_offset,a2     ;L000069f2,a2
 L00004f60               bsr.w   L000050e8
 
-L00004f64               movem.w batman_xy_offset,d0-d1  ;L000069f2,d0-d1
+L00004f64               movem.w batman_xy_offset,d0-d1                  ;L000069f2,d0-d1
 L00004f6a               movem.w L00006370,d5-d6
 L00004f70               sub.w   d3,d5
-L00004f72               move.w  d5,L0000633c
+L00004f72               move.w  d5,batman_swing_speed                   ;L0000633c
 L00004f76               move.w  d5,L00006356
 L00004f7a               sub.w   d6,d4
-L00004f7c               move.w  d4,L0000633e
+L00004f7c               move.w  d4,batman_fall_speed                    ;L0000633e
 L00004f80               add.w   d4,d1
 L00004f82               add.w   d5,d0
 L00004f84               subq.w  #$04,d1
@@ -4092,12 +4092,12 @@ L00004f9c               cmp.b   #$03,d2
 L00004fa0               bcs.b   L00004fcc
 L00004fa2               sub.w   $00008002,d3            ; MAPGR.IFF
 L00004fa8               dbf.w   d7,L00004f8e
-L00004fac               movem.w batman_xy_offset,d0-d1  ; L000069f2,d0-d1
+L00004fac               movem.w batman_xy_offset,d0-d1                  ; L000069f2,d0-d1
 L00004fb2               add.w   d4,d1
 L00004fb4               add.w   d5,d0
-L00004fb6               movem.w d0-d1,batman_xy_offset  ; L000069f2
+L00004fb6               movem.w d0-d1,batman_xy_offset                  ; L000069f2
 L00004fbc               move.l  L00006362,L00006370
-L00004fc2               btst.b  #$0004,L00006350
+L00004fc2               btst.b  #$0004,player_input_command             ;L00006350
 L00004fc8               bne.b   L00004fec 
 L00004fca               rts  
 
@@ -4116,7 +4116,7 @@ L00004fe6               clr.w   d4
 L00004fe8               clr.w   d5
 L00004fea               bra.b   L0000500a
 
-L00004fec               movem.w L0000633c,d4-d5
+L00004fec               movem.w batman_swing_fall_speed,d4-d5       ;L0000633c,d4-d5
 L00004ff2               subq.w  #$03,d5
 L00004ff4               cmp.w   #$fffa,d5
 L00004ff8               bpl.b   L00004ffc
@@ -4127,9 +4127,9 @@ L00005002               bcc.b   L00005008
 L00005004               smi.b   d4
 L00005006               asl.w   #$02,d4
 L00005008               addq.w  #$02,d4
-L0000500a               movem.w d4-d5,L0000633c
-L00005010               clr.w   grappling_hook_height   ;L00006360
-L00005014               movem.w batman_xy_offset,d0-d1  ;L000069f2,d0-d1
+L0000500a               movem.w d4-d5,batman_swing_fall_speed       ;L0000633c
+L00005010               clr.w   grappling_hook_height               ;L00006360
+L00005014               movem.w batman_xy_offset,d0-d1              ;L000069f2,d0-d1
 L0000501a               bra.w   L0000549c 
 
 
@@ -4163,11 +4163,11 @@ L0000502e           jsr     $00048014                           ; AUDIO_PLAYER_I
                     ;
 player_state_firing     ; original address L00005034
 L00005034               movea.w L0000636e,a0
-L00005038               bsr.w   L00005470
+L00005038               bsr.w   set_batman_sprites                      ;L00005470
 L0000503c               move.w  a0,L0000636e
 L00005040               tst.b   (a0)
 L00005042               bne.b   L00005072 
-L00005044               move.w  #$0008,L0000633a 
+L00005044               move.w  #$0008,state_parameter                  ;L0000633a 
 L0000504a               move.l  #player_state_fired,gl_jsr_address      ;#$00005074,L00003c7c 
 L00005050               bsr.w   L0000467c
 L00005054               sub.w   #$0007,d0
@@ -4199,12 +4199,12 @@ L00005072               rts
                     ; Code Checked 4/1/2025
                     ;
 player_state_fired      ; original address L00005074
-L00005074               move.b  L00006350,d4
+L00005074               move.b  player_input_command,d4                     ;L00006350,d4
 L0000507a               bne.w   L0000508c
-L0000507e               subq.w  #$01,L0000633a
+L0000507e               subq.w  #$01,state_parameter                        ;L0000633a
 L00005082               bne.b   L00005072 
-L00005084               lea.l   L0000641b,a0
-L00005088               bra.w   L00005470
+L00005084               lea.l   batman_sprite_anim_standing,a0              ;L0000641b,a0
+L00005088               bra.w   set_batman_sprites                          ;L00005470
 L0000508c               move.l  #player_move_commands,gl_jsr_address        ;#$00004c7c,L00003c7c  
 L00005092               bra.w   player_move_commands                        ;L00004c7c 
                     ; use 'rts' in player_move_commands to return
@@ -4222,9 +4222,9 @@ L00005092               bra.w   player_move_commands                        ;L00
                     ;               on each game loop cycle.
                     ;
 player_state_climb_onto_platform    ; original address L00005096 
-L00005096               subq.w  #$01,L0000633a
+L00005096               subq.w  #$01,state_parameter                    ;L0000633a
 L0000509a               bne.b   L00005072 
-L0000509c               move.w  #$0006,L0000633a
+L0000509c               move.w  #$0006,state_parameter                  ;L0000633a
 L000050a2               subq.w  #$05,batman_y_offset                    ;L000069f4 
 L000050a6               subq.w  #$04,d1
 L000050a8               move.w  batman_sprite1_id,d2                    ;L00006336,d2
@@ -4241,7 +4241,7 @@ L000050c6               cmp.b   #$03,d2
 L000050ca               bcs.b   L000050d0
 L000050cc               subq.w  #$01,batman_x_offset                    ;L000069f2
 L000050d0               movea.w L0000636e,a0
-L000050d4               bsr.w   L00005470
+L000050d4               bsr.w   set_batman_sprites                      ;L00005470
 L000050d8               move.w  a0,L0000636e
 L000050dc               move.b  (a0),d7
 L000050de               bne.b   L000050e6
@@ -4359,11 +4359,11 @@ L00005146               bsr.w   L0000467c
 L0000514a               move.w  #$0001,(a0)
 L0000514e               move.l  #player_state_firing_grappling_hook,gl_jsr_address  ;#$00005170,L00003c7c
 L00005154               lea.l   L00006418,a0
-L00005158               bsr.w   L00005470
+L00005158               bsr.w   set_batman_sprites                  ;L00005470
 L0000515c               moveq   #$07,d0
 L0000515e               jsr     $00048014                           ; AUDIO_PLAYER_INIT_SFX
 L00005164               movem.w batman_xy_offset,d0-d1              ; L000069f2,d0-d1
-L0000516a               bclr.b  #$0004,L00006350
+L0000516a               bclr.b  #$0004,player_input_command         ;L00006350
                     ; fall through to 'player_state_firing_grappling_hook' below
 
 
@@ -4382,7 +4382,7 @@ L0000516a               bclr.b  #$0004,L00006350
                     ;
 player_state_firing_grappling_hook  ; original address L00005170
 L00005170               lea.l   L0000635c,a0
-L00005174               btst.b  #$0004,L00006350 
+L00005174               btst.b  #$0004,player_input_command             ;L00006350 
 L0000517c               bne     L000051fc
 L0000517e               move.w  $0004(a0),d2
 L00005182               addq.w  #$02,d2
@@ -4416,7 +4416,7 @@ L000051d0               bcs.b   L000051ec
 L000051d2               move.l  #player_state_grappling_hook_attached,gl_jsr_address    ;#$00004ea2,00003c7c 
 L000051d8               move.l  L00006362,L00006370
 L000051de               lea.l   L0000645e,a0
-L000051e2               bra.w   L00005470 
+L000051e2               bra.w   set_batman_sprites                                      ;L00005470 
 L000051e6               move.l  #player_state_retract_grappling_hook,gl_jsr_address     ;#$000051ee,L00003c7c
 L000051ec               rts 
 
@@ -4434,7 +4434,7 @@ L000051ec               rts
                     ;
 player_state_retract_grappling_hook     ; original address L000051ee
 L000051ee               lea.l   L0000635c,a0
-L000051f2               btst.b  #$0004,L00006350
+L000051f2               btst.b  #$0004,player_input_command                 ;L00006350
 L000051fa               beq.b   L00005202
 
 L000051fc               move.w  #$0002,$0004(a0)
@@ -4445,8 +4445,8 @@ L00005208               bra.w   L000050e8
 exit_fire_grappling_hook_state 
 L0000520c               clr.w   $0004(a0)
 L00005210               move.l  #player_move_commands,gl_jsr_address        ;#$00004c7c,L00003c7c
-L00005216               lea.l   L0000641b,a0
-L0000521a               bra.w   L00005470 
+L00005216               lea.l   batman_sprite_anim_standing,a0              ;L0000641b,a0
+L0000521a               bra.w   set_batman_sprites                          ;L00005470 
 L0000521e               rts  
 
 
@@ -4464,9 +4464,7 @@ L0000521e               rts
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Checked 3/1/2025
-                    ;
-player_check_climb_down 
+player_check_climb_down ; original address L00005220
 L00005220               move.w  #$0028,target_window_y_offset           ; L000069f6
 L00005226               addq.w  #$04,d0
 L00005228               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
@@ -4535,7 +4533,7 @@ L00005252               bne.b   L0000521e
                     ;
 set_player_state_climbing
 L00005254               addq.w  #$04,a7
-L00005256               and.b   #$0c,L00006350
+L00005256               and.b   #$0c,player_input_command                   ;L00006350
 L0000525c               move.l  #state_climbing_stairs,gl_jsr_address       ;#$000532e,L00003c7c
 L00005262               bra.w   state_climbing_stairs                       ;L0000532e 
 
@@ -4551,7 +4549,7 @@ L00005262               bra.w   state_climbing_stairs                       ;L00
                     ; Code Checked 3/1/2025
                     ;
 player_input_cmd_down_right 
-L00005266               bsr.b L00005220
+L00005266               bsr.b player_check_climb_down                       ;L00005220
 L00005268               bra.b L0000526c 
 
 
@@ -4598,7 +4596,8 @@ L00005280               subq.w  #$05,d0
 L00005282               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L00005286               sub.b   #$51,d2
 L0000528a               cmp.b   #$10,d2
-L0000528e               bcc.w   L00005492
+L0000528e               bcc.w   set_player_state_falling                ;L00005492
+                        ;--------------
 L00005292               lea.l   batman_sprite3_id,a0                    ;L00006332,a0
 L00005296               add.w   scroll_window_x_coord,d0                ;L000069ec,d0
 L0000529a               lsr.w   #$01,d0
@@ -4633,7 +4632,7 @@ L000052b6               rts
                     ; Code Checked 4/1/2025
                     ;
 player_input_cmd_down_left  
-L000052b8               bsr.w   L00005220
+L000052b8               bsr.w   player_check_climb_down                     ;L00005220
 L000052bc               bra.b   L000052c2 
 
 
@@ -4681,7 +4680,8 @@ L000052d6               addq.w  #$05,d0
 L000052d8               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L000052dc               sub.b   #$51,d2
 L000052e0               cmp.b   #$10,d2
-L000052e4               bcc.w   L00005492 
+L000052e4               bcc.w   set_player_state_falling                ;L00005492 
+                        ;--------------
 L000052e8               lea.l   batman_sprite3_id,a0                    ;L00006332,a0
 L000052ec               add.w   scroll_window_x_coord,d0                ;L000069ec,d0
 L000052f0               not.w   d0
@@ -4715,12 +4715,14 @@ L00005312               rts
                     ;
                     ; Code Checked 3/1/2025
                     ;
-exit_climbing_state 
+exit_climbing_state ; original address L00005314
 L00005314               add.w   d5,d3
 L00005316               move.b  $00(a0,d3.w),d2
 L0000531a               sub.b   #$51,d2
 L0000531e               cmp.b   #$10,d2
 L00005322               bcc     L0000538e 
+                    ; return to normal joystick movement state.
+                    ; back on a platform.
 L00005324               move.l  #player_move_commands,gl_jsr_address        ;#$0004c7c,L00003c7c
 L0000532a               bra.w   player_move_commands                        ;L00004c7c 
 
@@ -4735,62 +4737,94 @@ L0000532a               bra.w   player_move_commands                        ;L00
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Check 3/1/2025
                     ;
 state_climbing_stairs   ; original address L0000532e
-L0000532e               btst.b  #$0004,L00006350
-L00005334               bne.w   L00005492
+L0000532e               btst.b  #$0004,player_input_command             ;L00006350
+L00005334               bne.w   set_player_state_falling                ;L00005492
+                        ;-------------
+
+                        ; 25hz update
 L00005338               btst.b  #$0000,playfield_swap_count+1           ;L00006375 
 L0000533e               bne.b   L00005312 
+
+                        ; test for tile boundary
 L00005340               clr.w   d4
-L00005342               move.b  L00006350,d4
+L00005342               move.b  player_input_command,d4                 ;L00006350,d4
 L00005346               move.w  scroll_window_y_coord,d2                ;L000069ee,d2
 L0000534a               add.w   d1,d2
 L0000534c               and.w   #$0007,d2
 L00005350               beq.b   L00005374
-L00005352               btst.l  #$0002,d4
-L00005356               beq.b   L00005360 
+
+L00005352               btst.l  #PLAYER_INPUT_DOWN,d4                   ;#$0002,d4
+L00005356               beq.b   L00005360       
+
+                        ; climb down through tile
 L00005358               addq.w  #$01,d1
 L0000535a               move.w  #$0028,target_window_y_offset           ;L000069f6
-L00005360               btst.l  #$0003,d4
+
+L00005360               btst.l  #PLAYER_INPUT_UP,d4                     ;#$0003,d4
 L00005364               beq.b   L0000536e
+                        ; climb up through tile
 L00005366               subq.w  #$01,d1
 L00005368               move.w  #$0048,target_window_y_offset           ;L000069f6
+
+                        ; store updated Y position
 L0000536e               move.w  d1,batman_y_offset                      ;L000069f4
 L00005372               bra.b   L000053c8 
+                        ;----------------
+
+                        ; on tile boundary - check climb exit
 L00005374               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L00005378               move.w  d4,d5
 L0000537a               and.b   #$03,d5
-L0000537e               move.b  d5,L00006350 
+L0000537e               move.b  d5,player_input_command                 ;L00006350
+
+                        ; check push right
 L00005382               moveq   #$01,d5
 L00005384               asr.w   #$01,d4
-L00005386               bcs     L00005314 
-L00005388               moveq   #$ff,d5
+L00005386               bcs     exit_climbing_state                     ;L00005314
+
+                        ; check push left
+L00005388               moveq.l #$ffffffff,d5
 L0000538a               asr.w   #$01,d4
-L0000538c               bcs     L00005314
+L0000538c               bcs     exit_climbing_state                     ;L00005314
+
 L0000538e               asr.w   #$01,d4
 L00005390               bcc.b   L000053a6
+                        ; check map tile
 L00005392               move.w  #$0028,target_window_y_offset           ;L000069f6
 L00005398               cmp.b   #$5f,d2
-L0000539c               bcs.w   L00005406
+L0000539c               bcs.w   set_player_move_commands_state          ;L00005406
+                        ; climb down
 L000053a0               addq.w  #$01,batman_y_offset                    ;L000069f4
 L000053a4               bra.b   L000053c8 
+                        ;-----------------
+
+                        ; do climb up
 L000053a6               asr.w   #$01,d4
 L000053a8               bcc.b   L00005404 
+
+                        ; check map tile
 L000053aa               move.w  #$0048,target_window_y_offset           ;L000069f6 
-L000053b0               move.w  $00008002,d5            ; MAPGR.IFF
+L000053b0               move.w  MAPGR_BASE,d5                           ;$00008002,d5
 L000053b6               sub.w   d5,d3
 L000053b8               move.b  $00(a0,d3.w),d2
 L000053bc               cmp.b   #$5f,d2
-L000053c0               bcs.b   L00005406
+L000053c0               bcs.b   set_player_move_commands_state          ;L00005406
+
+                        ; climb ladder
 L000053c2               subq.w  #$01,d1
 L000053c4               move.w  d1,batman_y_offset                      ;L000069f4
+
+                        ; different code to code1.s
 L000053c8               moveq   #$31,d3
-L000053ca               btst.b  #$0003,L00006350
+L000053ca               btst.b  #$0003,player_input_command             ;L00006350
 L000053d0               bne.b   L000053dc
 L000053d2               addq.w  #$05,d3
-L000053d4               btst.b  #$0002,L00006350
+L000053d4               btst.b  #$0002,player_input_command             ;L00006350
 L000053da               beq.b   L00005404
+
+                        ; set climbing animation?
 L000053dc               move.w  scroll_window_y_coord,d2                ;L000069ee,d2
 L000053e0               add.w   batman_y_offset,d2                      ;L000069f4,d2
 L000053e4               addq.w  #$02,d2
@@ -4798,7 +4832,9 @@ L000053e6               not.w   d2
 L000053e8               and.w   #$0007,d2
 L000053ec               bclr.l  #$0002,d2
 L000053f0               beq.b   L000053f6 
+                        ; left facing
 L000053f2               add.w   #$e000,d3
+                        ; right facing
 L000053f6               addq.w  #$01,d2
 L000053f8               add.w   d3,d2
 L000053fa               lea.l   batman_sprite3_id,a0                    ;L00006332,a0
@@ -4808,7 +4844,9 @@ L00005402               move.w  d3,(a0)
 L00005404               rts  
 
 
-set_player_move_commands_state
+                        ;--------------- set player move commands state ----------------
+                        ; restore player state to normal joystick control
+set_player_move_commands_state      ; original address L00005406
 L00005406                move.l #player_move_commands,gl_jsr_address        ;#$0004c7c,L00003c7c
 L0000540c                rts 
 
@@ -4823,16 +4861,18 @@ L0000540c                rts
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Check 4/1/2025
                     ;
 player_input_cmd_fire_down  ;original address L0000540e
 L0000540e               add.w   #$0008,d1
 L00005412               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
-L00005416               movem.w $69f2,d0-d1
+L00005416               movem.w batman_xy_offset,d0-d1
 L0000541c               cmp.b   #$03,d2
 L00005420               bcs.b   L0000542c
+                        ; fall through platform
+                        ; disable platform collision
+                        ; self modifiying code see address L00005546
 L00005422               move.w  #$8000,L00005546
-L00005428               bra.w   L00005492
+L00005428               bra.w   set_player_state_falling                ;L00005492
                     ; use 'rts' in set_player_falling_state to return
 ; Line 5885 in Code1.s
 
@@ -4845,12 +4885,10 @@ L00005428               bra.w   L00005492
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Check 4/1/2025
-                    ;
-player_input_cmd_down 
-L0000542c               bsr.w   L00005220
-L00005430               lea.l   L0000641e,a0
-L00005434               bsr.b   L00005470
+player_input_cmd_down   ; original address L0000542c 
+L0000542c               bsr.w   player_check_climb_down                     ;L00005220
+L00005430               lea.l   batman_sprite_anim_ducking,a0               ;L0000641e,a0
+L00005434               bsr.b   set_batman_sprites                          ;L00005470
 L00005436               move.l  #player_state_ducking,gl_jsr_address        ;#$000543e,L00003c7c
 L0000543c               rts  
 
@@ -4859,19 +4897,19 @@ L0000543c               rts
                     ; ----------------------- player state - ducking --------------------
                     ; The state entered into the game_loop when batman is ducking down.
                     ;
-                    ; Code Checked 4/1/2025
                     ;
 player_state_ducking    ; original address L0000543e
-L0000543e               lea.l   L00006421,a0
-L00005442               bsr.b   L00005470
-L00005444               btst.b  #$0002,L00006350
+L0000543e               lea.l   batman_sprite_anim_ducked,a0                ;L00006421,a0
+L00005442               bsr.b   set_batman_sprites                          ;L00005470
+L00005444               btst.b  #PLAYER_INPUT_DOWN,player_input_command     ;L00006350
 L0000544a               bne.b   L00005458
 
 return_to_standing  ; original address L0000544c
 L0000544c               move.l  #set_player_state_standing,gl_jsr_address   ;#$0005462,L00003c7c
-L00005452               lea.l   L0000641e,a0
-L00005456               bra.b   L00005470
-L00005458               btst.b  #$0004,L00006350 
+L00005452               lea.l   batman_sprite_anim_ducking,a0               ;L0000641e,a0
+L00005456               bra.b   set_batman_sprites                          ;L00005470
+                        ; duck,check fire
+L00005458               btst.b  #PLAYER_INPUT_FIRE,player_input_command     ;L00006350 
 L0000545e               bne.b   player_input_cmd_fire_down                  ;L0000540e
 L00005460               rts  
 
@@ -4880,12 +4918,11 @@ L00005460               rts
                     ; Called when leaving the 'ducked' state. Returns batman to
                     ; a standing sprite and standard input checing.
                     ;
-                    ; Code Checked 4/1/2025
                     ;
 set_player_state_standing   ; original address L00005462
 L00005462               move.l  #player_move_commands,gl_jsr_address        ;#$0004c7c,L00003c7c
-L00005468               lea.l   L0000641b,a0
-L0000546c               bra.w   L00005470
+L00005468               lea.l   batman_sprite_anim_standing,a0              ;L0000641b,a0
+L0000546c               bra.w   set_batman_sprites                          ;L00005470
                     ; use 'rts' in set_batman_sprites to return
 
 
@@ -4896,24 +4933,30 @@ L0000546c               bra.w   L00005470
                     ; IN: 
                     ;   A0.l = address ptr to animation (3 byte array of sprite id's)
                     ; 
-set_batman_sprites 
+set_batman_sprites  ; original address L00005470
 L00005470               move.w  d7,-(a7)
 L00005472               lea.l   batman_sprite1_id,a1        ;L00006336,a1
+                    ; preserve left/right facing directions
 L00005476               move.w  (a1),d7
 L00005478               and.w   #$e000,d7
+                    ; set first sprite id
 L0000547c               add.b   (a0)+,d7
 L0000547e               move.w  d7,(a1)
+                    ; add second sprite id offset
 L00005480               add.b   (a0)+,d7
 L00005482               move.w  d7,-(a1)
+                    ; add thrid sprite id offset
 L00005484               add.b   (a0)+,d7
 L00005486               move.w  d7,-(a1)
+                    ; restore registers & exit
 L00005488               move.w  (a7)+,d7
 L0000548a               rts  
 
-batman_sprite_anim_falling
+
+batman_sprite_anim_falling      ; original address L0000548c
 L0000548c   dc.b $0d,$01,$01
 
-batman_sprite_anim_fall_landing
+batman_sprite_anim_fall_landing ; original address L0000548f
 L0000548f   dc.b $11,$ff,$02
 
 
@@ -4928,15 +4971,18 @@ L0000548f   dc.b $11,$ff,$02
                     ;
                     ; Code Checked 3/1/2025
                     ;
-set_player_state_falling  
+set_player_state_falling    ; original address L00005492
 L00005492               movem.w batman_xy_offset,d0-d1                  ;L000069f2,d0-d1
-L00005498               clr.l   L0000633c
+L00005498               clr.l   batman_swing_speed                      ;L0000633c
 L0000549c               move.w  batman_y_offset,target_window_y_offset  ;L000069f6
-L000054a2               lea.l   L0000548c(pc),a0
-L000054a6               bsr.w   L00005470
+L000054a2               lea.l   batman_sprite_anim_falling(pc),a0       ;L0000548c(pc),a0
+L000054a6               bsr.w   set_batman_sprites                      ;L00005470
 L000054aa               move.l  #player_state_falling,gl_jsr_address    ;#$00054ba,L00003c7c
 L000054b0               move.w  #$ffff,L00006342
-L000054b6               clr.w   L00006340
+L000054b6               clr.w   batman_fall_distance                    ;L00006340
+
+
+
 
 
                     ; ------------------- player state falling --------------------
@@ -4950,52 +4996,71 @@ L000054b6               clr.w   L00006340
                     ; Code Checked 3/1/2025
                     ;
 player_state_falling    ; original address L000054ba
-L000054ba               movem.w L0000633c,d4-d5
+L000054ba               movem.w batman_swing_fall_speed,d4-d5           ; L0000633c,d4-d5
 L000054c0               move.w  d4,L00006356
 L000054c4               beq.b   L00005504
+
 L000054c6               sub.w   #$0010,d1
 L000054ca               subq.w  #$04,d0
 L000054cc               add.w   d4,d0
 L000054ce               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
+                    ; d2 = tile id
+                    ; a0.l = tilemap ptr
+                    ; d3.w = index into tile map
 L000054d2               movem.w batman_xy_offset,d0-d1                  ; L000069f2,d0-d1
 L000054d8               moveq   #$01,d7
+                        ; check block of 4 tiles
+                        ; if wall tile then jmp 5500
 L000054da               cmp.b   #$03,d2
-L000054de               bcs.b   LL00005500
+L000054de               bcs.b   L00005500
+
 L000054e0               move.b  $01(a0,d3.w),d2
 L000054e4               cmp.b   #$03,d2
 L000054e8               bcs.b   L00005500
-L000054ea               add.w   $00008002,d3        ; MAPGR.IFF
+
+L000054ea               add.w   MAPGR_BASE,d3                           ;$00008002,d3
 L000054f0               move.b  $00(a0,d3.w),d2
 L000054f4               dbf.w   d7,L000054da
+                        ; end of wall tile loop test
+
+                        ; do fall/swing x-axis
 L000054f8               add.w   d0,d4
 L000054fa               move.w  d4,batman_x_offset                      ;L000069f2
 L000054fe               bra.b   L00005504
-L00005500               clr.w   L0000633c
+                        ;----------------
+
+L00005500               clr.w   batman_swing_speed                      ;L0000633c
+
+                        ; fall y-axis
 L00005504               cmp.w   #$0010,d5
 L00005508               bpl.b   L0000550c
 L0000550a               addq.w  #$01,d5
-L0000550c               move.w  d5,L0000633e
+L0000550c               move.w  d5,batman_fall_speed                    ;L0000633e
+
 L00005510               asr.w   #$02,d5
 L00005512               add.w   d5,d1
 L00005514               move.w  d1,batman_y_offset                      ;L000069f4
 L00005518               btst.l  #$000f,d1
 L0000551c               beq.b   L00005520
-L0000551e               rts  
+L0000551e               rts                         ; exit early
 
-
-
+;line 6069 - code1.s
 L00005520               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L00005524               cmp.b   #$03,d2
 L00005528               bcc.b   L00005536 
+
+                        ; is wall tile?
 L0000552a               subq.w  #$07,batman_y_offset                    ;L000069f4
 L0000552e               movem.w batman_xy_offset,d0-d1                  ;L000069f2,d0-d1
 L00005534               bra     player_state_falling                    ;L000054ba
                     ; ---------------------------
 
+                        ; ** different to code1.s **
 L00005536               sub.b   #$50,d2
 L0000553a               bne.b   L00005542
-L0000553c               move.w  #$0070,L00006340
+L0000553c               move.w  #$0070,batman_fall_distance             ;L00006340
 L00005542               cmp.b   #$11,d2
+;line 6082 - code1.s
                     ; L00005546 - self modified 'nop' or 'or.b d0,d0'
                     ; when 'nop' ccr is not altered for tile test above. (falling off platform)
                     ; when 'or.b d0,d0' ccr depends on value of d0. (input fire-down)
@@ -5003,28 +5068,37 @@ L00005542               cmp.b   #$11,d2
                     ; THE PLATFORM YOU ARE DROPPING THROUGH
 L00005546               nop
 
+                    ; manage fall through platform 
+                    ; (restores platform collision when fallen far enough)
 L00005548               move.w  sr,d6
-L0000554a               add.w   L00006340,d5
-L0000554e               move.w  d5,L00006340
+L0000554a               add.w   batman_fall_distance,d5                 ;L00006340,d5
+L0000554e               move.w  d5,batman_fall_distance                 ;L00006340
 L00005552               cmp.w   #$0008,d5
 L00005556               bcs.b   L0000555e
+                        ; restore platform collision
 L00005558               move.w  #$4e71,L00005546
-L0000555e               move.w  d6,sr
+L0000555e               move.w  d6,sr                   ; *** REQUIRES SUPERVISOR MODE ***
 
-L00005560               bcc.b   L0000551e
+                    ; ccr either tile compare, or value of d0.
+L00005560               bcc.b   L0000551e                                   ; rts exit
+
+                    ; landing on platform/floor
 L00005562               move.w  #$0028,target_window_y_offset               ;L000069f6
 L00005568               lea.l   batman_sprite_anim_fall_landing,a0          ;L0000548f,a0
-L0000556c               bsr.w   L00005470
+L0000556c               bsr.w   set_batman_sprites                          ;L00005470
+
+                        ; landing on platform (end falling)
 L00005570               move.l  #player_state_fall_landing,gl_jsr_address   ;#$0000559a,L00003c7a
-L00005578               clr.w   L0000633e
+L00005578               clr.w   batman_fall_speed                           ;L0000633e
 L0000557c               move.w  #$0001,L00006342
-L00005582               move.w  #$0002,L0000633a
+L00005582               move.w  #$0002,state_parameter                      ;L0000633a
 L00005588               move.w  scroll_window_y_coord,d0                    ;L000069ee,d0
 L0000558c               add.w   d1,d0
 L0000558e               and.w   #$0007,d0
 L00005592               sub.w   d0,d1
 L00005594               move.w  d1,batman_y_offset                          ;L000069f4
 L00005598               rts  
+
 
 
                     ; ------------------- player state falling --------------------
@@ -5038,20 +5112,26 @@ L00005598               rts
                     ; Code Checked 3/1/2025
                     ;
 player_state_fall_landing   ; original address L0000559a
-L0000559a               subq.w  #$01,L0000633a
-L0000559e               bne.b   L00005598
-L000055a0               tst.b   $0007c874                               ;PANEL_STATUS_1
+L0000559a               subq.w  #$01,state_parameter                    ;L0000633a
+L0000559e               bne.b   L00005598                               ; exit rts
+                        ; test timer, lost life, no energy
+L000055a0               tst.b   PANEL_STATUS_1                          ;$0007c874
 L000055a6               bne.w   L00004dc0 
+                        ; set state to normal joystick control
 L000055aa               move.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7a
-L000055b2               lea.l   L0000641b,a0
-L000055b6               cmp.w   #$0050,L00006340 
-L000055bc               bmi.w   L00005470
+L000055b2               lea.l   batman_sprite_anim_standing,a0          ;L0000641b,a0
+                        ; test fall distance
+L000055b6               cmp.w   #$0050,batman_fall_distance             ;L00006340 
+L000055bc               bmi.w   set_batman_sprites                      ;L00005470
+
+                        ; fell too far...dead...
 L000055c0               moveq   #$5a,d6
 L000055c2               bsr.w   batman_lose_energy                      ;L00004d0a
-L000055c6               move.b  #$04,$0007c874                          ;PANEL_STATUS_1
-L000055ce               btst.b  #$0007,$0007c875                        ;PANEL_STATUS_2
+L000055c6               move.b  #PANEL_ST2_VAL_LIFE_LOST,PANEL_STATUS_1 ;#$04,$0007c874                          ;PANEL_STATUS_1
+L000055ce               btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2  ;#$0007,$0007c875                        ;PANEL_STATUS_2
 L000055d6               bne.b   L000055de
-L000055d8               jmp     $0007c862                               ; PANEL_LOSE_LIFE
+
+L000055d8               jmp     PANEL_LOSE_LIFE                         ;$0007c862 
                     ; never return (use panel rts) 
 L000055de               rts     
 
