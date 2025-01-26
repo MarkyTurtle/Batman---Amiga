@@ -4870,8 +4870,7 @@ L00005122               rts
                     ;
                     ;
 player_input_cmd_fire_up_right  ; original address L00005124
-L00005124               JSR     _DEBUG_COLOUR_RED
-                        clr.w   batman_sprite1_id               ;L00006336
+L00005124               clr.w   batman_sprite1_id               ;L00006336
 L00005128               moveq   #$7f,d0
 L0000512a               bra.b   player_input_fire_up_common     ;L00005138
 
@@ -4886,8 +4885,7 @@ L0000512a               bra.b   player_input_fire_up_common     ;L00005138
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
 player_input_cmd_fire_up_left   ; original address L0000512c 
-L0000512c               JSR     _DEBUG_COLOUR_GREEN
-                        move.w  #$e000,batman_sprite1_id            ;L00006336
+L0000512c               move.w  #$e000,batman_sprite1_id            ;L00006336
 L00005132               moveq.l #$ffffff81,d0
 L00005134               bra.b   player_input_fire_up_common         ;L00005138 
 
