@@ -1730,7 +1730,7 @@ L00003C7A               dc.l    player_move_commands    ; Dest Address - Self Mo
 
 do_system_updates
 L00003C7E               BSR.W   scroll_offscreen_buffer         ;L00004974
-L00003C82               ;BSR.W   update_score_by_level_progress  ;L00003dbe
+L00003C82               BSR.W   update_score_by_level_progress  ;L00003dbe
 L00003C86               ;BSR.W   trigger_new_actors              ;L00003dec
 L00003C8A               BSR.W   copy_offscreen_to_backbuffer    ;L00004ba0
 L00003C8E               BSR.W   draw_batman_and_rope            ;L00005604
@@ -7856,7 +7856,7 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
             IFD TEST_BUILD_LEVEL
                 incdir      "../batspr1/"
                 include     "batspr1.s"
-                dcb.b       98856,0
+                dcb.b       100000,0
             ENDC
 
             ; padding - see if it fixes map data corruption
