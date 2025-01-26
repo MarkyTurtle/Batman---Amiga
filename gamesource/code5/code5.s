@@ -1730,11 +1730,11 @@ L00003C7A               dc.l    player_move_commands    ; Dest Address - Self Mo
 
 do_system_updates
 L00003C7E               BSR.W   scroll_offscreen_buffer         ;L00004974
-L00003C82               BSR.W   update_score_by_level_progress  ;L00003dbe
-L00003C86               BSR.W   trigger_new_actors              ;L00003dec
+L00003C82               ;BSR.W   update_score_by_level_progress  ;L00003dbe
+L00003C86               ;BSR.W   trigger_new_actors              ;L00003dec
 L00003C8A               BSR.W   copy_offscreen_to_backbuffer    ;L00004ba0
 L00003C8E               BSR.W   draw_batman_and_rope            ;L00005604
-L00003C92               BSR.W   update_active_actors            ;L00003ed4
+L00003C92               ;BSR.W   update_active_actors            ;L00003ed4
 L00003C96               BSR.W   update_projectiles              ;L00004696
 L00003C9A               BSR.W   draw_projectiles                ;L0000463c
 L00003C9E               BSR.W   double_buffer_playfield         ;L000036ee
@@ -3825,6 +3825,7 @@ L00004a02               sub.w   #DISPLAY_MAX_Y,d4               ;#$0057,d4
 L00004a06               move.w  d4,offscreen_y_coord            ;L0000635a
 L00004a0a               bsr.w   draw_background_vertical_scroll ;L00004a9c
 L00004a0e               bra.w   do_horizontal_scroll            ;L00004a2a
+
                     ;---------------------------------------
 
                     ; scroll display up (e.g. climbing upwards)
@@ -3840,7 +3841,7 @@ L00004a1a               add.w   #DISPLAY_MAX_Y,d2                   ;#$0057,d2
 L00004a1e               move.w  d2,offscreen_y_coord                ;L0000635a
 L00004a22               add.w   d1,d3
 L00004a24               neg.w   d1
-L00004a26               bsr.w   draw_background_vertical_scroll     ;L00004a9c       ; draw_background_vertical_scroll
+L00004a26               bsr.w   draw_background_vertical_scroll     ;L00004a9c       
 
 
 
@@ -3935,7 +3936,8 @@ L00004a9a               rts
                     ;   a3.l - source base gfx ptr
                     ;
 draw_background_vertical_scroll ; original address L00004a9c
-L00004a9c               subq.w  #$01,d1
+L00004a9c           ;rts
+                     subq.w  #$01,d1
 
                     ; calc source gfx start offset (depends on soft scroll value)
                     ; self modified code, updates LEA offset value below.
@@ -3962,7 +3964,7 @@ L00004ac0               lea.l   MAPGR_TILEDATA_OFFSET(a0,d4.W),a0   ;$7a(a0,d4.w
                     ; calc gfx destination address
 L00004ac4               move.w  d2,d4
 L00004ac6               mulu.w  #$0054,d4
-L00004aca               add.l   offscreen_display_buffer_ptr,a4     ;L00006366,d4
+L00004aca               add.l   offscreen_display_buffer_ptr,d4     ;L00006366,d4
 L00004ace               movea.l d4,a1
 
                     ; Initialise Draw Loop 
@@ -4250,6 +4252,8 @@ L00004c7a               rts
                     ; Code Checked 3/1/2025
                     ;
 player_move_commands    ; original address L00004c7c
+                        ;jsr     _DEBUG_COLOUR_GREEN
+
 L00004c7c               clr.w   d2
 L00004c7e               move.b  player_input_command,d2                 ;L00006350,d2
 L00004c82               asl.w   #$02,d2
@@ -4556,6 +4560,7 @@ L00004e9e               move.b  d3,player_input_command         ;L00006350
 
                     ; --------- player state - grappling hook attached -----------
 player_state_grappling_hook_attached    ; original address L00004ea2
+
 L00004ea2               lea.l   grappling_hook_height,a0            ;L00006360,a0
 L00004ea6               move.w  (a0),d5
 L00004ea8               move.b  player_input_command,d4             ;L00006350,d4
@@ -4577,16 +4582,18 @@ L00004ede               move.w  d1,batman_y_offset                  ;L000069f4
 L00004ee2               rts 
 
 
-
+                    ; d5.w = grapling hook hright
                     ; d4.b = player_input_command
 L00004ee4               move.w  d5,(a0)
 L00004ee6               btst.l  #$0002,d4                   ; PLAYER_INPUT_DOWN
 L00004eea               beq.w   L00004efe
+                        ; player input down
 L00004eee               move.w  #$0028,target_window_y_offset       ; L000069f6
 L00004ef4               addq.w  #$01,d5
 L00004ef6               cmp.w   #$0050,d5
 L00004efa               bcc.b   L00004efe
 L00004efc               move.w  d5,(a0)
+
 L00004efe               lea.l   grappling_hook_params,a0            ;L0000635c,a0
 L00004f02               movem.w (a0),d2-d3
 L00004f06               clr.w   d7
@@ -4824,7 +4831,7 @@ L000050e6               rts
                     ;   IN:-
                     ;       a0 = L00006314 - grappling hook vars
                     ; 
-L000050e8               lea.l   $007c(a0),a1        ;  index into sine table?
+L000050e8               lea.l   $7c(a0),a1          ;  index into sine table?
 L000050ec               move.w  (a0),d2
 L000050ee               asr.w   #$01,d2
 L000050f0               move.w  d2,d4
@@ -4832,7 +4839,7 @@ L000050f2               bpl.b   L000050f6
 L000050f4               neg.w   d4
 
 L000050f6               clr.w   d3
-L000050f8               move.b  -64(a1,d4.w),d3     ; $c0(a1,d4.w),d3
+L000050f8               move.b  -$40(a1,d4.w),d3     ; $c0(a1,d4.w),d3 ($c0 = -64)
 L000050fc               mulu.w  $0004(a0),d3
 L00005100               btst.l  #$000f,d2
 L00005104               beq.b   L00005108
@@ -4863,7 +4870,8 @@ L00005122               rts
                     ;
                     ;
 player_input_cmd_fire_up_right  ; original address L00005124
-L00005124               clr.w   batman_sprite1_id               ;L00006336
+L00005124               JSR     _DEBUG_COLOUR_RED
+                        clr.w   batman_sprite1_id               ;L00006336
 L00005128               moveq   #$7f,d0
 L0000512a               bra.b   player_input_fire_up_common     ;L00005138
 
@@ -4878,7 +4886,8 @@ L0000512a               bra.b   player_input_fire_up_common     ;L00005138
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
 player_input_cmd_fire_up_left   ; original address L0000512c 
-L0000512c               move.w  #$e000,batman_sprite1_id            ;L00006336
+L0000512c               JSR     _DEBUG_COLOUR_GREEN
+                        move.w  #$e000,batman_sprite1_id            ;L00006336
 L00005132               moveq.l #$ffffff81,d0
 L00005134               bra.b   player_input_fire_up_common         ;L00005138 
 
@@ -4998,6 +5007,7 @@ L000051cc               cmp.b   #$51,d2
 L000051d0               bcs.b   L000051ec       ; exit
 
                     ; grabed platform
+                        
 L000051d2               move.l  #player_state_grappling_hook_attached,gl_jsr_address    ;#$00004ea2,00003c7c 
 L000051d8               move.l  L00006362,L00006370
 
@@ -5196,6 +5206,9 @@ L0000526a               bsr.b input_up_common           ;L0000523c
                     ;
 player_input_cmd_right  ; original address L0000526c
                     ; test wall collision
+
+
+
 L0000526c               addq.w  #$04,d0
 L0000526e               subq.w  #$02,d1
 L00005270               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
@@ -5796,7 +5809,7 @@ L000055de               rts
                     ;   - D2.b = Tile Value
                     ;
 get_map_tile_at_display_offset_d0_d1    ; original address L000055e0
-L000055e0               movem.w scroll_window_xy_coord,d0-d3   ; L000069ec,d2-d3
+L000055e0               movem.w scroll_window_xy_coord,d2-d3   ; L000069ec,d2-d3
 L000055e6               add.w   d0,d2
 L000055e8               add.w   d1,d3
 L000055ea               lsr.w   #$03,d2
@@ -6175,6 +6188,8 @@ L00005892               rts
                     ;               bit 4 = pulse when button pressed
                     ;
 read_player_input   ; original address L00005894
+                        ;jsr _DEBUG_COLOUR_RED
+
 L00005894               move.w  $00dff00c,d0
 L0000589a               clr.b   d2
                         ; detect left/right
@@ -7733,6 +7748,18 @@ large_character_gfx      ; original address L00006ad0
                     ; The routines are used to modify routines so that I can flash the screen, pause the
                     ; game when certain code is executed.
                     ;
+
+_DEBUG_COLOUR_RED
+            move.w  #$f00,$dff180
+            rts
+
+_DEBUG_COLOUR_GREEN
+            move.w  #$0f0,$dff180
+            rts
+
+_DEBUG_COLOUR_BLUE
+            move.w  #$00f,$dff180
+            rts                    
 
 _DEBUG_COLOURS
             move.w  d0,$dff180
