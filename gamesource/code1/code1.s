@@ -262,8 +262,10 @@ original_start:                                             ; original address $
                     ;
                     ;
 game_start          ; original address $00003000
-initialise_system   ; original address $00003000 
+initialise_system   ; original address $00003000
+
                     ;JSR _DEBUG_COLOURS
+                    
                     ; kill the system & initialise h/w
                     moveq   #$00,d0
                     move.w  #$1fff,$00dff09a                ; DMACON - Disable DMA (All DMA Channels)
@@ -319,6 +321,7 @@ initialise_system   ; original address $00003000
                     move.b  #$ff,$00bfd300                  ; CIAB-DDRB - PORT B dir = all pins/lines = output
 
 
+
                     ; ------ enter supervisor mode -------
 .enter_supervisor   LEA.L   .supervisor_trap(PC),A0         ; A0 = address of supervisor trap $00001F58
                     MOVE.L  A0,$00000080                    ; Set TRAP 0 vector
@@ -329,7 +332,10 @@ initialise_system   ; original address $00003000
 .supervisor_trap    MOVEA.L A0,A7                           ; restore the stack (i.e. rts return address etc)
                     ; ------ enter supervisor mode -------
 
+
+
                     ;jsr     _DEBUG_COLOURS
+
 
                     ; set stack address
                     lea.l   STACK_ADDRESS,a7                ; External Address - Stack = $0005a36c
@@ -385,6 +391,8 @@ initialise_system   ; original address $00003000
                     bsr.w   double_buffer_playfield         ; L000036fa
 
                     bra.w   initialise_game                      ; L00003ae4
+
+
 
 
                     ; maybe intended as a second copper list
@@ -905,7 +913,7 @@ keyboard_bitmap                         ; original address $000034f4
                     ;   d0.b = CIAB - ICR
                     ;
 lvl6_timerb_interrupt                           ; original address: $00003514
-                    lsr.b   #$00000002,D0       ; test for TB interrupt
+                    lsr.b   #$02,D0             ; test for TB interrupt
                     bcc.b   .exit               ; no Timer B Interrupt
                     move.b  #$00,$00bfee01      ; CIAA - CRA - Stop Timer A 
 .exit               rts                     
@@ -1190,6 +1198,8 @@ reset_display                                               ; original address $
                     beq.b   .wait_vbl                       ; L000036dc ; wait for next vertb
                     move.w  #$8180,$00dff096              ; Enable - Copper DMA
                     rts 
+
+
 
 frame_counter_and_target_counter
 frame_counter                                                       ; original address $000036ee
@@ -1624,7 +1634,7 @@ update_level_data
                     bra.b   .do_update_loop                         ; loop again
 
 .exit_update_level_data                                             ; original address L00003b4e
-                    move.l  #$00005fc4,L00005f64                    ; reset ptr to default (no update data - all 0 values)
+                    move.l  #L00005fc4,L00005f64                    ; reset ptr to default (no update data - all 0 values)
 
 
 
@@ -1655,6 +1665,7 @@ clear_msb           lea.l   trigger_definitions_list,a0             ; L0000642e,
                     addq.w  #$06,a0                                 ; start of next data structure
                     cmp.l   #end_of_actors,a0
                     bcs.b   .loop2
+
 
 
 
@@ -1865,6 +1876,7 @@ do_system_updates
                     bsr.w   double_buffer_playfield                 ; L000036fa
 
                     bra.w   game_loop                               ; L00003bfa ; jump back to main loop
+
 
                     ;-----------------------------------------------------
                     ;------------------ End of Game Loop -----------------
@@ -2274,6 +2286,7 @@ update_active_actors    ; original address L00003ee6
 process_next_actor  ; L00003eec                                                     
                     move.w  (a6),d6                                     ; d6 = actor type/id?
                     beq.w   skip_to_next_actor
+
 calc_actor_coords   ; L00003ef2
                     movem.w ACTORSTRUCT_XY(a6),d0-d1                    ; actor X,Y
                     move.w  d0,d4                                       ; d4 = actorX
@@ -2300,6 +2313,7 @@ actor_in_range      ; L00003f1c
 actor_in_display    ; L00003f22 check actor is in display window
                     cmp.w   #$0050,d1                       ; compare 80,d1 (y)
                     bcc.b   execute_handler                 ; jmp if d1 > 80 (I guess off screen)
+
                     cmp.w   #$00a0,d0                       ; compare 160,d0 (x)
                     bcc.b   execute_handler                 ; jmp id d0 > 160 (I guess offscreen)
 
@@ -2362,6 +2376,7 @@ L00003f7c           move.w  #$0001,(a6)
 L00003f80           moveq   #SFX_GUYHIT,d0
 L00003f82           jsr     AUDIO_PLAYER_INIT_SFX
 L00003f88           move.w  #$fffe,$000a(a6)
+
 L00003f8e           tst.w   L000062fa
 L00003f92           bmi.b   end_L00003fa6
 
@@ -2512,7 +2527,7 @@ L00004040           bra.w   drawcollide_actor_sprites_a5    ; draw 3 sprites at 
                     ;
 actor_cmd_grenade_left_02
 actor_cmd_07        ; L00004044
-L00004044           lea.l   L000044ec,a5
+L00004044           lea.l   throw_grenade_left,a5           ;L000044ec,a5
 L00004048           bsr.w   drawcollide_actor_sprites_a5               ; L0000457c
 L0000404c           subq.w  #$01,$0008(a6)
 L00004050           bne.b   L0000405c                       ; if > 0, then exit
@@ -2582,7 +2597,7 @@ L000040d2           movem.w d0/d3,(a0)
 L000040d6           subq.w  #$05,d0
 L000040d8           moveq   #$08,d2
 L000040da           addq.w  #$01,$0008(a6)
-L000040de           lea.l   L000044f2,a5
+L000040de           lea.l   throw_grenade_right,a5          ;L000044f2,a5
 L000040e2           and.w   #$00fe,d2
 L000040e6           adda.w  d2,a5
 L000040e8           add.w   d2,d2
@@ -3024,6 +3039,7 @@ L000044da           dc.w    $e010,$e011,$0000
 throw_grenade_left                                  ; final animation frame?
 L000044ec           dc.w    $e015,$e016,$e011
 
+throw_grenade_right
 L000044f2           dc.w    $0004,$0005,$0008
 L000044f8           dc.w    $0010,$0011,$0000
                     dc.w    $0012,$0011,$0000

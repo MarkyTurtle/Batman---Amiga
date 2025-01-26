@@ -1,4 +1,71 @@
-
+                ; NOTES:
+                ; ------
+                ; 1) If 'JAMMMM' cheat mode active then 'F10' skip to next level (Enter text 'JAMMMM' on title screen)
+                ;
+                ; 
+                ;
+                ;
+                ; Level 5 - Memory Map
+                ; ------------------------------
+                ; The following files are loaded and decrunched into the following locations
+                ; by the game loader
+                ;
+                ;
+                ; Filename/Area     Start   End         Additional Info
+                ;---------------------------------------------------------------------------------------------
+                ; BATMAN            $800                - Game Loader (always resident across loads)
+                ; CODE1             $2FFC   $7300      - $3000 = entry point for level code. (16Kb)
+                ;
+                ; MAPGR2            $7FFC   $10000      - Game Tile map data and background GFX blocks
+                ;                                       - $8002 - tile map width
+                ;                                       - $807c - start of tilemap data
+                ;                                       - $a07c - start of gfx block data
+                ;       
+                ;                   $10000              - Display Object List
+                ;                                           - 305 - game display objects
+                ;                                                   initialised from data in BATSPR1.IFF file.
+                ;
+                ; BATSPR1           $10FFC  $2897a      - Display Objects & Graphics
+                ;                           $403f8      - $11002 = 16 bit - number of display object
+                ;                                       - $11004 = start of display object data
+                ;                                                   - 8 byte structure per object
+                ;                                                       - 1 word (unused $800f)
+                ;                                                       - 1 byte pixel width
+                ;                                                       - 1 byte pixel height
+                ;                                                       - 4 bytes gfx start offset
+                ;                                                           gfx base starts at end of list of objects
+                ;                                                           (No of objects * 8) + $11004 = $1198C
+                ;                                       - Total size with mirrored sprites $2f2fc
+                ;                                       - $3f962 - end of sprite data (including precalced mirrored sprites)
+                ;
+                ; CHURCH            $47FE4              - Level Music Player, Music & SFX
+                ; STACK             $5a36c              - Address of program stack - not a file load.
+                ;
+                ; Off Screen Buffer - $5a36c            - $5a36c - $6159c - (size = $7230 - 29,232 bytes)
+                ;                                           - This is an off-screen buffer used to prepare the background
+                ;                                           - scroll graphics. It's a bit like a circular gfx buffer.
+                ;                                           - A routine copies the data in this buffer to the back buffer
+                ;                                           - which is eventually displayed as part of the double buffering.
+                ;               
+                ;
+                ; DISPLAY BUFFER (Double Buffered Display)  
+                ;    display buffer 1 - $61b9c - $68dcc 
+                ;                       - Bitplane 1 = $61b9c ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 2 = $63828 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 3 = $654b4 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 4 = $67140 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;    display buffer 2 - $68dce - $6fffe
+                ;                       - Bitplane 1 = $68dce ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 2 = $6aa5a ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 3 = $6c6e6 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;                       - Bitplane 4 = $6e372 ($1c8c - 7308 bytes) (174 rasters @ 42 bytes)
+                ;
+                ;
+                ; LOADBUFFER        $5a36C  $7C7FC      - File Load Area (files loaded here before depacked/relocated)
+                ; PANEL             $7C7FC  $80000      - Game State/Lives manager (always resident across loads)
+                ;
+                ;
+                ;
 
 
 TEST_BUILD_LEVEL    SET 1                              ; run a test build with imported GFX, level data and Panel
@@ -58,6 +125,13 @@ CODE1_CHIPMEM_BUFFER_BYTESIZE   EQU CODE1_DISPLAY_BUFFER_BYTESIZE
                                 even
 
 
+PLAYER_INPUT_RIGHT  EQU     $0          ; player_input_command - bit 0 = Player Right Pushed 
+PLAYER_INPUT_LEFT   EQU     $1          ; player_input_command - bit 1 = Player Left Pushed
+PLAYER_INPUT_DOWN   EQU     $2          ; player_input_command - bit 2 = Player Down Pushed
+PLAYER_INPUT_UP     EQU     $3          ; player_input_command - bit 3 = Player Up Pushed
+PLAYER_INPUT_FIRE   EQU     $4          ; player_input_command - bit 4 = Player Fire Pushed (pulsed for 1 frame)
+
+
 ; Code1 - debug_print_word_value constants
 FONT_8x8_HEIGHT     EQU         $8
 ASCII_SPACE         EQU         $20
@@ -70,10 +144,10 @@ KEY_ESC             EQU         $001b
 
 
 ; offscreen, double buffer display sizes
-DISPLAY_MAX_Y           EQU         $57                                         ; max display Y value (87) represents line 174 of the display (87*2)
-DISPLAY_BYTEWIDTH       EQU         $2a                                         ; 42 bytes wide
-DISPLAY_2RASTERS        EQU         DISPLAY_BYTEWIDTH*2                         ; 84 bytes for two raster lines 
-DISPLAY_BUFFER_BYTES    EQU         2*DISPLAY_MAX_Y*DISPLAY_BYTEWIDTH           ; size of display buffer in bytes
+DISPLAY_MAX_Y               EQU     $57                                         ; max display Y value (87) represents line 174 of the display (87*2)
+DISPLAY_BYTEWIDTH           EQU     $2a                                         ; 42 bytes wide
+DISPLAY_2RASTERS            EQU     DISPLAY_BYTEWIDTH*2                         ; 84 bytes for two raster lines 
+DISPLAY_BUFFER_BYTES        EQU     2*DISPLAY_MAX_Y*DISPLAY_BYTEWIDTH           ; size of display buffer in bytes
 DISPLAY_BUFFER_BPL0_OFFSET  EQU     $0
 DISPLAY_BUFFER_BPL1_OFFSET  EQU     DISPLAY_BUFFER_BYTES
 DISPLAY_BUFFER_BPL2_OFFSET  EQU     DISPLAY_BUFFER_BYTES*2
@@ -109,12 +183,36 @@ start               ; added for testing
             ENDC
 
 
-
-original_start:  
+original_start:     ; original address $00002ffc
                     dc.l    $00003000                           ; original address $00002ffc
 
+;gotham_cathedral_text   ; original address L00003A98
+;L00003A98a   
+;                    ;dc.b    $30,$09
+;                    ;dc.b    'TEST BUILD 16/01/2025',$00
+;                    dc.b    $50,$09
+;                    dc.b    'GOTHAM CITY CATHEDRAL'
+;                    dc.b    $00,$ff
+;                    even
+
+                    ; -------------------------- game start /  initialise system ---------------------------------
+                    ; This is the Level 5 code entry point on loading.
+                    ;
+                    ; NOTES:
+                    ; I added the 'supervisor mode' code as this was previously handled by the loader, and it is
+                    ; required as some code performs 'move.w <ea>,SR' (priviledged instruction on 68000)
+                    ;   NB: the code also performs 'move.w SR,<ea>' which is privileged on some processors.
+                    ; 
+                    ; I added the stack address setting code, which moves the stack to the start of the program,
+                    ; hopefully out of harms way for rebuilding and executing.
+                    ;
+                    ; Added a couple of Test build initialisations got playyer lives etc
+                    ;
 game_start          ; original address $00003000
 initialise_system   ; original address $00003000 
+
+                    ;JSR _DEBUG_COLOURS
+
                     ; kill the system & initialise h/w
                     moveq   #$00,D0
                     move.w  #$1fff,$00dff09a
@@ -133,7 +231,7 @@ initialise_system   ; original address $00003000
                     lea.l   $00dff140,A0
 
 L0000304E            move.w  D0,(A0)
-                     adda.w  #$00000008,A0
+                     adda.w  #$08,A0
                      dbf.w   D7,L0000304E
 
                     ; clear all audio volume - L00003056
@@ -168,6 +266,8 @@ L00003070            move.w  D0,(A0)+
                     move.b  #$ff,$00bfd100
                     move.b  #$ff,$00bfd300
 
+
+
                     ; ------ enter supervisor mode -------
 .enter_supervisor   LEA.L   .supervisor_trap(PC),A0         ; A0 = address of supervisor trap $00001F58
                     MOVE.L  A0,$00000080                    ; Set TRAP 0 vector
@@ -178,7 +278,10 @@ L00003070            move.w  D0,(A0)+
 .supervisor_trap    MOVEA.L A0,A7                           ; restore the stack (i.e. rts return address etc)
                     ; ------ enter supervisor mode -------
 
+
+
                     ;jsr     _DEBUG_COLOURS
+
 
                     ; set stack address - L000030DA
                     LEA.L   STACK_ADDRESS,A7                ; STACK
@@ -189,7 +292,7 @@ L00003070            move.w  D0,(A0)+
                     LEA.L   interrupt_handlers_table,A0
                     LEA.L   $00000064,A1
 L000030EE           MOVE.L  (A0)+,(A1)+
-                    DBF.W   D7,L000030ee
+                    DBF.W   D7,L000030EE
 
                     ; Initialise CIA Timers 
                     MOVE.W  #$ff00,$00dff034
@@ -201,11 +304,15 @@ L000030EE           MOVE.L  (A0)+,(A1)+
                     MOVE.B  #$f0,$00bfe601
                     MOVE.B  #$37,$00bfeb01
                     MOVE.B  #$11,$00bfef01
+
                     ; CIAA - Timer B Low = $f0      ; 0.33 second
+ 
                     MOVE.B  #$91,$00bfd600
                     MOVE.B  D0,$00bfdb00
                     MOVE.B  D0,$00bfdf00
+
                     ; CIAB - Timer B Low = $00
+
                     MOVE.W  #$7fff,$00dff09c
                     TST.B   $00bfed01
                     MOVE.B  #$8a,$00bfed01
@@ -229,7 +336,10 @@ L000030EE           MOVE.L  (A0)+,(A1)+
                     LEA.L   copper_list,a0                 ; L000031bc,A0 ; Copper
                     BSR.W   reset_display                  ; L0000367e
                     BSR.W   double_buffer_playfield        ; L000036ee
+ 
                     BRA.W   initialise_game                ; L00003ad4 
+
+
 
 
                     ; maybe intended as a second copper list
@@ -307,21 +417,21 @@ L00003244           dc.w    BPL3PTH,$0007
 L0000324C           dc.w    BPL4PTH,$0007
 copper_panel_colors ; original address L00003250
                     dc.w    COLOR00,$0000
-                    dc.w    COLOR01,$0060
-                    dc.w    COLOR02,$0fff
-                    dc.w    COLOR03,$0008
-                    dc.w    COLOR04,$0a22
-                    dc.w    COLOR05,$0444
-                    dc.w    COLOR06,$0862
-                    dc.w    COLOR07,$0666
-                    dc.w    COLOR08,$0888
-                    dc.w    COLOR09,$0aaa 
-                    dc.w    COLOR10,$0a40
-                    dc.w    COLOR11,$0c60
-                    dc.w    COLOR12,$0e80
-                    dc.w    COLOR13,$0ea0 
-                    dc.w    COLOR14,$0ec0
-                    dc.w    COLOR15,$0eee 
+                    dc.w    COLOR01,$0000
+                    dc.w    COLOR02,$0000
+                    dc.w    COLOR03,$0000
+                    dc.w    COLOR04,$0000
+                    dc.w    COLOR05,$0000
+                    dc.w    COLOR06,$0000
+                    dc.w    COLOR07,$0000
+                    dc.w    COLOR08,$0000
+                    dc.w    COLOR09,$0000 
+                    dc.w    COLOR10,$0000
+                    dc.w    COLOR11,$0000
+                    dc.w    COLOR12,$0000
+                    dc.w    COLOR13,$0000 
+                    dc.w    COLOR14,$0000
+                    dc.w    COLOR15,$0000 
                     dc.w    $ffff,$fffe
                     dc.w    $ffff,$fffe
 
@@ -344,9 +454,9 @@ level1_interrupt_handler    ; original addr: 000032B4
                         MOVE.L  D0,-(A7)
                         MOVE.W  $00dff01e,D0
                         BTST.L  #$0002,D0
-                        BNE.B   .L000032e0
+                        BNE.B   .L000032E0
                         BTST.L  #$0001,D0
-                        BNE.B   .L000032d4
+                        BNE.B   .L000032D4
                         MOVE.W  #$0001,$00dff09c
                         MOVE.L  (A7)+,D0
                         RTE 
@@ -433,7 +543,7 @@ level5_interrupt_handler    ; original address L00003364
                         MOVE.L  D0,-(A7)
                         MOVE.W  $00dff01e,D0
                         BTST.L  #$000c,D0
-                        BNE.B   .L0000337e
+                        BNE.B   .L0000337E
                         MOVE.W  #$0800,$00dff09c
                         MOVE.L  (A7)+,D0
                         RTE 
@@ -459,9 +569,9 @@ level6_interrupt_handler    ; original address L0000338A
                         MOVE.L  D0,-(A7)
                         MOVE.W  $00dff01e,D0
                         BTST.L  #$000e,D0
-                        BNE.B   .L000033bc
+                        BNE.B   .L000033BC
                         MOVE.B  $00bfdd00,D0
-                        BPL.B   .L000033b0
+                        BPL.B   .L000033B0
                         BSR.W   lvl6_timerb_interrupt           ; L00003508
                         MOVE.W  #$2000,$00dff09c
                         MOVE.L  (A7)+,D0
@@ -518,6 +628,7 @@ lvl2_CIAA_Interrupt ; original address L000033C8
                         BSET.B  D1,$00(A0,D2.w)
                         TST.B   D1
                         BEQ.B   .L00003436
+
                     ; enqueue the pressed key
 .L00003412              LEA.L   keyboard_buffer,A0
                         MOVE.W  keyboard_queue_head,d2          ; L000034e4,D2
@@ -815,18 +926,20 @@ L000035F0                   MOVE.W  D1,D2
 L000035F2                   SUB.B   D3,D1
 L000035F4                   NEG.B   D1
 L000035F6                   EXT.W   D1
-L000035F8                   LSR.W   #$00000008,D2
-L000035FA                   LSR.W   #$00000008,D3
+L000035F8                   LSR.W   #$08,D2
+L000035FA                   LSR.W   #$08,D3
 L000035FC                   SUB.B   D3,D2
 L000035FE                   NEG.B   D2
 L00003600                   EXT.W   D2
-L00003602                   MOVE.L  #$00000003,D3
+
+L00003602                   MOVE.L  #$03,D3
 L00003604                   AND.W   D0,D3
-L00003606                   LSR.W   #$00000006,D0
+L00003606                   LSR.W   #$06,D0
 L00003608                   AND.W   #$000c,D0
 L0000360C                   OR.W    D3,D0
 L0000360E                   MOVE.B  random_lookup(PC,D0.w),D0
 L00003612                   RTS 
+
 
 
                 ; Data - Joystick stuff (largely unused)
@@ -907,7 +1020,7 @@ L00003642                   dc.w    $0000
                     ;
 waitkey             ; original address L00003644
 L00003644                   MOVE.L  D0,-(A7)
-L00003646                   BSR.B   L0000364e
+L00003646                   BSR.B   getkey                  ;L0000364e
 L00003648                   BNE.B   L00003646
 L0000364A                   MOVE.L  (A7)+,D0
 L0000364C                   RTS 
@@ -921,16 +1034,19 @@ L0000364C                   RTS
                     ;   d0.b    - Ascii code (0 if queue empty)
                     ;           - Z = 1 if queue is empty
                     ;
+getkey              ; original address L0000364e
 L0000364E                   MOVEM.L D1-D2/A0,-(A7)
 L00003652                   LEA.L   keyboard_buffer,a0              ; L000034c4,A0
 L00003658                   MOVE.L  #$00000000,D0
 L0000365A                   MOVEM.W keyboard_queue_head,d1-d2       ; L000034e4,D1-D2
 L00003662                   CMP.W   D1,D2
 L00003664                   BEQ.B   L00003676
+
 L00003666                   MOVE.B  $00(A0,D2.w),D0
 L0000366A                   ADD.W   #$00000001,D2
 L0000366C                   AND.W   #$001f,D2
 L00003670                   MOVE.W  D2,keyboard_queue_tail          ; L000034e6
+
 L00003676                   TST.B   D0
 L00003678                   MOVEM.L (A7)+,D1-D2/A0
 L0000367C                   RTS 
@@ -987,9 +1103,10 @@ L000036C2                   MOVE.W  #$4200,$00dff100
 
 L000036CA                   CLR.W   frame_counter               ; $000036e2
 L000036D0                   TST.W   frame_counter               ; $000036e2
-L000036D6                   BEQ.B   L000036d0
+L000036D6                   BEQ.B   L000036D0
 L000036D8                   MOVE.W  #$8180,$00dff096         ; Enable - Copper DMA
 L000036E0                   RTS 
+
 
 
 frame_counter_and_target_counter
@@ -1016,7 +1133,7 @@ L000036EA                   dc.l CODE1_DISPLAY_BUFFER1_ADDRESS           ; doubl
 double_buffer_playfield     ; original address L000036EE
 L000036EE                   MOVE.W  frame_counter,D0
 L000036F2                   CMP.W   frame_counter,D0
-L000036F6                   BEQ.B   L000036f2
+L000036F6                   BEQ.B   L000036F2
 
 L000036F8                   MOVE.W  target_frame_count,D1
 L000036FC                   CMP.W   D0,D1
@@ -1034,10 +1151,10 @@ L0000371A                   MOVE.L  #CODE1_DISPLAY_BITPLANEBYTES,D1
 L00003720                   MOVE.L  #CODE1_DISPLAY_BITPLANEDEPTH-1,D7
 
 L00003722                   MOVE.W  D0,(A0)
-L00003724                   ADDA.W  #$00000004,A0
+L00003724                   ADDA.l  #$00000004,A0
 L00003726                   SWAP.W  D0
 L00003728                   MOVE.W  D0,(A0)
-L0000372A                   ADDA.W  #$00000004,A0
+L0000372A                   ADDA.l  #$00000004,A0
 L0000372C                   SWAP.W  D0
 L0000372E                   ADD.L   D1,D0
 L00003730                   DBF.W   D7,L00003722
@@ -1077,86 +1194,72 @@ L0000375A                   RTS
                     ;   d0 - 16bit value to be converted to ASCII characters for display
                     ;   d1 - Y,X co-ords for the display, 1 byte each.
                     ;
+debug_display_params
 L0000375C               dc.w $0a0a
 L0000375E               dc.b '0000' 
 L00003762               dc.b $00,$ff 
 
-L00003764               LEA.L   L0000375c,A0
+L00003764               LEA.L   debug_display_params,a0                 ;L0000375c,A0
 L0000376A               MOVE.W  D1,(A0)
 L0000376C               MOVE.L  #$00000003,D2
+
+                    ; decode 4 nibbles to ASCII chars
 L0000376E               CLR.W   D1
 L00003770               MOVE.W  D0,D1
 L00003772               AND.W   #$000f,D1
 L00003776               CMP.W   #$000a,D1
-L0000377A               BCS.B   L0000377e
+L0000377A               BCS.B   L0000377E
 L0000377C               ADD.W   #$00000007,D1
 L0000377E               ADD.B   #$30,D1
 L00003782               MOVE.B  D1,$02(A0,D2.w)
 L00003786               LSR.W   #$00000004,D0
-L00003788               DBF.W   D2,L0000376e
+L00003788               DBF.W   D2,L0000376E
+
+                    ; calc destination display ptr 
 L0000378C               MOVE.B  (A0)+,D0
 L0000378E               CMP.B   #$ff,D0
-L00003792               BEQ.B   L000037e2
+L00003792               BEQ.B   L000037E2
+
 L00003794               AND.W   #$00ff,D0
-L00003798               MULU.W  #$0028,D0
+L00003798               MULU.W  #PANEL_DISPLAY_BYTEWIDTH,d0             ;#$0028,D0
 L0000379C               MOVE.L  #$00000000,D1
 L0000379E               MOVE.B  (A0)+,D1
+
 L000037A0               ADD.W   D1,D0
-L000037A2               MOVEA.L #$0007c89a,A1       ; Panel
+L000037A2               MOVEA.L #PANEL_GFX,a1                           ;#$0007c89a,A1       ; Panel
 L000037A8               LEA.L   $02(A1,D0.w),A1
+
+                    ; get char for display 
 L000037AC               MOVE.L  #$00000000,D0
 L000037AE               MOVE.B  (A0)+,D0
-L000037B0               BEQ.B   L0000378c
-L000037B2               SUB.W   #$0020,D0
+L000037B0               BEQ.B   L0000378C
+
+                    ; calc source gfx ptr 
+L000037B2               SUB.W   #ASCII_SPACE,d0                         ;#$0020,D0
 L000037B6               LSL.W   #$00000003,D0
-L000037B8               LEA.L   L000037e4,A2
+L000037B8               LEA.L   font8x8,a2                              ;L000037e4,A2
 L000037BE               LEA.L   $00(A2,D0.w),A2
-L000037C2               MOVE.L  #$00000007,D7
+
+                    ; initialise print char loop
+L000037C2               MOVE.L  #FONT_8x8_HEIGHT-1,d7                   ;#$00000007,D7
 L000037C4               MOVEA.L A1,A3
+                    ; write gfx char to display - one raster line at a time
 L000037C6               MOVE.B  (A2),(A3)
-L000037C8               MOVE.B  (A2),$0780(A3)
-L000037CC               MOVE.B  (A2),$0f00(A3)
-L000037D0               MOVE.B  (A2)+,$1680(A3)
-L000037D4               LEA.L   $0028(A3),A3
-L000037D8               DBF.W   D7,L000037c6
+L000037C8               MOVE.B  (A2),PANEL_DISPLAY_BITPLANEBYTES(a3)    ;$0780(A3)
+L000037CC               MOVE.B  (A2),2*PANEL_DISPLAY_BITPLANEBYTES(a3)  ;$0f00(A3)
+L000037D0               MOVE.B  (A2)+,3*PANEL_DISPLAY_BITPLANEBYTES(a3) ;$1680(A3)
+L000037D4               LEA.L    PANEL_DISPLAY_BYTEWIDTH(a3),a3         ;$0028(A3),A3
+L000037D8               DBF.W   D7,L000037C6
+                    ; set up next char for display
 L000037DC               LEA.L   $0001(A1),A1
-L000037E0               BRA.B   L000037ac
+L000037E0               BRA.B   L000037AC
 L000037E2               RTS 
 
 
                     ; -------------------------- 8x8 pixel font ----------------------
                     ; This font is used by the routine above.
-
-L000037E4   dc.w $0000,$0000,$0000,$0000,$3030,$3030,$0030,$3000  ;........0000.00.
-L000037F4   dc.w $3624,$0000,$0000,$0000,$6C9A,$BCFA,$7428,$1000  ;6$......l...t(..
-L00003804   dc.w $7ED6,$D07C,$16D6,$FC00,$82C6,$FE54,$7C38,$1000  ;~..|.......T|8..
-L00003814   dc.w $2874,$7474,$7420,$7400,$1810,$0000,$0000,$0000  ;(tttt t.........
-L00003824   dc.w $3870,$7070,$7070,$3800,$381C,$1C1C,$1C1C,$3800  ;8ppppp8.8.....8.
-L00003834   dc.w $1054,$28D6,$2854,$1000,$0000,$0808,$3E08,$0800  ;.T(.(T......>...
-L00003844   dc.w $0000,$0000,$0008,$0810,$0000,$0000,$3E00,$0000  ;............>...
-L00003854   dc.w $0000,$0000,$0018,$1800,$3078,$B078,$3478,$3000  ;........0x.x4x0.
-L00003864   dc.w $7CE6,$E6E6,$E6E6,$7C00,$7838,$3838,$3838,$3800  ;|.....|.x888888.
-L00003874   dc.w $7CCE,$0E7C,$C0CE,$FE00,$7CCE,$0E3C,$0ECE,$7C00  ;|..|....|..<..|.
-L00003884   dc.w $7CDC,$DCDC,$FE1C,$1C00,$FEE6,$E0FC,$06E6,$7C00  ;|.............|.
-L00003894   dc.w $7CE6,$E0FC,$E6E6,$7C00,$FECE,$0E1C,$1C38,$3800  ;|.....|......88.
-L000038A4   dc.w $7CE6,$E67C,$E6E6,$7C00,$7CE6,$E67E,$06E6,$7C00  ;|..|..|.|..~..|.
-L000038B4   dc.w $0030,$3000,$0030,$3000,$0030,$3000,$3030,$6000  ;.00..00..00.00`.
-L000038C4   dc.w $1C38,$70E0,$7038,$1C00,$007C,$7C00,$7C7C,$0000  ;.8p.p8...||.||..
-L000038D4   dc.w $E070,$381C,$3870,$E000,$7CEE,$CE3C,$3000,$3000  ;.p8.8p..|..<0.0.
-L000038E4   dc.w $003C,$4A56,$5E40,$3C00,$7CE6,$E6FE,$E6E6,$E600  ;.<JV^@<.|.......
-L000038F4   dc.w $FCE6,$E6FC,$E6E6,$FC00,$7CE6,$E6E0,$E6E6,$7C00  ;........|.....|.
-L00003904   dc.w $FCE6,$E6E6,$E6E6,$FC00,$FEE0,$E0FE,$E0E0,$FE00  ;................
-L00003914   dc.w $FEE0,$E0FE,$E0E0,$E000,$7CE6,$E6E0,$EEE6,$7E00  ;........|.....~.
-L00003924   dc.w $E6E6,$E6FE,$E6E6,$E600,$3838,$3838,$3838,$3800  ;........8888888.
-L00003934   dc.w $0E0E,$0E0E,$0E0E,$FC00,$E6E6,$E4F8,$E4E6,$E600  ;................
-L00003944   dc.w $E0E0,$E0E0,$E0E0,$FE00,$FCDA,$DADA,$DADA,$DA00  ;................
-L00003954   dc.w $FCE6,$E6E6,$E6E6,$E600,$7CE6,$E6E6,$E6E6,$7C00  ;........|.....|.
-L00003964   dc.w $FCE6,$E6E6,$FCE0,$E000,$7CE6,$E6E2,$ECEE,$7600  ;........|.....v.
-L00003974   dc.w $FCE6,$E6FC,$E6E6,$E600,$7CE6,$F87C,$1EE6,$7C00  ;........|..|..|.
-L00003984   dc.w $FE38,$3838,$3838,$3800,$E6E6,$E6E6,$E6E6,$7C00  ;.888888.......|.
-L00003994   dc.w $E6E6,$E6E6,$E664,$3800,$DADA,$DADA,$DADA,$7C00  ;.....d8.......|.
-L000039A4   dc.w $E6E6,$E638,$CECE,$CE00,$E6E6,$E67C,$3838,$3800  ;...8.......|888.
-L000039B4   dc.w $FEEE,$DC38,$76E6,$FE00
+                    incdir  ./gfx/
+                    include font8x8.s
 
 
                     ; active actors (potentially offscreen)
@@ -1301,8 +1404,8 @@ L000039BC               dc.w $0000
                         dc.w $0000
                         dc.l $00000000
 
-last_active_actor       ; original address L00003A80
-L00003A80               dc.w $0000
+last_active_actor       ; original address L00003A82
+L00003A82               dc.w $0000
                         dc.w $00A0
                         dc.w $0038
                         dc.w $0046
@@ -1316,18 +1419,27 @@ L00003A80               dc.w $0000
 
 
 gotham_cathedral_text   ; original address L00003A98
-L00003A98   dc.b $50,$09
-            dc.b 'GOTHAM CITY CATHEDRAL'
+L00003A98   
+                    ;dc.b    $30,$09
+                    ;dc.b    'TEST BUILD 16/01/2025',$00
+                    dc.b    $50,$09
+                    dc.b    'GOTHAM CITY CATHEDRAL'
+                    dc.b    $00,$ff  
+                    
+text_mouse_button   ; additional debug text             
+                    dc.b    $70,$08
+                    dc.b    'PRESS LEFT MOUSE BUTTON'
+                    dc.b    $00,$ff   
 
 the_end_text            ; original address L00003AB1
-L00003AB1   dc.b $40,$10
-            dc.b 'THE END.'
-            dc.b $00,$FF
+L00003AB1           dc.b    $40,$10
+                    dc.b    'THE END.'
+                    dc.b    $00,$FF
 
 time_being_text         ; original address L00003ABD
-L00003ABD   dc.b $60,$0B
-            dc.b 'FOR THE TIME BEING.'
-            dc.b $00,$FF
+L00003ABD           dc.b    $60,$0B
+                    dc.b    'FOR THE TIME BEING.'
+                    dc.b    $00,$FF
 
             even
 
@@ -1339,64 +1451,105 @@ L00003ABD   dc.b $60,$0B
                     ; game level & play the game loop
                     ;
 initialise_game    
-L00003AD4               CLR.L   $000036e2
+
+                        ;jsr     _DEBUG_COLOURS
+
+L00003AD4               CLR.L   frame_counter_and_target_counter    ;$000036e2
 L00003ADA               BSR.W   double_buffer_playfield             ;L000036ee
-L00003ADE               BSR.W   L00005922
-L00003AE2               JSR     $00048000       ; Audio
+
+L00003ADE               BSR.W   preprocess_data                     ;L00005922
+
+
+L00003AE2               JSR     AUDIO_PLAYER_INIT                   ;$00048000       ; Audio
 L00003AE8               CLR.W   level_spawn_point_index             ;L00006344
+                IFD TEST_BUILD_LEVEL
+                        jsr     PANEL_INIT_LIVES
+                ENDC
+
+                    ; restart point after batman dies
+restart_level       ; L00003AEC
 L00003AEC               CLR.W   grappling_hook_height               ;L00006360
 L00003AF0               CLR.L   frame_counter_and_target_counter    ;L000036e2
 L00003AF6               BSR.W   clear_display_memory                ;L0000373a
-L00003AFA               MOVE.W  #$1200,D0
-L00003AFE               JSR     L0007c80e       ; Panel
-L00003B04               JSR     L0007c854       ; Panel
-L00003B0A               BSR.W   L00003d2a
 
+L00003AFA               MOVE.W  #CODE1_INITIAL_TIMER_BCD,d0         ;#$1200,D0
+L00003AFE               JSR     PANEL_INIT_TIMER                    ;L0007c80e       ; Panel
+L00003B04               JSR     PANEL_INIT_ENERGY                   ;L0007c854       ; Panel
+
+L00003B0A               BSR.W   panel_fade_in                       ;L00003d2a
+
+
+                        ;jsr     _DEBUG_COLOURS
+
+
+                    ; ------------ modify level tile map ------------
+                    ; Make data driven changes to level data blocks
+                    ; doesn't appear to run on level 1.
+                    ; Reads 3 words of data from address ptr L00005f64
+                    ; d3 = index into level data
+                    ; d2 = first value to write into level data
+                    ; d4 = second value to write into level data
+                    ;
+                    ; Could be used for with game protection check to
+                    ; alter the level to make it impossible to complete.
+                    ; e.g. shorten platform, add/remove walls/doors etc
+                    ;
 update_level_data
-L00003B0E               LEA.L   $0000807c,A0    ; Mapgr
-L00003B14               MOVEA.L L00005fac,A5
+L00003B0E               LEA.L   MAPGR_DATA_ADDRESS,a0               ;$0000807c,A0    ; Mapgr
+L00003B14               MOVEA.L L00005FAC,A5
 L00003B1A               MOVEM.W (A5)+,D2-D4
 L00003B1E               TST.W D3
-L00003B20               BEQ.B   L00003b38
+L00003B20               BEQ.B   L00003B38
 L00003B22               MOVE.B  D2,$01(A0,D3.w)
-L00003B26               LSR.W   #$00000008,D2
+L00003B26               LSR.W   #$08,D2
 L00003B28               MOVE.B  D2,$00(A0,D3.w)
 L00003B2C               MOVE.B  D4,$03(A0,D3.w)
-L00003B30               LSR.W   #$00000008,D4
+L00003B30               LSR.W   #$08,D4
 L00003B32               MOVE.B  D4,$02(A0,D3.w)
-L00003B36               BRA.B   L00003b1a 
+L00003B36               BRA.B   L00003B1A 
 .exit_update_level_data   
-L00003B38               MOVE.L  #$0000600c,L00005fac
+L00003B38               MOVE.L  #L0000600C,L00005FAC
 
+
+
+                    ; clear 40 longs (160 bytes)
+                    ; data referenced by projectiles
 clear_projectile_data 
-L00003B42               LEA.L   L000048d2,A0
+L00003B42               LEA.L   projectile_list,a0          ;L000048d2,A0
 L00003B46               MOVE.L  #$00000027,D7
 L00003B48               CLR.L   (A0)+
-L00003B4A               DBF.W   D7,L00003b48
+L00003B4A               DBF.W   D7,L00003B48
+
+
 
                     ; ------------ reset actors/triggers -------------
                     ; clear MSB flag of each data structure
 clear_msb 
-L00003B4E               LEA.L   L00006476,A0
+L00003B4E               LEA.L   trigger_definitions_list,a0     ;L00006476,A0
 L00003B52               BCLR.B  #$0007,(A0)
 L00003B56               MOVE.W  $0004(A0),D0
 L00003B5A               MULU.W  #$0006,D0
 L00003B5E               LEA.L   $06(A0,D0.w),A0
-L00003B62               CMPA.W  #$6944,A0
-L00003B66               BCS.B   L00003b52
+L00003B62               CMPA.L  #end_of_trigger_list,a0         ;  #$6944,A0
+L00003B66               BCS.B   L00003B52
 
                     ; clear MSB flag of each data structure
                     ; original address L00003b7e  
 L00003B68               BCLR.B  #$0007,$0004(A0)
 L00003B6E               ADDA.W  #$00000006,A0
-L00003B70               CMPA.W  #$69c2,A0
-L00003B74               BCS.B   L00003b68
+L00003B70               CMPA.l  #end_of_actors,a0               ;#$69c2,A0
+L00003B74               BCS.B   L00003B68
+
+
+
 
                     ; Clear Active Actors List? 
 L00003B76               LEA.L   actors_list,a0                          ;L000039bc,A0
-L00003B7A               MOVE.L  #$0000006d,D7
+L00003B7A               MOVE.L  #(ACTORLIST_SIZE/2)-1,d7        ;#$0000006d,D7
 L00003B7C               CLR.W   (A0)+
-L00003B7E               DBF.W   D7,L00003b7c
+L00003B7E               DBF.W   D7,L00003B7C
+
+
 
                     ; ------ Set initial batman sprite ids ----- 
 L00003B82               CLR.W   batman_sprite1_id                       ; L00006336
@@ -1404,66 +1557,164 @@ L00003B86               LEA.L   batman_sprite_anim_standing,a0          ;L000064
 L00003B8A               BSR.W   set_batman_sprites                      ;L00005470
 
 
+
+                    ; ------ Set initial player control state ------
+                    ; initial state is 'walking' on platform.
 L00003B8E               MOVE.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7c
-L00003B94               LEA.L   L000069c2,A0
+
+
+
+                    ; -------- set player spawn point --------
+                    ; sets the player start location and display
+                    ; window default values. 
+                    ; Either start of level or halfway point.
+L00003B94               LEA.L   spawn_point_parameters_0,a0             ;L000069c2,A0
 L00003B98               MOVE.W  level_spawn_point_index,d6              ;L00006344,D6
 L00003B9C               MOVE.L  #$00000006,D7
 L00003B9E               LEA.L   level_parameters,a1                     ;L000069ec,A1
 L00003BA2               MOVE.W  (A0)+,(A1)+
-L00003BA4               DBF.W   D7,L00003ba2
-L00003BA8               DBF.W   D6,L00003b9c
+L00003BA4               DBF.W   D7,L00003BA2
+L00003BA8               DBF.W   D6,L00003B9C
+
+
+                        ; display level title & initialise back buffer
 L00003BAC               LEA.L   gotham_cathedral_text,a0                ;L00003a98,A0
 L00003BB0               BSR.W   large_text_plotter                      ;L000069fa
 L00003BB4               BSR.W   double_buffer_playfield                 ;L000036ee
+
 L00003BB8               BSR.W   initialise_offscreen_buffer             ;L000058ea
-L00003BBC               BSR.W   L00004ba0
+                        
+L00003BBC               BSR.W   copy_offscreen_to_backbuffer            ;L00004ba0
+
 L00003BC0               BSR.W   draw_batman_and_rope                    ;L00005604
+
+                        ;jsr     _DEBUG_COLOURS
+                        
+                        ; wait for 1 second
 L00003BC4               MOVE.L  #$00000032,D0
 L00003BC6               BSR.W   wait_for_frame_count                    ;L00005ed4
-L00003BCA               BTST.B  #$0000,$0007c875    ; Panel
-L00003BD2               BNE.B   L00003bdc
+
+
+
+                        ;jsr     _DEBUG_COLOURS
+
+                        ; wait for 1 second
+L00003BC4a               MOVE.L  #$00000032,D0
+L00003BC6a               BSR.W   wait_for_frame_count                    ;L00005ed4
+
+
+                        ; start music if selected
+L00003BCA               BTST.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ;#$0000,$0007c875    ; Panel
+L00003BD2               BNE.B   L00003BDC
+
 L00003BD4               MOVE.L  #$00000001,D0
-L00003BD6               JSR     $00048010           ; Audio?
+L00003BD6               JSR     AUDIO_PLAYER_INIT_SONG                  ; $00048010           ; Audio?
+
+
+                        ;jsr     _DEBUG_COLOURS
+
+
+
+                        ; wipe screen to black
 L00003BDC               BSR.W   screen_wipe_to_backbuffer               ;L00003caa
 L00003BE0               CLR.L   frame_counter_and_target_counter        ;L000036e2
 
-game_loop
-L00003BE4               BSR.W   L0000364e
-L00003BE8               BEQ.B   L00003c44
-L00003BEA               CMP.W   #$0081,D0
-L00003BEE               BNE.B   L00003c0c
-L00003BF0               BSR.W   L0000364e
-L00003BF4               BEQ.B   L00003bf0
-L00003BF6               CMP.W   #$001b,D0
-L00003BFA               BNE.B   L00003c0c
-L00003BFC               BSR.W   screen_wipe_to_black        ;L00003ca6
-L00003C00               BSET.B  #$0005,$0007c875           ; Panel
-L00003C08               BRA.W   L00004e3e
-L00003C0C               CMP.W   #$0082,D0
-L00003C10               BNE.B   L00003c32
-L00003C12               BCHG.B  #$0000,$0007c875    ; Panel
-L00003C1A               BNE.B   L00003c26
-L00003C1C               JSR     $00048008           ; external
-L00003C22               BRA.W   L00003c44
-L00003C26               MOVE.L  #$00000001,D0
-L00003C28               JSR     $00048010           ; external
-L00003C2E               BRA.W   L00003c44
-L00003C32               CMP.W   #$008a,D0
-L00003C36               BNE.B   L00003c44
-L00003C38               BTST.B  #$0007,$0007c875    ; Panel
-L00003C40               BNE.W   L00005e7a
-L00003C44               BTST.B  #$0000,$0007c874    ; Panel
-L00003C4C               BNE.B   L00003c6a
-L00003C4E               JSR     $0007c800           ; panel
-L00003C54               JSR     $0007c800           ; panel
-L00003C5A               BTST.B  #$0000,$0007c874    ; panel
-L00003C62               BEQ.B   L00003c6a
+
+
+
+                    ; -----------------------------------------------------------------------------------------------------------
+                    ;
+                    ; Game Loop
+                    ;
+                    ; -----------------------------------------------------------------------------------------------------------
+
+game_loop           ; original address L00003be4
+
+                    ; ---------- Start Key press checks -----------
+                    ;
+                    ; 'F1'  -  Pause Game
+                    ;           1) when paused 'ESC' = exit game
+                    ;           2) any other key resumes the game
+                    ; 'F2'  - Toggle Music/SFX
+                    ; 'F10' - Skip Level (if cheat mode is active)
+                    ;
+L00003BE4               BSR.W   getkey                      ;L0000364e
+L00003BE8               BEQ.B   end_of_key_checks           ;L00003c44
+
+L00003BEA               CMP.W   #KEY_F1,d0                  ;#$0081,D0
+L00003BEE               BNE.B   toggle_music_sfx            ;L00003c0c
+
+game_pause_loop     ; game pause
+L00003BF0               BSR.W   getkey                      ;L0000364e
+L00003BF4               BEQ.B   game_pause_loop             ;L00003bf0
+
+                        ; exit while paused
+L00003BF6               CMP.W   #KEY_ESC,d0                 ;#$001b,D0
+L00003BFA               BNE.B   toggle_music_sfx            ;L00003c0c
+
+                        ; return to title screen
+L00003BFC               BSR.W   screen_wipe_to_black                ;L00003ca6
+L00003C00               BSET.B  #PANEL_ST2_GAME_OVER,PANEL_STATUS_2 ;#$0005,$0007c875           ; Panel
+L00003C08               BRA.W   return_to_title_screen              ;L00004e3e
+                                ; ***************************                 
+                                ; ****** NEVER RETURNS ******
+                                ; **** LOAD TITLE SCREEN ****
+                                ; ***************************
+
+toggle_music_sfx    ; L00003C0C
+L00003C0C               CMP.W   #KEY_F2,d0                          ;#$0082,D0
+L00003C10               BNE.B   L00003C32
+
+                        ;toggle music/sfx
+L00003C12               BCHG.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2 ;#$0000,$0007c875    ; Panel
+L00003C1A               BNE.B   init_music                          ;L00003c26
+
+init_sfx                ;L00003C1C - sfx only
+L00003C1C               JSR     AUDIO_PLAYER_INIT_SFX_1             ;$00048008           ; external
+L00003C22               BRA.W   end_of_key_checks                   ;L00003c44
+
+init_music              ;L00003C26 - init music
+L00003C26               MOVE.L  #SFX_LEVEL_MUSIC,d0                 ;#$00000001,D0
+L00003C28               JSR     AUDIO_PLAYER_INIT_SONG              ;$00048010           ; external
+L00003C2E               BRA.W   end_of_key_checks                   ;L00003c44
+
+                        ; check skip level cheat
+L00003C32               CMP.W   #KEY_F10,d0                         ;#$008a,D0
+L00003C36               BNE.B   end_of_key_checks                   ;L00003c44
+
+L00003C38               BTST.B  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2  ;#$0007,$0007c875        ; Panel
+L00003C40               BNE.W   cheat_complete_level                    ;L00005e7a
+                            ; ***************************                 
+                            ; ****** NEVER RETURNS ******
+                            ; ****** LOAD LEVEL 02 ******
+                            ; ***************************
+
+                    ; --------- End of Key Press Checks ---------
+end_of_key_checks   ; original address L00003C44
+
+
+                    ;jmp     do_system_updates
+
+
+                    ; -------- start of player state machine updates ------------
+L00003C44               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ;#$0000,$0007c874    ; Panel
+L00003C4C               BNE.B   L00003C6A
+
+                        ; tick panel update (level timer, score, energy etc)
+L00003C4E               JSR     PANEL_UPDATE        ;$0007c800           ; panel
+L00003C54               JSR     PANEL_UPDATE        ;$0007c800           ; panel
+
+L00003C5A               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ;#$0000,$0007c874    ; panel
+L00003C62               BEQ.B   L00003C6A
+
 L00003C64               MOVE.L  #$00000001,D6
-L00003C66               BSR.W   L00004d22
+L00003C66               BSR.W   batman_collision_state_machine  ;L00004d22
+
+                    ; execute player state machine
 L00003C6A               CLR.L   D0
 L00003C6C               CLR.L   D1
-L00003C6E               BSR.W   L00005894
-L00003C72               MOVEM.W batman_xy_offset,d0-d1  ; L000069f2,D0-D1
+L00003C6E               BSR.W   read_player_input               ;L00005894
+L00003C72               MOVEM.W batman_xy_offset,d0-d1          ; L000069f2,D0-D1
 
                     ; ----- PLAYER STATE - SELF MODIFYING CODE -----
                     ; updated all over the place to run an alternative routine.
@@ -1472,24 +1723,34 @@ L00003C72               MOVEM.W batman_xy_offset,d0-d1  ; L000069f2,D0-D1
 gl_jsr_instuction       ; original address L00003C78
 L00003C78               dc.w    $4eb9                   ; JSR.L - opcode value
 gl_jsr_address          ; original address L00003C7A
-L00003C7A               dc.l    $00000000               ; Dest Address - Self Modified Code
+L00003C7A               dc.l    player_move_commands    ; Dest Address - Self Modified Code
                     ; ----- END OF SELF MODIFYING CODE -----
 
-L00003C7E               BSR.W   L00004974
-L00003C82               BSR.W   L00003dbe
-L00003C86               BSR.W   L00003dec
-L00003C8A               BSR.W   L00004ba0
+
+
+do_system_updates
+L00003C7E               BSR.W   scroll_offscreen_buffer         ;L00004974
+L00003C82               BSR.W   update_score_by_level_progress  ;L00003dbe
+L00003C86               BSR.W   trigger_new_actors              ;L00003dec
+L00003C8A               BSR.W   copy_offscreen_to_backbuffer    ;L00004ba0
 L00003C8E               BSR.W   draw_batman_and_rope            ;L00005604
-L00003C92               BSR.W   L00003ed4
-L00003C96               BSR.W   L00004696
-L00003C9A               BSR.W   L0000463c
-L00003C9E               BSR.W   double_buffer_playfield         ; L000036ee
-L00003CA2               BRA.W   L00003be4                       ; game_loop
+L00003C92               BSR.W   update_active_actors            ;L00003ed4
+L00003C96               BSR.W   update_projectiles              ;L00004696
+L00003C9A               BSR.W   draw_projectiles                ;L0000463c
+L00003C9E               BSR.W   double_buffer_playfield         ;L000036ee
+
+L00003CA2               BRA.W   game_loop                       ;L00003be4                       ; game_loop
+
 
                     ;-----------------------------------------------------
                     ;------------------ End of Game Loop -----------------
                     ;-----------------------------------------------------
                     ; code1.s - line1871
+
+
+
+
+
 
 
                     ; -------------- Wipe Screen to Black ----------------
@@ -1518,14 +1779,14 @@ L00003ca6               bsr.w clear_backbuffer_playfield        ;L00004e66
 screen_wipe_to_backbuffer   ; original address l00003caa
 L00003caa               move.w  #$002a,d0
 L00003cae               move.w  #$00ae,d1
-L00003cb2               movem.l L000036e6,a0-a1
+L00003cb2               movem.l playfield_buffer_ptrs,a0-a1     ;L000036e6,a0-a1
 L00003cb8               clr.w   d2
 L00003cba               moveq   #$7f,d3
 L00003cbc               and.w   d2,d3
 L00003cbe               moveq   #$0f,d5
 L00003cc0               lsr.w   #$01,d3
 L00003cc2               bcc.b   L00003cc6
-L00003cc4               moveq   #$f0,d5
+L00003cc4               moveq.l #$fffffff0,d5
 L00003cc6               cmp.w   d0,d3
 L00003cc8               bcc.b   L00003d1c
 L00003cca               move.w  d2,d4
@@ -1566,39 +1827,55 @@ L00003d26               bne.b   L00003cba
 L00003d28               rts 
 
 
+
+
                     ;---------------------- panel fade in -----------------------
                     ; fades the panel colours from black to expected colours.
                     ; waits 4 frames between each fade loop.
                     ; loops 16 times, 64 frames fade in. approx 1 seconds.
                     ;
-panel_fade_in
+panel_fade_in       ; original address L00003d2a
 L00003d2a               moveq   #$0f,d7
-L00003d2c               lea.l   L00003252,a0
-L00003d30               lea.l   L00003294,a1
+L00003d2c               lea.l   copper_panel_colors+2,a0    ;L00003252,a0
+L00003d30               lea.l   panel_colours,a1            ;L00003294,a1
 L00003d34               moveq   #$0f,d6
+                    ; fade colour
 L00003d36               move.w  (a0),d0
 L00003d38               move.w  (a1)+,d1
 L00003d3a               eor.w   d0,d1
+                    ; fade blue
 L00003d3c               moveq   #$0f,d2
 L00003d3e               and.w   d1,d2
 L00003d40               beq.b   L00003d44
 L00003d42               addq.w  #$01,d0
-L00003d44               moveq   #$f0,d2
+                    ; fade green
+L00003d44               moveq.l #$fffffff0,d2
 L00003d46               and.b   d1,d2
 L00003d48               beq.b   L00003d4e
 L00003d4a               add.w   #$0010,d0
+                    ; fade red
 L00003d4e               and.w   #$0f00,d1
 L00003d52               beq.b   L00003d58
 L00003d54               add.w   #$0100,d0
+
+                        ; store faded colour
 L00003d58               move.w  d0,(a0)
+                        ; next colour in copper
 L00003d5a               addq.w  #$04,a0
+
+                        ; fade next colour
 L00003d5c               dbf.w   d6,L00003d36
+
+                        ; wait 4 frames per fade
 L00003d60               move.w  frame_counter,d0            ; L000036e2,d0
 L00003d66               addq.w  #$04,d0
 L00003d68               cmp.w   frame_counter,d0            ; L000036e2,d0
 L00003d6e               bne.b   L00003d68
+                        
+                        ; fade in loop
 L00003d70               dbf.w   d7,L00003d2c
 L00003d74               rts
+
 
 
                     ;---------------------- panel fade out -----------------------
@@ -1608,50 +1885,65 @@ L00003d74               rts
                     ;
 panel_fade_out      ; original address L00003d76
 L00003d76               moveq   #$0f,d7
-L00003d78               lea.l   L00003252,a0
+L00003d78               lea.l   copper_panel_colors+2,a0    ;L00003252,a0
 L00003d7c               moveq   #$0f,d6
 L00003d7e               move.w  (a0),d0
+                    ; fade blue
 L00003d80               moveq   #$0f,d1
 L00003d82               and.w   d0,d1
 L00003d84               beq.b   L00003d88
 L00003d86               subq.w  #$01,d0
+                    ; fade green
 L00003d88               move.w  #$00f0,d1
 L00003d8c               and.w   d0,d1
 L00003d8e               beq.b   L00003d94
 L00003d90               sub.w   #$0010,d0
+                    ; fade red
 L00003d94               move.w  #$0f00,d1
 L00003d98               and.w   d0,d1
 L00003d9a               beq.b   L00003da0
 L00003d9c               sub.w   #$0100,d0
+
+                        ; store faded colour
 L00003da0               move.w  d0,(a0)
+                        ; get next colour in copper
 L00003da2               addq.w  #$04,a0
+                        ; fade next colour loop
 L00003da4               dbf.w   d6,L00003d7e
+
+                        ; wait for 4 frames per fade
 L00003da8               move.w  frame_counter,d0            ;L000036e2,d0
 L00003dae               addq.w  #$04,d0
 L00003db0               cmp.w   frame_counter,d0            ;L000036e2,d0
 L00003db6               bne.b   L00003db0
+
+                        ; fade to black loop
 L00003db8               dbf.w   d7,L00003d78
 L00003dbc               rts  
 
 
                     ; ----------------- update score by level progress ------------------   
-                    ; Update the score based on X distance travelled through the level.
+                    ; Update the score based on Y distance travelled through the level.
                     ;
-update_score_by_level_progress 
+update_score_by_level_progress  ; original address L00003dbe 
 L00003dbe               clr.l   d0
-L00003dc0               move.w  scroll_window_y_coord,d1    ;L000069ee,d1
-L00003dc4               add.w   batman_y_offset,d1          ;L000069f4,d1
-L00003dc8               sub.w   L000069f0,d1
+L00003dc0               move.w  scroll_window_y_coord,d1        ;L000069ee,d1
+L00003dc4               add.w   batman_y_offset,d1              ;L000069f4,d1
+L00003dc8               sub.w   scroll_window_max_x_coord,d1    ;L000069f0,d1
 L00003dcc               bpl.b   L00003dea
-L00003dce               add.w   d1,L000069f0
+
+L00003dce               add.w   d1,scroll_window_max_x_coord    ;L000069f0
 L00003dd2               neg.w   d1
 L00003dd4               lsl.w   #$04,d1
 L00003dd6               move.b  d1,d0
 L00003dd8               bra.b   L00003dde
+
 L00003dda               add.w   #$0100,d0
+                    ; increase score
 L00003dde               sub.w   #$0064,d1
 L00003de2               bcc.b   L00003dda
-L00003de4               jmp     $0007c82a           ; PANEL_ADD_SCORE
+
+L00003de4               jmp     PANEL_ADD_SCORE         ;$0007c82a           ; PANEL_ADD_SCORE
 L00003dea               rts  
 
 
@@ -1661,11 +1953,10 @@ L00003dea               rts
                     ; gas-leaks/drips.
                     ; Spawns new actors if there is room to do so (max 10 at anytime)
                     ;
-                    ; Code Checked 9/1/2025
-                    ;
-trigger_new_actors 
-L00003dec               movem.w scroll_window_xy_coord,d0-d1     ;L000069ec,d0-d1
-L00003df2               lea.l   L00006476,a0
+trigger_new_actors  ; original address L00003dec
+L00003dec               movem.w scroll_window_xy_coord,d0-d1    ;L000069ec,d0-d1
+L00003df2               lea.l   trigger_definitions_list,a0     ;L00006476,a0
+                    ; do next trigger
 L00003df6               movem.w (a0)+,d2-d3
 L00003dfa               sub.w   d0,d2
 L00003dfc               cmp.w   #$0098,d2
@@ -1673,18 +1964,26 @@ L00003e00               bcc.b   L00003e1e
 L00003e02               sub.w   d1,d3
 L00003e04               cmp.w   #$0050,d3
 L00003e08               bcc.b   L00003e1e
+
+                    ; trigger in window range
 L00003e0a               bset.b  #$0007,-$0004(a0)
 L00003e10               move.w  (a0)+,d7
 L00003e12               subq.w  #$01,d7
-L00003e14               bsr.w   L00003e62
+
+                    ; spawn actor loop
+L00003e14               bsr.w   spawn_new_actor                 ;L00003e62
 L00003e18               dbf.w   d7,L00003e14
 L00003e1c               bra.b   L00003e2a
+
+                    ; skip to next trigger data
 L00003e1e               move.w  (a0),d2
 L00003e20               add.w   d2,d2
 L00003e22               add.w   (a0),d2
 L00003e24               add.w   d2,d2
 L00003e26               lea.l   $02(a0,d2.w),a0
-L00003e2a               cmpa.w  #$00006944,a0
+
+                    ; loop until end of list
+L00003e2a               cmpa.l  #end_of_trigger_list,a0         ;#$00006944,a0
 L00003e2e               bcs.b   L00003df6
 
 
@@ -1694,25 +1993,28 @@ L00003e2e               bcs.b   L00003df6
                     ; IN:-
                     ;   a0.l = start of gasleak/drip trigger locations. (3 word structure per item)
                     ;
-                    ; Code Checked 9/1/2025
-                    ;
-trigger_gasleak_and_drips 
+trigger_gasleak_and_drips   ; original address L00003e30 
 L00003e30               sub.w   #$0010,d0
 L00003e34               subq.w  #$08,d1
+
 L00003e36               movem.w $0002(a0),d2-d3
 L00003e3c               sub.w   d0,d2
 L00003e3e               cmp.w   #$00c0,d2
-L00003e42               bcc.b   L00003e58
+L00003e42               bcc.b   L00003e58           ; skip to next
 L00003e44               sub.w   d1,d3
 L00003e46               cmp.w   #$0060,d3
-L00003e4a               bcc.b   L00003e58
-L00003e4c               bsr.w   L00003e62
+L00003e4a               bcc.b   L00003e58           ; skip to next
+L00003e4c               bsr.w   spawn_new_actor                 ;L00003e62
 L00003e50               bset.b  #$0007,-$0002(a0)
-L00003e56               bra.b   L00003e5a
+L00003e56               bra.b   L00003e5a           ; continue next
+
 L00003e58               addq.w  #$06,a0
-L00003e5a               cmpa.w  #$000069c2,a0
+
+L00003e5a               cmpa.l  #end_of_actors,a0               ;#$000069c2,a0
 L00003e5e               bcs.b   L00003e36
 L00003e60               rts
+
+
 
 
                     ; -------------------- spawn new actor ------------------------
@@ -1724,20 +2026,24 @@ L00003e60               rts
                     ;   d1.w = window scroll y
                     ;   a0.l = ptr to actor init data in trigger data
                     ;
-                    ; Code Checked 9/1/2025
-                    ;
-spawn_new_actor 
+spawn_new_actor     ; original address L00003e62
 L00003e62               movem.w (a0)+,d2-d4
+
+                        ; odd code - infinite loop - maybe protection check
 L00003e66               cmp.w   $00000022,d0
 L00003e6c               beq.b   L00003e6c
 L00003e6e               nop
+
 L00003e70               lea.l   actors_list,a6          ;L000039bc,a6
 L00003e74               moveq   #$09,d6
+
 L00003e76               tst.w   (a6)
-L00003e78               beq.b   L00003e84
-L00003e7a               lea.l   $0016(a6),a6
+L00003e78               beq.b   initialise_new_actor            ;L00003e84
+L00003e7a               lea.l   ACTORLIST_STRUCT_SIZE(a6),a6    ;$0016(a6),a6
 L00003e7e               dbf.w   d6,L00003e76
 L00003e82               rts 
+
+
 
 
                     ; ----------------- initialise new actor ------------------
@@ -1750,27 +2056,41 @@ L00003e82               rts
                     ; a6.l = address of blank entry in actors_list
                     ; a0.l = ptr to actor init data in trigger data
                     ;
-                    ; Code Check 9/1/2025 - not understood yet
-                    ;
-initialise_new_actor
-L00003e84               move.w  a0,$0014(a6)
+;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
+;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+;ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+;ACTORSTRUCT_INIT_PTR    EQU     $14                         ; offset 20 - ptr to actor init data (trigger data)
+;ACTORLIST_STRUCT_SIZE   EQU     $18                         ; new size #$18 (24 bytes) - original size #$16 (22 bytes) -
+;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+
+initialise_new_actor    ; original address L00003e84
+L00003e84               move.w  a0,ACTORSTRUCT_INIT_PTR(a6)         ;$0014(a6)
 L00003e88               bset.l  #$000f,d2
-L00003e8c               movem.w d2-d4,(a6)
+L00003e8c               movem.w d2-d4,ACTORSTRUCT_INIT_DATA(a6)     ;(a6)
 L00003e90               clr.l   $0008(a6)
 L00003e94               bclr.l  #$000f,d2
 L00003e98               clr.l   $0010(a6)
-L00003e9c               lea.l   L00005aba,a5
+
+L00003e9c               lea.l   actor_init_data,a5      ;L00005aba,a5
 L00003ea0               cmp.w   (a5)+,d2
 L00003ea2               bcs.b   L00003ea8
 L00003ea4               addq.w  #$02,a5
 L00003ea6               bra.b   L00003ea0
+
 L00003ea8               move.w  (a5),d3
 L00003eaa               cmp.w   #$00c5,d3
 L00003eae               bne.b   L00003ebe
+
 L00003eb0               bsr.w   L00003ec4
 L00003eb4               btst.l  #$000c,d2
 L00003eb8               beq.b   L00003ebe
 L00003eba               move.w  #$010e,d3
+
 L00003ebe               move.w  d3,$0006(a6)
 L00003ec2               rts 
 
@@ -1787,45 +2107,72 @@ L00003ed2               rts
                     ;-----------------------------------------------------------------------------------------------
                     ; called from game_loop every cycle.
                     ;
-                    ; Code Checked 14/01/2025
-                    ;
-update_active_actors 
+update_active_actors    ; original address L00003ed4 
 L00003ed4               lea.l   actors_list,a6                  ;L000039bc,a6
 L00003ed8               moveq   #$09,d7
+
+process_next_actor  ;L00003eda
 L00003eda               move.w  (a6),d6
-L00003edc               beq.w   L00003f96
-L00003ee0               movem.w $0002(a6),d0-d1
+L00003edc               beq.w   skip_to_next_actor              ;L00003f96
+
+                    ; calc actor co-ords
+calc_actor_coords   ;L00003ee0
+L00003ee0               movem.w ACTORSTRUCT_XY(a6),d0-d1        ;$0002(a6),d0-d1
 L00003ee6               move.w  d0,d4
 L00003ee8               movem.w scroll_window_xy_coord,d2-d3    ;L000069ec,d2-d3
 L00003eee               sub.w   d2,d0
 L00003ef0               sub.w   d3,d1
+
+                    ; check actor x in window/range
+actor_check_x       ; L00003ef2
 L00003ef2               cmp.w   #$0140,d0
-L00003ef6               bcs.b   L00003efe
+L00003ef6               bcs.b   actor_check_y                   ;L00003efe
 L00003ef8               cmp.w   #$ff60,d0
-L00003efc               bcs.b   L00003f1c
+L00003efc               bcs.b   forget_actor                    ;L00003f1c
+
+actor_check_y       ; check actor y in window/range
 L00003efe               cmp.w   #$00a0,d1
-L00003f02               bcs.b   L00003f0a
+L00003f02               bcs.b   actor_in_range                  ;L00003f0a
 L00003f04               cmp.w   #$ffb0,d1
-L00003f08               bcs.b   L00003f1c
+L00003f08               bcs.b   forget_actor                    ;L00003f1c
+
+actor_in_range      ;L00003f0a
 L00003f0a               bclr.b  #$0007,(a6)
 L00003f0e               beq.b   L00003f36
+                    ; check actor is in display window
 L00003f10               cmp.w   #$0050,d1
-L00003f14               bcc.b   L00003f36
+L00003f14               bcc.b   execute_handler                 ;L00003f36
+
 L00003f16               cmp.w   #$00a0,d0
-L00003f1a               bcc.b   L00003f36
+L00003f1a               bcc.b   execute_handler                 ;L00003f36
+
+                    ;actor is out of bounds forget about it
+forget_actor        ; L00003f1c
 L00003f1c               cmp.w   #$0014,d6
-L00003f20               bcs.b   L00003f32
+L00003f20               bcs.b   remove_actor                    ;L00003f32
+
+                    ; this code kills off actors out of scene
 L00003f22               lea.l   $00000000,a0
 L00003f26               movea.l d0,a0
-L00003f28               movea.w $0014(a6),a0
+L00003f28               movea.w ACTORSTRUCT_INIT_PTR(a6),a0     ;$0014(a6),a0
 L00003f2c               bclr.b  #$0007,-$0002(a0)
+
+remove_actor            ;L00003f32
 L00003f32               clr.w   (a6)
-L00003f34               bra.b   L00003f96
-L00003f36               lea.l   L00005ae2,a0
+L00003f34               bra.b   skip_to_next_actor    ; L00003f96   ; skip to next
+
+execute_handler         ;L00003f36
+L00003f36               lea.l   actor_handler_table,a0  ;L00005ae2,a0
 L00003f3a               add.w   d6,d6
 L00003f3c               adda.w  d6,a0
 L00003f3e               movea.w (a0),a0
 L00003f40               move.w  d7,-(a7)
+                    ; a6 = actor list struct ptr
+                    ; d0 = actorX - display
+                    ; d1 = actorY - display
+                    ; d2 = windowX
+                    ; d3 = windowY
+                    ; d4 = actor WorldX
 L00003f42               jsr     (a0)
 
                     ; L00003f44 - check batman collision with actor?
@@ -1834,29 +2181,41 @@ L00003f4a               sub.w   batman_x_offset,d0      ;L000069f2,d0
 L00003f4e               addq.w  #$06,d0
 L00003f50               cmp.w   #$000d,d0
 L00003f54               bcc.b   L00003f94
+
 L00003f56               sub.w   batman_y_bottom,d1      ;L00006338,d1
 L00003f5a               subq.w  #$06,d1
 L00003f5c               bmi.b   L00003f94
+
 L00003f5e               sub.w   batman_y_offset,d2      ;L000069f4,d2
 L00003f62               bpl.b   L00003f94
+
 L00003f64               move.w  (a6),d0
 L00003f66               subq.w  #$02,d0
 L00003f68               bmi.b   L00003f94
+
 L00003f6a               move.w  #$0001,(a6)
-L00003f6e               moveq   #$0a,d0                 ; SFX_GUYHIT
-L00003f70               jsr     $00048014               ; AUDIO_PLAYER_INIT_SFX
+L00003f6e               moveq   #SFX_GUYHIT,d0                  ;#$0a,d0                 ; SFX_GUYHIT
+L00003f70               jsr     AUDIO_PLAYER_INIT_SFX           ;$00048014               ; AUDIO_PLAYER_INIT_SFX
 L00003f76               move.w  #$fffe,$000a(a6)
+
 L00003f7c               tst.w   L00006342
 L00003f80               bmi.b   L00003f94
-L00003f82               tst.w   grappling_hook_height   ;L00006360
+
+L00003f82               tst.w   grappling_hook_height           ;L00006360
 L00003f86               beq.b   L00003f8e
-L00003f88               tst.w   batman_swing_speed      ;L0000633c
+
+L00003f88               tst.w   batman_swing_speed              ;L0000633c
 L00003f8c               bne.b   L00003f94
+
 L00003f8e               moveq   #$05,d6
-L00003f90               bsr.w   batman_lose_energy      ;L00004d0a
+L00003f90               bsr.w   batman_lose_energy              ;L00004d0a
+
+                        ; do next actor - pop counter
 L00003f94               move.w  (a7)+,d7
-L00003f96               lea.l   $0016(a6),a6
-L00003f9a               dbf.w   d7,L00003eda
+                        ; next actor
+skip_to_next_actor      ; L00003f96
+L00003f96               lea.l   ACTORLIST_STRUCT_SIZE(a6),a6    ;$0016(a6),a6
+L00003f9a               dbf.w   d7,process_next_actor           ; L00003eda
 L00003f9e               rts  
 
 
@@ -1868,7 +2227,18 @@ L00003f9e               rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
                     ;
-calc_grenade_speed
+;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
+;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+;ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+;ACTORLIST_STRUCT_SIZE   EQU     $18                         ;  new size #$18 (24 bytes) - original size #$16 (22 bytes) -
+;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+
+calc_grenade_speed  ; original address L00003fa0
 L00003fa0               add.w   #$0002,(a6)
 L00003fa4               movem.w batman_x_offset,d2      ;L000069f2,d2
 L00003faa               move.w  batman_y_bottom,d3      ;L00006338,d3
@@ -1885,7 +2255,7 @@ L00003fc0               divs.w  d2,d3
 L00003fc2               asr.w   #$02,d2
 L00003fc4               sub.w   d2,d3
 
-L00003fc6               bsr.w   L0000467c         ;get_empty_projectile
+L00003fc6               bsr.w   get_empty_projectile        ;L0000467c
 L00003fca               cmp.w   #$0008,d3
 L00003fce               bcs.b   L00003fde
 L00003fd0               bmi.b   L00003fd6
@@ -1894,16 +2264,17 @@ L00003fd4               bra.b   L00003fde
 
 L00003fd6               cmp.w   #$ffe8,d3
 L00003fda               bcc.b   L00003fde
-L00003fdc               moveq   #$e8,d3
+L00003fdc               moveq.l #$ffffffe8,d3
 
 L00003fde               move.w  d3,$0006(a0)
 L00003fe2               cmp.w   #$0073,d1
 L00003fe6               bpl.b   L00003ff8
 L00003fe8               movem.w d0-d1,-(a7)
-L00003fec               moveq   #$09,d0             ; SFX_GRENADE
-L00003fee               jsr     $00048014           ; AUDIO_PLAYER_INIT_SFX
+L00003fec               moveq   #SFX_GRENADE,d0                 ;#$09,d0             ; SFX_GRENADE
+L00003fee               jsr     AUDIO_PLAYER_INIT_SFX           ;$00048014           ; AUDIO_PLAYER_INIT_SFX
 L00003ff4               movem.w (a7)+,d0-d1
 L00003ff8               rts  
+
 
 
                     ; ---------------------- actor throw a grenade left ------------------
@@ -1914,27 +2285,45 @@ L00003ff8               rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
                     ;
+;ACTORSTRUCT_STATUS      EQU     $0                          ; offset 0 used for Actor Status $0001 = killed
+;ACTORSTRUCT_XY          EQU     $2                          ; offset used for long reads of X & Y
+;ACTORSTRUCT_X           EQU     $2                          ; offset used for word reads of X
+;ACTORSTRUCT_Y           EQU     $4                          ; offset used for word reads of Y
+;ACTORSTRUCT_ANIMFRAME   EQU     $8                          ; 16 bits animation frame
+;ACTORSTRUCT_SPRITES_IDX EQU     $a                          ; offset 10 - set to -4 $fffc when hit by bat-a-rang
+;ACTORSTRUCT_X_CENTRE    EQU     $e                          ; offset 14 - actor X centre?
+;ACTORSTRUCT_Y_TOP       EQU     $10                         ; offset 16 - actor Y Top
+;ACTORSTRUCT_Y_BOTTOM    EQU     $12                         ; offset 18 - actor Y Bottom
+;ACTORLIST_STRUCT_SIZE   EQU     $18                         ;  new size #$18 (24 bytes) - original size #$16 (22 bytes) -
+;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
+
 actor_cmd_grenade_left_01   ; original address L00003FFA
-L00003ffa               move.w  $0008(a6),d2
+                    ; do throw animation
+L00003ffa               move.w  ACTORSTRUCT_ANIMFRAME(a6),d2    ;$0008(a6),d2
 L00003ffe               cmp.w   #$0007,d2
 L00004002               bne.b   L0000401c
 
+                    ; do create new grenade
 L00004004               subq.w  #$05,d0
-L00004006               bsr.w   L00003fa0
+L00004006               bsr.w   calc_grenade_speed              ;L00003fa0
 L0000400a               move.w  #$000d,(a0)+
 L0000400e               move.w  d1,d3
 L00004010               sub.w   #$0011,d3
 L00004014               movem.w d0/d3,(a0)
 L00004018               addq.w  #$05,d0
 
+                    ; draw final actor animation frame
 L0000401a               moveq   #$08,d2
+                    ; draw actor animation frame
 L0000401c               addq.w  #$01,$0008(a6)
 L00004020               lea.l   L00004512,a5
 L00004024               and.w   #$00fe,d2
 L00004028               adda.w  d2,a5
 L0000402a               add.w   d2,d2
 L0000402c               adda.w  d2,a5
-L0000402e               bra.w   L000045ba
+L0000402e               bra.w   drawcollide_actor_sprites_a5    ;L000045ba
+ ; use rts in 'drawcollide_actor_sprites_a5' to return
+
 
 
                     ; called when green-guy throws a grenade
@@ -1946,8 +2335,8 @@ L0000402e               bra.w   L000045ba
                     ; d4 = actor WorldX
                     ;
 actor_cmd_grenade_left_02   ; original address L00004032
-L00004032           lea.l   L0000452a,a5
-L00004036           bsr.w   L000045ba       ; drawcollide_actor_sprites_a5
+L00004032           lea.l   throw_grenade_left,a5           ;L0000452a,a5
+L00004036           bsr.w   drawcollide_actor_sprites_a5    ;L000045ba       ; drawcollide_actor_sprites_a5
 L0000403a           subq.w  #$01,$0008(a6)
 L0000403e           bne.b   L0000404a
 L00004040           move.w  #$0020,$0008(a6)
@@ -2006,7 +2395,7 @@ L000040a6               move.w  $0008(a6),d2
 L000040aa               cmp.w   #$0007,d2
 L000040ae               bne.b   L000040c8
 L000040b0               addq.w  #$05,d0
-L000040b2               bsr.w   L00003fa0
+L000040b2               bsr.w   calc_grenade_speed              ;L00003fa0
 L000040b6               move.w  #$000c,(a0)+
 L000040ba               move.w  d1,d3
 L000040bc               sub.w   #$0011,d3
@@ -2014,12 +2403,14 @@ L000040c0               movem.w d0/d3,(a0)
 L000040c4               subq.w  #$05,d0
 L000040c6               moveq   #$08,d2
 L000040c8               addq.w  #$01,$0008(a6)
-L000040cc               lea.l   L00004530,a5
+L000040cc               lea.l   throw_grenade_right,a5          ;L00004530,a5
 L000040d0               and.w   #$00fe,d2
 L000040d4               adda.w  d2,a5
 L000040d6               add.w   d2,d2
 L000040d8               adda.w  d2,a5
-L000040da               bra.w   L000045ba
+L000040da               bra.w   drawcollide_actor_sprites_a5    ;L000045ba
+
+
 
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
@@ -2029,12 +2420,13 @@ L000040da               bra.w   L000045ba
                     ; d4 = actor WorldX
 actor_cmd_grenade_right_02  ; original address L000040DE
 L000040de               lea.l   L00004548,a5
-L000040e2               bsr.w   L000045ba
+L000040e2               bsr.w   drawcollide_actor_sprites_a5    ;L000045ba
 L000040e6               subq.w  #$01,$0008(a6)
 L000040ea               bne.b   L000040f6
 L000040ec               move.w  #$0020,$0008(a6)
 L000040f2               move.w  #$0003,(a6)
 L000040f6               rts  
+
 
 
                     ; a6 = actor list struct ptr
@@ -2080,12 +2472,13 @@ L0000415e               beq.b   L000041ac
 L00004160               cmp.w   #$0020,d5
 L00004164               bcs.b   L000041ac 
 L00004166               bpl.b   L0000417a 
-L00004168               move.w  $00008002,d2          ; MAPGR_BASE (width)
+L00004168               move.w  MAPGR_BASE,d2           ;$00008002,d2          ; MAPGR_BASE (width)
 L0000416e               add.w   d2,d2
 L00004170               add.w   d2,d2
 L00004172               sub.w   d2,d3
 L00004174               clr.w   d2
 L00004176               move.b  $00(a0,d3.w),d2
+
                         ; different from code1.s
 L0000417a               cmp.b   #$5f,d2
 L0000417e               bcs.b   L000041ac
@@ -2168,7 +2561,7 @@ L00004258               lsr.w   #$01,d4
 L0000425a               move.w  d4,-(a7)
 L0000425c               addq.w  #$08,d4
 L0000425e               move.w  d4,d2
-L00004260               bsr.w   L00004f5a               ; draw next sprite
+L00004260               bsr.w   draw_next_sprite        ;L000045fa               ; draw next sprite
 L00004264               move.w  (a7)+,d2
 L00004266               lsr.w   #$01,d2
 L00004268               bne.b   L0000426c
@@ -2248,13 +2641,13 @@ L00004330               eor.w   #$e007,d4
 L00004334               move.w  d4,-(a7)
 L00004336               addq.w  #$08,d4
 L00004338               move.w  d4,d2
-L0000433a               bsr.w   L00004f5a               ; draw next sprite
+L0000433a               bsr.w   draw_next_sprite            ;L000045fa               ; draw next sprite
 L0000433e               move.w  (a7)+,d2
 L00004340               lsr.b   #$01,d2
 L00004342               bne.b   L00004346
 L00004344               addq.w  #$02,d2
 L00004346               addq.w  #$04,d2
-L00004348               bsr.w   L00004f5a               ; draw next sprite
+L00004348               bsr.w   draw_next_sprite            ;L000045fa               ; draw next sprite
 L0000434c               move.w  #$e004,d2
 L00004350               bra.w   actor_collision_and_sprite1     ;L000045c8
 L00004354               move.w  $000c(a6),d6
@@ -2271,9 +2664,9 @@ L00004376               sub.w   batman_y_bottom,d2              ;L00006338,d2
 L0000437a               bpl.b   L00004380
 L0000437c               addq.w  #$02,$000a(a6)
 
-
-L00004380               lea.l   L00005ae2,a0        ; actor_handler_table
+L00004380               lea.l   actor_handler_table,a0          ;L00005ae2,a0        ; actor_handler_table
 L00004384               add.w   d6,d6
+L00004384a              add.w   d6,d6               ; converted to long
 L00004386               adda.w  d6,a0
 L00004388               movea.w (a0),a0
 L0000438a               jmp     (a0)
@@ -2338,7 +2731,7 @@ L000043fc               subq.w  #$08,d1
 L000043fe               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0           ; get_map_tile_at_display_offset_d0_d1
 L00004402               addq.w  #$08,d1
 
-                ; actor_cmd_climb_ladder_common
+actor_cmd_climb_ladder_common   ; original address L00004404
 L00004404               cmp.b   #$5f,d2
 L00004408               bcc.b   L0000440c
 L0000440a               bsr.b   L0000443a
@@ -2388,7 +2781,7 @@ L0000446a               move.w  #$0010,(a6)
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_shooting_diagonally_01    ; original address L0000446E
-L0000446e               bsr.w   L000045ae
+L0000446e               bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ;L000045ae
 L00004472               subq.w  #$01,$0008(a6)
 L00004476               bpl.b   L00004480
 L00004478               addq.w  #$01,(a6)
@@ -2403,23 +2796,25 @@ L00004480               rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_shooting_diagonally_02    ; original address L00004482
-L00004482               bsr.w   L000045ae           ; drawcollide_sprites_from_actor_list_struct_0a
-L00004486               btst.b  #$0000,playfield_swap_count+1       ;L00006375
+L00004482               bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ;L000045ae           ; drawcollide_sprites_from_actor_list_struct_0a
+L00004486               btst.b  #$0000,playfield_swap_count+1                   ;L00006375
 L0000448e               bne.b   L00004480
-L00004490               bsr.w   L0000467c           ; get_empty_projectile
+L00004490               bsr.w   get_empty_projectile                            ;L0000467c
 L00004494               sub.w   (a5)+,d1
-L00004496               add.w   L00006358,d1
+L00004496               add.w   vertical_scroll_increments,d1                   ;L00006358,d1
 L0000449a               add.w   (a5)+,d0
 L0000449c               add.w   L00006356,d0
 L000044a0               move.w  (a5),(a0)+
 L000044a2               movem.w d0-d1,(a0)
-L000044a6               moveq   #$0c,d2             ; SFX_Ricochet
-L000044a8               bsr.w   play_proximity_sfx                  ;L000044f4 
+L000044a6               moveq   #SFX_Ricochet,d2        ;#$0c,d2             ; SFX_Ricochet
+L000044a8               bsr.w   play_proximity_sfx                              ;L000044f4 
 L000044ac               subq.w  #$01,$0008(a6)
 L000044b0               bne.b   L00004480
 L000044b2               move.w  #$0006,$0008(a6)
 L000044b8               addq.w  #$01,(a6)
 L000044ba               rts  
+
+
 
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
@@ -2428,7 +2823,7 @@ L000044ba               rts
                     ; d3 = windowY
                     ; d4 = actor WorldX
 actor_cmd_shooting_horizontal   ; original address L000044BC
-L000044bc               bsr.w   L000045ae           ; drawcollide_sprites_from_actor_list_struct_0a
+L000044bc               bsr.w   drawcollide_sprites_from_actor_list_struct_0a   ;L000045ae           ; drawcollide_sprites_from_actor_list_struct_0a
 L000044c0               subq.w  #$01,$0008(a6)
 L000044c4               bne.b   L00004480
 L000044c6               move.w  #$0004,$0008(a6)
@@ -2459,7 +2854,7 @@ L000044fa               cmp.w   #$0059,d1
 L000044fe               bcc.b   L000044f2
 L00004500               movem.w d0-d1,-(a7)
 L00004504               move.w  d2,d0
-L00004506               jsr     $00048014           ; AUDIO_PLAYER_INIT_SFX
+L00004506               jsr     AUDIO_PLAYER_INIT_SFX       ;$00048014           ; AUDIO_PLAYER_INIT_SFX
 L0000450c               movem.w (a7)+,d0-d1
 L00004510               rts 
 
@@ -2468,17 +2863,28 @@ L00004510               rts
 L00004512       dc.w $E010,$E011,$0000
                 dc.w $E012,$E011,$0000
                 dc.w $E013,$E011,$0000
-                dc.w $E014,$E015,$E011
-throw_grenade_left                                  ; final animation frame?
+L00004524       dc.w $E014,$E015,$E011
+
+throw_grenade_left  ; L0000452A ; final animation frame?
                 dc.w $E016,$E017,$E011
 
-                dc.w $0010,$0011,$0000
+throw_grenade_right ; L00004530
+L00004530       dc.w $0010,$0011,$0000
                 dc.w $0012,$0011,$0000
                 dc.w $0013,$0011,$0000
 L00004542       dc.w $0014,$0015,$0011
-                dc.w $0016,$0017,$0011
+L00004548       dc.w $0016,$0017,$0011
 
-actor_sprite_ids
+
+; 12 byte sprite id structure 
+;   Offset
+;   0-1     - Sprite 1 Id
+;   2-3     - Sprite 2 Id
+;   4-5     - Sprite 3 Id
+;   6-7     - ?????
+;   8-9     - ?????
+;   10-11   - ?????
+actor_sprite_ids    ; original address L0000454e
 L0000454e       dc.w $0010,$0011,$0012,$0012,$0008,$8006
                 dc.w $E010,$E011,$E012,$0012,$FFF8,$8007
                 dc.w $0017,$0018,$0019,$000E,$0008,$8006 
@@ -2496,10 +2902,10 @@ L000045A2       dc.w $0015,$0016,$0012,$000B,$0004,$8008
                     ; IN:-
                     ;   a6 = actor list structure ptr
                     ;
-drawcollide_sprites_from_actor_list_struct_0a
-L000045ae               move.w $000a(a6),d2
+drawcollide_sprites_from_actor_list_struct_0a   ; original address L000045ae
+L000045ae               move.w ACTORSTRUCT_SPRITES_IDX(a6),d2   ;$000a(a6),d2
 L000045b2               mulu.w #$000c,d2
-L000045b6               lea.l L0000454e(pc,d2.w),a5
+L000045b6               lea.l actor_sprite_ids(pc,d2.w),a5      ;L0000454e(pc,d2.w),a5
                         ; fall through to 'drawcollide_actor_sprites_a5' below...
 
                     ; ----------------------- draw and collide sprites ids --------------------------
@@ -2508,7 +2914,7 @@ L000045b6               lea.l L0000454e(pc,d2.w),a5
                     ; IN:-
                     ;   a5 = address ptr to 3 sprite ids
                     ;
-drawcollide_actor_sprites_a5 
+drawcollide_actor_sprites_a5    ; original address L000045ba 
 L000045ba               move.w  (a5)+,d2
 L000045bc               bsr.b   actor_collision_and_sprite1     ;L000045c8
 L000045be               move.w  (a5)+,d2
@@ -2516,6 +2922,10 @@ L000045c0               bsr.b   draw_next_sprite                ;L000045fa
 L000045c2               move.w  (a5)+,d2
 L000045c4               bne.b   draw_next_sprite                ;L000045fa
 L000045c6               rts  
+
+
+
+
 
 
                     ; do bad guy collision
@@ -2578,11 +2988,14 @@ L0000461c               asr.w   #$01,d2
 L0000461e               add.w   d2,$0004(a6)
 L00004622               lea.l   L00006326,a5
 L00004626               cmp.w   #$0064,d1
-L0000462a               bmi.w   L000045ba           ; drawcollide_actor_sprites_a5
+L0000462a               bmi.w   drawcollide_actor_sprites_a5    ;L000045ba           ; drawcollide_actor_sprites_a5
 L0000462e               clr.w   (a6)
 L00004630               move.l  #$00000350,d0
-L00004636               jmp     $0007c82a           ; PANEL_ADD_SCORE
+L00004636               jmp     PANEL_ADD_SCORE                 ;$0007c82a           ; PANEL_ADD_SCORE
                     ; uses rts in 'panel_add_score' above
+
+
+
 
                     ;-----------------------------------------------------------------------------------------------------------------------------
                     ;
@@ -2593,11 +3006,19 @@ L00004636               jmp     $0007c82a           ; PANEL_ADD_SCORE
 
 
 
+
+
+
+
                     ;-----------------------------------------------------------------------------------------------------------------------------
                     ;
                     ; PROJECTILE HANDLER CODE
                     ;
                     ;-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+
 
 
                     ;----------------------------------------------------------------------------------------------
@@ -2613,32 +3034,44 @@ L00004636               jmp     $0007c82a           ; PANEL_ADD_SCORE
                     ; L00004894 - 8 byte structure (20 active projectiles?)
                     ;               Handler Index, X Co-ord, Y Co-ord, Grenade Acceleration
                     ;
-                    ; Code Checked 2/1/2025
-                    ;
-draw_projectiles  
-L0000463c               lea.l   L000048a4,a5            ; projectile_jmp_table - unused here
-L00004640               lea.l   L000048d2,a6
+draw_projectiles    ; original address L0000463c
+L0000463c               lea.l   projectile_jmp_table,a5         ;L000048a4,a5            ; projectile_jmp_table - unused here
+L00004640               lea.l   projectile_list,a6              ;L000048d2,a6
 L00004644               moveq   #$13,d7
+
 L00004646               move.w  (a6)+,d2
 L00004648               beq.b   L00004674 
+
 L0000464a               movem.w (a6),d0-d1
 L0000464e               move.l  a6,-(a7) 
 L00004650               move.w  d7,-(a7) 
 L00004652               btst.l  #$000f,d2
 L00004656               beq.b   L00004660
+
 L00004658               ext.w   d2
 L0000465a               move.w  d2,-$0002(a6)
 L0000465e               moveq   #$04,d2
+
+                        ; set left/right
 L00004660               ror.w   #$01,d2
 L00004662               bpl.b   L00004668
 L00004664               or.w    #$e000,d2
+
+                        ; draw sprite
 L00004668               add.w   #$003b,d2
 L0000466c               bsr.w   draw_sprite             ;L00005734
+
+                        ; restore counters
 L00004670               move.w  (a7)+,d7
 L00004672               movea.l (a7)+,a6
-L00004674               addq.w  #$06,a6                 ; #PROJECTILE_LISTITEM_SIZE-2
+
+                        ; skip to next
+L00004674               add.l  #PROJECTILE_LISTITEM_SIZE-2,a6  ;#$06,a6                 ; #PROJECTILE_LISTITEM_SIZE-2
 L00004676               dbf.w   d7,L00004646
 L0000467a               rts  
+
+
+
 
 
                     ; ---------------- find empty projectile entry ------------------
@@ -2651,17 +3084,21 @@ L0000467a               rts
                     ;   a0.l = address of first empty entry in the list
                     ;           or the address of the end of the list if the list is full.
                     ;
-                    ; Code Checked 2/1/2025
-                    ;
-get_empty_projectile 
-L0000467c               lea.l   L000048d2,a0          ; projectile_list
+get_empty_projectile    ; original address L0000467c
+L0000467c               lea.l   projectile_list,a0          ;L000048d2,a0          ; projectile_list
 L00004680               moveq   #$13,d7
+
 L00004682               tst.w   (a0)
 L00004684               beq.b   L00004694
 L00004686               lea.l   $0008(a0),a0
 L0000468a               dbf.w   d7,L00004682
+
 L0000468e               movea.l #$fffffff8,a0
 L00004694               rts  
+
+
+
+
 
 
                     ;-------------------------------------------------------------------------------------
@@ -2670,22 +3107,23 @@ L00004694               rts
                     ; update projectiles on the level, including the player's projectiles
                     ; it does not draw them..
                     ;
-                    ; Code Checked: 2/1/2025
-                    ;
-update_projectiles
-L00004696               lea.l   L000048a4,a5        ; projectile_jmp_table
-L0000469a               lea.l   L000048d2,a6        ; projectile_list
+update_projectiles  ; original address L00004696
+L00004696               lea.l   projectile_jmp_table,a5         ;L000048a4,a5        ; projectile_jmp_table
+L0000469a               lea.l   projectile_list,a6              ;L000048d2,a6        ; projectile_list
 L0000469e               moveq   #$13,d7
+
 L000046a0               move.w (a6)+,d6
 L000046a2               beq.b   L000046bc
+
 L000046a4               movem.w (a6),d0-d1
 L000046a8               sub.w   L00006356,d0
-L000046ac               sub.w   L00006358,d1
+L000046ac               sub.w   vertical_scroll_increments,d1   ;L00006358,d1
 L000046b0               asl.w   #$02,d6             ; modified address table to 32 bit addresses, original code 'asl.w #$01,d6'
 L000046b2               clr.l   d2
 L000046b4               movea.l d2,a0
 L000046b6               movea.l -$4(a5,d6.w),a0     ; modified address table to 32 bit addresses, original code 'movea.w $fe(a5,d6.W),a0' 
 L000046ba               jsr     (a0)
+
 L000046bc               addq.w  #$06,a6
 L000046be               dbf.w   d7,L000046a0
 L000046c2               rts  
@@ -2710,23 +3148,28 @@ L000046c2               rts
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-badguy_shooting 
+badguy_shooting     ; original address L000046c4
 L000046c4               movem.w d0-d1,(a6)
 L000046c8               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0       ; get_map_tile_at_display_offset_d0_d1
 L000046cc               cmp.b   #$03,d2
 L000046d0               bcs.b   L000046f8
+
 L000046d2               sub.w   batman_x_offset,d0      ;L000069f2,d0
 L000046d6               addq.w  #$04,d0
 L000046d8               cmp.w   #$0009,d0
-L000046dc               bcc.b   L00046fe
+L000046dc               bcc.b   L000046fe
+
 L000046de               cmp.w   batman_y_offset,d1      ;L000069f4,d1
 L000046e2               bpl.b   L000046fe
+
 L000046e4               cmp.w   batman_y_bottom,d1      ;L00006338,d1
 L000046e8               bmi.b   L000046fe
+
 L000046ea               moveq   #$01,d6
 L000046ec               bsr.w   batman_lose_energy      ;L00004d0a
-L000046f0               moveq   #$0a,d0         ; SFX_GUYHIT
-L000046f2               jsr     $00048014       ; AUDIO_PLAYER_INIT_SFX
+L000046f0               moveq   #SFX_GUYHIT,d0          ;#$0a,d0         ; SFX_GUYHIT
+L000046f2               jsr     AUDIO_PLAYER_INIT_SFX   ;$00048014       ; AUDIO_PLAYER_INIT_SFX
+
 L000046f8               move.w  #$0004,-$0002(a6)
 L000046fe               rts  
 
@@ -2748,16 +3191,16 @@ L000046fe               rts
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2025
-                    ;
-badguy_shooting_left_up 
+badguy_shooting_left_up ; original address L00004700
 L00004700               subq.w  #$03,d0
 L00004702               cmp.w   #$fff6,d0
-L00004706               bmi.b   L00004760           ; remove_projectile
+L00004706               bmi.b   remove_projectile       ;L00004760           ; remove_projectile
+
 L00004708               subq.w  #$03,d1
 L0000470a               cmp.w   #$0058,d1
-L0000470e               bcs.b   L000046c4
-L00004710               bra.b   L00004760
+L0000470e               bcs.b   badguy_shooting         ;L000046c4
+L00004710               bra.b   remove_projectile       ;L00004760
+
 
 
                     ; ---------- badguy shooting right & up - diagonal ----------
@@ -2776,14 +3219,16 @@ L00004710               bra.b   L00004760
                     ;
                     ; Code Checked 2/1/2025
                     ;
-badguy_shooting_right_up  
+badguy_shooting_right_up ; original address L00004712
 L00004712               addq.w  #$03,d0
 L00004714               cmp.w   #$00a8,d0
-L00004718               bpl.b   L00004760       ; remove_projectile
+L00004718               bpl.b   remove_projectile       ;L00004760       ; remove_projectile
+
 L0000471a               subq.w  #$03,d1
 L0000471c               cmp.w   #$0058,d1
-L00004720               bcs.b   L000046c4
-L00004722               bra.b   L00004760
+L00004720               bcs.b   badguy_shooting         ;L000046c4
+L00004722               bra.b   remove_projectile       ;L00004760
+
 
 
                     ; --------- badguy shooting left & down - diagonal ----------
@@ -2800,16 +3245,15 @@ L00004722               bra.b   L00004760
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2-15
-                    ;
-badguy_shooting_left_down 
+badguy_shooting_left_down ; original address L00004724
 L00004724               subq.w  #$03,d0
 L00004726               cmp.w   #$fff6,d0
-L0000472a               bmi.b   L00004760       ; remove_projectile
+L0000472a               bmi.b   remove_projectile   ;L00004760       ; remove_projectile
+
 L0000472c               addq.w  #$03,d1
 L0000472e               cmp.w   #$0058,d1
-L00004732               bcs.b   L000046c4
-L00004734               bra.b   L00004760       ; remove_projectile
+L00004732               bcs.b   badguy_shooting     ;L000046c4
+L00004734               bra.b   remove_projectile   ;L00004760       ; remove_projectile
 
 
 
@@ -2827,16 +3271,15 @@ L00004734               bra.b   L00004760       ; remove_projectile
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2025
-                    ;
-badguy_shooting_right_down 
+badguy_shooting_right_down ; original address L00004736
 L00004736               addq.w  #$03,d0
 L00004738               cmp.w   #$00a8,d0
-L0000473c               bpl.b   L00004760       ; remove_projectile
+L0000473c               bpl.b   remove_projectile   ;L00004760       ; remove_projectile
+
 L0000473e               addq.w  #$03,d1
 L00004740               cmp.w   #$0058,d1
-L00004744               bcs.w   L000046c4
-L00004748               bra.b   L00004760       ; remove_projectile
+L00004744               bcs.w   badguy_shooting     ;L000046c4
+L00004748               bra.b   remove_projectile   ;L00004760       ; remove_projectile
 
 
 
@@ -2854,13 +3297,12 @@ L00004748               bra.b   L00004760       ; remove_projectile
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2-15
-                    ;
-badguy_shooting_left  
+badguy_shooting_left    ; original address L0000474A 
 L0000474a               subq.w  #$05,d0
 L0000474c               cmp.w   #$fff6,d0
-L00004750               bpl.w   L000046c4
-L00004754               bra.b   L00004760       ; remove_projectile
+L00004750               bpl.w   badguy_shooting         ;L000046c4
+L00004754               bra.b   remove_projectile       ;L00004760       ; remove_projectile
+
 
 
                     ; ---------- badguy shooting right ----------
@@ -2879,10 +3321,15 @@ L00004754               bra.b   L00004760       ; remove_projectile
                     ;
                     ; Code Checked 2/1/2015
                     ;
-badguy_shooting_right
+badguy_shooting_right   ; original address L00004756
 L00004756               addq.w  #$05,d0
 L00004758               cmp.w   #$00a8,d0
-L0000475c               bmi.w   L000046c4       ; badguy_shooting
+L0000475c               bmi.w   badguy_shooting         ;L000046c4       ; badguy_shooting
+
+
+
+
+
 
 
         ;------------------------------------------------------------------------------------------------------
@@ -2898,7 +3345,7 @@ L0000475c               bmi.w   L000046c4       ; badguy_shooting
                     ;
                     ; Code Checked 2/1/2-15
                     ;
-remove_projectile
+remove_projectile       ; original address L00004760
 L00004760               clr.w   -$0002(a6)
 L00004764               rts 
 
@@ -2918,17 +3365,15 @@ L00004764               rts
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2015
-                    ;
-batarang_right
+batarang_right      ; original address L00004766
 L00004766               addq.w  #$04,d0
 L00004768               cmp.w   #$00a8,d0
-L0000476c               bpl.b   L00004760           ; remove_projectile
+L0000476c               bpl.b   remove_projectile                       ;L00004760          ; remove_projectile
 L0000476e               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0           ; get_map_tile_at_display_offset_d0_d1
 L00004772               cmp.b   #$03,d2
 L00004776               movem.w d0-d1,(a6)
-L0000477a               bcc.b   L000047bc           ; actor_projectile_collision_handler
-L0000477c               bra.b   L00004760           ; remove_projectile
+L0000477a               bcc.b   actor_projectile_collision_handler      ;L000047bc           ; actor_projectile_collision_handler
+L0000477c               bra.b   remove_projectile                       ;L00004760          ; remove_projectile
 ;L0000477c               bcs.b   #$e2 == $00004760 (F)
 
 
@@ -2947,17 +3392,15 @@ L0000477c               bra.b   L00004760           ; remove_projectile
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2015
-                    ;
-batarang_left 
+batarang_left       ; original address L0000477E 
 L0000477e           subq.w  #$04,d0
 L00004780           cmp.w   #$fff6,d0
-L00004784           bmi.b   L00004760               ; remove_projectile
-L00004786           bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0               ; get_map_tile_at_display_offset_d0_d1
+L00004784           bmi.b   remove_projectile                       ;L00004760               ; remove_projectile
+L00004786           bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0               ; get_map_tile_at_display_offset_d0_d1
 L0000478a           cmp.b   #$03,d2
 L0000478e           movem.w d0-d1,(a6)
-L00004792           bcc.b   L000047bc               ; actor_projectile_collision_handler
-L00004794           bra.b   L00004760               ; remove_projectile
+L00004792           bcc.b   actor_projectile_collision_handler      ;L000047bc               ; actor_projectile_collision_handler
+L00004794           bra.b   remove_projectile                       ;L00004760               ; remove_projectile
 
 
 
@@ -2981,12 +3424,10 @@ L00004794           bra.b   L00004760               ; remove_projectile
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2015
-                    ;
-batman_grappling_hook
+batman_grappling_hook   ; original address L00004796
 L00004796               move.w  grappling_hook_height,d0    ;L00006360,d0
-L0000479a               beq.b   L00004760                   ; remove_projectile
-L0000479c               movem.w batman_xy_offset,d0-d1      ; L000069f2,d0-d1
+L0000479a               beq.b   remove_projectile           ;L00004760                   ; remove_projectile
+L0000479c               movem.w batman_xy_offset,d0-d1      ;L000069f2,d0-d1
 L000047a2               add.w   L00006362,d0
 L000047a6               sub.w   L00006364,d1
 L000047aa               sub.w   #$000c,d1
@@ -3016,29 +3457,32 @@ L000047b8               movem.w d0-d1,(a6)
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2015
-                    ;
-actor_projectile_collision_handler 
-L000047bc               lea.l   L00003a82,a4            ; last_active_actor
+actor_projectile_collision_handler  ; original address L000047bc
+L000047bc               lea.l   last_active_actor,a4            ;L00003a82,a4            ; last_active_actor
 L000047c0               moveq   #$09,d6
+
 L000047c2               move.w  (a4),d2
 L000047c4               subq.w  #$02,d2
 L000047c6               bmi.b   L000047e2 
 
-L000047c8               move.w  $000e(a4),d2
+L000047c8               move.w  ACTORSTRUCT_X_CENTRE(a4),d2     ;$000e(a4),d2
 L000047cc               sub.w   d0,d2
 L000047ce               addq.w  #$04,d2
 L000047d0               cmp.w   #$0008,d2
 L000047d4               bcc.b   L000047e2
 
-L000047d6               cmp.w   $0010(a4),d1
+L000047d6               cmp.w   ACTORSTRUCT_Y_TOP(a4),d1        ;$0010(a4),d1
 L000047da               bpl.b   L000047e2
-L000047dc               cmp.w   $0012(a4),d1
-L000047e0               bpl.b   L000047ec
-;L000047e2               lea.l   -$0016(a4),a4
-L000047e2               lea.l   -$0018(a4),a4
+
+L000047dc               cmp.w   ACTORSTRUCT_Y_BOTTOM(a4),d1     ;$0012(a4),d1
+L000047e0               bpl.b   projectile_hit_actor            ;L000047ec
+                        ; next actor
+L000047e2               lea.l   -ACTORLIST_STRUCT_SIZE(a4),a4   ;-$0018(a4),a4
 L000047e6               dbf.w   d6,L000047c2
 L000047ea               rts  
+
+
+
 
                     ; ---------- actor collided with projectile -----------
                     ; Batman's bat-a-rang projectile has hit an actor.
@@ -3047,14 +3491,12 @@ L000047ea               rts
                     ; IN:
                     ;   a4.l = Actor Structure
                     ;
-                    ; Code Checked 2/1/2015
-                    ;
-projectile_hit_actor  
-L000047ec           move.w  #$0001,(a4)
+projectile_hit_actor    ; original address L000047ec
+L000047ec           move.w  #$0001,ACTORSTRUCT_STATUS(a4)
 L000047f0           move.w  #$fffc,$000a(a4)
-L000047f6           bsr.w   L00004760           ; remove_projectile
-L000047fa           moveq   #$0a,d0             ; SFX_GUYHIT
-L000047fc           jmp     $00048014           ; AUDIO_PLAYER_INIT_SFX
+L000047f6           bsr.w   remove_projectile           ;L00004760           ; remove_projectile
+L000047fa           moveq   #SFX_GUYHIT,d0              ;#$0a,d0             ; SFX_GUYHIT
+L000047fc           jmp     AUDIO_PLAYER_INIT_SFX       ;$00048014           ; AUDIO_PLAYER_INIT_SFX
                     ; use rts in audio player to return
 
 
@@ -3071,10 +3513,8 @@ L000047fc           jmp     $00048014           ; AUDIO_PLAYER_INIT_SFX
                     ; a0.l = routine address
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
-                    ;
-                    ; Code Checked 2/1/2015
-                    ;                  
-badguy_grenade_right 
+                    ;                
+badguy_grenade_right    ; original address L00004802
 L00004802               addq.w  #$02,d0
 L00004804               move.w  $0004(a6),d2
 L00004808               cmp.w   #$0028,d2
@@ -3085,8 +3525,9 @@ L00004814               bpl.b   L00004818
 L00004816               addq.w  #$01,d2
 L00004818               add.w   d2,d1
 L0000481a               cmp.w   #$0060,d1
-L0000481e               bpl.w   L00004760           ; remove_projectile ; rts in remove_projectile returns
+L0000481e               bpl.w   remove_projectile       ;L00004760           ; remove_projectile ; rts in remove_projectile returns
                     ; fall through to common processing
+
 
 
                     ; --------------- bad guy grenade common ---------------
@@ -3105,28 +3546,32 @@ L0000481e               bpl.w   L00004760           ; remove_projectile ; rts in
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2015
-                    ; 
-badguy_grenade_common
+badguy_grenade_common   ; original address L00004822
 L00004822               movem.w d0-d1,(a6)
 L00004826               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0       ; get_map_tile_at_display_offset_d0_d1
 L0000482a               cmp.b   #$03,d2
 L0000482e               bcs.b   L00004852 
+                        ; check x collision
 L00004830               sub.w   batman_x_offset,d0      ;L000069f2,d0
 L00004834               addq.w  #$03,d0
 L00004836               cmp.w   #$0007,d0
 L0000483a               bcc.b   L0000485e
+                        ; check y collision
 L0000483c               cmp.w   batman_y_offset,d1      ;L000069f4,d1
 L00004840               bpl.b   L0000485e
 L00004842               cmp.w   batman_y_bottom,d1      ;L00006338,d1
 L00004846               bmi.b   L0000485e
+                        ; batman hit
 L00004848               moveq   #$06,d6
 L0000484a               bsr.w   batman_lose_energy      ;L00004d0a 
 L0000484e               movem.w (a6),d0-d1
+                        ; hit wall
 L00004852               move.w  #$000e,-$0002(a6)
-L00004858               moveq   #$0d,d2                 ; SFX_EXPLOSION
+L00004858               moveq   #SFX_EXPLOSION,d2       ;#$0d,d2                 ; SFX_EXPLOSION
 L0000485a               bra.w   play_proximity_sfx      ;L000044f4
 L0000485e               rts  
+
+
 
 
                     ; --------------- bad guy grenade left ---------------
@@ -3142,9 +3587,7 @@ L0000485e               rts
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-                    ; Code Checked 2/1/2015
-                    ; 
-badguy_grenade_left 
+badguy_grenade_left ; original address L00004860
 L00004860           subq.w  #$02,d0
 L00004862           move.w  $0004(a6),d2
 L00004866           cmp.w   #$0028,d2
@@ -3155,8 +3598,10 @@ L00004872           bpl.b   L00004876
 L00004874           addq.w  #$01,d2
 L00004876           add.w   d2,d1
 L00004878           cmp.w   #$0060,d1
-L0000487c           bpl.w   L00004760       ; remove_projectile
-L00004880           bra.b   L00004822       ; badguy_grenade_common
+L0000487c           bpl.w   remove_projectile       ;L00004760       ; remove_projectile
+L00004880           bra.b   badguy_grenade_common   ;L00004822       ; badguy_grenade_common
+
+
 
 
                     ; --------------- grenade explosion effect -----------------
@@ -3177,7 +3622,7 @@ L00004880           bra.b   L00004822       ; badguy_grenade_common
                     ; a5.l = projectile_jmp_table
                     ; a6.l = projectile_list entry + 2
                     ;
-grenade_explosion_effect
+grenade_explosion_effect    ; original address L00004882
 L00004882               movem.w d0-d1,(a6)
 L00004886               btst.b  #$0000,playfield_swap_count+1       ;L00006375
 L0000488c               bne.b   L000048a2
@@ -3188,6 +3633,9 @@ L00004898               bne.w   L0000489e
 L0000489c               clr.w   d2
 L0000489e               move.w  d2,$0002(a6)
 L000048a2               rts  
+
+
+
 
 
                     ; ------------------- projectile handler jump table -------------------------
@@ -3205,35 +3653,52 @@ L000048a2               rts
                     ; The Batman Bat-a-rang left/right lookups do-not conform to this,
                     ; maybe a bug or maybe intensional.
                     ;
-                    ; Code Checked 2/1/2025
-                    ;
-projectile_jmp_table 
-L000048A4           dc.l L00004796
-                    dc.l L00004766
-                    dc.l L0000477E 
-                    dc.l L00004760 
-                    dc.l L00004760 
-                    dc.l L00004756 
-                    dc.l L0000474A 
-                    dc.l L00004736
-L000048B4           dc.l L00004724
-                    dc.l L00004712
-                    dc.l L00004700 
-                    dc.l L00004802 
-                    dc.l L00004860 
-                    dc.l L00004882 
-                    dc.l L00004882 
-                    dc.l L00004882
-L000048C4           dc.l L00004882
-                    dc.l L00004882
-                    dc.l L00004882 
-                    dc.l L00004882 
-                    dc.l L00004882 
-                    dc.l L00004882 
-                    dc.l L00004882 
+projectile_jmp_table    ; original adress L000048a4
+L000048A4           dc.l batman_grappling_hook      ;L00004796
+                    dc.l batarang_right             ;L00004766
+                    dc.l batarang_left              ;L0000477E 
+                    dc.l remove_projectile          ;L00004760 
+                    dc.l remove_projectile          ;L00004760 
+                    dc.l badguy_shooting_right      ;L00004756 
+                    dc.l badguy_shooting_left       ;L0000474A 
+                    dc.l badguy_shooting_right_down ;L00004736
+L000048B4           dc.l badguy_shooting_left_down  ;L00004724
+                    dc.l badguy_shooting_right_up   ;L00004712
+                    dc.l badguy_shooting_left_up    ;L00004700 
+                    dc.l badguy_grenade_right       ;L00004802 
+                    dc.l badguy_grenade_left        ;L00004860 
+                    dc.l grenade_explosion_effect   ;L00004882 
+                    dc.l grenade_explosion_effect   ;L00004882 
+                    dc.l grenade_explosion_effect   ;L00004882
+L000048C4           dc.l grenade_explosion_effect   ;L00004882
+                    dc.l grenade_explosion_effect   ;L00004882
+                    dc.l grenade_explosion_effect   ;L00004882 
+                    dc.l grenade_explosion_effect   ;L00004882 
+                    dc.l grenade_explosion_effect   ;L00004882 
+                    dc.l grenade_explosion_effect   ;L00004882 
+                    dc.l grenade_explosion_effect   ;L00004882 
                     ;dc.l $00000000
 
-projectile_list
+
+                    ; ------------------------------ projectile list ----------------------------------
+                    ; Active projectile list, i.e. bullets, grenades, bat-grappling hook, bat-a-rang.
+                    ; Each entry is a 4 word structure and there are 20 entries, allowing a max of
+                    ; 20 active projectiles on the screen at anytime.
+                    ;
+                    ;   Offset  | Length    | Description
+                    ;       0   |   2 bytes | projectile_jmp_table handler number (0 = disabled)
+                    ;       2   |   2 bytes | projectile X co-ord
+                    ;       4   |   2 bytes | projectile Y co-ord
+                    ;       6   |   2 bytes | parameter data (used for grenade acceleration factor)
+                    ;
+PROJECTILE_LISTITEM_SIZE    EQU $8                  ; 8 byte structure size
+PROJECTILE_LISTITEM_HANDLER EQU $0                  ; Projectile Handler Index
+PROJECTILE_LISTITEM_X       EQU $2                  ; Projectile X co-ord
+PROJECTILE_LISTITEM_Y       EQU $4                  ; Projectile Y co-ord
+PROJECTILE_LISTITEM_PARAM   EQU $6                  ; additional param (used for grenade acceleration)
+
+
+projectile_list     ; original address L000048d2
 L000048d2   
             dc.w $0000,$0000,$0000,$0000
             dc.w $0000,$0000,$0000,$0000
@@ -3267,36 +3732,41 @@ L000048d2
 ; Code1.s Line 3959
 
 
-
+                    ; ----------------------------------------------------------------------------------------------
+                    ; -- Update Background Scroll (off screen buffer)
                     ;-----------------------------------------------------------------------------------------------
                     ; This routine manages the background level scrolling,
                     ; It draws the changes into the Off-Screen Buffer (kinda like a circular buffer of screen data)
                     ;
                     ;-----------------------------------------------------------------------------------------------
-temp_vertical_scroll_increments 
-
+temp_vertical_scroll_increments ; original address L00004972
 L00004972   dc.w $0000 
 
-L00004974               movem.w batman_y_offset,d1-d2       ;L000069f4,d1-d2
+scroll_offscreen_buffer ; original address L00004974
+L00004974               movem.w batman_y_offset,d1-d2                   ;L000069f4,d1-d2
 L0000497a               move.w  d1,d0
 L0000497c               sub.w   d2,d0
-L0000497e               move.w  L00006358,L00004972
-L00004984               move.w  d0,L00006358
-L00004988               beq.w   L00004a2a 
+L0000497e               move.w  vertical_scroll_increments,temp_vertical_scroll_increments  ;L00004972
+L00004984               move.w  d0,vertical_scroll_increments           ;L00006358
+L00004988               beq.w   do_horizontal_scroll                    ;L00004a2a 
 
                     ; think this is doing something to set the scroll speed.
                     ; it's fannying around with values in d0.
                     ; d0 is an offset added to the window Y coord further below.
-scroll_speed_shenanigans 
+scroll_speed_shenanigans    ; original address L0000498c 
 L0000498c               tst.w   L00006342
+                        ; check < 0
 L00004990               bmi.b   L000049aa
+                        ; check = 0
 L00004992               beq.b   L000049be
+                        ; check 1 to 4 scroll intervals
 L00004994               cmp.w   #$0004,d0
 L00004998               bcs.b   L000049be
+                        ; check -3 to -1 scroll intervals
 L0000499a               cmp.w   #$fffd,d0       ; -3
 L0000499e               bcc.b   L000049be
 L000049a0               bpl.b   L000049a6
-L000049a2               moveq   #$fe,d0         ; -2
+L000049a2               moveq   #-$2,d0         ;#$fe,d0         ; -2
 L000049a4               bra.b   L000049be
 
 L000049a6               moveq   #$02,d0
@@ -3309,7 +3779,7 @@ L000049b4               bcc.b   L000049be
 L000049b6               bmi.b   L000049bc
 L000049b8               moveq   #$07,d0
 L000049ba               bra.b   L000049be
-L000049bc               moveq   #$fd,d0         ; -3
+L000049bc               moveq   #-$3,d0         ;#$fd,d0         ; -3
 
 .continue_vertical_scroll  
 L000049be               move.w  scroll_window_y_coord,d1        ;L000069ee,d1
@@ -3338,41 +3808,44 @@ L000049e2               move.w  d1,scroll_window_y_coord        ;L000069ee
 check_vertical_scroll  ; original address L000049a8
                     ; calculate the number of increments to scroll
 L000049e6               sub.w   d3,d1
-L000049e8               move.w  d1,L00006358
-L000049ec               beq.b   L00004a2a
-L000049ee               bmi.b   L00004a12
+L000049e8               move.w  d1,vertical_scroll_increments   ;L00006358
+L000049ec               beq.b   do_horizontal_scroll            ;L00004a2a
+L000049ee               bmi.b   scroll_display_window_up        ;L00004a12
 
 scroll_display_window_down 
-L000049f0               add.w   #$0057,d3
-L000049f4               move.w  offscreen_y_coord,d2        ;L0000635a,d2
+L000049f0               add.w   #DISPLAY_MAX_Y,d3               ;#$0057,d3
+L000049f4               move.w  offscreen_y_coord,d2            ;L0000635a,d2
 L000049f8               move.w  d1,d4
 L000049fa               add.w   d2,d4
-L000049fc               cmp.w   #$0057,d4
+L000049fc               cmp.w   #DISPLAY_MAX_Y,d4               ;#$0057,d4
 L00004a00               bcs.b   L00004a06
 .is_display_wrap
-L00004a02               sub.w   #$0057,d4
+L00004a02               sub.w   #DISPLAY_MAX_Y,d4               ;#$0057,d4
 .no_display_wrap
-L00004a06               move.w  d4,offscreen_y_coord        ;L0000635a
-L00004a0a               bsr.w   L00004a9c
-L00004a0e               bra.w   L00004a2a
+L00004a06               move.w  d4,offscreen_y_coord            ;L0000635a
+L00004a0a               bsr.w   draw_background_vertical_scroll ;L00004a9c
+L00004a0e               bra.w   do_horizontal_scroll            ;L00004a2a
                     ;---------------------------------------
 
                     ; scroll display up (e.g. climbing upwards)
                     ; NB: d1 is negative
-scroll_display_window_up 
-L00004a12               move.w  offscreen_y_coord,d2    ;L0000635a,d2
+scroll_display_window_up    ; original address L00004a12
+L00004a12               move.w  offscreen_y_coord,d2                ;L0000635a,d2
 L00004a16               add.w   d1,d2
+                        ; test for underflow wrap at top
 L00004a18               bpl.b   L00004a1e
 .is_enderflow_wrap
-L00004a1a               add.w   #$0057,d2
+L00004a1a               add.w   #DISPLAY_MAX_Y,d2                   ;#$0057,d2
 .no_underflow_wrap 
-L00004a1e               move.w  d2,offscreen_y_coord    ;L0000635a
+L00004a1e               move.w  d2,offscreen_y_coord                ;L0000635a
 L00004a22               add.w   d1,d3
 L00004a24               neg.w   d1
-L00004a26               bsr.w   L00004a9c       ; draw_background_vertical_scroll
+L00004a26               bsr.w   draw_background_vertical_scroll     ;L00004a9c       ; draw_background_vertical_scroll
+
+
 
                     ; ------- do horizontal scroll -------
-do_horizontal_scroll
+do_horizontal_scroll    ; original address L00004a2a
 L00004a2a               move.w  batman_x_offset,d0              ;L000069f2,d0
 L00004a2e               sub.w   target_window_x_offset,d0       ;L000069f8,d0
 L00004a32               move.w  d0,L00006356
@@ -3391,9 +3864,9 @@ L00004a46               clr.w   d1
 L00004a48               bra.b   L00004a5a
 
 .test_max_X        ; test window max X value
-L0004a4a                clr.w   d0
-L0004a4c                cmp.w   #$0230,d1
-L0004a50                bls.b   L00004a5a
+L00004a4a                clr.w   d0
+L00004a4c                cmp.w   #$0230,d1
+L00004a50                bls.b   L00004a5a
 
 .clamp_max_X        ; clamp window at x = #$230
 L00004a52               move.w  #$0230,d0
@@ -3461,7 +3934,7 @@ L00004a9a               rts
                     ;   d3.w - Y value of world/tilemap location to display - Y value is divided by 2
                     ;   a3.l - source base gfx ptr
                     ;
-draw_background_vertical_scroll
+draw_background_vertical_scroll ; original address L00004a9c
 L00004a9c               subq.w  #$01,d1
 
                     ; calc source gfx start offset (depends on soft scroll value)
@@ -3475,7 +3948,7 @@ L00004aa6               move.b  d4,gfx_lea_offset       ; L00004adf
                     ; calc Y offset into map tile map data
 L00004aac               move.w  d3,d4
 L00004aae               lsr.w   #$03,d4
-L00004ab0               lea.l   $00008002,a0            ; MAPGR_BASE
+L00004ab0               lea.l   MAPGR_BASE,a0                   ;$00008002,a0            ; MAPGR_BASE
 L00004ab6               mulu.w  (a0),d4
 
                     ; calc X offset into map tile map data
@@ -3484,7 +3957,7 @@ L00004abc               lsr.w   #$03,d0
 
                     ; calc total offset into tile map data
 L00004abe               add.w   d0,d4
-L00004ac0               lea.l   $7a(a0,d4.w),a0         ; MAPGR_TILEDATA_OFFSET
+L00004ac0               lea.l   MAPGR_TILEDATA_OFFSET(a0,d4.W),a0   ;$7a(a0,d4.w),a0         ; MAPGR_TILEDATA_OFFSET
 
                     ; calc gfx destination address
 L00004ac4               move.w  d2,d4
@@ -3495,7 +3968,7 @@ L00004ace               movea.l d4,a1
                     ; Initialise Draw Loop 
                     ; width of display buffer - #$14 (21) words
 L00004ad0               moveq   #$14,d7
-L00004ad2               movea.l L00006352,a2
+L00004ad2               movea.l background_gfx_base,a2          ;L00006352,a2
 
 .draw_next_block    ; draw tile gfx (2 rasters worth)
 L00004ad6               clr.w   d0
@@ -3511,13 +3984,13 @@ gfx_lea_offset          dc.b    $00                                 ; $XX - byte
 
                     ; draw gfx block (2 rasters)
 L00004ae0               move.w  (a3)+,(a1)+
-L00004ae2               move.w  (a3)+,$1c8a(a1)
-L00004ae6               move.w  (a3)+,$3916(a1)
-L00004aea               move.w  (a3)+,$55a2(a1)
-L00004aee               move.w  (a3)+,$0028(a1)
-L00004af2               move.w  (a3)+,$1cb4(a1)
-L00004af6               move.w  (a3)+,$3940(a1)
-L00004afa               move.w  (a3)+,$55cc(a1)
+L00004ae2               move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET-2(a1)  ;$1c8a(a1)
+L00004ae6               move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET-2(a1)  ;$3916(a1)
+L00004aea               move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET-2(a1)  ;$55a2(a1)
+L00004aee               move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET+DISPLAY_BYTEWIDTH-2(a1)    ;$0028(a1)
+L00004af2               move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET+DISPLAY_BYTEWIDTH-2(a1)    ;$1cb4(a1)
+L00004af6               move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET+DISPLAY_BYTEWIDTH-2(a1)    ;$3940(a1)
+L00004afa               move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET+DISPLAY_BYTEWIDTH-2(a1)    ;$55cc(a1)
 L00004afe               dbf.w   d7,L00004ad6
 
                         ; update Y co-ords
@@ -3525,7 +3998,7 @@ L00004b02               addq.w  #$01,d3
 L00004b04               addq.w  #$01,d2
 
                         ; test for dest gfx buffer overrun
-L00004b06               cmp.w   #$0057,d2
+L00004b06               cmp.w   #DISPLAY_MAX_Y,d2               ;#$0057,d2
 L00004b0a               bcs.b   L00004b0e
 L00004b0c               clr.w   d2
 L00004b0e               dbf.w   d1,L00004a9e
@@ -3547,37 +4020,53 @@ L00004b12               rts
                     ;   a4.l = offscreen display buffer. 
                     ;
 draw_background_horizontal_scroll   ; original address L00004b14   
-L00004b14               movea.l L00006352,a2
+L00004b14               movea.l background_gfx_base,a2      ;L00006352,a2
+
+                    ; calc tile map x offset
 L00004b18               move.w  d1,d2
 L00004b1a               lsr.w   #$03,d2
+
+                    ; calc src gfx Y clip
 L00004b1c               move.w  scroll_window_y_coord,d1    ;L000069ee,d1
 L00004b20               move.w  d1,d0
 L00004b22               and.w   #$0007,d0
+
+                    ; calc first tile draw loop count
+                    ; clipping for first tile
 L00004b26               move.w  d0,d5
 L00004b28               not.w   d5
 L00004b2a               and.w   #$0007,d5
 L00004b2e               lsl.w   #$04,d0
+
+                    ; calc tilemap src ptr
 L00004b30               lsr.w   #$03,d1
-L00004b32               lea.l   $00008002,a0        ; MAPGR_BASE
+L00004b32               lea.l   MAPGR_BASE,a0           ;$00008002,a0        ; MAPGR_BASE
 L00004b38               move.w  (a0),d4
 L00004b3a               mulu.w  d4,d1
 L00004b3c               add.w   d2,d1
-L00004b3e               lea.l   $7a(a0,d1.w),a0     ; MAPGR_TILEDATA_OFFSET
-L00004b42               moveq   #$56,d7
+L00004b3e               lea.l   MAPGR_TILEDATA_OFFSET(a0,d1.W),a0   ;$7a(a0,d1.w),a0         ; MAPGR_TILEDATA_OFFSET
+
+L00004b42               moveq   #DISPLAY_MAX_Y-1,d7     ;#$56,d7
 L00004b44               move.w  offscreen_y_coord,d1    ;L0000635a,d1
-L00004b48               moveq   #$56,d6
+
+                    ; calc start dest buffer address
+L00004b48               moveq   #DISPLAY_MAX_Y-1,d6     ;#$56,d6
 L00004b4a               sub.w   d1,d6
-L00004b4c               mulu.w  #$0054,d1
+L00004b4c               mulu.w  #DISPLAY_2RASTERS,d1    ;#$0054,d1
 L00004b50               lea.l   $00(a4,d1.l),a1
 
+                    ; calc 1st tile gfx offset (maybe clipped)
 L00004b54               clr.w   d1
 L00004b56               move.b  (a0),d1
 L00004b58               asl.w   #$07,d1
 L00004b5a               add.w   d1,d0
 L00004b5c               bra.b   L00004b6a
+                        ;-----------------
 
+                    ; continue displaying current tile
 L00004b5e               dbf.w   d5,L00004b70
 
+                    ; calc tile gfx offset
 L00004b62               moveq   #$07,d5
 L00004b64               clr.w   d0
 L00004b66               move.b  (a0),d0
@@ -3586,17 +4075,21 @@ L00004b68               asl.w   #$07,d0
 L00004b6a               lea.l   $00(a2,d0.w),a3
 L00004b6e               adda.w  d4,a0
 
-L00004b70               move.w  (a3)+,(a1)
-L00004b72               move.w  (a3)+,$1c8c(a1)
-L00004b76               move.w  (a3)+,$3918(a1)
-L00004b7a               move.w  (a3)+,$55a4(a1)
-L00004b7e               move.w  (a3)+,$002a(a1)
-L00004b82               move.w  (a3)+,$1cb6(a1)
-L00004b86               move.w  (a3)+,$3942(a1)
-L00004b8a               move.w  (a3)+,$55ce(a1)
-L00004b8e               lea.l   $0054(a1),a1
+                    ; write 2 rasters of background gfx data 
+L00004b70               move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET(a1)    ;(a1)
+L00004b72               move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET(a1)    ;$1c8c(a1)
+L00004b76               move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET(a1)    ;$3918(a1)
+L00004b7a               move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET(a1)    ;$55a4(a1)
+L00004b7e               move.w  (a3)+,DISPLAY_BUFFER_BPL0_OFFSET+DISPLAY_BYTEWIDTH(a1)  ;$002a(a1)
+L00004b82               move.w  (a3)+,DISPLAY_BUFFER_BPL1_OFFSET+DISPLAY_BYTEWIDTH(a1)  ;$1cb6(a1)
+L00004b86               move.w  (a3)+,DISPLAY_BUFFER_BPL2_OFFSET+DISPLAY_BYTEWIDTH(a1)  ;$3942(a1)
+L00004b8a               move.w  (a3)+,DISPLAY_BUFFER_BPL3_OFFSET+DISPLAY_BYTEWIDTH(a1)  ;$55ce(a1)
+L00004b8e               lea.l   DISPLAY_2RASTERS(a1),a1            ;$0054(a1),a1
 L00004b92               dbf.w   d6,L00004b9a
-L00004b96               lea.l   -$1c8c(a1),a1
+
+                        ; increment next bitplane
+L00004b96               lea.l   -DISPLAY_BUFFER_BYTES(a1),a1       ;-$1c8c(a1),a1
+
 L00004b9a               dbf.w   d7,L00004b5e
 L00004b9e               rts  
 
@@ -3624,10 +4117,13 @@ L00004b9e               rts
                     ; This off-screen buffer needs to be re-aligned to the back buffer before
                     ; being displayed to the player.
                     ;
-copy_offscreen_to_backbuffer 
+copy_offscreen_to_backbuffer    ; original address L00004ba0
+                        ; blitter nasty - on
 L00004ba0               move.w  #$8400,$00dff096
+                        ; back buffer ptr
 L00004ba8               movea.l playfield_buffer_2,a6               ;L000036ea,a6
 L00004bac               subq.w  #$02,a6
+
 L00004bae               movea.l offscreen_display_buffer_ptr,a5     ;L00006366,a5
 L00004bb2               move.w  offscreen_y_coord,d1                ;L0000635a,d1
 L00004bb6               clr.l   d6
@@ -3636,34 +4132,51 @@ L00004bba               swap.w  d6
 L00004bbc               move.w  scroll_window_x_coord,d2        ;L000069ec,d2
 L00004bc0               and.w   #$0007,d2
 L00004bc4               beq.b   L00004bca 
+                        ; shift firstword/last word mask
 L00004bc6               ror.l   d2,d6
 L00004bc8               ror.l   d2,d6
+                        ; calc blitter shift value (soft scroll x-axis)
 L00004bca               neg.w   d2
 L00004bcc               ror.w   #$03,d2
 L00004bce               and.l   #$0000e000,d2
 L00004bd4               bne.b   L00004bd8
+                        ; no blit shift
 L00004bd6               addq.w  #$02,a6
+                        ; bltcon0 & bltcon1
 L00004bd8               or.w    #$09f0,d2
 L00004bdc               swap.w  d2
+                        ; calc src address
 L00004bde               move.w  d1,d4
 L00004be0               mulu.w  #$0054,d4
 L00004be4               lea.l   $00(a5,d4.l),a1
+                        ; calc dest address
 L00004be8               movea.l a6,a0
+                        ; calc blit height
 L00004bea               moveq   #$28,d3
 L00004bec               move.w  #$00ae,d4
 L00004bf0               sub.w   d1,d4
 L00004bf2               sub.w   d1,d4
-L00004bf4               bsr.w   L00004c1c
+
+                        ; do blit 1 (maybe whole buffer or part buffer)
+L00004bf4               bsr.w   blit_src_to_dest            ;L00004c1c
+
+                        ; test 2nd blit required
 L00004bf8               move.w  d1,d4
 L00004bfa               beq.b   L00004c12
+
+                        ; blit second half of scroll buffer
 L00004bfc               moveq   #$57,d3
 L00004bfe               sub.w   d4,d3
 L00004c00               mulu.w  #$0054,d3
+                        ; calc dest ptr
 L00004c04               lea.l   $00(a6,d3.l),a0
+                        ; blit height & width
 L00004c08               add.w   d4,d4
 L00004c0a               moveq   #$28,d3
+                        ; dest ptr is top half of screen
 L00004c0c               lea.l   (a5),a1
-L00004c0e               bsr.w   L00004c1c
+L00004c0e               bsr.w   blit_src_to_dest            ;L00004c1c
+                        ;blitter nasty - off
 L00004c12               move.w  #$0400,$00dff096
 L00004c1a               rts  
 
@@ -3680,7 +4193,7 @@ L00004c1a               rts
                     ;   d6.l = firstword/lastwoord mask
                     ;   a0.l = DEST Blitter Address ptr
                     ;   a1.l = GFX Source Address ptr
-blit_src_to_dest 
+blit_src_to_dest    ; original address L00004c1c
 L00004c1c               move.l  d2,d5
 L00004c1e               swap.w  d5
 L00004c20               and.w   #$e000,d5
@@ -3689,26 +4202,39 @@ L00004c26               asl.w   #$06,d4
 L00004c28               move.w  d3,d5
 L00004c2a               lsr.w   #$01,d5
 L00004c2c               add.w   d5,d4
-L00004c2e               sub.w   #$002a,d3
+L00004c2e               sub.w   #DISPLAY_BYTEWIDTH,d3       ;#$002a,d3
 L00004c32               neg.w   d3
-L00004c34               lea.l   $00dff000,a4
-L00004c3a               move.l  #$00001c8c,d5
+L00004c34               lea.l   CUSTOM,a4                   ;$00dff000,a4
+L00004c3a               move.l  #DISPLAY_BUFFER_BYTES,d5    ;#$00001c8c,d5
+
+                        ; blit wait
 L00004c40               btst.b  #$0006,$00dff002
 L00004c48               bne.b   L00004c40
-L00004c4a               move.l  d6,$0044(a4)
-L00004c4e               move.w  d3,$0064(a4)
-L00004c52               move.w  d3,$0066(a4)
-L00004c56               move.l  d2,$0040(a4)
+
+L00004c4a               move.l  d6,BLTAFWM(a4)              ;$0044(a4)
+L00004c4e               move.w  d3,BLTAMOD(a4)              ;$0064(a4)
+L00004c52               move.w  d3,BLTDMOD(a4)              ;$0066(a4)
+L00004c56               move.l  d2,BLTCON0(a4)              ;$0040(a4)
+
 L00004c5a               moveq   #$03,d7
+
+                        ; blit wait
 L00004c5c               btst.b  #$0006,$00dff002
 L00004c64               bne.b   L00004c5c
-L00004c66               move.l  a1,$0050(a4)
-L00004c6a               move.l  a0,$0054(a4)
-L00004c6e               move.w  d4,$0058(a4)
+
+L00004c66               move.l  a1,BLTAPT(a4)               ;$0050(a4)
+L00004c6a               move.l  a0,BLTDPT(a4)               ;$0054(a4)
+L00004c6e               move.w  d4,BLTSIZE(a4)              ;$0058(a4)
+
 L00004c72               adda.l  d5,a1
 L00004c74               adda.l  d5,a0
+                        ; loop next bitplane
 L00004c76               dbf.w   d7,L00004c5c 
 L00004c7a               rts 
+
+
+
+
 
                     ;-----------------------------------------------------------------
                     ; Player Move Commands
@@ -3729,43 +4255,42 @@ L00004c7e               move.b  player_input_command,d2                 ;L000063
 L00004c82               asl.w   #$02,d2
 L00004c84               movea.l player_input_cmd_table(pc,d2.w),a0      ; $00004c8a
 L00004c88               jmp     (a0)
+                    ; each command ends with an RTS that returns to caller.
 
                     ; ------------- player input jump table ------------
                     ; the player_input_command byte is used as an index
                     ; into the table to execute the command associated
                     ; with the jotstick input.
                     ;
-                    ; Code Checked 3/1/2025
-                    ;
 player_input_cmd_table 
 
 L00004C8A           dc.l player_input_cmd_nop           ; $000052B6  
-                    dc.l $0000526C 
-                    dc.l $000052C2 
+                    dc.l player_input_cmd_right         ; $0000526C 
+                    dc.l player_input_cmd_left          ; $000052C2 
                     dc.l player_input_cmd_nop           ; $000052B6  
-L00004C9A           dc.l $0000542C 
-                    dc.l $00005266 
-                    dc.l $000052B8 
+L00004C9A           dc.l player_input_cmd_down          ; $0000542C 
+                    dc.l player_input_cmd_down_right    ; $00005266 
+                    dc.l player_input_cmd_down_left     ; $000052B8 
                     dc.l player_input_cmd_nop           ; $000052B6  
-L00004CAA           dc.l $00005236 
-                    dc.l $0000526A 
-                    dc.l $000052BE 
+L00004CAA           dc.l player_input_cmd_up            ; $00005236 
+                    dc.l player_input_cmd_up_right      ; $0000526A 
+                    dc.l player_input_cmd_up_left       ; $000052BE 
                     dc.l player_input_cmd_nop           ; $000052B6  
 L00004CBA           dc.l player_input_cmd_nop           ; $000052B6 
                     dc.l player_input_cmd_nop           ; $000052B6 
                     dc.l player_input_cmd_nop           ; $000052B6 
                     dc.l player_input_cmd_nop           ; $000052B6  
-L00004CCA           dc.l $0000501E 
-                    dc.l $0000501E 
-                    dc.l $0000501E 
-                    dc.l $0000501E  
+L00004CCA           dc.l player_input_cmd_fire          ; $0000501E 
+                    dc.l player_input_cmd_fire          ; $0000501E 
+                    dc.l player_input_cmd_fire          ; $0000501E 
+                    dc.l player_input_cmd_fire          ; $0000501E  
 L00004CDA           dc.l player_input_cmd_fire_down     ; $0000540E 
                     dc.l player_input_cmd_fire_down     ; $0000540E 
                     dc.l player_input_cmd_fire_down     ; $0000540E 
                     dc.l player_input_cmd_fire_down     ; $0000540E  
-L00004CEA           dc.l $00005136 
-                    dc.l $00005124 
-                    dc.l $0000512C 
+L00004CEA           dc.l player_input_cmd_fire_up       ; $00005136 
+                    dc.l player_input_cmd_fire_up_right ; $00005124 
+                    dc.l player_input_cmd_fire_up_left  ; $0000512C 
                     dc.l player_input_cmd_nop           ; $000052B6  
 L00004CFA           dc.l player_input_cmd_nop           ; $000052B6 
                     dc.l player_input_cmd_nop           ; $000052B6 
@@ -3773,18 +4298,22 @@ L00004CFA           dc.l player_input_cmd_nop           ; $000052B6
                     dc.l player_input_cmd_nop           ; $000052B6 
 
 
+
                     ; ------------------------- batman lose energy ---------------------------
                     ; IN: 
                     ;   d6.w - amount of energy to lose.
                     ;
 batman_lose_energy  ; original address L00004d0a
-L00004d0a               tst.b   $0007c874           ; PANEL_STATUS_1
-L00004d10               bne.b   L00004d74           ; exit rts
+L00004d0a               tst.b   PANEL_STATUS_1              ;$0007c874           ; PANEL_STATUS_1
+L00004d10               bne.b   exit_rts                    ;L00004d74           ; exit rts
+
 L00004d12               movem.l d0-d7/a5-a6,-(a7)
 L00004d16               move.w  d6,d0
-L00004d18               jsr     $0007c870           ; PANEL_LOSE_ENERGY
+L00004d18               jsr     PANEL_LOSE_ENERGY           ;$0007c870           ; PANEL_LOSE_ENERGY
 L00004d1e               movem.l (a7)+,d0-d7/a5-a6
                     ; falls though to updating state below
+
+
 
 
                     ; --------------- batman collision - state machine --------------------
@@ -3801,28 +4330,35 @@ L00004d1e               movem.l (a7)+,d0-d7/a5-a6
                     ; IN:-
                     ;   D6.l = #$01 (set from main loop)
                     ;
-                    ; Code Checked 7/1/2025
-                    ;
-batman_collision_state_machine
+batman_collision_state_machine  ; original address L00004d22
 L00004d22               move.l  gl_jsr_address,d2                           ;L0003c7c,d2 
+
 L00004d26               cmp.l   #player_state_falling,d2                    ;$000054ba,d2
-L00004d2a               beq.b   L00004d74
+L00004d2a               beq.b   exit_rts                                    ;L00004d74
+
 L00004d2c               move.l  #player_state_actor_collide_on_batrope,d3   ;#$00004e78,d3
-L00004d30               cmp.w   d3,d2
+L00004d30               cmp.l   d3,d2
 L00004d32               beq.b   L00004d5a
+
 L00004d34               cmp.l   #player_state_grappling_hook_attached,d2    ;#$00004ea2,d2
 L00004d38               beq.b   L00004d5a
+
 L00004d3a               cmp.l   #player_state_climb_onto_platform,d2        ;#$00005096,d2
 L00004d3e               beq.b   L00004d76
+
 L00004d40               move.l  #player_state_actor_collide_on_ladder,d3    ;#$00004d86,d3
 L00004d44               cmp.l   #state_climbing_stairs,d2                   ;#$0000532e,d2
 L00004d48               beq.b   L00004d5a
+
 L00004d4a               cmp.l   d2,d3
 L00004d4c               beq.b   L00004d5a
+
 L00004d4e               lea.l   batman_sprite_anim_fall_landing,a0          ;$0000548f,a0
 L00004d52               bsr.w   set_batman_sprites                          ;L00005470
 L00004d56               move.l  #player_state_check_actor_collision,d3      ;#$00004d94,d3
+
 L00004d5a               move.l  d3,gl_jsr_address                           ; L00003c7c
+
 L00004d5e               move.w  L0000634e,d2
 L00004d62               add.w   d6,d6
 L00004d64               add.w   d6,d6
@@ -3831,6 +4367,7 @@ L00004d68               cmp.w   #$000c,d2
 L00004d6c               bcs.b   L00004d70
 L00004d6e               moveq   #$0c,d2
 L00004d70               move.w  d2,L0000634e
+exit_rts            ; L00004d74
 L00004d74               rts 
 
 
@@ -3844,15 +4381,19 @@ L00004d80               move.w  d2,state_parameter      ;L0000633a
 L00004d84               rts  
 
 
+
+
                     ; -------------- player state - actor collision on ladder -------------
                     ; This state gets called when Batman collides with an actor when
                     ; climbing a ladder.
                     ;
 player_state_actor_collide_on_ladder    ; original address L00004d86
 L00004d86               subq.w  #$01,L0000634e
-L00004d8a               bne.b   L00004d74
+L00004d8a               bne.b   exit_rts                                ;L00004d74
 L00004d8c               move.l  #state_climbing_stairs,gl_jsr_address       ;#$0000532e,L00003c7c
 L00004d92               bra.b   L00004db8
+
+
 
 
                     ; -------------- player state - drip and leak collision -------------
@@ -3868,15 +4409,16 @@ L00004d94               tst.w   grappling_hook_height                   ;L000063
 L00004d98               beq.b   L00004d9e
 L00004d9a               bsr.w   player_state_retract_grappling_hook     ;L000051ee
 L00004d9e               subq.w  #$01,L0000634e
-L00004da2               bne.b   L00004d74
+L00004da2               bne.b   exit_rts                                ;L00004d74
 L00004da4               move.l  #player_move_commands,gl_jsr_address    ;#$00004c7c,L00003c7c
 L00004daa               tst.w   grappling_hook_height                   ;L00006360
 L00004dae               beq.b   L00004db4
 L00004db0               bsr.w   L000051e6
 
 L00004db4               bsr.w   set_batman_standing_sprites             ;L00005468
-L00004db8               tst.b   $0007c874       ; PANEL_STATUS_1        
-L00004dbe               beq.b   L00004d74       ; exit rts
+
+L00004db8               tst.b   PANEL_STATUS_1                          ;$0007c874       ; PANEL_STATUS_1        
+L00004dbe               beq.b   exit_rts                                ;L00004d74       ; exit rts
 
 
                     ; ----------------- set state - player life lost -----------------
@@ -3888,13 +4430,13 @@ L00004dbe               beq.b   L00004d74       ; exit rts
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-set_state_player_life_lost 
-L00004dc0               jsr     $00048004                               ; AUDIO_PLAYER_SILENCE
+set_state_player_life_lost  ; original address L00004dc0
+L00004dc0               jsr     AUDIO_PLAYER_SILENCE                    ;$00048004                               ; AUDIO_PLAYER_SILENCE
 L00004dc6               clr.w   grappling_hook_height                   ;L00006360
-L00004dca               moveq   #$03,d0                                 ; SFX_LIFE_LOST
-L00004dcc               jsr     $00048010                               ; AUDIO_PLAYER_INIT_SONG
+L00004dca               moveq   #SFX_LIFE_LOST,d0                                 ; SFX_LIFE_LOST
+L00004dcc               jsr     AUDIO_PLAYER_INIT_SONG                  ;$00048010                               ; AUDIO_PLAYER_INIT_SONG
 L00004dd2               move.l  #player_state_life_lost,gl_jsr_address  ;#$00004de0,L00003c7c 
-L00004dd8               move.w  #$6424,L0000636e                        ; batman_sprite_anim_ptr
+L00004dd8               move.l  #batman_sprite_anim_life_lost,batman_sprite_anim_ptr           ;L0000636e                        ; batman_sprite_anim_ptr
 L00004dde               rts 
 
 
@@ -3902,33 +4444,43 @@ L00004dde               rts
                     ; Routine set in player state in the game_loop to manage
                     ; the player life lost state.
                     ;
-                    ; Code Checked 4/1/2025
-                    ;
 player_state_life_lost  ; original address L00004de0
-L00004de0               movea.w L0000636e,a0                    ; (long) batman_sprite_anim_ptr
+L00004de0               movea.l batman_sprite_anim_ptr,a0       ;(long) batman_sprite_anim_ptr
 L00004de4               bsr.w   set_batman_sprites              ;L00005470
-L00004de8               move.w  a0,L0000636e                    ; (long) 
+L00004de8               move.l  a0,batman_sprite_anim_ptr       ;L0000636e                    ; (long) 
 L00004dec               tst.b   (a0)
 
-L00004dee               bne     L00004d74
+;L00004dee               bne     L00004d74
+L00004dee               beq.b    L00004df0          ; inverted logic
+                        rts
 
-L00004df0               jsr     $0004800c                       ; AUDIO_PLAYER_INIT_SFX_2
+                        ; prepare audio & display buffers
+L00004df0               jsr     AUDIO_PLAYER_INIT_SFX_2         ;$0004800c                       ; AUDIO_PLAYER_INIT_SFX_2
 L00004df6               move.w  #$0032,d0
 L00004dfa               bsr.w   wait_for_frame_count            ;L00005ed4
 L00004dfe               bsr.w   clear_backbuffer_playfield      ;L00004e66
-L00004e02               btst.b  #$0000,$0007c874                ; PANEL_STATUS_1
+
+                        ; test time up
+L00004e02               btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ;#$0000,$0007c874                ; PANEL_STATUS_1
 L00004e0a               beq.b   L00004e14
-L00004e0c               lea.l   L00004e5a,a0
+                        ; time up
+L00004e0c               lea.l   text_time_up,a0                 ;L00004e5a,a0
 L00004e10               bsr.w   large_text_plotter              ;L000069fa
-L00004e14               btst.b  #$0001,$0007c874                ; PANEL_STATUS_1
+
+                        ; test lives
+L00004e14               btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ;#$0001,$0007c874                ; PANEL_STATUS_1
 L00004e1c               beq.b   L00004e26
-L00004e1e               lea.l   L00004e4c,a0
+                        ; display game-over message
+L00004e1e               lea.l   text_game_over,a0               ;L00004e4c,a0
 L00004e22               bsr.w   large_text_plotter              ;L000069fa
+
+                        ; wipe display
 L00004e26               bsr.w   screen_wipe_to_backbuffer       ;L00003caa
 L00004e2a               move.w  #$001e,d0
 L00004e2e               bsr.w   wait_for_frame_count            ;L00005ed4
-L00004e32               btst.b  #$0001,$0007c874                ; PANEL_STATUS_1
-L00004e3a               beq.w   L00003AEC                       ; restart level
+                        ; test lives
+L00004e32               btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ;#$0001,$0007c874                ; PANEL_STATUS_1
+L00004e3a               beq.w   restart_level                   ;L00003AEC                       ; restart level
                     ; Fall through to return to Title Screen
                     ; if 'Game Over'
 
@@ -3938,8 +4490,8 @@ L00004e3a               beq.w   L00003AEC                       ; restart level
                     ; When the game is over, return to the titlle screen processing.
                     ; If test build then restart the level instead.
                     ;
-return_to_title_screen 
-L00004e3e               jsr     $00048004               ; AUDIO_PLAYER_SILENCE
+return_to_title_screen  ; original address L00004e3e
+L00004e3e               jsr     AUDIO_PLAYER_SILENCE    ; $00048004 
 L00004e44               bsr.w   panel_fade_out          ; L00003d76
 
                     IFD TEST_BUILD_LEVEL
@@ -3947,7 +4499,7 @@ L00004e44               bsr.w   panel_fade_out          ; L00003d76
                         JMP return_to_title_screen
                     ENDC
 
-L00004e48               bra.w   L00000820           ; load title screen
+L00004e48               bra.w   LOADER_TITLE_SCREEN     ;L00000820 
                     ; *************************************
                     ; ****        LOAD TITLE SCREEN     ***
                     ; *************************************
@@ -3970,7 +4522,7 @@ L00004E5C           dc.b 'TIME  UP'
 clear_backbuffer_playfield  ; original address L00004e66
                         movea.l playfield_buffer_2,a0       ;L000036ea,a0
                         move.w  #$1c8b,d7
-                        clr.l   (a0)+
+L00004e70               clr.l   (a0)+
                         dbf.w   d7,L00004e70
                         rts 
 
@@ -3984,8 +4536,9 @@ clear_backbuffer_playfield  ; original address L00004e66
                     ; ---- player state - actor Collision on batrope ------
 player_state_actor_collide_on_batrope   ; original address L00004e78
 L00004e78               moveq   #$10,d3
-L00004e7a               tst.b   $0007c874
+L00004e7a               tst.b   PANEL_STATUS_1                  ;$0007c874
 L00004e80               bne.b   L00004e9e
+
 L00004e82               lea.l   grappling_hook_height,a0        ;L00006360,a0
 L00004e86               move.w  (a0),d2
 L00004e88               cmp.w   #$0050,d2
@@ -3998,13 +4551,15 @@ L00004e98               move.L  #player_state_grappling_hook_attached,gl_jsr_add
 
                     ; update control command
 L00004e9e               move.b  d3,player_input_command         ;L00006350
+                    ; fall through to 'update_grappling_hook' below
+
 
                     ; --------- player state - grappling hook attached -----------
 player_state_grappling_hook_attached    ; original address L00004ea2
 L00004ea2               lea.l   grappling_hook_height,a0            ;L00006360,a0
 L00004ea6               move.w  (a0),d5
 L00004ea8               move.b  player_input_command,d4             ;L00006350,d4
-L00004eac               btst.l  #$0003,d4
+L00004eac               btst.l  #PLAYER_INPUT_UP,d4                 ;#$0003,d4
 L00004eb0               beq.b   L00004ee6 
 L00004eb2               move.w  #$0048,target_window_y_offset       ;L000069f6 
 L00004eb8               subq.w  #$01,d5
@@ -4012,7 +4567,7 @@ L00004eba               bhi.b   L00004ee4
 L00004ebc               clr.w   (a0) 
 L00004ebe               move.l  #player_state_climb_onto_platform,gl_jsr_address    ;#$00005096,L00003c7c
 L00004ec4               move.w  #$0005,state_parameter              ;L0000633a
-L00004eca               move.w  #$646e,L0000636e                    ; (long)
+L00004eca               move.l  #batman_sprite_anim_climb_platform,batman_sprite_anim_ptr       ;L0000636e                    ; (long)
 L00004ed0               move.w  d1,d2
 L00004ed2               add.w   scroll_window_y_coord,d2            ;L000069ee,d2
 L00004ed6               subq.w  #$02,d2
@@ -4062,7 +4617,7 @@ L00004f44               bra.b   L00004f54
 L00004f46               clr.w   d3
 L00004f48               sub.w   #$0080,d2
 L00004f4c               bpl.b   L00004f52 
-L00004f4e               moveq   #$81,d2
+L00004f4e               moveq.l #$ffffff81,d2
 L00004f50               bra.b   L00004f54 
 L00004f52               moveq   #$7f,d2
 L00004f54               movem.w d2-d3,(a0)
@@ -4090,14 +4645,14 @@ L00004f96               bcs.b   L00004fcc
 L00004f98               move.b  $01(a0,d3.w),d2
 L00004f9c               cmp.b   #$03,d2
 L00004fa0               bcs.b   L00004fcc
-L00004fa2               sub.w   $00008002,d3            ; MAPGR.IFF
+L00004fa2               sub.w   MAPGR_BASE,d2                           ;$00008002,d3            ; MAPGR.IFF
 L00004fa8               dbf.w   d7,L00004f8e
 L00004fac               movem.w batman_xy_offset,d0-d1                  ; L000069f2,d0-d1
 L00004fb2               add.w   d4,d1
 L00004fb4               add.w   d5,d0
 L00004fb6               movem.w d0-d1,batman_xy_offset                  ; L000069f2
 L00004fbc               move.l  L00006362,L00006370
-L00004fc2               btst.b  #$0004,player_input_command             ;L00006350
+L00004fc2               btst.b  #PLAYER_INPUT_FIRE,player_input_command             ;L00006350
 L00004fc8               bne.b   L00004fec 
 L00004fca               rts  
 
@@ -4120,7 +4675,7 @@ L00004fec               movem.w batman_swing_fall_speed,d4-d5       ;L0000633c,d
 L00004ff2               subq.w  #$03,d5
 L00004ff4               cmp.w   #$fffa,d5
 L00004ff8               bpl.b   L00004ffc
-L00004ffa               moveq   #$fa,d5
+L00004ffa               moveq.l #$fffffffa,d5
 L00004ffc               subq.w  #$02,d4
 L00004ffe               cmp.w   #$fffc,d4
 L00005002               bcc.b   L00005008
@@ -4141,13 +4696,11 @@ L0000501a               bra.w   L0000549c
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Checked 4/1/2025
-                    ;
 player_input_cmd_fire  
-L0000501e           move.w  #$6461,L0000636e
+L0000501e           move.l  #batman_sprite_anim_firing,batman_sprite_anim_ptr       ; L0000636e
 L00005026           move.l  #player_state_firing,gl_jsr_address ;#$00005034,L00003c7c
-L0000502c           moveq   #$08,d0                             ; SFX_BATARANG
-L0000502e           jsr     $00048014                           ; AUDIO_PLAYER_INIT_SFX
+L0000502c           moveq   #SFX_BATARANG,d0                    ;#$08,d0
+L0000502e           jsr     AUDIO_PLAYER_INIT_SFX               ;$00048014
                     ; fall through to player_state_firing below...
 
 
@@ -4158,28 +4711,29 @@ L0000502e           jsr     $00048014                           ; AUDIO_PLAYER_I
                     ; IN:-
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
-                    ;                    ; 
-                    ; Code Checked 4/1/2025
                     ;
 player_state_firing     ; original address L00005034
-L00005034               movea.w L0000636e,a0
+L00005034               movea.l batman_sprite_anim_ptr,a0               ;L0000636e,a0
 L00005038               bsr.w   set_batman_sprites                      ;L00005470
-L0000503c               move.w  a0,L0000636e
+L0000503c               move.l  a0,batman_sprite_anim_ptr               ;L0000636e
 L00005040               tst.b   (a0)
 L00005042               bne.b   L00005072 
+
 L00005044               move.w  #$0008,state_parameter                  ;L0000633a 
 L0000504a               move.l  #player_state_fired,gl_jsr_address      ;#$00005074,L00003c7c 
-L00005050               bsr.w   L0000467c
+L00005050               bsr.w   get_empty_projectile                    ;L0000467c
 L00005054               sub.w   #$0007,d0
 L00005058               move.w  batman_sprite1_id,d2                    ;L00006336,d2
-L0000505c               spl.b   d2 (T)
+L0000505c               spl.b   d2
 L0000505e               ext.w   d2
 L00005060               bpl.b   L00005066
+                        ; left facing
 L00005062               add.w   #$000e,d0
+                        ; right facing
 L00005066               addq.w  #$03,d2
-L00005068               move.w  d2,(a0)+ 
+L00005068               move.w  d2,(a0)+        ; handler id
 L0000506a               sub.w   #$0010,d1
-L0000506e               movem.w d0-d1,(a0)
+L0000506e               movem.w d0-d1,(a0)      ; x,y
 L00005072               rts  
 
 
@@ -4201,10 +4755,17 @@ L00005072               rts
 player_state_fired      ; original address L00005074
 L00005074               move.b  player_input_command,d4                     ;L00006350,d4
 L0000507a               bne.w   L0000508c
+
 L0000507e               subq.w  #$01,state_parameter                        ;L0000633a
-L00005082               bne.b   L00005072 
+;L00005082               bne.b   L00005072 
+L00005082               beq.b   L00005084       ; inverted logic
+                        rts
+                    ; set end amination
 L00005084               lea.l   batman_sprite_anim_standing,a0              ;L0000641b,a0
 L00005088               bra.w   set_batman_sprites                          ;L00005470
+                    ; use 'rts' in set_batman_sprites to return
+
+                    ; set notmal joystick input state      
 L0000508c               move.l  #player_move_commands,gl_jsr_address        ;#$00004c7c,L00003c7c  
 L00005092               bra.w   player_move_commands                        ;L00004c7c 
                     ; use 'rts' in player_move_commands to return
@@ -4223,7 +4784,10 @@ L00005092               bra.w   player_move_commands                        ;L00
                     ;
 player_state_climb_onto_platform    ; original address L00005096 
 L00005096               subq.w  #$01,state_parameter                    ;L0000633a
-L0000509a               bne.b   L00005072 
+;L0000509a               bne.b   L00005072 
+L0000509a               beq.b   L0000509c               ; inverted logic
+                        rts
+
 L0000509c               move.w  #$0006,state_parameter                  ;L0000633a
 L000050a2               subq.w  #$05,batman_y_offset                    ;L000069f4 
 L000050a6               subq.w  #$04,d1
@@ -4240,9 +4804,9 @@ L000050c2               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055
 L000050c6               cmp.b   #$03,d2
 L000050ca               bcs.b   L000050d0
 L000050cc               subq.w  #$01,batman_x_offset                    ;L000069f2
-L000050d0               movea.w L0000636e,a0
+L000050d0               movea.l batman_sprite_anim_ptr,a0               ; L0000636e,a0
 L000050d4               bsr.w   set_batman_sprites                      ;L00005470
-L000050d8               move.w  a0,L0000636e
+L000050d8               move.l  a0,batman_sprite_anim_ptr               ;L0000636e
 L000050dc               move.b  (a0),d7
 L000050de               bne.b   L000050e6
 L000050e0               move.l  #return_to_standing,gl_jsr_address      ;#$0000544c,L00003c7c 
@@ -4260,7 +4824,7 @@ L000050e6               rts
                     ;   IN:-
                     ;       a0 = L00006314 - grappling hook vars
                     ; 
-L000050e8               lea.l   $007c(a0),a1
+L000050e8               lea.l   $007c(a0),a1        ;  index into sine table?
 L000050ec               move.w  (a0),d2
 L000050ee               asr.w   #$01,d2
 L000050f0               move.w  d2,d4
@@ -4281,8 +4845,7 @@ L0000510a               move.w  d3,$0006(a0)
 L0000510e               move.w  d4,d2
 L00005110               neg.w   d2
 L00005112               clr.w   d4
-
-L00005114               move.b  $3f(a1,d2.w),d4
+L00005114               move.b  $3f(a1,d2.w),d4         ; 63 =$3f
 L00005118               mulu.w  $0004(a0),d4
 L0000511c               lsr.w   #$08,d4
 L0000511e               move.w  d4,$0008(a0)
@@ -4299,10 +4862,10 @@ L00005122               rts
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
                     ;
-player_input_cmd_fire_up_right
+player_input_cmd_fire_up_right  ; original address L00005124
 L00005124               clr.w   batman_sprite1_id               ;L00006336
 L00005128               moveq   #$7f,d0
-L0000512a               bra.b   L00005138
+L0000512a               bra.b   player_input_fire_up_common     ;L00005138
 
 
 
@@ -4314,12 +4877,11 @@ L0000512a               bra.b   L00005138
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Checked 6/1/2025
-                    ;
-player_input_cmd_fire_up_left 
+player_input_cmd_fire_up_left   ; original address L0000512c 
 L0000512c               move.w  #$e000,batman_sprite1_id            ;L00006336
-L00005132               moveq   #$81,d0
-L00005134               bra.b   L00005138 
+L00005132               moveq.l #$ffffff81,d0
+L00005134               bra.b   player_input_fire_up_common         ;L00005138 
+
 
 
                     ; ------------ player input command - fire + up --------------
@@ -4330,9 +4892,7 @@ L00005134               bra.b   L00005138
                     ;   - D0.w = L000067c2 - batman_x_offset
                     ;   - D1.w = L000067c4 - batman_y_offset
                     ;
-                    ; Code Checked 6/1/2025
-                    ;
-player_input_cmd_fire_up  
+player_input_cmd_fire_up    ; original address L00005136  
 L00005136               clr.w d0
                     ; fall through to 'player_input_fire_up_common' below...
 
@@ -4350,20 +4910,24 @@ L00005136               clr.w d0
                     ;
                     ; Code Checked 6/1/2025
                     ;
-player_input_fire_up_common 
+player_input_fire_up_common ; original address L00005138
 L00005138               move.w  #$0048,target_window_y_offset       ;L000069f6
 L0000513e               lea.l   grappling_hook_params,a0            ;L0000635c,a0
 L00005142               move.w  d0,(a0)
 L00005144               clr.l   (a0)+ 
-L00005146               bsr.w   L0000467c
+L00005146               bsr.w   get_empty_projectile                ;L0000467c
+                        ; a0 = emppty projectile
 L0000514a               move.w  #$0001,(a0)
 L0000514e               move.l  #player_state_firing_grappling_hook,gl_jsr_address  ;#$00005170,L00003c7c
-L00005154               lea.l   L00006418,a0
+                        ; set initial batman sprite animation
+L00005154               lea.l   batman_sprite_anim_fire_hook,a0     ;;L00006418,a0
 L00005158               bsr.w   set_batman_sprites                  ;L00005470
-L0000515c               moveq   #$07,d0
-L0000515e               jsr     $00048014                           ; AUDIO_PLAYER_INIT_SFX
+                        ; play sound fx
+L0000515c               moveq   #SFX_BATROPE,d0                     ;#$07,d0
+L0000515e               jsr     AUDIO_PLAYER_INIT_SFX               ;$00048014 
+
 L00005164               movem.w batman_xy_offset,d0-d1              ; L000069f2,d0-d1
-L0000516a               bclr.b  #$0004,player_input_command         ;L00006350
+L0000516a               bclr.b  #PLAYER_INPUT_FIRE,player_input_command         ;L00006350
                     ; fall through to 'player_state_firing_grappling_hook' below
 
 
@@ -4948,7 +5512,7 @@ L0000540e               add.w   #$0008,d1
 L00005412               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
 L00005416               movem.w batman_xy_offset,d0-d1
 L0000541c               cmp.b   #$03,d2
-L00005420               bcs.b   L0000542c
+L00005420               bcs.b   player_input_cmd_down                   ;L0000542c
                         ; fall through platform
                         ; disable platform collision
                         ; self modifiying code see address L00005546
@@ -5232,7 +5796,7 @@ L000055de               rts
                     ;   - D2.b = Tile Value
                     ;
 get_map_tile_at_display_offset_d0_d1    ; original address L000055e0
-L000055e0               movem.w scroll_window_xy_coords,d0-d3   ; L000069ec,d2-d3
+L000055e0               movem.w scroll_window_xy_coord,d0-d3   ; L000069ec,d2-d3
 L000055e6               add.w   d0,d2
 L000055e8               add.w   d1,d3
 L000055ea               lsr.w   #$03,d2
@@ -5338,7 +5902,7 @@ L000056f8               move.w  d1,d3
 L000056fa               lea.l   display_object_coords,a0        ;L000060c4,a0
 L000056fe               add.w   d4,d4
 L00005700               add.w   d3,d3
-L00005702               sub.b   -$02(a0,d4.w),d3
+L00005702               sub.b   -2(a0,d4.w),d3
 L00005706               asr.w   #$01,d3
 L00005708               move.w  d3,batman_y_bottom      ;L00006338
 L0000570c               bsr.b   draw_sprite             ;L00005734
@@ -5388,7 +5952,7 @@ draw_sprite         ; original address L00005734
 L00005734               movea.l sprite_array_ptr,a1         ;L00006346,a1
 L00005738               add.w   d1,d1
 L0000573a               asl.w   #$03,d2
-L0000573c               lea.l   -$08(a1,d2.w),a1
+L0000573c               lea.l   -8(a1,d2.w),a1
 L00005740               bcc.b   L00005764
                     ; left facing sprite
                     ; update x,y with sprite offset
@@ -5456,7 +6020,7 @@ L000057a6               move.w  d6,d3
                     ; d1 = start raster of sprite display - Y co-ord
                     ; d3 = last raster of sprite display  - Y + height
                     ; a0 = start address offset of gfx mask data
-L000057a8               moveq.l #$ffffffff,d7
+L000057a8               move.l  #$ffffffff,d7
 L000057aa               move.w  d2,d5
 L000057ac               moveq   #$07,d6
 L000057ae               and.w   d0,d6
@@ -5499,7 +6063,7 @@ L000057e2               bls.w   L00005892
                         ; sprite is on screen
 L000057e6               adda.w  d0,a0
 L000057e8               adda.w  d0,a0
-L000057ea               moveq.l #$ffffffff,d0
+L000057ea               move.l  #$ffffffff,d0
 L000057ec               moveq   #$08,d4
 L000057ee               sub.w   d6,d4
 L000057f0               add.w   d4,d4
@@ -5515,7 +6079,7 @@ L00005800               cmp.w   d4,d5
 L00005802               bls.b   L0000580e 
                         ; clip right hand side
 L00005804               move.w  d4,d5
-L00005806               moveq.l   #$ffffffff,d4
+L00005806               move.l  #$ffffffff,d4
 L00005808               lsl.w   d6,d4
 L0000580a               lsl.w   d6,d4
 L0000580c               move.w  d4,d7
@@ -5655,6 +6219,7 @@ L000058f2               add.w   d0,d0
 L000058f4               movea.l #CODE1_CHIPMEM_BUFFER,a4            ;#$0005a36c,a4
 L000058fa               adda.l  d0,a4
 L000058fc               move.l  a4,offscreen_display_buffer_ptr     ;L00006366
+
                         ; init draw loop
 L00005900               clr.w   offscreen_y_coord                   ;L0000635a
 L00005904               clr.l   d1
@@ -5744,7 +6309,7 @@ L00005946               lea.l   MAPGR_BLOCK_PARAMS,a0               ;$00008002,a
 L0000594c               move.w  (a0)+,d5
 L0000594e               move.w  (a0)+,d6
 L00005950               lea.l   MAPGR_PREPROC_BLOCK_OFFSET(a0),a0   ;$0076(a0),a0
-L00005954               move.b  $0028(a0),d0
+L00005954               move.b  $0028(a0),d0        ; $a4(a0)
 L00005958               cmp.b   #$03,d0
 L0000595c               bcc.b   preproc_display_object_data         ;L00005982
 
@@ -5957,7 +6522,7 @@ L00005ADA   dc.w    $0021,$00FF
                     ; when called the routines have the following
                     ; IN:-
                     ;   a6 = L000039c8  - 
-actor_handler_table  
+actor_handler_table ; original address L00005ae2 
 L00005AE2   dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6
             dc.l    actor_cmd_falling               ; L0000460C                       ;  $460C
             dc.l    actor_cmd_green_walk_right      ; L000040F8                       ;  $40F8
@@ -5977,7 +6542,7 @@ L00005AFA   dc.l    actor_cmd_climb_up_ladder       ; L000043E2                 
             dc.l    actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
             dc.l    actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
             dc.l    actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
-            dc.l    L00000000                       ;  $0000 
+            dc.l    $00000000                       ;  $0000 
 L00005B0A   dc.l    actor_cmd_20                    ; L00005CB6                       ;  $5CB6
             dc.l    actor_cmd_21                    ; L00005C32                   ;  $5C32
             dc.l    actor_cmd_22                    ; L00005C4A                   ;  $5C4A
@@ -6077,7 +6642,7 @@ L00005bbe           dbf.w   d7,L00005bb4
 L00005bc2           bra.b   L00005bc8
 L00005bc4           move.w  (a5),d2
 L00005bc6           bne.b   L00005bd4 
-L00005bc8           bclr.b  #$0007,L00006476
+L00005bc8           bclr.b  #$0007,trigger_definitions_list     ;L00006476
 L00005bd0           clr.w   (a6)
 L00005bd2           rts  
 
@@ -6368,6 +6933,8 @@ level_completed     ; original address L00005e6e
                     moveq   #$0b,d2
                     bsr.w   draw_next_sprite                            ;L000045fa
                     bsr.w   double_buffer_playfield                     ;L000036ee
+
+cheat_complete_level    ;original address L00005e7a
                     bset.b  #PANEL_ST2_LEVEL_COMPLETE,PANEL_STATUS_2    ;#$0006,$0007c875
                     ; fall through to 'load_level_2'
 
@@ -6496,9 +7063,9 @@ L00005f48           move.b  $01(a0,d3.w),d2
 L00005f4c           move.b  $02(a0,d3.w),d4
 L00005f50           lsl.w   #$08,d4
 L00005f52           move.b  $03(a0,d3.w),d4
-L00005f56           movea.l L00005fac,a5
+L00005f56           movea.l L00005FAC,a5
 L00005f5a           movem.w d2-d4,-(a5)
-L00005f5e           move.l  a5,L00005fac
+L00005f5e           move.l  a5,L00005FAC
 L00005f62           move.b  #$4f,$00(a0,d3.w)
 L00005f68           move.b  #$4f,$01(a0,d3.w)
 L00005f6e           move.b  #$4f,$02(a0,d3.w)
@@ -6718,7 +7285,7 @@ L00006344           dc.w    $0000
 
 
 sprite_array_ptr        ; original address L00006346
-L00006346           dc.l    $00010000 ; $00010000      ; ptr to an array of sprite definition data structures
+L00006346           dc.l   BATSPR1_SPRTIE_LIST  ; $00010000 ; $00010000      ; ptr to an array of sprite definition data structures
                                         ; structure def:
                                         ;  byte offset | description
                                         ;           0  | Y Offset
@@ -6730,7 +7297,7 @@ L00006346           dc.l    $00010000 ; $00010000      ; ptr to an array of spri
 sprite_gfx_left_offset  ; original address L0000634A
 L0000634A           dc.l    $00000000 
 
-L0000634E           dc.w    $0000
+L0000634e           dc.w    $0000
                     ;dc.w    $0000
                     
 
@@ -6746,7 +7313,7 @@ L00006351            dc.b $00            ; #$00 = not pressed, #$ff = button pre
 
 
 background_gfx_base     ; original address L00006354
-L00006352           dc.l    $0000C77C      ; MAPGR_GFX_ADDRESS
+L00006352           dc.l    MAPGR_GFX_ADDRESS       ;$0000C77C      ; MAPGR_GFX_ADDRESS
 
 L00006356           dc.w    $0000 
 
@@ -6765,9 +7332,10 @@ L00006362           dc.w    $0000
 L00006364           dc.w    $0034 
 
 offscreen_display_buffer_ptr    ; original address L00006366
-L00006366           dc.l    $0005A36C       ; CODE1_CHIPMEM_BUFFER
+L00006366           dc.l    CODE1_CHIPMEM_BUFFER        ;$0005A36C       ; CODE1_CHIPMEM_BUFFER
 
-L0000636a           dc.l    $00003DEC      ; trigger_new_actors
+                    ; L0000636a
+L0000636a           dc.l    trigger_new_actors          ;$00003DEC      ; trigger_new_actors
 
 batman_sprite_anim_ptr  ; original address L0000636E  ; modified to long (haven't yet)
 L0000636E           dc.l    $00000000 
@@ -6789,10 +7357,10 @@ L000063B4           dc.w    $5659,$5C5F,$6264,$676A,$6D70,$7375,$787B,$7E80
 L000063C4           dc.w    $8386,$888B,$8E90,$9395,$989A,$9D9F,$A2A4,$A7A9 
 L000063D4           dc.w    $ABAE,$B0B2 
 ; 000063D8 = L0000635C + $7c (grappling hook code) - is this swing data?
-L000063D8           dc.w    $B4B7,$B9BB$,BDBF,$C1C3,$C5C7,$C9CB 
-L000063E4           dc.w    $CDCF,$D0D2$,D4D6,$D7D9,$DBDC,$DEDF,$E1E2,$E4E5 
-L000063F4           dc.w    $E7E8,$E9EA$,ECED,$EEEF,$F0F1,$F2F3,$F4F5,$F6F7 
-L00006404           dc.w    $F7F8,$F9F9$,FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF 
+L000063D8           dc.w    $B4B7,$B9BB,$BDBF,$C1C3,$C5C7,$C9CB 
+L000063E4           dc.w    $CDCF,$D0D2,$D4D6,$D7D9,$DBDC,$DEDF,$E1E2,$E4E5 
+L000063F4           dc.w    $E7E8,$E9EA,$ECED,$EEEF,$F0F1,$F2F3,$F4F5,$F6F7 
+L00006404           dc.w    $F7F8,$F9F9,$FAFB,$FBFC,$FCFD,$FDFD,$FEFE,$FEFF 
 L00006414           dc.w    $FFFF,$FFFF 
 
 
@@ -6844,6 +7412,7 @@ L00006464           dc.b    $2A,$01,$FE
                     dc.b    $2D,$01,$01
                     dc.b    $00 
 
+batman_sprite_anim_climb_platform ; original address L0000646E
 L0000646E           dc.b    $13,$01,$01 
                     dc.b    $16,$01,$01 
 L00006474           dc.b    $00
@@ -6974,6 +7543,7 @@ end_of_actors       ; original address  000069C2
 
                     ; ---------- Start level_parameters on game_start ----------
 default_level_parameters    ; original address L000069C2
+spawn_point_parameters_0    ; original address L000069C2
 L000069C2           dc.w    $0000 
 L000069C4           dc.w    $0600 
                     dc.w    $0648 
@@ -7002,7 +7572,7 @@ L000069E4           dc.w    $0050
 
 
 level_parameters
-scroll_window_xy_coords     ; original address L000069EC
+scroll_window_xy_coord      ; original address L000069EC
 scroll_window_x_coord       ; original address L000069EC
 L000069EC           dc.w    $0000 
 
@@ -7141,12 +7711,12 @@ large_text_plotter      ; original address L000069fa
                         dbf.w   d7,.draw_loop           ; L00006a6a
 .increase_cursor        ; L00006ac6
                         lea.l   $0001(a1),a1
-                        bra.w   L00006a18
+                        bra.w   .plot_loop              ;L00006a18
 .exit                   ; L00006ace
                         rts  
 
 
-large_chaacter_gfx      ; original address L00006ad0
+large_character_gfx      ; original address L00006ad0
                     include "./gfx/font8x8x4.s"
 
 
@@ -7250,8 +7820,8 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
 
             ; If Test Build - Include the level map data and graphics
             IFD TEST_BUILD_LEVEL
-                incdir      "../mapgr/"
-                include     "mapgr.s"
+                incdir      "../mapgr2/"
+                include     "mapgr2.s"
             ENDC
 
             ; padding - see if it fixes map data corruption
