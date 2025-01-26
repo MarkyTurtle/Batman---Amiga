@@ -4922,7 +4922,7 @@ L00005136               clr.w d0
 player_input_fire_up_common ; original address L00005138
 L00005138               move.w  #$0048,target_window_y_offset       ;L000069f6
 L0000513e               lea.l   grappling_hook_params,a0            ;L0000635c,a0
-L00005142               move.w  d0,(a0)
+L00005142               move.w  d0,(a0)+
 L00005144               clr.l   (a0)+ 
 L00005146               bsr.w   get_empty_projectile                ;L0000467c
                         ; a0 = emppty projectile
