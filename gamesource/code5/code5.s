@@ -1731,10 +1731,10 @@ L00003C7A               dc.l    player_move_commands    ; Dest Address - Self Mo
 do_system_updates
 L00003C7E               BSR.W   scroll_offscreen_buffer         ;L00004974
 L00003C82               BSR.W   update_score_by_level_progress  ;L00003dbe
-L00003C86               ;BSR.W   trigger_new_actors              ;L00003dec
+L00003C86               BSR.W   trigger_new_actors              ;L00003dec
 L00003C8A               BSR.W   copy_offscreen_to_backbuffer    ;L00004ba0
 L00003C8E               BSR.W   draw_batman_and_rope            ;L00005604
-L00003C92               ;BSR.W   update_active_actors            ;L00003ed4
+L00003C92               BSR.W   update_active_actors            ;L00003ed4
 L00003C96               BSR.W   update_projectiles              ;L00004696
 L00003C9A               BSR.W   draw_projectiles                ;L0000463c
 L00003C9E               BSR.W   double_buffer_playfield         ;L000036ee
@@ -1997,7 +1997,7 @@ trigger_gasleak_and_drips   ; original address L00003e30
 L00003e30               sub.w   #$0010,d0
 L00003e34               subq.w  #$08,d1
 
-L00003e36               movem.w $0002(a0),d2-d3
+L00003e36               movem.w $02(a0),d2-d3
 L00003e3c               sub.w   d0,d2
 L00003e3e               cmp.w   #$00c0,d2
 L00003e42               bcc.b   L00003e58           ; skip to next
@@ -2030,9 +2030,9 @@ spawn_new_actor     ; original address L00003e62
 L00003e62               movem.w (a0)+,d2-d4
 
                         ; odd code - infinite loop - maybe protection check
-L00003e66               cmp.w   $00000022,d0
-L00003e6c               beq.b   L00003e6c
-L00003e6e               nop
+L00003e66               ;cmp.w   $00000022,d0
+L00003e6c               ;beq.b   L00003e6c
+L00003e6e               ;nop
 
 L00003e70               lea.l   actors_list,a6          ;L000039bc,a6
 L00003e74               moveq   #$09,d6
@@ -2069,7 +2069,7 @@ L00003e82               rts
 ;ACTORLIST_SIZE          EQU     ACTORLIST_STRUCT_SIZE*10    ; original size (220 bytes) - new size 240 bytes
 
 initialise_new_actor    ; original address L00003e84
-L00003e84               move.w  a0,ACTORSTRUCT_INIT_PTR(a6)         ;$0014(a6)
+L00003e84               move.l  a0,ACTORSTRUCT_INIT_PTR(a6)         ;$0014(a6)
 L00003e88               bset.l  #$000f,d2
 L00003e8c               movem.w d2-d4,ACTORSTRUCT_INIT_DATA(a6)     ;(a6)
 L00003e90               clr.l   $0008(a6)
@@ -2079,7 +2079,7 @@ L00003e98               clr.l   $0010(a6)
 L00003e9c               lea.l   actor_init_data,a5      ;L00005aba,a5
 L00003ea0               cmp.w   (a5)+,d2
 L00003ea2               bcs.b   L00003ea8
-L00003ea4               addq.w  #$02,a5
+L00003ea4               addq.l  #$02,a5
 L00003ea6               bra.b   L00003ea0
 
 L00003ea8               move.w  (a5),d3
@@ -2137,8 +2137,8 @@ L00003f04               cmp.w   #$ffb0,d1
 L00003f08               bcs.b   forget_actor                    ;L00003f1c
 
 actor_in_range      ;L00003f0a
-L00003f0a               bclr.b  #$0007,(a6)
-L00003f0e               beq.b   L00003f36
+L00003f0a               bclr.b  #$07,(a6)
+L00003f0e               beq.b   execute_handler                 ;L00003f36
                     ; check actor is in display window
 L00003f10               cmp.w   #$0050,d1
 L00003f14               bcc.b   execute_handler                 ;L00003f36
@@ -2154,8 +2154,8 @@ L00003f20               bcs.b   remove_actor                    ;L00003f32
                     ; this code kills off actors out of scene
 L00003f22               lea.l   $00000000,a0
 L00003f26               movea.l d0,a0
-L00003f28               movea.w ACTORSTRUCT_INIT_PTR(a6),a0     ;$0014(a6),a0
-L00003f2c               bclr.b  #$0007,-$0002(a0)
+L00003f28               movea.l ACTORSTRUCT_INIT_PTR(a6),a0     ;$0014(a6),a0
+L00003f2c               bclr.b  #$07,-$0002(a0)
 
 remove_actor            ;L00003f32
 L00003f32               clr.w   (a6)
@@ -2164,8 +2164,9 @@ L00003f34               bra.b   skip_to_next_actor    ; L00003f96   ; skip to ne
 execute_handler         ;L00003f36
 L00003f36               lea.l   actor_handler_table,a0  ;L00005ae2,a0
 L00003f3a               add.w   d6,d6
+L00003f3aa              add.w   d6,d6
 L00003f3c               adda.w  d6,a0
-L00003f3e               movea.w (a0),a0
+L00003f3e               movea.l (a0),a0
 L00003f40               move.w  d7,-(a7)
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
@@ -2635,6 +2636,7 @@ L00004318               move.w  d2,$0008(a6)
 L0000431c               move.l  #$00060010,$000a(a6)            ; external address?
 L00004324               subq.w  #$01,d4
 L00004326               move.w  d4,$0002(a6)
+
 L0000432a               and.w   #$000e,d4
 L0000432e               lsr.w   #$01,d4
 L00004330               eor.w   #$e007,d4
@@ -3035,7 +3037,7 @@ L00004636               jmp     PANEL_ADD_SCORE                 ;$0007c82a      
                     ;               Handler Index, X Co-ord, Y Co-ord, Grenade Acceleration
                     ;
 draw_projectiles    ; original address L0000463c
-L0000463c               lea.l   projectile_jmp_table,a5         ;L000048a4,a5            ; projectile_jmp_table - unused here
+L0000463c               ;lea.l   projectile_jmp_table,a5         ;L000048a4,a5            ; projectile_jmp_table - unused here
 L00004640               lea.l   projectile_list,a6              ;L000048d2,a6
 L00004644               moveq   #$13,d7
 
@@ -3124,7 +3126,7 @@ L000046b4               movea.l d2,a0
 L000046b6               movea.l -$4(a5,d6.w),a0     ; modified address table to 32 bit addresses, original code 'movea.w $fe(a5,d6.W),a0' 
 L000046ba               jsr     (a0)
 
-L000046bc               addq.w  #$06,a6
+L000046bc               addq.l  #$06,a6
 L000046be               dbf.w   d7,L000046a0
 L000046c2               rts  
 
@@ -3343,8 +3345,6 @@ L0000475c               bmi.w   badguy_shooting         ;L000046c4       ; badgu
                     ; IN:-
                     ;   a6.l = Projectile List Entry +2
                     ;
-                    ; Code Checked 2/1/2-15
-                    ;
 remove_projectile       ; original address L00004760
 L00004760               clr.w   -$0002(a6)
 L00004764               rts 
@@ -3368,12 +3368,12 @@ L00004764               rts
 batarang_right      ; original address L00004766
 L00004766               addq.w  #$04,d0
 L00004768               cmp.w   #$00a8,d0
-L0000476c               bpl.b   remove_projectile                       ;L00004760          ; remove_projectile
-L0000476e               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0           ; get_map_tile_at_display_offset_d0_d1
+L0000476c               bpl.b   remove_projectile                       ;L00004760
+L0000476e               bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0  
 L00004772               cmp.b   #$03,d2
 L00004776               movem.w d0-d1,(a6)
-L0000477a               bcc.b   actor_projectile_collision_handler      ;L000047bc           ; actor_projectile_collision_handler
-L0000477c               bra.b   remove_projectile                       ;L00004760          ; remove_projectile
+L0000477a               bcc.b   actor_projectile_collision_handler      ;L000047bc 
+L0000477c               bra.b   remove_projectile                       ;L00004760
 ;L0000477c               bcs.b   #$e2 == $00004760 (F)
 
 
@@ -3395,12 +3395,12 @@ L0000477c               bra.b   remove_projectile                       ;L000047
 batarang_left       ; original address L0000477E 
 L0000477e           subq.w  #$04,d0
 L00004780           cmp.w   #$fff6,d0
-L00004784           bmi.b   remove_projectile                       ;L00004760               ; remove_projectile
-L00004786           bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0               ; get_map_tile_at_display_offset_d0_d1
+L00004784           bmi.b   remove_projectile                       ;L00004760
+L00004786           bsr.w   get_map_tile_at_display_offset_d0_d1    ;L000055e0
 L0000478a           cmp.b   #$03,d2
 L0000478e           movem.w d0-d1,(a6)
-L00004792           bcc.b   actor_projectile_collision_handler      ;L000047bc               ; actor_projectile_collision_handler
-L00004794           bra.b   remove_projectile                       ;L00004760               ; remove_projectile
+L00004792           bcc.b   actor_projectile_collision_handler      ;L000047bc  
+L00004794           bra.b   remove_projectile                       ;L00004760  
 
 
 
@@ -3426,7 +3426,7 @@ L00004794           bra.b   remove_projectile                       ;L00004760  
                     ;
 batman_grappling_hook   ; original address L00004796
 L00004796               move.w  grappling_hook_height,d0    ;L00006360,d0
-L0000479a               beq.b   remove_projectile           ;L00004760                   ; remove_projectile
+L0000479a               beq.b   remove_projectile           ;L00004760 
 L0000479c               movem.w batman_xy_offset,d0-d1      ;L000069f2,d0-d1
 L000047a2               add.w   L00006362,d0
 L000047a6               sub.w   L00006364,d1
@@ -3494,9 +3494,9 @@ L000047ea               rts
 projectile_hit_actor    ; original address L000047ec
 L000047ec           move.w  #$0001,ACTORSTRUCT_STATUS(a4)
 L000047f0           move.w  #$fffc,$000a(a4)
-L000047f6           bsr.w   remove_projectile           ;L00004760           ; remove_projectile
-L000047fa           moveq   #SFX_GUYHIT,d0              ;#$0a,d0             ; SFX_GUYHIT
-L000047fc           jmp     AUDIO_PLAYER_INIT_SFX       ;$00048014           ; AUDIO_PLAYER_INIT_SFX
+L000047f6           bsr.w   remove_projectile           ;L00004760 
+L000047fa           moveq   #SFX_GUYHIT,d0              ;#$0a,d0  
+L000047fc           jmp     AUDIO_PLAYER_INIT_SFX       ;$00048014  
                     ; use rts in audio player to return
 
 
@@ -3524,8 +3524,8 @@ L00004812               asr.w   #$02,d2
 L00004814               bpl.b   L00004818
 L00004816               addq.w  #$01,d2
 L00004818               add.w   d2,d1
-L0000481a               cmp.w   #$0060,d1
-L0000481e               bpl.w   remove_projectile       ;L00004760           ; remove_projectile ; rts in remove_projectile returns
+L0000481a               cmp.w   #$0060,d1   
+L0000481e               bpl.w   remove_projectile       ;L00004760  
                     ; fall through to common processing
 
 
@@ -3631,7 +3631,7 @@ L00004892               addq.w  #$01,d2
 L00004894               cmp.w   #$0018,d2
 L00004898               bne.w   L0000489e
 L0000489c               clr.w   d2
-L0000489e               move.w  d2,$0002(a6)
+L0000489e               move.w  d2,-$0002(a6)
 L000048a2               rts  
 
 
@@ -3653,6 +3653,7 @@ L000048a2               rts
                     ; The Batman Bat-a-rang left/right lookups do-not conform to this,
                     ; maybe a bug or maybe intensional.
                     ;
+
 projectile_jmp_table    ; original adress L000048a4
 L000048A4           dc.l batman_grappling_hook      ;L00004796
                     dc.l batarang_right             ;L00004766
@@ -3677,8 +3678,13 @@ L000048C4           dc.l grenade_explosion_effect   ;L00004882
                     dc.l grenade_explosion_effect   ;L00004882 
                     dc.l grenade_explosion_effect   ;L00004882 
                     dc.l grenade_explosion_effect   ;L00004882 
-                    ;dc.l $00000000
+                    dc.l grenade_explosion_effect   ;L00004882 
 
+
+
+projectile_nop
+                move.w  #$00f,$dff180
+                rts
 
                     ; ------------------------------ projectile list ----------------------------------
                     ; Active projectile list, i.e. bullets, grenades, bat-grappling hook, bat-a-rang.
@@ -3721,7 +3727,7 @@ L000048d2
             dc.w $0000,$0000,$0000,$0000 
             dc.w $0000,$0000,$0000,$0000
 
-         ;------------------------------------------------------------------------------------------------------
+        ;------------------------------------------------------------------------------------------------------
         ; END OF - Projectile Handling Code & Data
         ;------------------------------------------------------------------------------------------------------
         ; 
@@ -6550,24 +6556,24 @@ L00005AEA   dc.l    actor_cmd_grenade_right_01      ; L000040A6                 
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6 
 L00005AFA   dc.l    actor_cmd_climb_up_ladder       ; L000043E2                       ;  $43E2
             dc.l    actor_cmd_climb_down_ladder     ; L0000438C                       ;  $438C
-            dc.l    actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
-            dc.l    actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
-            dc.l    actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
-            dc.l    actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
-            dc.l    actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
+            dc.l    actor_handler_cmd_nop           ;actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
             dc.l    $00000000                       ;  $0000 
-L00005B0A   dc.l    actor_cmd_20                    ; L00005CB6                       ;  $5CB6
-            dc.l    actor_cmd_21                    ; L00005C32                   ;  $5C32
-            dc.l    actor_cmd_22                    ; L00005C4A                   ;  $5C4A
-            dc.l    actor_cmd_brown_walk_left_15_23 ; L00004278                       ;  $4278
-            dc.l    actor_cmd_24                    ; L00005BA4                   ;  $5BA4
-            dc.l    actor_cmd_25                    ; L00005B4E                   ;  $5B4E
-            dc.l    actor_cmd_26                    ; L00005F00                   ;  $5F00
-            dc.l    actor_cmd_27                    ; L00005F14                   ;  $5F14 
-L00005B1A   dc.l    actor_cmd_28                    ;  $5F8A
-            dc.l    actor_cmd_29                    ; L00006014                   ;  $6014
-            dc.l    actor_cmd_30                    ; L00006068                   ;  $6068
-            dc.l    actor_cmd_31                    ; L00005D4C                   ;  $5D4C 
+L00005B0A   dc.l    actor_handler_cmd_nop           ; actor_cmd_20                    ; L00005CB6                       ;  $5CB6
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_21                    ; L00005C32                   ;  $5C32
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_22                    ; L00005C4A                   ;  $5C4A
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23 ; L00004278                       ;  $4278
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_24                    ; L00005BA4                   ;  $5BA4
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_25                    ; L00005B4E                   ;  $5B4E
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_26                    ; L00005F00                   ;  $5F00
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_27                    ; L00005F14                   ;  $5F14 
+L00005B1A   dc.l    actor_handler_cmd_nop           ; actor_cmd_28                    ;  $5F8A
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_29                    ; L00006014                   ;  $6014
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_30                    ; L00006068                   ;  $6068
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_31                    ; L00005D4C                   ;  $5D4C 
             dc.l    actor_cmd_32_jackfall           ; L00005D84                   ;  $5D84
             dc.l    actor_cmd_33_level_complete     ; L00005DF8                   ;  $5DF8
             dc.l    set_player_spawn_point_1        ; L00005B2C                   ;  $5B2C
