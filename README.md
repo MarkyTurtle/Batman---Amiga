@@ -66,6 +66,8 @@ This exercise is not one of speed, but of learning. It looks like this game coul
 
 ## Progress to Date
 
+2025-01-26 - Disassembled the code for Level 5 ( Cathedral ), There are some differences in the code compared to Level 1. Some bugs remain in the enemy actor code. Work in progress.
+
 2025-01-17 - Started disassembling the code for Level 5 (Church - code5.s), the code looks almost identical to the Level 1 (Axis Chemicals - code1.s) code so far, some small differences.
 
 2025-01-16 - Level 1 is now assembling and can be played to the end.
