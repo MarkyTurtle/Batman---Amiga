@@ -6556,8 +6556,8 @@ L00005AEA   dc.l    actor_cmd_grenade_right_01      ; L000040A6                 
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6 
 L00005AFA   dc.l    actor_cmd_climb_up_ladder       ; L000043E2                       ;  $43E2
             dc.l    actor_cmd_climb_down_ladder     ; L0000438C                       ;  $438C
-            dc.l    actor_handler_cmd_nop           ;actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
+            dc.l    actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
+            dc.l    actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
             dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
             dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
             dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
