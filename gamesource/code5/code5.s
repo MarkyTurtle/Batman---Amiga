@@ -6536,11 +6536,19 @@ L00005ADA   dc.w    $0021,$00FF
             dc.w    $00FF,$0000 
 
 
+
+
+
                     ; ------- jmp table -----
                     ; converted from word to long addresses
                     ; when called the routines have the following
                     ; IN:-
-                    ;   a6 = L000039c8  - 
+                    ;   a6 = actor struct
+                    ;   d0,d1 = Actor X,Y
+                    ;   d2,d3 = Window X,Y
+                    ;
+                    ; Code Checked 28/1/2025
+                    ;
 actor_handler_table ; original address L00005ae2 
 L00005AE2   dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6
             dc.l    actor_cmd_falling               ; L0000460C                       ;  $460C
@@ -6567,7 +6575,7 @@ L00005B0A   dc.l    actor_handler_cmd_nop           ; actor_cmd_20              
             dc.l    actor_handler_cmd_nop           ; actor_cmd_22                    ; L00005C4A                   ;  $5C4A
             dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23 ; L00004278                       ;  $4278
             dc.l    actor_handler_cmd_nop           ; actor_cmd_24                    ; L00005BA4                   ;  $5BA4
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_25                    ; L00005B4E                   ;  $5B4E
+            dc.l    actor_cmd_joker_dead            ; L00005B4E                   ;  $5B4E
             dc.l    actor_handler_cmd_nop           ; actor_cmd_26                    ; L00005F00                   ;  $5F00
             dc.l    actor_handler_cmd_nop           ; actor_cmd_27                    ; L00005F14                   ;  $5F14 
 L00005B1A   dc.l    actor_handler_cmd_nop           ; actor_cmd_28                    ;  $5F8A
@@ -6583,8 +6591,13 @@ L00005B2A   dc.l    set_player_spawn_point_3        ; L00005B40                 
 
 
 
-
-                            ; a6 = actors_list
+                        ; ------------------- set player spawn points -------------------
+                        ; a6 = actor struct
+                        ; d0,d1 = actor x,y
+                        ; d2,d3 = window x,y
+                        ;
+                        ; Code Checked 28/1/2025
+                        ;
 set_player_spawn_point_1    ; original address L00005b2c
 L00005b2c               moveq   #$01,d0
 L00005b2e               cmp.w   level_spawn_point_index,d0          ;L00006344,d0
@@ -6603,82 +6616,113 @@ L00005b4a               clr.w   (a6)
 L00005b4c               rts  
 
 
+
+
+                    ; ------------------- actor cmd load title screen ------------
+                    ; Could execute to load title screen when the joker is killed
+                    ; seems to draw a sprite, wait for 1 second and then
+                    ; load the title screen.
+                    ;
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 28/1/2025
+                    ;
 actor_cmd_25        ; original address L00005b4e
-L00005b4e               move.w  #$0590,d0
-L00005b52               sub.w   scroll_window_x_coord,d0        ;L000069ec,d0
-L00005b56               addq.w  #$02,$000a(a6)
-L00005b5a               movea.l $0008(a6),a5
-L00005b5e               move.w  (a5),d2
-L00005b60               bpl.w   draw_next_sprite                ;L000045fa
-L00005b64               bsr.w   double_buffer_playfield         ;L000036ee
+actor_cmd_joker_dead
+L00005b4e               move.w  #$0590,d0                       ; d0 is unused
+L00005b52               sub.w   scroll_window_x_coord,d0        ; d0 is unused
+L00005b56               addq.l  #$02,$08(a6)                    ; address ptr by 2 (sprite addr?)
+L00005b5a               movea.l $08(a6),a5
+L00005b5e               move.w  (a5),d2                         ; get sprite id,
+L00005b60               bpl.w   draw_next_sprite                ; add 6(a6) to d2 and draw sprite
+L00005b64               bsr.w   double_buffer_playfield
 L00005b68               moveq   #$32,d0
-L00005b6a               bsr.w   wait_for_frame_count            ;L00005ed4
-L00005b6e               bra.w   Load_title_screen               ;L00005e82 
+L00005b6a               bsr.w   wait_for_frame_count
+L00005b6e               bra.w   Load_title_screen
                         ;******************************
                         ;       LOAD TITLE SCREEN
                         ;     NEVER RETURN FROM HERE
                         ;******************************
 
-L00005B72   dc.w    $0001,$0001
-            dc.w    $0001,$0001
-            dc.w    $0002,$0002
-            dc.w    $0002,$0002 
-L00005B82   dc.w    $0003,$0003
-            dc.w    $0003,$0003
-            dc.w    $0004,$0004
-            dc.w    $0004,$0004 
-L00005B92   dc.w    $0002,$0002
-            dc.w    $0002,$0002
-            dc.w    $0001,$0001
-            dc.w    $0001,$0001 
-L00005BA2   dc.w    $FFFF
 
-; line 7107 - Code1.s
+                    ; data is referened by routine below
+L00005B72               dc.w    $0001,$0001
+                        dc.w    $0001,$0001
+                        dc.w    $0002,$0002
+                        dc.w    $0002,$0002 
+L00005B82               dc.w    $0003,$0003
+                        dc.w    $0003,$0003
+                        dc.w    $0004,$0004
+                        dc.w    $0004,$0004 
+L00005B92               dc.w    $0002,$0002
+                        dc.w    $0002,$0002
+                        dc.w    $0001,$0001
+                        dc.w    $0001,$0001 
+L00005BA2               dc.w    $FFFF
 
 
 
+
+
+                    ;---------------------------- actor cmd 24 ------------------------------
+                    ; Think this might have something to do with the Joker,
+                    ; appears to search the actor list for an actor with a specific value.
+                    ; updates screen y position to midpoint between the actor and batman.
+                    ; could be jack climbing the rope ladder or something?
+                    ; dont know at the moment.
+                    ;
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 28/1/2025
+                    ;
 actor_cmd_24        ; original address L00005ba4
 L00005ba4           move.w  #$0098,$0004(a6)
-L00005baa           lea.l   actors_list,a5                      ;L000039bc,a5
-L00005bae           move.w  #$0085,d2
-L00005bb2           moveq   #$09,d7
-L00005bb4           cmp.w   $0006(a5),d2
+                ; find actor #$85
+L00005baa           lea.l   actors_list,a5 
+L00005bae           move.w  #$0085,d2                           ; search value = #$85
+L00005bb2           moveq.l #$09,d7
+L00005bb4           cmp.w   $0006(a5),d2                        ; search for actor = #$85
 L00005bb8           beq.b   L00005bc4
-L00005bba           lea.l   ACTORLIST_STRUCT_SIZE(a5),a5        ;$0016(a5),a5
+L00005bba           lea.l   ACTORLIST_STRUCT_SIZE(a5),a5
 L00005bbe           dbf.w   d7,L00005bb4
 L00005bc2           bra.b   L00005bc8
+
+                ; check actor active
 L00005bc4           move.w  (a5),d2
 L00005bc6           bne.b   L00005bd4 
-L00005bc8           bclr.b  #$0007,trigger_definitions_list     ;L00006476
-L00005bd0           clr.w   (a6)
+
+                ; actor not found, or not active
+L00005bc8           bclr.b  #$07,trigger_definitions_list       ; disable tiggers?
+L00005bd0           clr.w   (a6)                                ; disable current actor
 L00005bd2           rts  
 
-
-                    ; jack falls & hits the floor?
+                ; a5.l = actor struct
+                ; d2.w = actor param/id? $00(a5)
+                ; found active actor with value #$85
 L00005bd4           subq.w  #$01,d2
-L00005bd6           bne.b   L00005bd2
-L00005bd8           jsr     AUDIO_PLAYER_INIT_SFX_1                 ;$00048008
-L00005bde           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ;#$0000,$0007c874
-L00005be6           move.l  #actor_handler_cmd_nop,gl_jsr_address   ;#$000052b6,L00003c7c
+L00005bd6           bne.b   L00005bd2                               ; exit until d2 == 0
+                    ;-----------------
+L00005bd8           jsr     AUDIO_PLAYER_INIT_SFX_1                 ; clear audio
+L00005bde           bset.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 ; timer expired
+L00005be6           move.l  #actor_handler_cmd_nop,gl_jsr_address   ; disable player input
 L00005bec           clr.w   L00006342
-L00005bf0           clr.w   grappling_hook_height                   ;L00006360
-L00005bf4           move.w  $0004(a5),d0
+L00005bf0           clr.w   grappling_hook_height
+L00005bf4           move.w  $0004(a5),d0                            ; d0 = actor y value
 L00005bf8           cmp.w   #$00d4,d0
-L00005bfc           bcs.b   L00005c1a
+L00005bfc           bcs.b   L00005c1a                               ; y < #$d4 then 5c1a
+                    ;--------------------
 L00005bfe           move.w  #$0081,$0006(a5)
-L00005c04           move.l  #$00005b70,$0008(a5)
+L00005c04           move.l  #L00005B72-2,$08(a5)                    ;#$00005b70,$0008(a5)
 L00005c0c           move.w  #$0019,(a5)
 L00005c10           clr.w   (a6)
 L00005c12           moveq   #SFX_SPLASH,d0                          ;#$0b,d0
@@ -6687,12 +6731,14 @@ L00005c14           jmp     AUDIO_PLAYER_INIT_SFX                   ;$00048014
 
 
 L00005c1a           subq.w  #$01,target_window_x_offset     ;L000069f8
-L00005c1e           sub.w   #$0018,d0
-L00005c22           sub.w   scroll_window_y_coord,d0        ;L000069ee,d0
+L00005c1e           sub.w   #$0018,d0                       ; subtract actor Y value
+L00005c22           sub.w   scroll_window_y_coord,d0        ; d0 = screen offset
 L00005c26           neg.w   d0
-L00005c28           add.w   batman_y_offset,d0              ;L000069f4,d0
-L00005c2c           move.w  d0,target_window_y_offset       ;L000069f6
+L00005c28           add.w   batman_y_offset,d0              ; d0 = mid point between actor and batman
+L00005c2c           move.w  d0,target_window_y_offset 
 L00005c30           rts  
+
+
 
 
                     ; a6 = actor list struct ptr
