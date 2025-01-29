@@ -186,15 +186,6 @@ start               ; added for testing
 original_start:     ; original address $00002ffc
                     dc.l    $00003000                           ; original address $00002ffc
 
-;gotham_cathedral_text   ; original address L00003A98
-;L00003A98a   
-;                    ;dc.b    $30,$09
-;                    ;dc.b    'TEST BUILD 16/01/2025',$00
-;                    dc.b    $50,$09
-;                    dc.b    'GOTHAM CITY CATHEDRAL'
-;                    dc.b    $00,$ff
-;                    even
-
                     ; -------------------------- game start /  initialise system ---------------------------------
                     ; This is the Level 5 code entry point on loading.
                     ;
@@ -2436,6 +2427,9 @@ L000040f6               rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_green_walk_right  ; original address L000040F8
 L000040f8               cmp.w   #$00e0,d0
 L000040fc               bpl.b   L00004146
@@ -2458,6 +2452,7 @@ L0000412a               subq.w  #$08,d0
 L0000412c               cmp.b   #$51,d2
 L00004130               bcc.w   L0000424e 
 L00004134               tst.w   $0008(a6)
+
 L00004138               bpl.b   L00004146 
 L0000413a               move.w  batman_x_offset,d2                      ;L000069f2,d2
 L0000413e               sub.w   d0,d2
@@ -2478,6 +2473,7 @@ L0000416e               add.w   d2,d2
 L00004170               add.w   d2,d2
 L00004172               sub.w   d2,d3
 L00004174               clr.w   d2
+
 L00004176               move.b  $00(a0,d3.w),d2
 
                         ; different from code1.s
@@ -2504,6 +2500,9 @@ L000041ac               rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_actor_brown_walk_right    ; original address L000041AE
 L000041ae               move.w  d4,d2
 L000041b0               addq.w  #$04,d2
@@ -2525,6 +2524,7 @@ L000041e2               beq.w   L00004354
 L000041e6               bpl.b   L0000424e
 L000041e8               move.w  batman_x_offset,d2     ;L000069f2,d2
 L000041ec               sub.w   d0,d2
+
 L000041ee               bmi.b   L0000424e
 L000041f0               cmp.w   #$0020,d5
 L000041f4               bpl.b   L00004230
@@ -2545,6 +2545,7 @@ L00004220               bcc.b   L0000424e
 L00004222               move.w  d2,$0008(a6)
 L00004226               move.l  #$00050010,$000a(a6)        ; external address?
 L0000422e               bra.b   L0000424e
+
 L00004230               subq.w  #$08,d5
 L00004232               sub.w   d5,d2
 L00004234               bls.b   L0000424e
@@ -2565,6 +2566,7 @@ L0000425e               move.w  d4,d2
 L00004260               bsr.w   draw_next_sprite        ;L000045fa               ; draw next sprite
 L00004264               move.w  (a7)+,d2
 L00004266               lsr.w   #$01,d2
+
 L00004268               bne.b   L0000426c
 L0000426a               addq.w  #$02,d2
 L0000426c               addq.w  #$04,d2
@@ -2580,6 +2582,9 @@ L00004274               bra.w   actor_collision_and_sprite1     ;L000045c8
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_brown_walk_left_15_23   ; original address L00004278
 L00004278               move.w  d4,d2
 L0000427a               addq.w  #$04,d2
@@ -2591,6 +2596,7 @@ L0000428a               subq.w  #$07,d0
 L0000428c               bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0       ; get_map_tile_at_display_offset_d0_d1
 L00004290               addq.w  #$07,d0
 L00004292               cmp.b   #$51,d2
+
 L00004296               bcc.b   L000042b0 
 L00004298               move.w  $0006(a6),d2
 L0000429c               cmp.w   #$0085,d2
@@ -2601,6 +2607,7 @@ L000042ac               bra.w   L00004324
 L000042b0               bsr.w   L0000414e
 L000042b4               subq.w  #$01,$0008(a6)
 L000042b8               beq.w   L00004354
+
 L000042bc               bpl.b   L00004324
 L000042be               move.w  d0,d2
 L000042c0               sub.w   batman_x_offset,d2     ;L000069f2,d2
@@ -2611,6 +2618,7 @@ L000042cc               bcc.b   L000042e4
 L000042ce               cmp.w   #$0038,d2
 L000042d2               bcc.b   L00004324
 L000042d4               move.w  #$0010,$000c(a6)
+
 L000042da               move.l  #$00010001,$0008(a6)            ; external address?
 L000042e2               bra.b   L00004324 
 L000042e4               sub.w   #$0010,d5
@@ -2621,6 +2629,7 @@ L000042ee               lsr.w   #$02,d2
 L000042f0               addq.w  #$01,d2
 L000042f2               cmp.w   #$0008,d2
 L000042f6               bcc.b   L00004324
+
 L000042f8               move.w  d2,$0008(a6)
 L000042fc               move.l  #$00040010,$000a(a6)            ; external address?
 L00004304               bra.b   L00004324
@@ -2636,12 +2645,12 @@ L00004318               move.w  d2,$0008(a6)
 L0000431c               move.l  #$00060010,$000a(a6)            ; external address?
 L00004324               subq.w  #$01,d4
 L00004326               move.w  d4,$0002(a6)
-
 L0000432a               and.w   #$000e,d4
 L0000432e               lsr.w   #$01,d4
 L00004330               eor.w   #$e007,d4
 L00004334               move.w  d4,-(a7)
 L00004336               addq.w  #$08,d4
+
 L00004338               move.w  d4,d2
 L0000433a               bsr.w   draw_next_sprite            ;L000045fa               ; draw next sprite
 L0000433e               move.w  (a7)+,d2
@@ -2662,6 +2671,7 @@ L0000436a               cmp.w   #$0002,d2
 L0000436e               bcc.b   L00004380
 L00004370               move.w  $0012(a6),d2
 L00004374               addq.w  #$04,d2
+
 L00004376               sub.w   batman_y_bottom,d2              ;L00006338,d2
 L0000437a               bpl.b   L00004380
 L0000437c               addq.w  #$02,$000a(a6)
@@ -2670,7 +2680,7 @@ L00004380               lea.l   actor_handler_table,a0          ;L00005ae2,a0   
 L00004384               add.w   d6,d6
 L00004384a              add.w   d6,d6               ; converted to long
 L00004386               adda.w  d6,a0
-L00004388               movea.w (a0),a0
+L00004388               movea.l (a0),a0
 L0000438a               jmp     (a0)
 
 
@@ -2980,6 +2990,9 @@ L0000460a               rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ;  Code Checked 29/1/2025
+                    ;
 actor_cmd_falling   ; original address L0000460C
 L0000460c               move.w  $000a(a6),d2
 L00004610               addq.w  #$01,d2
@@ -6562,24 +6575,24 @@ L00005AEA   dc.l    actor_cmd_grenade_right_01      ; L000040A6                 
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6 
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6 
-L00005AFA   dc.l    actor_handler_cmd_nop           ; actor_cmd_climb_up_ladder       ; L000043E2                       ;  $43E2
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_climb_down_ladder     ; L0000438C                       ;  $438C
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
+L00005AFA   dc.l    actor_cmd_climb_up_ladder       ; L000043E2                       ;  $43E2
+            dc.l    actor_cmd_climb_down_ladder     ; L0000438C                       ;  $438C
+            dc.l    actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
+            dc.l    actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
+            dc.l    actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
+            dc.l    actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
+            dc.l    actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
             dc.l    $00000000                       ;  $0000 
-L00005B0A   dc.l    actor_handler_cmd_nop           ; actor_cmd_20                    ; L00005CB6                       ;  $5CB6
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_21                    ; L00005C32                   ;  $5C32
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_22                    ; L00005C4A                   ;  $5C4A
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23 ; L00004278                       ;  $4278
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_24                    ; L00005BA4                   ;  $5BA4
+L00005B0A   dc.l    actor_cmd_20                    ; L00005CB6                       ;  $5CB6
+            dc.l    actor_cmd_21                    ; L00005C32                   ;  $5C32
+            dc.l    actor_cmd_22                    ; L00005C4A                   ;  $5C4A
+            dc.l    actor_cmd_brown_walk_left_15_23 ; L00004278                       ;  $4278
+            dc.l    actor_cmd_24                    ; L00005BA4                   ;  $5BA4
             dc.l    actor_cmd_joker_dead            ; L00005B4E                   ;  $5B4E
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_26                    ; L00005F00                   ;  $5F00
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_27                    ; L00005F14                   ;  $5F14 
-L00005B1A   dc.l    actor_handler_cmd_nop           ; actor_cmd_28                    ;  $5F8A
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_29                    ; L00006014                   ;  $6014
+            dc.l    actor_cmd_26                    ; L00005F00                   ;  $5F00
+            dc.l    actor_cmd_27                    ; L00005F14                   ;  $5F14 
+L00005B1A   dc.l    actor_cmd_28                    ;  $5F8A
+            dc.l    actor_cmd_29                    ; L00006014                   ;  $6014
             dc.l    actor_cmd_30                    ; L00006068                   ;  $6068
             dc.l    actor_cmd_31                    ; L00005D4C                   ;  $5D4C 
             dc.l    actor_cmd_32_jackfall           ; L00005D84                   ;  $5D84
@@ -6968,6 +6981,9 @@ L00005df6           rts
                     ;   d0.w - Sprite X co-ord
                     ;   d1.w - Unknown - maybe Sprite Y
                     ;   a6.l - object/sprite structure ptr
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_33_level_complete ; original address L00005df8
 L00005df8           move.w  scroll_window_x_coord,d2        ;L000069ec,d2
 L00005dfc           cmp.w   #$0230,d2
@@ -7010,6 +7026,7 @@ L00005e58           bsr.w   draw_next_sprite                ;L000045fa
 L00005e5c           jsr     AUDIO_PLAYER_SILENCE            ;$00048004               ; AUDIO_PLAYER
 L00005e62           move.l  #$00000210,d0
 L00005e68           jmp     PANEL_ADD_SCORE                 ;$0007c82a               ; PANEL_ADD_SCORE
+                    ; use rts to return
 
 
 
@@ -7017,6 +7034,9 @@ L00005e68           jmp     PANEL_ADD_SCORE                 ;$0007c82a          
                     ; IN:
                     ;   d0.w - Sprite X
                     ;   a6.l - address of object/sprite structure
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 level_completed     ; original address L00005e6e 
                     moveq   #$50,d1
                     moveq   #$0b,d2
@@ -7035,6 +7055,8 @@ cheat_complete_level    ;original address L00005e7a
                     ;   - The End.
                     ;   - For the time being.
                     ; then clear the screen and load the title screen
+                    ;
+                    ; Code Checked 29/1/2025
                     ;
 Load_title_screen   ; original address L00005e82
                     jsr     AUDIO_PLAYER_SILENCE                ;$00048004
@@ -7089,6 +7111,8 @@ wait_for_frame_count    ; original address L00005ed4
                     ;   d0 = actorX - display
                     ;   d1 = actorY - display
                     ;
+                    ; Code Checked 29/1/2025
+                    ;
 L00005ee0           movem.w batman_xy_offset,d2-d3  ;L000069f2,d2-d3
 L00005ee6           sub.w   d1,d3
 L00005ee8           cmp.w   #$0001,d3               ; diff dispY and batY
@@ -7108,6 +7132,9 @@ L00005efe           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_26        ; original address L00005f00
 L00005f00           bsr.b   L00005ee0
 L00005f02           bcc.b   L00005f12                           ; exit rts
@@ -7124,6 +7151,9 @@ L00005f12           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_27        ; original address L00005f14
 L00005f14           subq.w  #$01,$0008(a6)
 L00005f18           beq.b   L00005f40
@@ -7145,6 +7175,9 @@ L00005f3c           bra.w   draw_next_sprite        ;L000045fa
 
                     ; IN:-
                     ;   a0.l = level data index?
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 L00005f40           clr.w   (a6)
 L00005f42           bsr.w   get_map_tile_at_display_offset_d0_d1    ; L000055e0
 L00005f46           lsl.w   #$08,d2
@@ -7165,12 +7198,16 @@ L00005f80           move.l  #player_input_cmd_fire_down,gl_jsr_address      ;#$0
 L00005f86           clr.w   grappling_hook_height                           ;L00006360
 
 
+
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_28        ; original address L00005f8a
 L00005f8a           moveq   #$05,d2
 L00005f8c           bsr.w   draw_next_sprite                ;L000045fa
@@ -7226,6 +7263,9 @@ L00006010       dc.w    $0000                       ; 3 words used by level data
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_29        ; original address L00006014
 ; Line 7616 - code1.s
 L00006014           cmp.w   #$00c0,d0
@@ -7294,6 +7334,7 @@ L000060ba           lsr.w   #$01,d4
 L000060bc           eor.w   d4,d2
 L000060be           addq.w  #$01,d2
 L000060c0           bra.w   draw_next_sprite        ;L000045fa
+                    ; use rts to return
 
                     even
 
@@ -7899,7 +7940,7 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
                                 ENDC
 
             ; padding - see if it fixes map data corruption
-            dcb.B   1024,0
+            dcb.B   10240,0
 
             ; If Test Build - Include the Level Music and SFX
             IFD TEST_BUILD_LEVEL
@@ -7908,7 +7949,7 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
             ENDC
 
             ; padding - see if it fixes map data corruption
-            dcb.B   1024,0
+            dcb.B   10240,0
 
             ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
             IFD TEST_BUILD_LEVEL
@@ -7917,7 +7958,7 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
             ENDC
 
             ; padding - see if it fixes map data corruption
-            dcb.B   1024,0
+            dcb.B   10240,0
 
             ; If Test Build - Include the level map data and graphics
             IFD TEST_BUILD_LEVEL
@@ -7926,17 +7967,17 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
             ENDC
 
             ; padding - see if it fixes map data corruption
-            dcb.B   1024,0
+            dcb.B   10240,0
 
             ; If Test Build - Include Batman Sprites File 1n( also allocate memory for mirrored sprites)
             IFD TEST_BUILD_LEVEL
                 incdir      "../batspr1/"
                 include     "batspr1.s"
-                dcb.b       100000,0
+                dcb.b       110000,0
             ENDC
 
             ; padding - see if it fixes map data corruption
-            dcb.B   1024,0
+            dcb.B   10240,0
 
             IFD TEST_BUILD_LEVEL
                 even
