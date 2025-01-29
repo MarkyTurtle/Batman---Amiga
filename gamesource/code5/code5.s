@@ -6562,10 +6562,10 @@ L00005AEA   dc.l    actor_cmd_grenade_right_01      ; L000040A6                 
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6 
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6
             dc.l    actor_handler_cmd_nop           ; L000052B6                   ;  $52B6 
-L00005AFA   dc.l    actor_cmd_climb_up_ladder       ; L000043E2                       ;  $43E2
-            dc.l    actor_cmd_climb_down_ladder     ; L0000438C                       ;  $438C
-            dc.l    actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
-            dc.l    actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
+L00005AFA   dc.l    actor_handler_cmd_nop           ; actor_cmd_climb_up_ladder       ; L000043E2                       ;  $43E2
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_climb_down_ladder     ; L0000438C                       ;  $438C
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_actor_brown_walk_right ; L000041AE                       ;  $41AE
+            dc.l    actor_handler_cmd_nop           ; actor_cmd_brown_walk_left_15_23  ; L00004278                       ;  $4278 
             dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_01 ; L0000446E                       ;  $446E
             dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_diagonally_02 ; L00004482                       ;  $4482
             dc.l    actor_handler_cmd_nop           ; actor_cmd_shooting_horizontal    ; L000044BC                       ;  $44BC
@@ -6580,8 +6580,8 @@ L00005B0A   dc.l    actor_handler_cmd_nop           ; actor_cmd_20              
             dc.l    actor_handler_cmd_nop           ; actor_cmd_27                    ; L00005F14                   ;  $5F14 
 L00005B1A   dc.l    actor_handler_cmd_nop           ; actor_cmd_28                    ;  $5F8A
             dc.l    actor_handler_cmd_nop           ; actor_cmd_29                    ; L00006014                   ;  $6014
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_30                    ; L00006068                   ;  $6068
-            dc.l    actor_handler_cmd_nop           ; actor_cmd_31                    ; L00005D4C                   ;  $5D4C 
+            dc.l    actor_cmd_30                    ; L00006068                   ;  $6068
+            dc.l    actor_cmd_31                    ; L00005D4C                   ;  $5D4C 
             dc.l    actor_cmd_32_jackfall           ; L00005D84                   ;  $5D84
             dc.l    actor_cmd_33_level_complete     ; L00005DF8                   ;  $5DF8
             dc.l    set_player_spawn_point_1        ; L00005B2C                   ;  $5B2C
@@ -6722,9 +6722,9 @@ L00005bf8           cmp.w   #$00d4,d0
 L00005bfc           bcs.b   L00005c1a                               ; y < #$d4 then 5c1a
                     ;--------------------
 L00005bfe           move.w  #$0081,$0006(a5)
-L00005c04           move.l  #L00005B72-2,$08(a5)                    ;#$00005b70,$0008(a5)
-L00005c0c           move.w  #$0019,(a5)
-L00005c10           clr.w   (a6)
+L00005c04           move.l  #L00005B72-2,$08(a5)                    ;Actor Sprite Anim Address
+L00005c0c           move.w  #$0019,(a5)                             ;Actor id/handler
+L00005c10           clr.w   (a6)                                    ;Disable current actor
 L00005c12           moveq   #SFX_SPLASH,d0                          ;#$0b,d0
 L00005c14           jmp     AUDIO_PLAYER_INIT_SFX                   ;$00048014
                     ; uses rts in audio player
@@ -6747,6 +6747,9 @@ L00005c30           rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 19/1/2025
+                    ;
 actor_cmd_21        ; original address L00005c32
 L00005c32           bsr.b   L00005c68
 L00005c34           cmp.w   #$0008,d2
@@ -6756,6 +6759,7 @@ L00005c3e           bne.w   draw_next_sprite        ;L000045fa
 L00005c42           bsr.b   L00005c96
 L00005c44           moveq   #$04,d2
 L00005c46           bra.w   draw_next_sprite        ;L000045fa 
+                    ; uses rts in draw_next_sprite to return
 
 
                     ; a6 = actor list struct ptr
@@ -6764,11 +6768,14 @@ L00005c46           bra.w   draw_next_sprite        ;L000045fa
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_22        ; original address L00005c4a
 L00005c4a           bsr.b   L00005c68
 L00005c4c           or.w    #$e000,d2
 L00005c50           cmp.w   #$e008,d2
-L00005c54           bcc.b   L00005c30
+L00005c54           bcc.b   L00005c30               ; exit rts
 L00005c56           cmp.w   #$e004,d2
 L00005c5a           bne.w   draw_next_sprite        ;L000045fa
 L00005c5e           bsr.b   L00005c8a
@@ -6790,20 +6797,26 @@ L00005c86           addq.w  #$01,d2
 L00005c88           rts  
 
 
-L00005c8a           movem.w batman_xy_offset,d3-d4  ;L000069f2,d3-d4
+L00005c8a           movem.w batman_xy_offset,d3-d4
 L00005c90           add.w   #$0010,d3
 L00005c94           bra.b   L00005c9e
-L00005c96           movem.w batman_xy_offset,d3-d4  ;L000069f2,d3-d4
+                    ; use 'rts' to return
+
+
+L00005c96           movem.w batman_xy_offset,d3-d4
 L00005c9c           addq.w  #$04,d3
+
 L00005c9e           sub.w   d0,d3
 L00005ca0           cmp.w   #$0016,d3
-L00005ca4           bcc.b   L00005c88 
+L00005ca4           bcc.b   L00005c88               ; exit rts 
 L00005ca6           cmp.w   d1,d4
-L00005ca8           bmi.b   L00005c88
-L00005caa           cmp.w   batman_y_bottom,d1      ;00006338,d1
-L00005cae           bmi.b   L00005c88
+L00005ca8           bmi.b   L00005c88               ; exit rts
+L00005caa           cmp.w   batman_y_bottom,d1
+L00005cae           bmi.b   L00005c88               ; exit rts
 L00005cb0           moveq   #$03,d6
-L00005cb2           bra.w   batman_lose_energy      ;L00004d0a
+L00005cb2           bra.w   batman_lose_energy
+                    ; use 'rts' to exit
+
 
 
                     ; a6 = actor list struct ptr
@@ -6812,15 +6825,18 @@ L00005cb2           bra.w   batman_lose_energy      ;L00004d0a
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_20        ; original address L00005cb6
 L00005cb6            move.w  $000c(a6),d3
 L00005cba            addq.b  #$06,d3
 L00005cbc            move.w  d3,$000c(a6)
 L00005cc0            cmp.b   #$20,d3
-L00005cc4            bcs.b   L00005c88
+L00005cc4            bcs.b   L00005c88                  ; exit rts
 L00005cc6            moveq   #$01,d2
 L00005cc8            cmp.b   #$40,d3
-L00005ccc            bcs.w   draw_next_sprite                           ;L000045fa 
+L00005ccc            bcs.w   draw_next_sprite     
 L00005cd0            move.w  $000a(a6),d5
 L00005cd4            cmp.w   #$0010,d5
 L00005cd8            bcc.w   L00005cde 
@@ -6830,10 +6846,10 @@ L00005ce2            lsr.w   #$01,d5
 L00005ce4            add.w   $0008(a6),d5
 L00005ce8            move.w  d5,$0008(a6)
 L00005cec            add.w   d5,d1
-L00005cee            bsr.w   get_map_tile_at_display_offset_d0_d1       ;L000055e0
+L00005cee            bsr.w   get_map_tile_at_display_offset_d0_d1  
 L00005cf2            cmp.b   #$51,d2
 L00005cf6            bcs.b   L00005d20
-L00005cf8            move.w  scroll_window_y_coord,d3                   ;L000069ee,d3
+L00005cf8            move.w  scroll_window_y_coord,d3  
 L00005cfc            add.w   d1,d3
 L00005cfe            and.w   #$0007,d3
 L00005d02            not.w   d3
@@ -6842,24 +6858,25 @@ L00005d06            moveq   #$04,d2
 L00005d08            eor.w   d2,$0002(a6)
 L00005d0c            clr.l   $0008(a6)
 L00005d10            clr.w   $000c(a6)
-L00005d14            moveq   #SFX_DRIP,d2                               ;#$05,d2
-L00005d16            bsr.w   play_proximity_sfx                         ;L000044f4
+L00005d14            moveq   #SFX_DRIP,d2
+L00005d16            bsr.w   play_proximity_sfx
 L00005d1a            moveq   #$02,d2
-L00005d1c            bra.w   draw_next_sprite                           ;L000045fa
+L00005d1c            bra.w   draw_next_sprite
 L00005d20            moveq   #$01,d2
-L00005d22            move.w  batman_x_offset,d3                         ;L000069f2,d3
+L00005d22            move.w  batman_x_offset,d3  
 L00005d26            sub.w   d0,d3
 L00005d28            addq.w  #$03,d3
 L00005d2a            cmp.w   #$0007,d3
-L00005d2e            bcc.w   draw_next_sprite                           ;L000045fa 
-L00005d32            cmp.w   batman_y_bottom,d1                         ;L00006338,d1
-L00005d36            bmi.w   draw_next_sprite                           ;L000045fa
-L00005d3a            cmp.w   batman_y_offset,d1                         ;L000069f4,d1
-L00005d3e            bpl.w   draw_next_sprite                           ;L000045fa 
+L00005d2e            bcc.w   draw_next_sprite   
+L00005d32            cmp.w   batman_y_bottom,d1
+L00005d36            bmi.w   draw_next_sprite    
+L00005d3a            cmp.w   batman_y_offset,d1 
+L00005d3e            bpl.w   draw_next_sprite    
 L00005d42            moveq   #$02,d6
-L00005d44            bsr.w   batman_lose_energy                         ;L00004d0a
+L00005d44            bsr.w   batman_lose_energy   
 L00005d48            bra.b   L00005d06
 L00005d4a            rts  
+
 
 
                     ; a6 = actor list struct ptr
@@ -6868,6 +6885,9 @@ L00005d4a            rts
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
 actor_cmd_31        ; original address L00005d4c
 L00005d4c           move.w  $0004(a6),d2
 L00005d50           not.w   d2
@@ -6877,7 +6897,7 @@ L00005d5a           bne.b   L00005d60
 L00005d5c           add.w   #$e000,d2
 L00005d60           move.w  d2,-(a7)
 L00005d62           addq.w  #$02,d2
-L00005d64           bsr.w   draw_next_sprite                ;L000045fa
+L00005d64           bsr.w   draw_next_sprite
 L00005d68           move.w  (a7)+,d2
 L00005d6a           and.w   #$e000,d2
 L00005d6e           addq.w  #$01,d2
@@ -6889,13 +6909,16 @@ L00005d80           bmi.b   L00005dca
 L00005d82           rts 
 
 
+
                     ; a6 = actor list struct ptr
                     ; d0 = actorX - display
                     ; d1 = actorY - display
                     ; d2 = windowX
                     ; d3 = windowY
                     ; d4 = actor WorldX
-
+                    ;
+                    ; Code Checked 29/1/2025
+                    ;
                     ; jack falls hits the floor?
 actor_cmd_32_jackfall   ; original address L00005d84
 L00005d84           btst.b  #$0000,playfield_swap_count+1               ;L00006375
@@ -6920,7 +6943,7 @@ L00005dc2           lea.l   ACTORLIST_STRUCT_SIZE(a5),a5                ;$0016(a
 L00005dc6           dbf.w   d7,L00005dbc
 L00005dca           moveq   #$5a,d6
 L00005dcc           bra.w   batman_lose_energy                          ;L00004d0a
-
+                    ; use rts to exit
 
 L00005dd0           move.w  (a5),d2
 L00005dd2           beq.b   L00005dca 
@@ -6932,6 +6955,7 @@ L00005de4           clr.w   grappling_hook_height                       ;L000063
 L00005de8           move.w  #$ffff,L00006342
 L00005dee           move.b  #PANEL_ST1_VAL_TIMER_EXPIRED,PANEL_STATUS_1 ;#$01,$0007c874                          ; PANEL
 L00005df6           rts  
+
 
 
                     ; a6 = actor list struct ptr
