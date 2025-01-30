@@ -1944,6 +1944,9 @@ L00003dea               rts
                     ; gas-leaks/drips.
                     ; Spawns new actors if there is room to do so (max 10 at anytime)
                     ;
+                    ;
+                    ; Code CHecked 30/1/2025
+                    ;
 trigger_new_actors  ; original address L00003dec
 L00003dec               movem.w scroll_window_xy_coord,d0-d1    ;L000069ec,d0-d1
 L00003df2               lea.l   trigger_definitions_list,a0     ;L00006476,a0
@@ -1984,6 +1987,8 @@ L00003e2e               bcs.b   L00003df6
                     ; IN:-
                     ;   a0.l = start of gasleak/drip trigger locations. (3 word structure per item)
                     ;
+                    ; Code Checked 30/1/2025
+                    ;
 trigger_gasleak_and_drips   ; original address L00003e30 
 L00003e30               sub.w   #$0010,d0
 L00003e34               subq.w  #$08,d1
@@ -2017,13 +2022,15 @@ L00003e60               rts
                     ;   d1.w = window scroll y
                     ;   a0.l = ptr to actor init data in trigger data
                     ;
+                    ; Code Checked 30/1/2025
+                    ;
 spawn_new_actor     ; original address L00003e62
 L00003e62               movem.w (a0)+,d2-d4
 
                         ; odd code - infinite loop - maybe protection check
-L00003e66               ;cmp.w   $00000022,d0
-L00003e6c               ;beq.b   L00003e6c
-L00003e6e               ;nop
+L00003e66               cmp.w   $00000022,d0
+L00003e6c               beq.b   L00003e6c
+L00003e6e               nop
 
 L00003e70               lea.l   actors_list,a6          ;L000039bc,a6
 L00003e74               moveq   #$09,d6
@@ -2062,7 +2069,7 @@ L00003e82               rts
 initialise_new_actor    ; original address L00003e84
 L00003e84               move.l  a0,ACTORSTRUCT_INIT_PTR(a6)         ;$0014(a6)
 L00003e88               bset.l  #$000f,d2
-L00003e8c               movem.w d2-d4,ACTORSTRUCT_INIT_DATA(a6)     ;(a6)
+L00003e8c               movem.w d2-d4,(a6)                          ;(a6)
 L00003e90               clr.l   $0008(a6)
 L00003e94               bclr.l  #$000f,d2
 L00003e98               clr.l   $0010(a6)
