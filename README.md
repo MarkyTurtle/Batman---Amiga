@@ -1,6 +1,9 @@
 # Batman The Movie - Amiga A500
 [Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
+ - [Overview](#overview)
+ - [Progress to date](#progress-to-date)
+
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
 - Check out the latest updated Test ADFs
      - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) containing the **Title Screen** rebuilt from Source Code (**SOME GFX CORRUPTION**)
@@ -54,11 +57,14 @@ This exercise is not one of speed, but of learning. It looks like this game coul
     - [Code Project](./gamesource/titleprg)
     - The Title Screen code can be rebuilt from source and executed in VSCode
     - Updated Test ADF with Title Screen rebuilt from Source Code - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) 
- - Disassemble the Platform Levels.
-    - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/FSX
-    - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done - can be re-assembled and played from source code
-    - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Just Data - TODO: Write Test Project to Display Sprites
-    - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Just Data - TODO: Write Test Project to Display GFX/Level Data
+ - Disassemble the Platform Levels 1 and 5.
+    - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/SFX
+    - Code Project - Music & SFX for Level 5 - TODO
+    - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done
+    - [Code Project](./gamesource/code5/) - Catheral - Level5 - Done 
+    - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Done
+    - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
+    - [Code Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
  - Disassemble the Batmobile/Batwing Levels.
  - Disassemble the BatCave Level.
 
