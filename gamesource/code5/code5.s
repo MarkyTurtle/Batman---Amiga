@@ -1411,8 +1411,8 @@ L00003A82               dc.w $0000
 
 gotham_cathedral_text   ; original address L00003A98
 L00003A98   
-                    ;dc.b    $30,$09
-                    ;dc.b    'TEST BUILD 16/01/2025',$00
+                    dc.b    $2a,$09
+                    dc.b    'TEST BUILD 31/01/2025',$00
                     dc.b    $50,$09
                     dc.b    'GOTHAM CITY CATHEDRAL'
                     dc.b    $00,$ff  
