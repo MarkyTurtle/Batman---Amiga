@@ -2,7 +2,7 @@
 [Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
  - [Overview](#overview)
- - [Resources & Acknowledgements](#resources)
+ - [Resources and Acknowledgements](#resources-and-acknowledgements)
  - [Progress to date](#progress-to-date)
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
@@ -53,7 +53,7 @@ This exercise is not one of speed, but of learning. It looks like this game coul
  - Disassemble the BatCave Level.
 
 
-## Resources & Acknowledgements
+## Resources and Acknowledgements
 - Check out the latest updated Test ADFs
      - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) containing the **Title Screen** rebuilt from Source Code (**SOME GFX CORRUPTION**)
      - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) containing the original game files repacked on a single disk. 
