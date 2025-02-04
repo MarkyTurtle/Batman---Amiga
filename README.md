@@ -66,11 +66,18 @@ This exercise is not one of speed, but of learning. It looks like this game coul
     - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
     - [Code Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
  - Disassemble the Batmobile/Batwing Levels.
+    - [Code Project](./gamesource/music) - Music & SFX for Level 2 & 4
+    - [Code Project](./gamesource/data) - Shared common data file for Levels 2 & 4
+    - [Code Project](./gamesource/data2) - Level 2 specific data file.
+    - [Code Project](./gamesource/data4) - Level 4 specific data file.
+    - [Code Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
 
 
 
 ## Progress to Date
+
+**2025-02-04 - Levels 2 & 4** - Added dumped data file projects that build to identical binary files for the BatMobile and BatWing stages. Also started on the development of some dumping, comparison and data conversion command line tool (not in github yet) which will help with future disassembly projects.
 
 **2025-01-31 - Level 5** is now building from sourcecode, it hasn't been fully annotated (like code1.s) there are small differences in the code when compared with Level 1 (code1.s). I have played the level to the end successfully. Also, I'm using the music & SFX from level 1 as I haven't disassembled the music for Level 5 yet. I seems to work fine. 
 
