@@ -2,31 +2,10 @@
 [Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
  - [Overview](#overview)
+ - [Resources & Acknowledgements](#resources)
  - [Progress to date](#progress-to-date)
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
-- Check out the latest updated Test ADFs
-     - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) containing the **Title Screen** rebuilt from Source Code (**SOME GFX CORRUPTION**)
-     - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) containing the original game files repacked on a single disk. 
-  
-The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
-
- - [Youtube](https://www.youtube.com/@HoffmanYouTube)
- - [Twitch](https://www.twitch.tv/djh0ffman)
- - [GitHub](https://github.com/djh0ffman)
-
-Resources and code used in this project is listed below. If there's anything used which hasn't been credited, please let me know. Also thanks to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in the h0ffman twitch stream: Episode #16 Lemmings.
-
-- [Batman 2 Disk Europe](https://www.lemonamiga.com/games/details.php?id=131) 
-- [WinUAE](https://www.winuae.net/) - Windows Amiga Emulator
-- [FS-UAE](https://fs-uae.net/) - Linux Amiga Emulator
-- Action Reply MKIII - Emulator ROMS
-- [VS Code](https://code.visualstudio.com/) 
-   - Amiga Assembly Extension
-- RNC DosIO - Low level disk code
-- [Shrinkler](https://github.com/askeksa/Shrinkler) - file cruncher/decruncher
-- [Salvador](https://github.com/emmanuel-marty/salvador) - zxo file cruncher/decruncher
-- [XFDMaster](http://aminet.net/package/util/pack/xfdmaster) - utilities for depacking almost any packed file format.
 
 ## Overview
 This exercise is not one of speed, but of learning. It looks like this game could be cracked just by patching out the serial number check around $139C in the loader code. The intention is to spend more time disassembling parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
@@ -72,6 +51,31 @@ This exercise is not one of speed, but of learning. It looks like this game coul
     - [Code Project](./gamesource/data4) - Level 4 specific data file.
     - [Code Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
+
+
+## Resources & Acknowledgements
+- Check out the latest updated Test ADFs
+     - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) containing the **Title Screen** rebuilt from Source Code (**SOME GFX CORRUPTION**)
+     - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) containing the original game files repacked on a single disk. 
+  
+The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
+
+ - [Youtube](https://www.youtube.com/@HoffmanYouTube)
+ - [Twitch](https://www.twitch.tv/djh0ffman)
+ - [GitHub](https://github.com/djh0ffman)
+
+Resources and code used in this project is listed below. If there's anything used which hasn't been credited, please let me know. Also thanks to the TTE Crew member **JAYCEE_1980** who supplied a download link for the RNC disk code in the h0ffman twitch stream: Episode #16 Lemmings.
+
+- [Batman 2 Disk Europe](https://www.lemonamiga.com/games/details.php?id=131) 
+- [WinUAE](https://www.winuae.net/) - Windows Amiga Emulator
+- [FS-UAE](https://fs-uae.net/) - Linux Amiga Emulator
+- Action Reply MKIII - Emulator ROMS
+- [VS Code](https://code.visualstudio.com/) 
+   - Amiga Assembly Extension
+- RNC DosIO - Low level disk code
+- [Shrinkler](https://github.com/askeksa/Shrinkler) - file cruncher/decruncher
+- [Salvador](https://github.com/emmanuel-marty/salvador) - zxo file cruncher/decruncher
+- [XFDMaster](http://aminet.net/package/util/pack/xfdmaster) - utilities for depacking almost any packed file format.
 
 
 
