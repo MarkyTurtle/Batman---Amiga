@@ -8,7 +8,7 @@
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. 
 
 ## Overview
-This exercise is not one of speed, but of learning. It looks like this game could be cracked just by patching out the serial number check around $139C in the loader code. The intention is to spend more time disassembling parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
+This exercise is not one of speed, but of learning. The intention is to spend more time disassembling all parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
 
  - Disassemble the boot loader. [Code Folder](./loader/bootblock/)
  - Disassemble the game loader. [Code Folder](./loader/gameloader/modified/)
