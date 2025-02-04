@@ -46,7 +46,7 @@
 				"command": "${config:amiga-assembly.binDir}/vlink",
 				"includes": "*.{s,S,asm,ASM}",
 				"excludes": "",
-				"exefilename": "../uae/dh0/gameloader",
+				"exefilename": "../uae/dh0/panel",
 				"entrypoint": "panel.s",
 				"args": [
 					"-brawbin2",

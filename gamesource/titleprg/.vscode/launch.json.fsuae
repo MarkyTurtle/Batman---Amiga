@@ -7,7 +7,7 @@
             "name": "FS-UAE Debug",
             "stopOnEntry": false,
             "program": "${workspaceFolder}/uae/dh0/titleprg",
-            "remoteProgram": "SYS:gameloader",
+            "remoteProgram": "SYS:titleprg",
             "emulatorType": "fs-uae",
             "emulatorArgs": [
                 "--hard_drive_0=${workspaceFolder}/uae/dh0",
@@ -20,8 +20,8 @@
             "request": "launch",
             "name": "FS-UAE Launch",
             "noDebug": true,
-            "program": "${workspaceFolder}/uae/dh0/gameloader",
-            "remoteProgram": "SYS:gameloader",
+            "program": "${workspaceFolder}/uae/dh0/titleprg",
+            "remoteProgram": "SYS:titleprg",
             "emulatorType": "fs-uae",
             "emulatorArgs": [
                 "--hard_drive_0=${workspaceFolder}/uae/dh0",
