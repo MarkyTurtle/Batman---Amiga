@@ -51,9 +51,9 @@ This exercise is not one of speed, but of learning. The intention is to spend mo
     - [Code Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
  - Disassemble the Batmobile/Batwing Levels.
     - [Code Project](./gamesource/music) - Music & SFX for Level 2 & 4
-    - [Code Project](./gamesource/data) - Shared common data file for Levels 2 & 4
-    - [Code Project](./gamesource/data2) - Level 2 specific data file.
-    - [Code Project](./gamesource/data4) - Level 4 specific data file.
+    - [Code Project](./gamesource/data) - Shared common data file for Levels 2 & 4 - Done
+    - [Code Project](./gamesource/data2) - Level 2 specific data file. - Done
+    - [Code Project](./gamesource/data4) - Level 4 specific data file. - Done
     - [Code Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
 
