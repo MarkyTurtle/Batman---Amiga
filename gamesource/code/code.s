@@ -793,9 +793,11 @@ L0000383e                       bsr.w   panel_fade_in           ; L00003de0
 L00003842                       lea.l   text_introduction,a0    ;L00003e74,a0
 L00003848                       bsr.w   large_text_plotter      ; L0000410a
 
-test                            bsr     double_buffer_display
-                                jmp     test
-                                jsr     _DEBUG_PAUSE
+                                lea.l   text_test_build,a0
+                                bsr.w   small_text_plotter      ;L0000410e
+
+                                ;bsr     double_buffer_display
+                                ;jsr     _DEBUG_COLOURS
 
 L0000384c                       bsr.w   L00003d6c
 L00003850                       bsr.w   L00008158
@@ -828,7 +830,7 @@ L000038de                       move.l  #$00008236,L0000907c
 L000038e8                       bra.w   L000039aa
 
 L000038ec                       bsr.w   panel_fade_in           ; L00003de0
-L000038f0                       lea.l   L00003ed0,a0
+L000038f0                       lea.l   text_gotham_carnival,a0 ; L00003ed0,a0
 L000038f6                       bsr.w   large_text_plotter      ; L0000410a
 L000038fa                       bsr.w   L00003d6c
 L000038fe                       bsr.w   L000074a4
@@ -926,7 +928,7 @@ L00003a90                       btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 
 L00003a98                       beq.b   L00003abc
                         ; timer has expired
 L00003a9a                       bsr.w   L00003d5a
-L00003a9e                       lea.l   L00003f20,a0
+L00003a9e                       lea.l   text_time_up,a0         ; L00003f20,a0
 L00003aa4                       bsr.w   large_text_plotter      ; L0000410a
 L00003aa8                       bsr.w   L00003d6c
 L00003aac                       clr.w   frame_counter           ; L000037bc
@@ -937,7 +939,7 @@ L00003ac0                       lea.l   text_introduction,a0    ;L00003e74,a0
 L00003ac6                       lea.l   L00003884,a1
 L00003acc                       tst.w   L00008d1e 
 L00003ad2                       beq.b   L00003ae0 
-L00003ad4                       lea.l   L00003ed0,a0
+L00003ad4                       lea.l   text_gotham_carnival,a0 ; L00003ed0,a0
 L00003ada                       lea.l   L0000392e,a1
 L00003ae0                       move.l  a1,(a7)
 L00003ae2                       bsr.w   large_text_plotter      ; L0000410a
@@ -961,7 +963,7 @@ L00003b32                       moveq   #$04,d0
 L00003b34                       jmp     $00068f90               ; music
 
 L00003b3a                       bsr.w   L00003d5a
-L00003b3e                       lea.l   L00003f2c,a0
+L00003b3e                       lea.l   text_game_over,a0       ; L00003f2c,a0
 L00003b44                       bsr.w   large_text_plotter      ; L0000410a
 L00003b48                       bsr.w   L00003d6c
 L00003b4c                       clr.w   frame_counter           ; L000037bc
@@ -981,10 +983,10 @@ L00003b88                       moveq   #$02,d0
 L00003b8a                       jmp     $00068f90               ; music
 
 L00003b90                       bsr.w   L00003d5a
-L00003b94                       lea.l   L00003e92,a0
+L00003b94                       lea.l   text_escaped_joker,a0   ; L00003e92,a0
 L00003b9a                       tst.w   L00008d1e 
 L00003ba0                       beq.b   L00003ba8 
-L00003ba2                       lea.l   L00003ee8,a0
+L00003ba2                       lea.l   text_city_is_safe,a0    ; L00003ee8,a0
 L00003ba8                       bsr.w   large_text_plotter      ; L0000410a
 L00003bac                       bsr.w   L00003d6c
 L00003bb0                       clr.w   frame_counter           ; L000037bc
@@ -995,8 +997,8 @@ L00003bc4                       bsr.w   L00003d6c
 L00003bc8                       bsr.w   panel_fade_out          ; L00003e2c
 L00003bcc                       tst.w   L00008d1e
 L00003bd2                       bne.b   L00003bda
-L00003bd4                       jmp     $0000082c               ; loader
-L00003bda                       jmp     $00000834               ; loader
+L00003bd4                       jmp     LOADER_LEVEL_3          ; $0000082c               ; loader
+L00003bda                       jmp     LOADER_LEVEL_5          ; $00000834               ; loader
 
 L00003be0                       lea.l   L00008d5c,a6
 L00003be6                       tst.w   L00008d1e
@@ -1198,46 +1200,41 @@ L00003e6c                       bne.b   L00003e66
 L00003e6e                       dbf.w   d7,L00003e2e
 L00003e72                       rts 
 
+
+text_test_build                 dc.b    $05,$08,'TEST BUILD 08/02/2025',$00,$ff
+
 text_introduction
-L00003e74                       dc.w    $4407,$5448,$4520,$5354,$5245,$4554,$5320,$4f46         ;d.the streets of
-L00003e84                       dc.w    $2047,$4f54,$4841,$4d20,$4349,$5459,$00ff               ; gotham city..
+L00003e74                       dc.b    $44,$07,'THE STREETS OF GOTHAM CITY',$00,$ff
 
-L00003e92                       dc.w    $3a07         
-L00003e94                       dc.w    $594f,$5520,$4841,$5645,$2045,$5343,$4150,$4544         ;you have escaped
-L00003ea4                       dc.w    $2054,$4845,$204a,$4f4b,$4552,$004e,$0642,$5554         ; the joker.n.but
-L00003eb4                       dc.w    $2057,$4841,$5420,$5345,$4352,$4554,$5320,$4c49         ; what secrets li
-L00003ec4                       dc.w    $4520,$4148,$4541,$442e,$2e2e,$00ff                     ; e ahead.....
+text_escaped_joker
+L00003e92                       dc.b    $3a,$07,'YOU HAVE ESCAPED THE JOKER',$00
+                                dc.b    $4e,$06, 'BUT WHAT SECRETS LIE AHEAD...',$00,$ff
 
-L00003ed0                       dc.w    $440a,$474f                                             ;d.go
-L00003ed4                       dc.w    $5448,$414d,$2043,$4954,$5920,$4341,$524e,$4956         ;tham city carniv
-L00003ee4                       dc.w    $414c,$00ff                                             ;al
+text_gotham_carnival
+L00003ed0                       dc.b    $44,$0a,'GOTHAM CITY CARNIVAL',$00,$ff
 
-L00003ee8                       dc.w    $3a08,$5448,$4520,$4349,$5459,$2049                     ;:.the city i
-L00003ef4                       dc.w    $5320,$5341,$4645,$2042,$5554,$2054,$4845,$004e         ;s safe but the.n
-L00003f04                       dc.w    $084a,$4f4b,$4552,$2049,$5320,$5354,$494c,$4c20         ;.joker is still
-L00003f14                       dc.w    $4154,$204c,$4152,$4745,$2e00,$ff92                     ;at large....
+text_city_is_safe
+L00003ee8                       dc.b    $3a,$08,'THE CITY IS SAFE BUT THE',$00
+                                dc.b    $4e,$08,'JOKER IS STILL AT LARGE',$00,$ff
 
-L00003f20                       dc.w    $4410,$5449                                             ;d.ti
-L00003f24                       dc.w    $4d45,$2055,$5000,$ff49                                 ;me up..i
+text_time_up
+L00003f20                       dc.b    $44,$10,'TIME UP',$00,$ff
 
-L00003f2c                       dc.w    $440f,$4741,$4d45,$204f                                 ;d.game o
-L00003f34                       dc.w    $5645,$5200,$ff55                                       ;ver..u
+text_game_over
+L00003f2c                       dc.b    $44,$0f,'GAME OVER',$00,$ff
 
-L00003f3a                       dc.w    $0201,$5350,$4545,$4400,$0c02                           ;..speed...
-L00003f44                       dc.w    $3030,$3000,$ff92                                       ;000...
+text_speed
+L00003f3a                       dc.b    $02,$01,'SPEED',$00
+text_speed_value                dc.b    $0c,$02,'000',$00,$ff
 
-L00003f4a                       dc.w    $021f,$4449,$5354,$414e,$4345                           ;..distance
-L00003f54                       dc.w    $000c
-L00003f56                       dc.b    $21
+text_distance  
+L00003f4a                       dc.b    $02,$1f,'DISTANCE',$00
+text_distance_value             dc.b    $0c,$21,'99.9',$00,$ff  
 
-L00003f57                       dc.b    $39
-L00003f58                       dc.w    $392e,$3900,$ff29                           ;..!99.9..)                          
-
-L00003f5e                       dc.w    $021f,$4241,$4c4c                                       ;..ball
-L00003f64                       dc.w    $4f4f,$4e53,$000c
-L00003f6a                       dc.b    $22
-L00003f6b                       dc.b    $30,$30,$30,$00,$ff                                     ;000.. 
-
+text_balloons
+L00003f5e                       dc.b    $02,$1f,'BALLOONS',$00
+text_balloons_value             dc.b    $0c,$22,'000',$00,$ff
+                                even
 
 L00003f70                       move.w  L00008f6e,d0
 L00003f76                       tst.w   L00008d98
@@ -1246,11 +1243,11 @@ L00003f7e                       cmp.w   #$0002,L00008d98
 L00003f86                       bcs.b   L00003f8e 
 L00003f88                       move.w  L00008f70,d0
 L00003f8e                       lsr.w   #$01,d0
-L00003f90                       lea.l   L00003f44,a0
+L00003f90                       lea.l   text_speed_value+2,a0   ; L00003f44,a0
 L00003f96                       bsr.w   L00006780
-L00003f9a                       lea.l   L00003f3a,a0
-L00003fa0                       bsr.w   L0000410e
-L00003fa4                       move.w  PANEL_ENERGY_VALUE,d0   ;$0007c88e,d0            ; panel
+L00003f9a                       lea.l   text_speed,a0           ; L00003f3a,a0
+L00003fa0                       bsr.w   small_text_plotter      ; L0000410e
+L00003fa4                       move.w  PANEL_ENERGY_VALUE,d0   ; $0007c88e,d0            ; panel
 L00003faa                       cmp.w   #$0012,d0
 L00003fae                       bcc.b   L00003fb6
 L00003fb0                       move.w  d0,L00008d28
@@ -1268,11 +1265,11 @@ L00003fd6                       tst.w   L00008d1e
 L00003fdc                       beq.w   L0000407a
 L00003fe0                       move.w  L00008d24,d0
 L00003fe6                       beq.w   L00003b6e
-L00003fea                       lea.l   L00003f6b,a0
+L00003fea                       lea.l   text_balloons_value+2,a0                ;  L00003f6b,a0
 L00003ff0                       bsr.w   L00006780
-L00003ff4                       lea.l   L00003f5e,a0
-L00003ffa                       bra.w   L0000410e
-L00003ffe                       btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2   ;$0007c875        ; panel
+L00003ff4                       lea.l   text_balloons,a0                        ; L00003f5e,a0
+L00003ffa                       bra.w   small_text_plotter                      ; L0000410e
+L00003ffe                       btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2  ; $0007c875        ; panel
 L00004006                       beq.b   L00003fd6
                                 ; cheat active
 L00004008                       bra.w   L00003b6e
@@ -1308,7 +1305,7 @@ L0000406c                       bne.b   L00004064
 L0000406e                       move.w  #$0000,L00008d20
 L00004076                       bra.w   L00003fd6
 
-L0000407a                       lea.l   L00003f57,a0
+L0000407a                       lea.l   text_distance_value+2,a0        ; L00003f57,a0
 L00004080                       move.w  L00008d26,d1
 L00004086                       move.w  L00008d22,d0
 L0000408c                       beq.w   L00003b6e
@@ -1320,8 +1317,8 @@ L0000409e                       move.w  d0,L00008d22
 L000040a4                       bsr.w   L00006780
 L000040a8                       move.b  $0000002e,(a0)+                 ; Exception Vector?
 L000040ae                       move.b  d0,(a0)
-L000040b0                       lea.l   L00003f4a,a0
-L000040b6                       bsr.w   L0000410e
+L000040b0                       lea.l   text_distance,a0                ; L00003f4a,a0
+L000040b6                       bsr.w   small_text_plotter              ; L0000410e
 L000040ba                       move.w  L00008d30,d0
 L000040c0                       mulu.w  #$0005,d0
 L000040c4                       move.w  L00008d36,d1
@@ -1350,9 +1347,10 @@ L00004108                       rts
 
 
                         ;--------------------- large text plotter -------------------
+                        ; display text 8x16 characters (double height font)
                         ; IN:
                         ;  a0 - text message for display.
-                        ;       - first two bytes of message are x,y
+                        ;       - first two bytes of message are y,x
                         ;       - line ends with $00
                         ;       - message ends with $00,$ff
                         ;
@@ -1360,6 +1358,16 @@ large_text_plotter      ; original address $0000410a
 L0000410a                       moveq.l  #$ffffffff,d6
 L0000410c                       bra.b   L00004110
 
+
+                        ;--------------------- small text plotter -------------------
+                        ; display 8x8 characters (normal height font)
+                        ; IN:
+                        ;  a0 - text message for display.
+                        ;       - first two bytes of message are y,x
+                        ;       - line ends with $00
+                        ;       - message ends with $00,$ff
+                        ;
+small_text_plotter      ; original address $0000410e
 L0000410e                       moveq   #$00,d6
 L00004110                       move.b  (a0)+,d0
 L00004112                       bmi.w   L00004218
@@ -7099,16 +7107,24 @@ _DEBUG_COLOURS
                 rts
             
 _DEBUG_RED_PAUSE
-                    move.w  #$f00,$dff180
-                    btst    #6,$bfe001
-                    bne.s   _DEBUG_RED_PAUSE
-                    rts
+                move.w  #$f00,$dff180
+                btst    #6,$bfe001
+                bne.s   _DEBUG_RED_PAUSE
+                rts
 
 _MOUSE_WAIT
-            btst    #6,$bfe001
-            bne.s   _MOUSE_WAIT
-            rts
+                btst    #6,$bfe001
+                bne.s   _MOUSE_WAIT
+                rts
 
+_WAIT_FRAME
+                move.l  d0,-(a7)
+.loop
+                move.w  frame_counter,d0
+                cmp.w   frame_counter,d0
+                beq.b   .loop
+                move.l  (a7)+,d0
+                rts
 
                     ;-------------------------------------------------------------------------------------------
                     ; End of My Debug Routines
