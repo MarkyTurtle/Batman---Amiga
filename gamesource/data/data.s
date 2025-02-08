@@ -13,11 +13,13 @@
 
 
     IFD TEST_BUILD_LEVEL
-start
-                jmp start     
-           
+DATA_ADDRESS        EQU     L0001fffc
+ 
+    ELSE
+DATA_ADDRESS        EQU     $0001fffc           
     ENDC
-    
+
+DATA_OFFSET_1       EQU    DATA_ADDRESS+$4b04
 
 L0001fffc	dc.b	$00,$02,$00,$00,$00,$00,$00,$08,$00,$00,$00,$00,$00,$00,$00,$00	;................
 L0002000c	dc.b	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$08,$00,$00,$00,$00	;................

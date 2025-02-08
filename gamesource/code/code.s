@@ -3,24 +3,88 @@
                 ; File Size: $9df
                 ; File End: $cdf3
                 ;
-                section panel,code_c
+                ; Memory Map
+                ;
+                ;       Content         Start           End             Length
+                ;       ----------------------------------------------------------
+                ;       Loader          $00000800
+                ;       Code            $00002ffc       $0000cd73       $00009df7
+                ;       Data            $0001fffc       $0002a41a       $0000a41e
+                ;       Data2 (mobile)  $0002a416       $00050043       $00025c2d
+                ;       Data4 (wing)    $0002a416       $00056819       $0002c403
+                ;       Stack           $0005c1f0       $00056819       (largest area of free mem - 59d7 bytes (22,999 decimal)
+                ;       Display         $0005c200       $00068000       $0000be00
+                ;       Music           $00068f7c       $0007c60e       $00013692
+                ;       Panel           $0007c7fc       $00080000       $00003804
+                ;
+                ; Notes:
+                ;  The memory map for these levels are packed full of data.
+                ;
+                section level24,code_c
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
 
+TEST_BUILD_LEVEL        EQU     1
+
         IFND    TEST_BUILD_LEVEL
                 org     $2ffc                                         ; original load address
         ENDC
 
+
+
+        ; test/release constants
+DISPLAY_BUFFER_SIZE     EQU     $be00
+DISPLAY_BUFFER_SIZE_W   EQU     DISPLAY_BUFFER_SIZE/2
+DISPLAY_BUFFER_SIZE_L   EQU     DISPLAY_BUFFER_SIZE/4
+DISPLAY_BITPLANE_SIZE   EQU     $000017c0               ; 6080 bytes (6080/40 = 152)
+
+        IFD     TEST_BUILD_LEVEL
+STACK_TOP               EQU     start
+DISPLAY_BUFFER          EQU     display_buffer
+DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
+DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+(DISPLAY_BUFFER_SIZE/2)
+        ENDC
+
+        IFND     TEST_BUILD_LEVEL
+STACK_TOP               EQU     $0005c1f0
+DISPLAY_BUFFER          EQU     $0005c200
+DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
+DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+(DISPLAY_BUFFER_SIZE/2)
+        ENDC
+
+
+
+        IFD     TEST_BUILD_LEVEL
 start
-                jmp start     
-           
+                jmp start_batmobile     
+                ;jmp start_batwing     
+        ENDC
+        
+
+
+L00002ffc               dc.l    $00002ffc
+
+
+                        ; -------------- start batmobile level ------------
+start_batmobile         ; original address $00003000
 L00003000               bra.b   L00003010
-L00003002               move.w  #$0001,L00008d1e        ; batmobile
-L0000300a               jmp     L0000301e
-L00003010               move.w  #$0000,L00008d1e        ; batwing
-L00003018               jmp     L0000301e
+
+                        ; --------------- start/set batwing level ---------------
+start_batwing           ; original address $00003002
+L00003002               move.w  #$0001,L00008d1e        ; batwing = 1
+L0000300a               jmp     start_common            ; L0000301e
+
+                        ; -------------- set batmobile level --------------
+set_batmobile           ; original address $00003010
+L00003010               move.w  #$0000,L00008d1e        ; batmobile = 0
+L00003018               jmp    start_common             ; L0000301e
+
+
+                        ; -------------- common startup code --------------
+start_common            ; original address $0000301e
+                        ;jsr     _DEBUG_COLOURS
 L0000301e               moveq   #$00,d0
 L00003020               move.w  #$7fff,$00dff09a
 L00003028               move.w  #$1fff,$00dff096
@@ -29,22 +93,28 @@ L00003038               move.l  d0,$00dff102
 L0000303e               move.w  #$4000,$00dff024
 L00003046               move.l  d0,$00dff040
 L0000304c               move.w  #$0041,$00dff058
+
 L00003054               move.w  #$8340,$00dff096
 L0000305c               move.w  #$7fff,$00dff09e
+
+                        ; reset sprites
 L00003064               moveq   #$07,d7
 L00003066               lea.l   $00dff140,a0
 L0000306c               move.w  d0,(a0)
 L0000306e               addq.w  #$08,a0
 L00003070               dbf.w   d7,L0000306c 
+                        ; reset audio
 L00003074               moveq   #$03,d7
 L00003076               lea.l   $00dff0a8,a0
 L0000307c               move.w  d0,(a0) 
 L0000307e               lea.l   $0010(a0),a0
 L00003082               dbf.w   d7,L0000307c
+                        ; reset colours
 L00003086               lea.l   $00dff180,a0
 L0000308c               moveq   #$1f,d7
 L0000308e               move.w  d0,(a0)+
 L00003090               dbf.w   d7,L0000308e
+                        ; init CIAA & CIAB
 L00003094               move.b  #$7f,$00bfed01
 L0000309c               move.b  d0,$00bfee01
 L000030a2               move.b  d0,$00bfef01
@@ -59,16 +129,24 @@ L000030d8               move.b  #$c0,$00bfd000
 L000030e0               move.b  #$c0,$00bfd200
 L000030e8               move.b  #$ff,$00bfd100
 L000030f0               move.b  #$ff,$00bfd300
-L000030f8               lea.l   $0005c1f0,a7                    ; stack
-L000030fe               pea.l   $0000310a
-L00003104               jmp     $00068f80                       ; music
 
-L0000310a               moveq   #$02,d7
+                        ; init stack
+L000030f8               lea.l   STACK_TOP,a7                    ;$0005c1f0,a7 ; stack
+
+L000030fe               ;pea.l   L0000310a
+L00003104               ;jmp     $00068f80                       ; music
+                        ; return here (pea.l L0000310a)
+
+                        ; init interrupt autovectors
+L0000310a               moveq   #$02,d7                         ; only level 1 - 3  handlers are initialised
 L0000310c               lea.l   L000031ba,a0
-L00003112               lea.l   $00000064,a1
+L00003112               lea.l   $00000064,a1                    ; level 1 autovector
 L00003118               move.l  (a0)+,(a1)+
 L0000311a               dbf.w   d7,L00003118
 
+                        ;jsr     _DEBUG_COLOURS
+
+                        ; more JOYDAT and CIA init
 L0000311e               move.w  #$ff00,$00dff034
 L00003126               move.w  d0,$00dff036
 L0000312c               or.b    #$ff,$00bfd100
@@ -81,145 +159,295 @@ L0000315c               move.b  #$11,$00bfef01
 L00003164               move.b  #$91,$00bfd600
 L0000316c               move.b  d0,$00bfdb00
 L00003172               move.b  d0,$00bfdf00
+
+                        ;jsr     _DEBUG_COLOURS
+
 L00003178               move.w  #$7fff,$00dff09c
 L00003180               tst.b   $00bfed01
 L00003186               move.b  #$8a,$00bfed01
 L0000318e               tst.b   $00bfdd00
 L00003194               move.b  #$93,$00bfdd00
-L0000319c               move.w  #$e078,$00dff09a
-L000031a4               bsr.w   L00003810
-L000031a8               lea.l   L000031d2,a0
-L000031ae               bsr.w   L00003758
-L000031b2               bsr.w   L000037c8
-L000031b6               bra.w   L00003822
+L0000319c               move.w  #$e078,$00dff09a        ; intena (PORTS 2, COPER,VERTB,BLIT 3)
+
+                        ;jsr     _DEBUG_COLOURS
+
+L000031a4               bsr.w   clear_display_memory    ; L00003810
+L000031a8               lea.l   copper_list,a0          ; L000031d2,a0
+L000031ae               bsr.w   initialise_display      ; L00003758
+L000031b2               bsr.w   double_buffer_display   ; L000037c8
+
+L000031b6               bra.w   initalise_game          ; L00003822
 
 
-L000031ba               dc.w    $0000,$3306,$0000,$333e,$0000,$3364,$0000,$33a0 
-L000031ca               dc.w    $0000,$33b6,$0000,$33dc
 
-                        ; copper list
-L000031d2               dc.w    $400f,$fffe,$00e0
+
+                        ; --------------- interrupt handler table -------------
+interrupt_handler_table ; original address $000031ba
+L000031ba               dc.l    level1_interrupt_handler        ; L00003306               ; level 1 interrupt handler       
+                        dc.l    level2_interrupt_handler        ; L0000333e               ; level 2 interrupt handler
+                        dc.l    level3_interrupt_handler        ; L00003364               ; level 3 interrupt handler
+                        dc.l    level4_interrupt_handler        ; L000033a0               ; level 4 interrupt handler - unused
+L000031ca               dc.l    level5_interrupt_handler        ; L000033b6               ; level 5 interrupt handler - unused
+                        dc.l    level6_interrupt_handler        ; L000033dc               ; level 6 interrupt handler - unused
+
+
+
+                        even
+                        ; ----------------- copper list -----------------------
+copper_list             ; original address $000031d2
+L000031d2               dc.w    $400f,$fffe
+                        dc.w    $00e0
 L000031d8               dc.w    $0000  
 L000031da               dc.w    $00e2
-L000031dc               dc.w    $0000,$00e4
-L000031e0               dc.w    $0000,$00e6
-L000031e4               dc.w    $0000,$00e8
+L000031dc               dc.w    $0000
+                        dc.w    $00e4
+L000031e0               dc.w    $0000
+                        dc.w    $00e6
+L000031e4               dc.w    $0000
+                        dc.w    $00e8
 L000031e8               dc.w    $0000 
 L000031ea               dc.w    $00ea
-L000031ec               dc.w    $0000,$00ec
-L000031f0               dc.w    $0000,$00ee
-L000031f4               dc.w    $0000,$0180,$0000   
-L000031fa               dc.w    $0182,$0002,$0184,$0888,$0186,$0eee,$0188,$0060
-L0000320a               dc.w    $018a,$0800,$018c,$0c00,$018e,$0ccc,$0190,$0aaa 
-L0000321a               dc.w    $0192,$0666,$0194,$0000,$0196,$0c60,$0198,$0ea2  
-L0000322a               dc.w    $019a,$0ee0,$019c,$0ee8,$019e,$0444,$460f,$fffe 
-L0000323a               dc.w    $0182,$0003,$4b0f,$fffe,$0182,$0004,$500f,$fffe
-L0000324a               dc.w    $0182,$0005,$550f,$fffe,$0182,$0006,$5a0f,$fffe  
-L0000325a               dc.w    $0182,$0007,$5f0f,$fffe,$0182,$0008,$640f,$fffe 
-L0000326a               dc.w    $0182,$0009,$690f,$fffe,$0182,$000a
+L000031ec               dc.w    $0000
+                        dc.w    $00ec
+L000031f0               dc.w    $0000
+                        dc.w    $00ee
+L000031f4               dc.w    $0000
+                        dc.w    $0180,$0000   
+L000031fa               dc.w    $0182,$0002
+                        dc.w    $0184,$0888
+                        dc.w    $0186,$0eee
+                        dc.w    $0188,$0060
+L0000320a               dc.w    $018a,$0800
+                        dc.w    $018c,$0c00
+                        dc.w    $018e,$0ccc
+                        dc.w    $0190,$0aaa 
+L0000321a               dc.w    $0192,$0666
+                        dc.w    $0194,$0000
+                        dc.w    $0196,$0c60
+                        dc.w    $0198,$0ea2  
+L0000322a               dc.w    $019a,$0ee0
+                        dc.w    $019c,$0ee8
+                        dc.w    $019e,$0444
+
+                        ; city sky blue fade
+                        dc.w    $460f,$fffe 
+L0000323a               dc.w    $0182,$0003
+                        dc.w    $4b0f,$fffe
+                        dc.w    $0182,$0004
+                        dc.w    $500f,$fffe
+L0000324a               dc.w    $0182,$0005
+                        dc.w    $550f,$fffe
+                        dc.w    $0182,$0006
+                        dc.w    $5a0f,$fffe  
+L0000325a               dc.w    $0182,$0007
+                        dc.w    $5f0f,$fffe
+                        dc.w    $0182,$0008
+                        dc.w    $640f,$fffe 
+L0000326a               dc.w    $0182,$0009
+                        dc.w    $690f,$fffe
+                        dc.w    $0182,$000a
+
+                        ; v-wait for horizon colour change?
+copper_horizon_wait     ; original address L00003276
 L00003276               dc.w    $600f,$fffe  
-L0000327a               dc.w    $0182,$0333,$d90f,$fffe,$00e0,$0007,$00e2,$c89a  
-L0000328a               dc.w    $00e4,$0007,$00e6,$d01a,$00e8,$0007,$00ea,$d79a 
-L0000329a               dc.w    $00ec,$0007,$00ee,$df1a,$0180
-L000032a4               dc.w    $0000,$0182,$0000
-L000032aa               dc.w    $0184,$0000,$0186,$0000,$0188,$0000,$018a,$0000  
-L000032ba               dc.w    $018c,$0000,$018e,$0000,$0190,$0000,$0192,$0000   
-L000032ca               dc.w    $0194,$0000,$0196,$0000,$0198,$0000,$019a,$0000  
-L000032da               dc.w    $019c,$0000,$019e,$0000,$ffff,$fffe
+L0000327a               dc.w    $0182,$0333
+
+                        ; Panel bitplane ptrs & colours
+                        dc.w    $d90f,$fffe
+copper_panel_planes     dc.w    $00e0,$0007
+                        dc.w    $00e2,$c89a  
+L0000328a               dc.w    $00e4,$0007
+                        dc.w    $00e6,$d01a
+                        dc.w    $00e8,$0007
+                        dc.w    $00ea,$d79a 
+L0000329a               dc.w    $00ec,$0007
+                        dc.w    $00ee,$df1a
+copper_panel_colours
+                        dc.w    $0180,$0000
+                        dc.w    $0182,$0000
+                        dc.w    $0184,$0000
+                        dc.w    $0186,$0000
+                        dc.w    $0188,$0000
+                        dc.w    $018a,$0000  
+                        dc.w    $018c,$0000
+                        dc.w    $018e,$0000
+                        dc.w    $0190,$0000
+                        dc.w    $0192,$0000   
+                        dc.w    $0194,$0000
+                        dc.w    $0196,$0000
+                        dc.w    $0198,$0000
+                        dc.w    $019a,$0000  
+                        dc.w    $019c,$0000
+                        dc.w    $019e,$0000
+;copper_panel_colours
+;                        dc.w    $0180,$0000
+;                        dc.w    $0182,$0060
+;                        dc.w    $0184,$0fff
+;                        dc.w    $0186,$0008
+;                        dc.w    $0188,$0a22
+;                        dc.w    $018a,$0444  
+;                        dc.w    $018c,$0862
+;                        dc.w    $018e,$0666
+;                        dc.w    $0190,$0888
+;                        dc.w    $0192,$0aaa   
+;                        dc.w    $0194,$0a40
+;                        dc.w    $0196,$0c60
+;                        dc.w    $0198,$0e80
+;                        dc.w    $019a,$0ea0  
+;                        dc.w    $019c,$0ec0
+;                        dc.w    $019e,$0eee
+;                        dc.w    $ffff,$fffe
 
                         ; colours (panel fade in/out)
+panel_colours           ; original address $000032e6
 L000032e6               dc.w    $0000,$0060 
 L000032ea               dc.w    $0fff,$0008,$0a22,$0444,$0862,$0666,$0888,$0aaa 
 L000032fa               dc.w    $0a40,$0c60,$0e80,$0ea0,$0ec0,$0eee 
 
 
+
+
+                ; -------------------- level 1 interrupt handler --------------------
+                ; installed as the level 1 autovector interrupt handler.
+level1_interrupt_handler        ; original address $00003306
 L00003306               move.l  d0,-(a7)
-L00003308               move.w  $00dff01e,d0
-L0000330e               btst.l  #$0002,d0
-L00003312               bne.b   L00003332
-L00003314               btst.l  #$0001,d0
-L00003318               bne.b   L00003326
-L0000331a               move.w  #$0001,$00dff09c
+L00003308               move.w  $00dff01e,d0            ; intreqr
+L0000330e               btst.l  #$0002,d0               ; SOFTINT
+L00003312               bne.b   softint_interrupt       ; L00003332 ; clear SOFTINT and exit
+
+L00003314               btst.l  #$0001,d0               ; DSKBLK
+L00003318               bne.b   dskblk_interrupt        ; L00003326 ; clear DSKBLK and exit
+
+tbe_interrupt
+L0000331a               move.w  #$0001,$00dff09c        ; clear TBE and exit
 L00003322               move.l  (a7)+,d0
 L00003324               rte
 
+dskblk_interrupt
 L00003326               move.w  #$0002,$00dff09c
 L0000332e               move.l (a7)+,d0
 L00003330               rte 
 
+softint_interrupt
 L00003332               move.w  #$0004,$00dff09c
 L0000333a               move.l  (a7)+,d0
 L0000333c               rte  
 
+
+
+                ; -------------------- level 2 interrupt handler --------------------
+                ; installed as the level 2 autovector interrupt handler.
+level2_interrupt_handler        ; original address $0000333e
 L0000333e               move.l  d0,-(a7)
 L00003340               move.b  $00bfed01,d0
-L00003346               bpl.b   L00003358
-L00003348               bsr.w   L0000341a
-L0000334c               move.w  #$0008,$00dff09c
+L00003346               bpl.b   not_ciaa_interrupt      ; L00003358 ; not CIAA interrupt (clear PORTS and exit)
+
+L00003348               bsr.w   handle_ciaa_interrupt   ; L0000341a ; handle CIAA interrupt
+
+L0000334c               move.w  #$0008,$00dff09c        ; clear PORTS and exit
 L00003354               move.l  (a7)+,d0
 L00003356               rte  
 
+not_ciaa_interrupt
 L00003358               move.w #$0008,$00dff09c
 L00003360               move.l (a7)+,d0
 L00003362               rte  
 
+
+
+                ; -------------------- level 3 interrupt handler --------------------
+                ; installed as the level 3 autovector interrupt handler.
+level3_interrupt_handler        ; original address $00003364
 L00003364               move.l  d0,-(a7)
-L00003366               move.w  $00dff01e,d0
-L0000336c               btst.l  #$0004,d0
-L00003370               bne.b   L00003394
-L00003372               btst.l  #$0005,d0
-L00003376               bne.b   L00003384
-L00003378               move.w  #$0040,$00dff09c
+L00003366               move.w  $00dff01e,d0            ; intreqr
+L0000336c               btst.l  #$0004,d0               ; COPER
+L00003370               bne.b   coper_interrupt         ; L00003394 ; clear COPER and exit
+
+L00003372               btst.l  #$0005,d0               ; VERTB
+L00003376               bne.b   vertb_interrupt         ; L00003384       
+
+blit_interrupt
+L00003378               move.w  #$0040,$00dff09c        ; clear BLIT and exit
 L00003380               move.l  (a7)+,d0
 L00003382               rte  
 
-L00003384               bsr.w   L00003568
-L00003388               move.w  #$0020,$00dff09c
+vertb_interrupt
+L00003384               bsr.w   vertb_interrupt_handler ; L00003568 ; handle VERTB
+L00003388               move.w  #$0020,$00dff09c        ; clear VERTB and exit
 L00003390               move.l  (a7)+,d0
 L00003392               rte  
 
+coper_interrupt
 L00003394               move.w #$0010,$00dff09c
 L0000339c               move.l (a7)+,d0
 L0000339e               rte 
 
+
+
+                ; -------------------- level 4 interrupt handler --------------------
+                ; unused
+level4_interrupt_handler        ; original address L000033a0
+                        jsr     _DEBUG_ERROR            ; if called will hold on a flashing screen
 L000033a0               move.l  d0,-(a7)
-L000033a2               move.w  $00dff01e,d0
-L000033a8               and.w   #$0780,d0
+L000033a2               move.w  $00dff01e,d0            ; intreqr
+L000033a8               and.w   #$0780,d0               ; clear audio interrupts
 L000033ac               move.w  d0,$00dff09a
 L000033b2               move.l  (a7)+,d0
 L000033b4               rte  
 
+
+
+                ; -------------------- level 5 interrupt handler --------------------
+                ; unused
+level5_interrupt_handler        ; original address $000033b6
+                        jsr     _DEBUG_ERROR            ; if called will hold on a flashing screen
 L000033b6               move.l  d0,-(a7)
-L000033b8               move.w  $00dff01e,d0
-L000033be               btst.l  #$000c,d0
-L000033c2               bne.b   L000033d0
-L000033c4               move.w  #$0800,$00dff09c
+L000033b8               move.w  $00dff01e,d0            ; intreqr
+L000033be               btst.l  #$000c,d0               ; DSKSYN
+L000033c2               bne.b   dsksyn_interrupt         ; L000033d0
+L000033c4               move.w  #$0800,$00dff09c        ; clear RBF (serial buffer interrupt)
 L000033cc               move.l  (a7)+,d0
 L000033ce               rte 
 
+dsksyn_interrupt
 L000033d0               move.w  #$1000,$00dff09c
 L000033d8               move.l  (a7)+,d0
 L000033da               rte  
 
+
+
+                ; -------------------- level 6 interrupt handler --------------------
+                ; unused
+level6_interrupt_handler        ; original address $000033dc
+                        jsr     _DEBUG_ERROR
 L000033dc               move.l  d0,-(a7)
-L000033de               move.w  $00dff01e,d0
-L000033e4               btst.l  #$000e,d0
-L000033e8               bne.b   L0000340e
+L000033de               move.w  $00dff01e,d0            ; intreqr
+L000033e4               btst.l  #$000e,d0               ; INTEN (h/w ref says enable only - don't think this is evet set on read)
+L000033e8               bne.b   inten_interrupt         ; L0000340e
+
 L000033ea               move.b  $00bfdd00,d0
-L000033f0               bpl.b   L00003402
-L000033f2               bsr.w   L0000355a
-L000033f6               move.w  #$2000,$00dff09c
+L000033f0               bpl.b   not_ciab_interrupt      ; L00003402
+
+L000033f2               bsr.w   ciab_interrupt_handler  ; L0000355a
+L000033f6               move.w  #$2000,$00dff09c        ; clear EXTER (CIAB & disk index flag)
 L000033fe               move.l  (a7)+,d0
 L00003400               rte  
 
+not_ciab_interrupt
 L00003402               move.w  #$2000,$00dff09c
 L0000340a               move.l  (a7)+,d0
 L0000340c               rte 
 
+inten_interrupt
 L0000340e               move.w #$4000,$00dff09c
 L00003416               move.l (a7)+,d0
 L00003418               rte 
 
+
+
+
+                ; ----------------- handle CIAA interrupt --------------
+handle_ciaa_interrupt   ; original address $0000341a
 L0000341a               lsr.b   #$02,d0
 L0000341c               bcc.b   L00003422
 L0000341e               bsr.w   L0000361e
@@ -276,40 +504,56 @@ L00003546               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000 
 L00003556               dc.w    $0000,$0000 
 
 
-L0000355a               lsr.b   #$02,d0
-L0000355c               bcc.b   L00003566
-L0000355e               move.b  #$00,$00bfee01
-L00003566               rts 
 
-L00003568               movem.l d0-d7/a0-a6,-(a7)
-L0000356c               move.l  L000037c0,d0
-L00003572               move.w  d0,L000031dc
-L00003578               swap.w  d0
-L0000357a               move.w  d0,L000031d8
-L00003580               swap.w  d0
 
-L00003582                       add.l   #$000017c0,d0
+                        ; ----------------- ciab interrupt handler -----------------
+                        ; $d0 - CIAB - ICR (interrupt control register)
+ciab_interrupt_handler  ; original address $0000355a
+L0000355a                       lsr.b   #$02,d0
+L0000355c                       bcc.b   L00003566
+L0000355e                       move.b  #$00,$00bfee01          ; is CIAB timer B - set CIAA - Control Register A (stop CIAA timer A)
+L00003566                       rts 
+
+
+
+                        ; ----------------- vertb interrupt handler -----------------
+                        ; called from level 3 interrupt handler when VERTB interrupt
+                        ; is generated.
+vertb_interrupt_handler ; original address L00003568
+L00003568                       movem.l d0-d7/a0-a6,-(a7)
+                                ; set copper display bitplanes
+L0000356c                       move.l  display_buffer1_ptr,a0          ; L000037c0,d0
+L00003572                       move.w  d0,L000031dc
+L00003578                       swap.w  d0
+L0000357a                       move.w  d0,L000031d8
+L00003580                       swap.w  d0
+L00003582                       add.l   #DISPLAY_BITPLANE_SIZE,d0       ; #$000017c0,d0
 L00003588                       move.w  d0,L000031e4
 L0000358e                       swap.w  d0
 L00003590                       move.w  d0,L000031e0 
 L00003596                       swap.w  d0
-L00003598                       add.l   #$000017c0,d0
+L00003598                       add.l   #DISPLAY_BITPLANE_SIZE,d0       ;$000017c0,d0
 L0000359e                       move.w  d0,L000031ec 
 L000035a4                       swap.w  d0
 L000035a6                       move.w  d0,L000031e8
 L000035ac                       swap.w  d0
-L000035ae                       add.l   #$000017c0,d0
+L000035ae                       add.l   #DISPLAY_BITPLANE_SIZE,d0       ;$000017c0,d0
 L000035b4                       move.w  d0,L000031f4
 L000035ba                       swap.w  d0
 L000035bc                       move.w  d0,L000031f0 
-L000035c2                       addq.w  #$01,L000037bc
+
+L000035c2                       addq.w  #$01,frame_counter      ; L000037bc
 L000035c8                       tst.w   L00008d20
-L000035ce                       bne.b   L00003604
+L000035ce                       bne.b   L00003604               ; update music/sfx and exit
+
+                                ; update score panel
 L000035d0                       pea.l   L000035dc
-L000035d6                       jmp     $0007c800               ; panel
+L000035d6                       jmp     PANEL_UPDATE            ; panel
+                                ; return to here (pea.l L000035dc)
 
 L000035dc                       tst.w   L00008d32
-L000035e2                       bne.b   L00003604
+L000035e2                       bne.b   L00003604               ; update music/sfx and exit
+
 L000035e4                       move.w  L00008f6e,d0
 L000035ea                       neg.w   d0
 L000035ec                       move.w  #$02ee,d1
@@ -317,13 +561,15 @@ L000035f0                       tst.w   L00008d1e
 L000035f6                       beq.b   L000035fc
 L000035f8                       move.w  #$0384,d1
 L000035fc                       add.w   d1,d0
-L000035fe                       move.w  d0,$000690f0            ; music
-L00003604                       pea.l   L00003610
-L0000360a                       jmp     $00068f98               ; music
+L000035fe                       ;move.w  d0,$000690f0            ; music
+L00003604                       ;pea.l   L00003610
+L0000360a                       ;jmp     $00068f98               ; music
 
-L00003610                       move.b  #$00,$00bfee01
+L00003610                       move.b  #$00,$00bfee01          ; Clear CIAA control register A - stop CIAA timer A
 L00003618                       movem.l (a7)+,d0-d7/a0-a6
 L0000361c                       rts  
+
+
 
 L0000361e                       movem.l d0-d7/a0-a6,-(a7)
 L00003622                       bsr.w   L00003634
@@ -424,9 +670,14 @@ L00003750                       tst.b   d0
 L00003752                       movem.l (a7)+,d1-d2/a0
 L00003756                       rts  
 
+
+                        ;----------------- initialise display -------------------
+                        ; a0 = copper_list
+                        ;
+initialise_display      ; original address $00003758
 L00003758                       move.w  #$0080,$00dff096
-L00003760                       move.l  a0,$00dff080
-L00003766                       move.w  a0,$00dff088
+L00003760                       move.l  a0,$00dff080                    ; copper list
+L00003766                       move.w  a0,$00dff088                    ; copper list
 L0000376c                       move.w  #$0038,$00dff092
 L00003774                       move.w  #$00d0,$00dff094
 L0000377c                       move.w  #$4181,$00dff08e
@@ -434,46 +685,99 @@ L00003784                       move.w  #$09c1,$00dff090
 L0000378c                       move.w  #$0000,$00dff108
 L00003794                       move.w  #$0000,$00dff10a
 L0000379c                       move.w  #$4200,$00dff100
-L000037a4                       clr.w   L000037bc
-L000037aa                       tst.w   L000037bc
+
+                  ; set bitplane ptrs if running a test build
+                IFD     TEST_BUILD_LEVEL
+                    lea     copper_panel_planes,a0
+                    move.l  #PANEL_GFX,d0
+                    move.w  d0,6(a0)
+                    swap.w  d0
+                    move.w  d0,2(a0)
+                    swap.w  d0
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$0e(a0)
+                    swap.w  d0
+                    move.w  d0,$0a(a0)
+                    swap.w  d0  
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$16(a0)
+                    swap.w  d0
+                    move.w  d0,$12(a0)
+                    swap.w  d0        
+                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                    move.w  d0,$1e(a0)
+                    swap.w  d0
+                    move.w  d0,$1a(a0)
+                    swap.w  d0       
+                ENDC
+
+L000037a4                       clr.w   frame_counter                   ; L000037bc
+L000037aa                       tst.w   frame_counter                   ; L000037bc
 L000037b0                       beq.b   L000037aa
-L000037b2                       move.w  #$8180,$00dff096
+L000037b2                       move.w  #$8180,$00dff096                ; dmacon
 L000037ba                       rts  
 
-L000037bc                       dc.w    $0000
-L000037be                       dc.w    $0002
-L000037c0                       dc.w    $0005,$c200
-L000037c4                       dc.w    $0006,$2100
 
-L000037c8                       move.w  L000037be,d0
-L000037ce                       cmp.w   L000037bc,d0
+                        ; ----------- frame counter variables -----------
+frame_and_target_counter ; original address $000037bc
+frame_counter            ; original address $000037bc
+L000037bc                       dc.w    $0000
+target_frame_counter    ; original address $000037be
+L000037be                       dc.w    $0002
+
+                        ;------------- display buffer ptrs -------------
+display_buffer_ptrs     ; original address $000037c0
+display_buffer1_ptr     ; original address $000037c0
+L000037c0                       dc.l    DISPLAY_BUFFER_1        ; $0005c200             ; display buffer 1
+display_buffer2_ptr     ; original address $000037c4
+L000037c4                       dc.l    DISPLAY_BUFFER_2        ; $00062100             ; display buffer 2
+
+
+
+                        ; ---------------- double buffer display ---------------
+double_buffer_display   ; original address $000037c8
+L000037c8                       move.w  target_frame_counter,d0         ; L000037be,d0
+L000037ce                       cmp.w   frame_counter,d0                ; L000037bc,d0
 L000037d4                       bhi.b   L000037ce
-L000037d6                       movem.l L000037c0,d0-d1
+L000037d6                       movem.l display_buffer_ptrs,d0-d1       ; L000037c0,d0-d1
 L000037de                       exg.l   d0,d1
-L000037e0                       movem.l d0-d1,L000037c0
-L000037e8                       move.w  L000037bc,d0
-L000037ee                       cmp.w   L000037bc,d0
+L000037e0                       movem.l d0-d1,display_buffer_ptrs       ; L000037c0
+L000037e8                       move.w  frame_counter,d0                ; L000037bc,d0
+L000037ee                       cmp.w   frame_counter,d0                ; L000037bc,d0
 L000037f4                       beq.b   L000037ee
-L000037f6                       clr.w   L000037bc
-L000037fc                       move.w  L00008d3a,d0
+L000037f6                       clr.w   frame_counter                   ; L000037bc
+L000037fc                       move.w  L00008d3a,d0                    ; horizon position?
 L00003802                       not.b   d0
-L00003804                       add.b   #$d9,d0
-L00003808                       move.b  d0,$00003276
+L00003804                       add.b   #$d9,d0                         ; $d9 = 217 (-39)
+L00003808                       move.b  d0,copper_horizon_wait          ;L00003276 ; Copper Wait Instruction (vertical wait byte - does the horizon move up/down?)
 L0000380e                       rts 
 
-L00003810                       lea.l   $0005c200,a0            ; external address
-L00003816                       move.w  #$2f7f,d7
+
+
+
+                        ; ----------------- clear display memory -----------------
+clear_display_memory    ; original address $00003810
+L00003810                       lea.l   DISPLAY_BUFFER,a0               ; $0005c200,a0 ; external address
+L00003816                       move.w  #DISPLAY_BUFFER_SIZE_L-1,d7     ; #$2f7f,d7
 L0000381a                       clr.l   (a0)+
 L0000381c                       dbf.w   d7,L0000381a
 L00003820                       rts  
 
-L00003822                       pea.l   L00003834
-L00003828                       pea.l   $0007c838               ; panel
-L0000382e                       jmp     $0007c854               ; panel
 
+
+
+                        ; -------------------- initialise game ---------------------
+initalise_game          ; original address $00003822
+L00003822                       pea.l   L00003834
+L00003828                       pea.l   PANEL_INIT_LIVES        ; panel
+L0000382e                       jmp     PANEL_INIT_ENERGY       ; panel
+                                ;return here (pea.l L00003834)
 L00003834                       tst.w   L00008d1e
 L0000383a                       bne.w   L000038ec
-L0000383e                       bsr.w   L00003de0
+L0000383e                       bsr.w   panel_fade_in           ; L00003de0
+
+                                jsr     _DEBUG_COLOURS
+
 L00003842                       lea.l   L00003e74,a0
 L00003848                       bsr.w   L0000410a
 L0000384c                       bsr.w   L00003d6c
@@ -485,7 +789,7 @@ L00003864                       bsr.w   L00007b20
 L00003868                       lea.l   $00026be6,a0            ; external address
 L0000386e                       lea.l   $00028800,a1            ; external address
 L00003874                       bsr.w   L00007b20
-L00003878                       bsr.w   L00003de0
+L00003878                       bsr.w   panel_fade_in           ; L00003de0
 L0000387c                       move.w  #$03e7,L00008d22
 L00003884                       move.w  #$0500,d0
 L00003888                       bsr.w   L00003986
@@ -506,7 +810,7 @@ L000038d8                       move.w  d0,L00008d22
 L000038de                       move.l  #$00008236,L0000907c
 L000038e8                       bra.w   L000039aa
 
-L000038ec                       bsr.w   L00003de0
+L000038ec                       bsr.w   panel_fade_in           ; L00003de0
 L000038f0                       lea.l   L00003ed0,a0
 L000038f6                       bsr.w   L0000410a
 L000038fa                       bsr.w   L00003d6c
@@ -541,12 +845,13 @@ L0000398c                       move.w  #$01bb,d7
 L00003990                       clr.w   (a0)+ [003c]
 L00003992                       dbf.w   d7,L00003990
 L00003996                       move.w  #$0002,L00008d2a
-L0000399e                       pea.l   $0007c854               ; panel
-L000039a4                       jmp     $0007c80e               ; panel
+L0000399e                       pea.l   PANEL_INIT_ENERGY       ; panel
+L000039a4                       jmp     PANEL_INIT_TIMER        ; panel
+                                ; init timer & return
 
 L000039aa                       bsr.w   L00006a2c
 L000039ae                       move.w  #$0000,L00008d26
-L000039b6                       btst.b  #$0000,$0007c875        ; panel
+L000039b6                       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875        ; panel
 L000039be                       bne.b   L000039ce
 L000039c0                       moveq   #$01,d0
 L000039c2                       pea.l   L000039ce
@@ -576,13 +881,14 @@ L00003a1c                       bsr.w   L00003a34
 L00003a20                       pea.l   L000039ce
 L00003a26                       move.w  L00008d2a,d0
 L00003a2c                       bne.w   L00003cb8
-L00003a30                       bra.w   L000037c8
+L00003a30                       bra.w   double_buffer_display           ; L000037c8
 
 L00003a34                       tst.w   L00008f66
 L00003a3a                       bne.b   L00003a62
-L00003a3c                       move.b  $0007c874,d0            ; panel
+L00003a3c                       move.b  PANEL_STATUS_1,d0               ; $0007c874,d0            ; panel
 L00003a42                       and.b   #$07,d0
-L00003a46                       beq.b   L00003a60
+L00003a46                       beq.b   L00003a60       ; 0 = exit
+                        ; timer, nolives or life lost
 L00003a48                       tst.w   L00008d1e
 L00003a4e                       beq.b   L00003a62
 L00003a50                       tst.w   L00008d38
@@ -591,22 +897,23 @@ L00003a58                       move.w  #$0019,L00008d38
 L00003a60                       rts  
 
 L00003a62                       move.w  #$0001,L00008d20
-L00003a6a                       btst.b  #$0001,$0007c874        ; panel
-L00003a72                       bne.w   L00003b18
+L00003a6a                       btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1   ;$0007c874        ; panel
+L00003a72                       bne.w   L00003b18       ; branch = no lives left
 L00003a76                       pea.l   L00003a82
 L00003a7c                       jmp     $00068f84               ; music
 L00003a82                       pea.l   L00003a90
 L00003a88                       moveq   #$03,d0
 L00003a8a                       jmp     $00068f90               ; music
 
-L00003a90                       btst.b  #$0000,$0007c874        ; panel
+L00003a90                       btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1   ;$0007c874        ; panel
 L00003a98                       beq.b   L00003abc
+                        ; timer has expired
 L00003a9a                       bsr.w   L00003d5a
 L00003a9e                       lea.l   L00003f20,a0
 L00003aa4                       bsr.w   L0000410a
 L00003aa8                       bsr.w   L00003d6c
-L00003aac                       clr.w   L000037bc
-L00003ab2                       cmp.w   #$0032,L000037bc
+L00003aac                       clr.w   frame_counter           ; L000037bc
+L00003ab2                       cmp.w   #$0032,frame_counter    ; L000037bc
 L00003aba                       bcs.b   L00003ab2
 L00003abc                       bsr.w   L00003d5a
 L00003ac0                       lea.l   L00003e74,a0
@@ -618,14 +925,15 @@ L00003ada                       lea.l   L0000392e,a1
 L00003ae0                       move.l  a1,(a7)
 L00003ae2                       bsr.w   L0000410a
 L00003ae6                       bsr.w   L00003d6c
-L00003aea                       clr.w   L000037bc
-L00003af0                       cmp.w   #$0032,L000037bc
+L00003aea                       clr.w   frame_counter           ; L000037bc
+L00003af0                       cmp.w   #$0032,frame_counter    ; L000037bc
 L00003af8                       bcs.b   L00003af0
 L00003afa                       cmp.w   #$0001,L00008f66 
 L00003b02                       bne.b   L00003b0a
-L00003b04                       pea.l   $0007c862               ; panel
+L00003b04                       pea.l   PANEL_LOSE_LIFE         ; panel
 L00003b0a                       move.w  #$0000,L00008f66
-L00003b12                       jmp     $0007c854               ; panel
+L00003b12                       jmp     PANEL_ADD_LIFE          ; panel
+                                ; use rts to return (pea.l PANEL_LOSE_LIFE)
 
 L00003b18                       move.w  #$0001,L00008d20
 L00003b20                       pea.l   L00003b2c
@@ -638,12 +946,12 @@ L00003b3a                       bsr.w   L00003d5a
 L00003b3e                       lea.l   L00003f2c,a0
 L00003b44                       bsr.w   L0000410a
 L00003b48                       bsr.w   L00003d6c
-L00003b4c                       clr.w   L000037bc
-L00003b52                       cmp.w   #$0050,L000037bc
+L00003b4c                       clr.w   frame_counter           ; L000037bc
+L00003b52                       cmp.w   #$0050,frame_counter    ; L000037bc
 L00003b5a                       bcs.b   L00003b52
 L00003b5c                       bsr.w   L00003d5a
 L00003b60                       bsr.w   L00003d6c
-L00003b64                       bsr.w   L00003e2c
+L00003b64                       bsr.w   panel_fade_out          ; L00003e2c
 L00003b68                       jmp     $00000820               ; loader
 
 
@@ -661,12 +969,12 @@ L00003ba0                       beq.b   L00003ba8
 L00003ba2                       lea.l   L00003ee8,a0
 L00003ba8                       bsr.w   L0000410a
 L00003bac                       bsr.w   L00003d6c
-L00003bb0                       clr.w   L000037bc
-L00003bb6                       cmp.w   #$0055,L000037bc
+L00003bb0                       clr.w   frame_counter           ; L000037bc
+L00003bb6                       cmp.w   #$0055,frame_counter    ; L000037bc
 L00003bbe                       bcs.b   L00003bb6
 L00003bc0                       bsr.w   L00003d5a
 L00003bc4                       bsr.w   L00003d6c
-L00003bc8                       bsr.w   L00003e2c
+L00003bc8                       bsr.w   panel_fade_out          ; L00003e2c
 L00003bcc                       tst.w   L00008d1e
 L00003bd2                       bne.b   L00003bda
 L00003bd4                       jmp     $0000082c               ; loader
@@ -726,16 +1034,16 @@ L00003cb6                       rts
 
 L00003cb8                       move.w  #$0000,L00008d2a
 L00003cc0                       move.w  #$0000,L00008d20
-L00003cc8                       move.w  L00008d3a,d1
+L00003cc8                       move.w  L00008d3a,d1                    ; horizon position
 L00003cce                       not.b   d1
-L00003cd0                       add.b   #$d9,d1
-L00003cd4                       move.b  d1,L00003276
+L00003cd0                       add.b   #$d9,d1                         ; #$d9 = 217 (-39)
+L00003cd4                       move.b  d1,copper_horizon_wait          ;L00003276
 L00003cda                       cmp.w   #$0002,d0
 L00003cde                       beq.w   L00003d6c
 L00003ce2                       moveq   #$00,d0
 L00003ce4                       moveq   #$26,d1
-L00003ce6                       movea.l L000037c0,a0
-L00003cec                       movea.l L000037c4,a1
+L00003ce6                       movea.l display_buffer1_ptr,a0          ; L000037c0,a0
+L00003cec                       movea.l display_buffer2_ptr,a0          ; L000037c4,a1
 L00003cf2                       lea.l   $28(a0,d1.w),a2
 L00003cf6                       lea.l   $28(a1,d1.w),a3
 L00003cfa                       lea.l   $00(a0,d0.w),a0
@@ -757,13 +1065,13 @@ L00003d3c                       dbf.w   d7,L00003d04
 L00003d40                       addq.w  #$02,d0
 L00003d42                       subq.w  #$02,d1
 L00003d44                       bmi.b   L00003d58
-L00003d46                       tst.w   L000037bc
+L00003d46                       tst.w   frame_counter                   ; L000037bc
 L00003d4c                       beq.b   L00003d46
-L00003d4e                       move.w  #$0000,L000037bc
+L00003d4e                       move.w  #$0000,frame_counter            ; L000037bc
 L00003d56                       bra.b   L00003ce6
 L00003d58                       rts  
 
-L00003d5a                       movea.l L000037c4,a0
+L00003d5a                       movea.l display_buffer2_ptr,a0          ; L000037c4,a0
 L00003d60                       move.w  #$17bf,d7
 L00003d64                       clr.l   (a0)+
 L00003d66                       dbf.w   d7,L00003d64
@@ -771,7 +1079,7 @@ L00003d6a                       rts
 
 L00003d6c                       move.w  #$0028,d0
 L00003d70                       move.w  #$0098,d1
-L00003d74                       movem.l L000037c0,a0-a1
+L00003d74                       movem.l display_buffer_ptrs,a0-a1       ; L000037c0,a0-a1
 L00003d7a                       clr.w   d2
 L00003d7c                       moveq   #$7f,d3
 L00003d7e                       and.w   d2,d3
@@ -814,9 +1122,11 @@ L00003dd8                       and.w   #$1fff,d2
 L00003ddc                       bne.b   L00003d7c
 L00003dde                       rts  
 
+
+panel_fade_in
 L00003de0                       moveq   #$0f,d7
-L00003de2                       lea.l   L000032a4,a0
-L00003de6                       lea.l   L000032e6,a1
+L00003de2                       lea.l   copper_panel_colours+2,a0               ; L000032a4,a0
+L00003de6                       lea.l   panel_colours,a1                        ; L000032e6,a1
 L00003dea                       moveq   #$0f,d6
 L00003dec                       move.w  (a0),d0
 L00003dee                       move.w  (a1)+,d1
@@ -835,15 +1145,17 @@ L00003e0a                       add.w   #$0100,d0
 L00003e0e                       move.w  d0,(a0)
 L00003e10                       addq.w  #$04,a0
 L00003e12                       dbf.w   d6,L00003dec
-L00003e16                       move.w  L000037bc,d0
+L00003e16                       move.w  frame_counter,d0        ; L000037bc,d0
 L00003e1c                       addq.w  #$04,d0
-L00003e1e                       cmp.w   L000037bc,d0
+L00003e1e                       cmp.w   frame_counter,d0        ; L000037bc,d0
 L00003e24                       bne.b   L00003e1e
 L00003e26                       dbf.w   d7,L00003de2
 L00003e2a                       rts  
 
+
+panel_fade_out
 L00003e2c                       moveq   #$0f,d7
-L00003e2e                       lea.l   L000032a4,a0
+L00003e2e                       lea.l   copper_panel_colours+2,a0       ; L000032a4,a0
 L00003e32                       moveq   #$0f,d6
 L00003e34                       move.w  (a0),d0
 L00003e36                       moveq   #$0f,d1
@@ -861,9 +1173,9 @@ L00003e52                       sub.w   #$0100,d0
 L00003e56                       move.w  d0,(a0)
 L00003e58                       addq.w  #$04,a0
 L00003e5a                       dbf.w   d6,L00003e34
-L00003e5e                       move.w  L000037bc,d0
+L00003e5e                       move.w  frame_counter,d0        ; L000037bc,d0
 L00003e64                       addq.w  #$04,d0
-L00003e66                       cmp.w   L000037bc,d0
+L00003e66                       cmp.w   frame_counter,d0        ; L000037bc,d0
 L00003e6c                       bne.b   L00003e66
 L00003e6e                       dbf.w   d7,L00003e2e
 L00003e72                       rts 
@@ -919,7 +1231,7 @@ L00003f90                       lea.l   L00003f44,a0
 L00003f96                       bsr.w   L00006780
 L00003f9a                       lea.l   L00003f3a,a0
 L00003fa0                       bsr.w   L0000410e
-L00003fa4                       move.w  $0007c88e,d0            ; panel
+L00003fa4                       move.w  PANEL_ENERGY_VALUE,d0   ;$0007c88e,d0            ; panel
 L00003faa                       cmp.w   #$0012,d0
 L00003fae                       bcc.b   L00003fb6
 L00003fb0                       move.w  d0,L00008d28
@@ -941,19 +1253,26 @@ L00003fea                       lea.l   L00003f6b,a0
 L00003ff0                       bsr.w   L00006780
 L00003ff4                       lea.l   L00003f5e,a0
 L00003ffa                       bra.w   L0000410e
-L00003ffe                       btst.b  #$0007,$0007c875        ; panel
+L00003ffe                       btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2   ;$0007c875        ; panel
 L00004006                       beq.b   L00003fd6
+                                ; cheat active
 L00004008                       bra.w   L00003b6e
 
-L0000400c                       bchg.b  #$0000,$0007c875               ; panel
+                                ; select music/sfx
+L0000400c                       bchg.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875               ; panel
 L00004014                       bne.b   L00004024
 L00004016                       moveq   #$01,d0
 L00004018                       pea.l   L00003fd6               
 L0000401e                       jmp     $00068f88               ; music
+                                ; return (pea.l L00003fd6)
+
 L00004024                       moveq   #$01,d0
 L00004026                       pea.l   L00003fd6
 L0000402c                       jmp     $00068f90               ; music
-L00004032                       bset.b  #$0005,$0007c875        ; panel
+                                ; return (pea.l L00003fd6)
+
+                        ; set game over
+L00004032                       bset.b  #PANEL_ST2_GAME_OVER,PANEL_STATUS_2   ;$0007c875        ; panel
 L0000403a                       bra.w   L00003b18
 
 L0000403e                       move.w  #$0001,L00008d20
@@ -1020,7 +1339,7 @@ L0000411a                       mulu.w  #$0028,d0
 L0000411e                       move.b  (a0)+,d1
 L00004120                       ext.w   d1
 L00004122                       add.w   d1,d0
-L00004124                       movea.l L000037c4,a1
+L00004124                       movea.l display_buffer2_ptr,a1          ; L000037c4,a1
 
 L0000412a                       lea.l   $00(a1,d0.w),a1
 L0000412e                       moveq   #$00,d0
@@ -1227,7 +1546,7 @@ L00004422                       movem.l (a7)+,d7/a1
 L00004426                       moveq   #$0d,d0
 L00004428                       bsr.w   L00003c92
 L0000442c                       moveq   #$01,d0
-L0000442e                       jmp     $0007c870               ; panel
+L0000442e                       jmp     PANEL_LOSE_ENERGY       ; panel
 
 L00004434                       rts 
 
@@ -1260,7 +1579,7 @@ L00004496                       move.w  d1,$0012(a6)
 L0000449a                       moveq   #$0e,d0
 L0000449c                       bsr.w   L00003c92
 L000044a0                       moveq   #$01,d0
-L000044a2                       jmp     $0007c870                       ; panel
+L000044a2                       jmp     PANEL_LOSE_ENERGY       ; panel
 
 L000044a8                       tst.w   L00008f64
 L000044ae                       beq.w   L00004570
@@ -1383,7 +1702,7 @@ L000046ac                       add.b   #$02,$0002(a1)
 L000046b2                       moveq   #$0c,d0
 L000046b4                       bsr.w   L00003c92
 L000046b8                       moveq   #$03,d0
-L000046ba                       jmp     $0007c870               ; panel
+L000046ba                       jmp     PANEL_LOSE_ENERGY       ; panel
 
 L000046c0                       rts  
 
@@ -1618,8 +1937,8 @@ L00004992                       moveq   #$0f,d0
 L00004994                       bsr.w   L00003c92
 L00004998                       move.l  #$00000200,d0
 L0000499e                       pea.l   L000049aa
-L000049a4                       jmp     $0007c82a                       ; panel
-
+L000049a4                       jmp     PANEL_ADD_SCORE            ; panel
+                                ; return here (pea.l L000049aa)
 L000049aa                       sub.w   $001e(a1),d2
 L000049ae                       bmi.b   L000049f0
 L000049b0                       tst.w   $0028(a1)
@@ -1749,7 +2068,7 @@ L00004afe                       bcs.w   L00004b90
 L00004b02                       addq.w  #$01,d7
 L00004b04                       bra.b   L00004ade
 
-L00004b06                       movea.l L000037c4,a0
+L00004b06                       movea.l display_buffer2_ptr,a0          ; L000037c4,a0
 L00004b0c                       addq.w  #$01,d2
 L00004b0e                       sub.w   d7,d2
 L00004b10                       move.w  d2,d4
@@ -2015,7 +2334,7 @@ L00004e8e                       neg.w   d6
 L00004e90                       add.w   d4,d6
 L00004e92                       and.w   #$000f,d0
 L00004e96                       or.w    #$0000,d0
-L00004e9a                       movea.l L000037c4,a0
+L00004e9a                       movea.l display_buffer2_ptr,a0          ; L000037c4,a0
 L00004ea0                       addq.w  #$01,d2
 L00004ea2                       sub.w   d7,d2
 L00004ea4                       move.w  d2,d4
@@ -2253,7 +2572,7 @@ L000051c4                       move.w  d0,L00008f6e
 L000051ca                       moveq   #$0c,d0
 L000051cc                       bsr.w   L00003c92
 L000051d0                       moveq   #$03,d0
-L000051d2                       jmp     $0007c870               ; Panel
+L000051d2                       jmp     PANEL_LOSE_ENERGY       ; Panel
 
 
 L000051d8                       rts  
@@ -2682,7 +3001,7 @@ L000056ee                       move.w  #$0000,$003c(a6)
 L000056f4                       bsr.w   L00006a2c
 L000056f8                       move.w  L00008f70,L00008f6e
 L00005702                       lea.l   $0008(a7),a7
-L00005706                       movea.l L000037c4,a0
+L00005706                       movea.l display_buffer2_ptr,a0                  ; L000037c4,a0
 L0000570c                       moveq   #$00,d0
 L0000570e                       move.w  #$17bf,d7
 L00005712                       move.l  d0,(a0)+
@@ -3826,8 +4145,8 @@ L000067da                       rts
 
 L000067dc                       move.l  #$00000010,d0
 L000067e2                       pea.l   L000067ee
-L000067e8                       jmp     $0007c82a               ; Panel
-
+L000067e8                       jmp     PANEL_ADD_SCORE         ; Panel
+                                ; return here (pea.l L000067ee)
 
 L000067ee                       move.w  L00009076,d0
 L000067f4                       addq.b  #$01,d0
@@ -3943,7 +4262,7 @@ L000069a8                       tst.w   $0028(a0)
 L000069ac                       bne.b   L000069c0
 L000069ae                       pea.l   L000069c0
 L000069b4                       moveq   #$01,d0
-L000069b6                       jmp     $0007c870                       ; Panel
+L000069b6                       jmp     PANEL_LOSE_ENERGY       ; Panel
 
 
 L000069bc                       move.b  d0,$0002(a0)
@@ -4414,7 +4733,7 @@ L00006ee2                       move.w  d0,(a1)+
 L00006ee4                       rts 
 
 
-L00006ee6                       movea.l L000037c4,a0
+L00006ee6                       movea.l display_buffer2_ptr,a0                  ; L000037c4,a0
 L00006eec                       move.l  a0,$00dff054
 L00006ef2                       move.w  #$0000,$00dff066
 L00006efa                       move.w  #$ffff,$00dff070
@@ -4424,7 +4743,7 @@ L00006f12                       move.w  #$2614,$00dff058
 L00006f1a                       rts 
 
 
-L00006f1c                       movea.l L000037c4,a0
+L00006f1c                       movea.l display_buffer2_ptr,a0                  ; L000037c4,a0
 L00006f22                       lea.l   $2f80(a0),a0
 L00006f26                       lea.l   L0000909f,a4
 L00006f2c                       lea.l   L00007bc8,a5
@@ -4586,9 +4905,9 @@ L00007120                       rts
 
 
 L00007122                       swap.w  d6
-L00007124                       move.w  d6,L00008d3a
+L00007124                       move.w  d6,L00008d3a                    ; horizon position
 L0000712a                       movem.l d6/a0,-(a7)
-L0000712e                       lea.l   $00024b00,a4                    ; external address
+L0000712e                       lea.l   DATA_OFFSET_1,a4                ; $00024b00,a4  ; DATA.IFF - (offset $4b04 = $24b00 - $1fffc ) external address
 L00007134                       lea.l   L00008d4c,a5
 L0000713a                       move.w  #$0020,d7
 L0000713e                       move.w  $0006(a5),d0
@@ -4619,7 +4938,7 @@ L0000717e                       mulu.w  #$0050,d6
 
 L00007182                       lea.l   $00(a4,d6.w),a4
 L00007186                       moveq   #$00,d6
-L00007188                       movea.l L000037c4,a0
+L00007188                       movea.l display_buffer2_ptr,a0                  ; L000037c4,a0
 L0000718e                       lea.l   -$0002(a0),a0
 L00007192                       neg.w   d6
 L00007194                       beq.b   L000071a2
@@ -4693,7 +5012,7 @@ L000072aa                       sub.w   d6,d7
 L000072ac                       mulu.w  #$0050,d6
 L000072b0                       adda.w  d6,a4
 L000072b2                       moveq   #$00,d6
-L000072b4                       movea.l L000037c4,a0
+L000072b4                       movea.l display_buffer2_ptr,a0                  ; L000037c4,a0
 L000072ba                       lea.l   -$0002(a0),a0
 L000072be                       neg.w   d6
 L000072c0                       move.w  d6,-(a7)
@@ -5593,7 +5912,7 @@ L00008d32       dc.w    $0000
 L00008d34       dc.w    $0000        
 L00008d36       dc.w    $0000
 L00008d38       dc.w    $0000
-L00008d3a       dc.w    $0000
+L00008d3a       dc.w    $0000                           ; maybe the horizon position
 L00008d3c       dc.w    $0000,$0000,$0000,$0000,$0000       
 L00008d46       dc.w    $0000,$0000,$0000
 L00008d4c       dc.w    $0000,$0000,$0000,$0000,$0000     
@@ -6724,3 +7043,61 @@ L0000cfa6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0001,$0000         
 
 
 
+                    ;-------------------------------------------------------------------------------------------
+                    ; My Debug Routines
+                    ;-------------------------------------------------------------------------------------------
+                    ; I added the following routines to allow 'signals' to be flashed on screen, and/or
+                    ; the game to be paused as required.
+                    ;
+                    ; The routines are used to modify routines so that I can flash the screen, pause the
+                    ; game when certain code is executed.
+                    ;
+
+_DEBUG_ERROR
+                move.w  #$f00,$dff180
+                move.w  #$0f0,$dff180
+                jmp     _DEBUG_ERROR
+
+
+_DEBUG_COLOURS
+            move.w  d0,$dff180
+            add.w   #$1,d0
+            btst    #6,$bfe001
+            bne.s   _DEBUG_COLOURS
+            rts
+            
+_DEBUG_RED_PAUSE
+                    move.w  #$f00,$dff180
+                    btst    #6,$bfe001
+                    bne.s   _DEBUG_RED_PAUSE
+                    rts
+
+_MOUSE_WAIT
+            btst    #6,$bfe001
+            bne.s   _MOUSE_WAIT
+            rts
+
+
+                    ;-------------------------------------------------------------------------------------------
+                    ; End of My Debug Routines
+                    ;-------------------------------------------------------------------------------------------
+
+
+
+            ; iif Test Build - Include Data.s
+            IFD TEST_BUILD_LEVEL
+                incdir  "../data/"
+                include "data.s"
+                even
+            ENDC
+
+            ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
+            IFD TEST_BUILD_LEVEL
+                incdir      "../panel/"
+                include     "panel.s" 
+            ENDC
+            
+            ; Id Test Build - Define Display buffer
+            IFD TEST_BUILD_LEVEL
+display_buffer  dcb.l   $2f80,$00000000
+            ENDC
