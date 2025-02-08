@@ -20,6 +20,9 @@ DATA_ADDRESS        EQU     $0001fffc
     ENDC
 
 DATA_OFFSET_1       EQU    DATA_ADDRESS+$4b04
+DATA_OFFSET_2       EQU    DATA_ADDRESS+$6bea
+DATA_OFFSET_3       EQU    DATA_ADDRESS+$8804
+
 
 L0001fffc	dc.b	$00,$02,$00,$00,$00,$00,$00,$08,$00,$00,$00,$00,$00,$00,$00,$00	;................
 L0002000c	dc.b	$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$08,$00,$00,$00,$00	;................

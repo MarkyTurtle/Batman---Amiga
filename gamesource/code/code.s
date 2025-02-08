@@ -63,7 +63,16 @@ DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+$5f00
         ENDC
 
 
-
+        IFND    TEST_BUILD_LEVEL
+DATA24_ADDRESS                  EQU     $0002a416
+        ENDC
+        IFD     TEST_BUILD_LEVEL
+DATA24_ADDRESS                  EQU     L0002a416
+        ENDC
+DATA24_OFFSET_1                 EQU     DATA24_ADDRESS+$13aaa           ; $0003dec0     ; Data2/Data4 offset address $3dec0-$2a416=$13aaa
+DATA24_OFFSET_2                 EQU     DATA24_ADDRESS+$1b812           ; $00045c28     ; Data2/4 offset address $45c28-$2a416=$1b812
+DATA24_OFFSET_3                 EQU     DATA24_ADDRESS+$1a230           ; $00044646     ; Data2/4 offset $$00044646-$2a416=$1a230
+DATA24_OFFSET_4                 EQU     DATA24_ADDRESS+$21fe5           ; $0004c3fe     ; Data2/4 offset $0004c3fe-$2a416=$21fe5
 
 
         IFD     TEST_BUILD_LEVEL
@@ -147,7 +156,8 @@ L000030f0               move.b  #$ff,$00bfd300
                         ; init stack
 L000030f8               lea.l   STACK_TOP,a7                    ;$0005c1f0,a7 ; stack
 
-L000030fe               ;pea.l   L0000310a
+L000030fe               jsr     L0000310a
+                        ;pea.l   L0000310a
 L00003104               ;jmp     $00068f80                       ; music
                         ; return here (pea.l L0000310a)
 
@@ -157,8 +167,6 @@ L0000310c               lea.l   L000031ba,a0
 L00003112               lea.l   $00000064,a1                    ; level 1 autovector
 L00003118               move.l  (a0)+,(a1)+
 L0000311a               dbf.w   d7,L00003118
-
-                        ;jsr     _DEBUG_COLOURS
 
                         ; more JOYDAT and CIA init
 L0000311e               move.w  #$ff00,$00dff034
@@ -174,16 +182,12 @@ L00003164               move.b  #$91,$00bfd600
 L0000316c               move.b  d0,$00bfdb00
 L00003172               move.b  d0,$00bfdf00
 
-                        ;jsr     _DEBUG_COLOURS
-
 L00003178               move.w  #$7fff,$00dff09c
 L00003180               tst.b   $00bfed01
 L00003186               move.b  #$8a,$00bfed01
 L0000318e               tst.b   $00bfdd00
 L00003194               move.b  #$93,$00bfdd00
 L0000319c               move.w  #$e078,$00dff09a        ; intena (PORTS 2, COPER,VERTB,BLIT 3)
-
-                        ;jsr     _DEBUG_COLOURS
 
 L000031a4               bsr.w   clear_display_memory    ; L00003810
 L000031a8               lea.l   copper_list,a0          ; L000031d2,a0
@@ -506,14 +510,14 @@ L000034a6               dc.w    $5157,$4552,$5459,$5549,$4f50,$5b5d,$0031,$3233 
 L000034b6               dc.w    $4153,$4446,$4748,$4a4b,$4c3b,$2300,$0034,$3536         ;asdfghjkl;#..456
 L000034c6               dc.w    $005a,$5843,$5642,$4e4d,$2c2e,$2f00,$0037,$3839         ;.zxcvbnm,./..789
 L000034d6               dc.w    $2008,$090d,$0d1b,$7f00,$0000,$2d00,$8c8d,$8e8f         ; .........-.....
-L000034e6               dc.w    $8182,$8384,$8586,$8788,$898a,$2829,$2f2a,$2b8b         ;..........()/*+.
+L000034e6               dc.w    $8182,$8384,$8586,$8788,$898a,$2829,$2f2a,$2b8b       ;..........()/*+.
 L000034f6               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
 L00003506               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
 L00003516               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
 L00003526               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
 L00003536               dc.w    $0000
 L00003538               dc.w    $0000
-L0000353a               dc.w    $0000,$0000,$0000,$0000,$0000,$0000         ;................
+L0000353a               dc.w    $0000,$0000,$0000,$0000,$0000,$0000                     ;................
 L00003546               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
 L00003556               dc.w    $0000,$0000 
 
@@ -576,7 +580,9 @@ L000035f6                       beq.b   L000035fc
 L000035f8                       move.w  #$0384,d1
 L000035fc                       add.w   d1,d0
 L000035fe                       ;move.w  d0,$000690f0            ; music
-L00003604                       ;pea.l   L00003610
+
+L00003604                       jmp     L00003610
+                                ;pea.l   L00003610
 L0000360a                       ;jmp     $00068f98               ; music
 
 L00003610                       move.b  #$00,$00bfee01          ; Clear CIAA control register A - stop CIAA timer A
@@ -788,12 +794,11 @@ initalise_game          ; original address $00003822
 L00003822                       pea.l   L00003834
 L00003828                       pea.l   PANEL_INIT_LIVES        ; panel
 L0000382e                       jmp     PANEL_INIT_ENERGY       ; panel
+
                                 ;return here (pea.l L00003834)
 L00003834                       tst.w   L00008d1e
 L0000383a                       bne.w   L000038ec
 L0000383e                       bsr.w   panel_fade_in           ; L00003de0
-
-                                ;jsr     _DEBUG_COLOURS
 
 L00003842                       lea.l   text_introduction,a0    ;L00003e74,a0
 L00003848                       bsr.w   large_text_plotter      ; L0000410a
@@ -801,17 +806,15 @@ L00003848                       bsr.w   large_text_plotter      ; L0000410a
                                 lea.l   text_test_build,a0
                                 bsr.w   small_text_plotter      ;L0000410e
 
-                                bsr     double_buffer_display
-                                jsr     _DEBUG_COLOURS
-
 L0000384c                       bsr.w   L00003d6c
 L00003850                       bsr.w   L00008158
 L00003854                       bsr.w   L000074a4
-L00003858                       lea.l   $0003dec0,a0            ; external address
-L0000385e                       lea.l   $00045c28,a1            ; external address
+
+L00003858                       lea.l   DATA24_OFFSET_1,a0      ; $0003dec0,a0 ; Data2/Data4 offset address $3dec0-$2a416=$13aaa
+L0000385e                       lea.l   DATA24_OFFSET_2,a1      ; $00045c28,a1 ; Data2/4 offset address $45c28-$2a416=$1b812
 L00003864                       bsr.w   L00007b20
-L00003868                       lea.l   $00026be6,a0            ; external address
-L0000386e                       lea.l   $00028800,a1            ; external address
+L00003868                       lea.l   DATA_OFFSET_2,a0        ; $00026be6,a0 ; Data offset address $00026be6-$1fffc=$6bea
+L0000386e                       lea.l   DATA_OFFSET_3,a1        ; $00028800,a1 ; Data offset address $00028800=$1fffc=$8804
 L00003874                       bsr.w   L00007b20
 L00003878                       bsr.w   panel_fade_in           ; L00003de0
 L0000387c                       move.w  #$03e7,L00008d22
@@ -831,7 +834,10 @@ L000038cc                       cmp.w   L00008d22,d0
 L000038d2                       bcc.b   L000038d8
 L000038d4                       move.w  #$03e7,d0
 L000038d8                       move.w  d0,L00008d22
-L000038de                       move.l  #$00008236,L0000907c
+L000038de                       move.l  #L00008236,L0000907c
+
+                                jsr     _DEBUG_COLOURS
+
 L000038e8                       bra.w   L000039aa
 
 L000038ec                       bsr.w   panel_fade_in           ; L00003de0
@@ -839,11 +845,11 @@ L000038f0                       lea.l   text_gotham_carnival,a0 ; L00003ed0,a0
 L000038f6                       bsr.w   large_text_plotter      ; L0000410a
 L000038fa                       bsr.w   L00003d6c
 L000038fe                       bsr.w   L000074a4
-L00003902                       lea.l   $00044646,a0            ; external address
-L00003908                       lea.l   $0004c3fe,a1            ; external address
+L00003902                       lea.l   DATA24_OFFSET_3,a0      ; $00044646,a0            ; Data2/4 offset $$00044646-$2a416=$1a230
+L00003908                       lea.l   DATA24_OFFSET_4,a1      ; $0004c3fe,a1            ; Data2/4 offset $0004c3fe-$2a416=$21fe5
 L0000390e                       bsr.w   L00007b20
-L00003912                       lea.l   $00026be6,a0            ; external address
-L00003918                       lea.l   $00028800,a1            ; external address
+L00003912                       lea.l   DATA_OFFSET_2,a0        ; $00026be6,a0            ; external address
+L00003918                       lea.l   DATA_OFFSET_3,a1        ; $00028800,a1            ; external address
 L0000391e                       bsr.w   L00007b20
 L00003922                       bsr.w   L000081ce
 L00003926                       move.w  #$0064,L00008d24
@@ -861,12 +867,13 @@ L00003966                       cmp.w   L00008d24,d0
 L0000396c                       bcc.b   L00003972
 L0000396e                       move.w  #$0064,d0
 L00003972                       move.w  d0,L00008d24
-L00003978                       move.l  #$00008266,L0000907c
+L00003978                       move.l  #L00008266,L0000907c
 L00003982                       bra.w   L000039aa
 
-L00003986                       lea.l   L00008d26,a0
+L00003986                       ;jsr     _DEBUG_COLOURS
+                                lea.l   L00008d26,a0
 L0000398c                       move.w  #$01bb,d7
-L00003990                       clr.w   (a0)+ [003c]
+L00003990                       clr.w   (a0)+
 L00003992                       dbf.w   d7,L00003990
 L00003996                       move.w  #$0002,L00008d2a
 L0000399e                       pea.l   PANEL_INIT_ENERGY       ; panel
@@ -878,34 +885,40 @@ L000039ae                       move.w  #$0000,L00008d26
 L000039b6                       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875        ; panel
 L000039be                       bne.b   L000039ce
 L000039c0                       moveq   #$01,d0
-L000039c2                       pea.l   L000039ce
-L000039c8                       jmp     $00068f90                 ; music
+L000039c2                       ;pea.l   L000039ce
+L000039c8                       ;jmp     $00068f90                 ; music
 
-L000039ce                       bsr.w   L00006ee6
-L000039d2                       bsr.w   L000067ba
-L000039d6                       bsr.w   L00006b02
-L000039da                       bsr.w   L0000764a
-L000039de                       bsr.w   L000074c8
-L000039e2                       bsr.w   L00006d40
-L000039e6                       bsr.w   L000051da
-L000039ea                       bsr.w   L00005086
-L000039ee                       tst.w   L00008d1e 
-L000039f4                       bne.b   L00003a00
-L000039f6                       bsr.w   L0000459c
-L000039fa                       bsr.w   L000044a8
-L000039fe                       bra.b   L00003a04
-L00003a00                       bsr.w   L000042be
-L00003a04                       bsr.w   L00004792
-L00003a08                       bsr.w   L00005764
-L00003a0c                       bsr.w   L00006f1c
-L00003a10                       bsr.w   L00004cb2
-L00003a14                       bsr.w   L00003f70
-L00003a18                       bsr.w   L00003be0
-L00003a1c                       bsr.w   L00003a34
-L00003a20                       pea.l   L000039ce
+
+L000039ce                       jsr     _DEBUG_COLOURS
+                                bsr.w   L00006ee6
+                                jsr     _DEBUG_COLOURS
+L000039d2                       ;bsr.w   L000067ba
+L000039d6                       ;bsr.w   L00006b02
+L000039da                       ;bsr.w   L0000764a
+L000039de                       ;bsr.w   L000074c8
+L000039e2                       ;bsr.w   L00006d40
+L000039e6                       ;bsr.w   L000051da
+L000039ea                       ;bsr.w   L00005086
+L000039ee                       ;tst.w   L00008d1e 
+L000039f4                       ;bne.b   L00003a00
+L000039f6                       ;bsr.w   L0000459c
+L000039fa                       ;bsr.w   L000044a8
+L000039fe                       ;bra.b   L00003a04
+L00003a00                       ;bsr.w   L000042be
+L00003a04                       ;bsr.w   L00004792
+L00003a08                       ;bsr.w   L00005764
+L00003a0c                       ;bsr.w   L00006f1c
+L00003a10                       ;bsr.w   L00004cb2
+L00003a14                       ;bsr.w   L00003f70
+L00003a18                       ;bsr.w   L00003be0
+L00003a1c                       ;bsr.w   L00003a34
+                                move.w  frame_counter,$dff180
+L00003a20                       pea.l   L000039ce                       ; game loop on stack
 L00003a26                       move.w  L00008d2a,d0
 L00003a2c                       bne.w   L00003cb8
 L00003a30                       bra.w   double_buffer_display           ; L000037c8
+                                ; use 'rts' to return address on the stack - game loop
+
 
 L00003a34                       tst.w   L00008f66
 L00003a3a                       bne.b   L00003a62
@@ -5171,6 +5184,8 @@ L00007498                       lea.l   $2f80(a0),a0
 L0000749c                       sub.w   #$0098,d6
 L000074a0                       neg.w   d6
 L000074a2                       bra.b   L00007466
+
+
 L000074a4                       lea.l   L0000994e,a0
 L000074aa                       lea.l   L00009dce,a1
 L000074b0                       moveq   #$11,d7
