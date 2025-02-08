@@ -45,7 +45,7 @@ This exercise is not one of speed, but of learning. The intention is to spend mo
     - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/SFX
     - Code Project - Music & SFX for Level 5 - TODO
     - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done
-    - [Code Project](./gamesource/code5/) - Catheral - Level5 - Done 
+    - [Code Project](./gamesource/code5/) - Cathedral - Level5 - Done 
     - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Done
     - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
     - [Code Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
