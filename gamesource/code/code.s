@@ -27,6 +27,7 @@
                 INCLUDE     "hw.i"
 
 TEST_BUILD_LEVEL        EQU     1
+TEST_BATMOBILE          EQU     1                               ; comment out to test Batwing
 
         IFND    TEST_BUILD_LEVEL
                 org     $2ffc                                         ; original load address
@@ -55,7 +56,7 @@ DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
 DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+(DISPLAY_BUFFER_SIZE/2)
         ENDC
         IFD     TEST_BUILD_LEVEL
-STACK_TOP               EQU     start
+STACK_TOP               EQU     stack_address
 DISPLAY_BUFFER          EQU     display_buffer
 DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
 DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+$5f00
@@ -66,9 +67,13 @@ DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+$5f00
 
 
         IFD     TEST_BUILD_LEVEL
-start
-                jmp start_batmobile     
-                ;jmp start_batwing     
+stack_address
+code_start   
+                IFD     TEST_BATMOBILE
+                        jmp start_batmobile   
+                ELSE  
+                        jmp start_batwing
+                ENDC     
         ENDC
         
 
@@ -796,8 +801,8 @@ L00003848                       bsr.w   large_text_plotter      ; L0000410a
                                 lea.l   text_test_build,a0
                                 bsr.w   small_text_plotter      ;L0000410e
 
-                                ;bsr     double_buffer_display
-                                ;jsr     _DEBUG_COLOURS
+                                bsr     double_buffer_display
+                                jsr     _DEBUG_COLOURS
 
 L0000384c                       bsr.w   L00003d6c
 L00003850                       bsr.w   L00008158
@@ -7132,17 +7137,32 @@ _WAIT_FRAME
 
 
 
-            ; iif Test Build - Include Data.s
+            ; if Test Build - Include Data.s
             IFD TEST_BUILD_LEVEL
                 incdir  "../data/"
                 include "data.s"
                 even
             ENDC
 
+
+            ; if Test Build (and TEST_BATMOBILE) - Include Data2.s
+            IFD TEST_BUILD_LEVEL
+                IFD TEST_BATMOBILE
+                  incdir "../data2/"
+                  include "data2.s"
+                  even
+                ELSE
+                  incdir "../data4/"
+                  include "data4.s"
+                  even
+                ENDC
+            ENDC
+
             ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
             IFD TEST_BUILD_LEVEL
                 incdir      "../panel/"
                 include     "panel.s" 
+                even
             ENDC
             
             ; Id Test Build - Define Display buffer
