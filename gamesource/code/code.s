@@ -32,7 +32,15 @@ TEST_BUILD_LEVEL        EQU     1
                 org     $2ffc                                         ; original load address
         ENDC
 
+; Loader Constants
+LOADER_TITLE_SCREEN             EQU $00000820                       ; Load Title Screen 
+LOADER_LEVEL_1                  EQU $00000824                       ; Load Level 1
+LOADER_LEVEL_2                  EQU $00000828                       ; Load Level 2
+LOADER_LEVEL_3                  EQU $0000082c                       ; Load Level 3
+LOADER_LEVEL_4                  EQU $00000830                       ; Load Level 4
+LOADER_LEVEL_5                  EQU $00000834                       ; Load Level 5
 
+          
 
         ; test/release constants
 DISPLAY_BUFFER_SIZE     EQU     $be00
@@ -40,19 +48,20 @@ DISPLAY_BUFFER_SIZE_W   EQU     DISPLAY_BUFFER_SIZE/2
 DISPLAY_BUFFER_SIZE_L   EQU     DISPLAY_BUFFER_SIZE/4
 DISPLAY_BITPLANE_SIZE   EQU     $000017c0               ; 6080 bytes (6080/40 = 152)
 
-        IFD     TEST_BUILD_LEVEL
-STACK_TOP               EQU     start
-DISPLAY_BUFFER          EQU     display_buffer
-DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
-DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+(DISPLAY_BUFFER_SIZE/2)
-        ENDC
-
         IFND     TEST_BUILD_LEVEL
 STACK_TOP               EQU     $0005c1f0
 DISPLAY_BUFFER          EQU     $0005c200
 DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
 DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+(DISPLAY_BUFFER_SIZE/2)
         ENDC
+        IFD     TEST_BUILD_LEVEL
+STACK_TOP               EQU     start
+DISPLAY_BUFFER          EQU     display_buffer
+DISPLAY_BUFFER_1        EQU     DISPLAY_BUFFER
+DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+$5f00
+        ENDC
+
+
 
 
 
@@ -522,7 +531,7 @@ L00003566                       rts
 vertb_interrupt_handler ; original address L00003568
 L00003568                       movem.l d0-d7/a0-a6,-(a7)
                                 ; set copper display bitplanes
-L0000356c                       move.l  display_buffer1_ptr,a0          ; L000037c0,d0
+L0000356c                       move.l  display_buffer1_ptr,d0          ; L000037c0,d0
 L00003572                       move.w  d0,L000031dc
 L00003578                       swap.w  d0
 L0000357a                       move.w  d0,L000031d8
@@ -688,27 +697,30 @@ L0000379c                       move.w  #$4200,$00dff100
 
                   ; set bitplane ptrs if running a test build
                 IFD     TEST_BUILD_LEVEL
-                    lea     copper_panel_planes,a0
-                    move.l  #PANEL_GFX,d0
-                    move.w  d0,6(a0)
-                    swap.w  d0
-                    move.w  d0,2(a0)
-                    swap.w  d0
-                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
-                    move.w  d0,$0e(a0)
-                    swap.w  d0
-                    move.w  d0,$0a(a0)
-                    swap.w  d0  
-                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
-                    move.w  d0,$16(a0)
-                    swap.w  d0
-                    move.w  d0,$12(a0)
-                    swap.w  d0        
-                    add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
-                    move.w  d0,$1e(a0)
-                    swap.w  d0
-                    move.w  d0,$1a(a0)
-                    swap.w  d0       
+                        move.l  #DISPLAY_BUFFER_1,display_buffer1_ptr
+                        move.l  #DISPLAY_BUFFER_2,display_buffer2_ptr
+
+                        lea     copper_panel_planes,a0
+                        move.l  #PANEL_GFX,d0
+                        move.w  d0,6(a0)
+                        swap.w  d0
+                        move.w  d0,2(a0)
+                        swap.w  d0
+                        add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                        move.w  d0,$0e(a0)
+                        swap.w  d0
+                        move.w  d0,$0a(a0)
+                        swap.w  d0  
+                        add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                        move.w  d0,$16(a0)
+                        swap.w  d0
+                        move.w  d0,$12(a0)
+                        swap.w  d0        
+                        add.l   #PANEL_DISPLAY_BITPLANEBYTES,d0
+                        move.w  d0,$1e(a0)
+                        swap.w  d0
+                        move.w  d0,$1a(a0)
+                        swap.w  d0       
                 ENDC
 
 L000037a4                       clr.w   frame_counter                   ; L000037bc
@@ -776,10 +788,15 @@ L00003834                       tst.w   L00008d1e
 L0000383a                       bne.w   L000038ec
 L0000383e                       bsr.w   panel_fade_in           ; L00003de0
 
-                                jsr     _DEBUG_COLOURS
+                                ;jsr     _DEBUG_COLOURS
 
-L00003842                       lea.l   L00003e74,a0
-L00003848                       bsr.w   L0000410a
+L00003842                       lea.l   text_introduction,a0    ;L00003e74,a0
+L00003848                       bsr.w   large_text_plotter      ; L0000410a
+
+test                            bsr     double_buffer_display
+                                jmp     test
+                                jsr     _DEBUG_PAUSE
+
 L0000384c                       bsr.w   L00003d6c
 L00003850                       bsr.w   L00008158
 L00003854                       bsr.w   L000074a4
@@ -812,7 +829,7 @@ L000038e8                       bra.w   L000039aa
 
 L000038ec                       bsr.w   panel_fade_in           ; L00003de0
 L000038f0                       lea.l   L00003ed0,a0
-L000038f6                       bsr.w   L0000410a
+L000038f6                       bsr.w   large_text_plotter      ; L0000410a
 L000038fa                       bsr.w   L00003d6c
 L000038fe                       bsr.w   L000074a4
 L00003902                       lea.l   $00044646,a0            ; external address
@@ -910,20 +927,21 @@ L00003a98                       beq.b   L00003abc
                         ; timer has expired
 L00003a9a                       bsr.w   L00003d5a
 L00003a9e                       lea.l   L00003f20,a0
-L00003aa4                       bsr.w   L0000410a
+L00003aa4                       bsr.w   large_text_plotter      ; L0000410a
 L00003aa8                       bsr.w   L00003d6c
 L00003aac                       clr.w   frame_counter           ; L000037bc
 L00003ab2                       cmp.w   #$0032,frame_counter    ; L000037bc
 L00003aba                       bcs.b   L00003ab2
 L00003abc                       bsr.w   L00003d5a
-L00003ac0                       lea.l   L00003e74,a0
+L00003ac0                       lea.l   text_introduction,a0    ;L00003e74,a0
 L00003ac6                       lea.l   L00003884,a1
 L00003acc                       tst.w   L00008d1e 
 L00003ad2                       beq.b   L00003ae0 
 L00003ad4                       lea.l   L00003ed0,a0
 L00003ada                       lea.l   L0000392e,a1
 L00003ae0                       move.l  a1,(a7)
-L00003ae2                       bsr.w   L0000410a
+L00003ae2                       bsr.w   large_text_plotter      ; L0000410a
+
 L00003ae6                       bsr.w   L00003d6c
 L00003aea                       clr.w   frame_counter           ; L000037bc
 L00003af0                       cmp.w   #$0032,frame_counter    ; L000037bc
@@ -944,7 +962,7 @@ L00003b34                       jmp     $00068f90               ; music
 
 L00003b3a                       bsr.w   L00003d5a
 L00003b3e                       lea.l   L00003f2c,a0
-L00003b44                       bsr.w   L0000410a
+L00003b44                       bsr.w   large_text_plotter      ; L0000410a
 L00003b48                       bsr.w   L00003d6c
 L00003b4c                       clr.w   frame_counter           ; L000037bc
 L00003b52                       cmp.w   #$0050,frame_counter    ; L000037bc
@@ -952,7 +970,7 @@ L00003b5a                       bcs.b   L00003b52
 L00003b5c                       bsr.w   L00003d5a
 L00003b60                       bsr.w   L00003d6c
 L00003b64                       bsr.w   panel_fade_out          ; L00003e2c
-L00003b68                       jmp     $00000820               ; loader
+L00003b68                       jmp     $00000820               ; loader - TITLE SCREEN
 
 
 L00003b6e                       move.w  #$0001,L00008d20
@@ -967,7 +985,7 @@ L00003b94                       lea.l   L00003e92,a0
 L00003b9a                       tst.w   L00008d1e 
 L00003ba0                       beq.b   L00003ba8 
 L00003ba2                       lea.l   L00003ee8,a0
-L00003ba8                       bsr.w   L0000410a
+L00003ba8                       bsr.w   large_text_plotter      ; L0000410a
 L00003bac                       bsr.w   L00003d6c
 L00003bb0                       clr.w   frame_counter           ; L000037bc
 L00003bb6                       cmp.w   #$0055,frame_counter    ; L000037bc
@@ -1180,6 +1198,7 @@ L00003e6c                       bne.b   L00003e66
 L00003e6e                       dbf.w   d7,L00003e2e
 L00003e72                       rts 
 
+text_introduction
 L00003e74                       dc.w    $4407,$5448,$4520,$5354,$5245,$4554,$5320,$4f46         ;d.the streets of
 L00003e84                       dc.w    $2047,$4f54,$4841,$4d20,$4349,$5459,$00ff               ; gotham city..
 
@@ -1329,8 +1348,18 @@ L00004100                       moveq   #$00,d0
 L00004102                       move.w  d0,L00008d36
 L00004108                       rts     
 
+
+                        ;--------------------- large text plotter -------------------
+                        ; IN:
+                        ;  a0 - text message for display.
+                        ;       - first two bytes of message are x,y
+                        ;       - line ends with $00
+                        ;       - message ends with $00,$ff
+                        ;
+large_text_plotter      ; original address $0000410a
 L0000410a                       moveq.l  #$ffffffff,d6
 L0000410c                       bra.b   L00004110
+
 L0000410e                       moveq   #$00,d6
 L00004110                       move.b  (a0)+,d0
 L00004112                       bmi.w   L00004218
@@ -1340,7 +1369,6 @@ L0000411e                       move.b  (a0)+,d1
 L00004120                       ext.w   d1
 L00004122                       add.w   d1,d0
 L00004124                       movea.l display_buffer2_ptr,a1          ; L000037c4,a1
-
 L0000412a                       lea.l   $00(a1,d0.w),a1
 L0000412e                       moveq   #$00,d0
 L00004130                       move.b  (a0)+,d0
@@ -1364,7 +1392,6 @@ L0000415e                       cmp.b   #$29,d0
 L00004162                       beq.b   L0000416e
 L00004164                       moveq   #$03,d1
 L00004166                       bra.b   L0000416e
-
 L00004168                       add.b   d0,d1
 L0000416a                       and.w   #$00ff,d1
 L0000416e                       mulu.w  #$0028,d1
@@ -1391,7 +1418,6 @@ L000041aa                       lea.l   $0028(a3),a3
 L000041ae                       dbf.w   d7,L00004184
 L000041b2                       lea.l   $0001(a1),a1
 L000041b6                       bra.w   L0000412e
-
 L000041ba                       move.b  (a2)+,d1
 L000041bc                       and.b   d1,(a3)
 L000041be                       move.b  (a2)+,d2
@@ -1424,6 +1450,8 @@ L0000420e                       lea.l   $0028(a3),a3
 L00004212                       dbf.w   d7,L000041ba
 L00004216                       bra.b   L000041b2
 L00004218                       rts  
+
+
 
 L0000421a                       move.l  a0,-(a7)
 L0000421c                       lea.l   L00004238,a0
@@ -7058,13 +7086,17 @@ _DEBUG_ERROR
                 move.w  #$0f0,$dff180
                 jmp     _DEBUG_ERROR
 
+_DEBUG_PAUSE
+                btst    #6,$bfe001
+                bne.s   _DEBUG_PAUSE
+                rts
 
 _DEBUG_COLOURS
-            move.w  d0,$dff180
-            add.w   #$1,d0
-            btst    #6,$bfe001
-            bne.s   _DEBUG_COLOURS
-            rts
+                move.w  d0,$dff180
+                add.w   #$1,d0
+                btst    #6,$bfe001
+                bne.s   _DEBUG_COLOURS
+                rts
             
 _DEBUG_RED_PAUSE
                     move.w  #$f00,$dff180
