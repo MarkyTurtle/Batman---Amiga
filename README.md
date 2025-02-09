@@ -5,7 +5,7 @@
  - [Resources and Acknowledgements](#resources-and-acknowledgements)
  - [Progress to date](#progress-to-date)
 
-This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particulare (Level 1 & Level 5 are buildable and playable from source).
+This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particular (Level 1 & Level 5 are buildable and playable from source).
 
  - [Level 1 (Axis Chemicals) Code Project](./gamesource/code1)
  - [Level 5 (Cathedral) Code Project](./gamesource/code5)
@@ -45,7 +45,7 @@ This exercise is not one of speed, but of learning. The intention is to spend mo
     - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/SFX
     - Code Project - Music & SFX for Level 5 - TODO
     - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done
-    - [Code Project](./gamesource/code5/) - Catheral - Level5 - Done 
+    - [Code Project](./gamesource/code5/) - Cathedral - Level5 - Done 
     - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Done
     - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
     - [Code Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
