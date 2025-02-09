@@ -86,6 +86,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 ## Progress to Date
 
+**2025-02-07 - Levels 2 & 4** - Started disassembling the music code for the levels. Still work in progress.
+
 **2025-02-07 - Levels 2 & 4** - Fixed all assembler errors,can now build the 'code' executable for the level. Nextjob is to begin including the data files and start getting the executable to run from within VSCode.
 
 **2025-02-04 - Levels 2 & 4** - Added dumped data file projects that build to identical binary files for the BatMobile and BatWing stages. Also started on the development of some dumping, comparison and data conversion command line tool (not in github yet) which will help with future disassembly projects.
