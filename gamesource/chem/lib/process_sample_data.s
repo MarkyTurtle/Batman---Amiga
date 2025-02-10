@@ -71,7 +71,7 @@ L00048a88       movem.l (a7)+,d0/a0
 process_sample_chunk                            ; original address $00048a8e
 L00048a8e       cmp.l   #'FORM',d1              ; #$464f524d,d1
                 beq.w   process_form_chunk      ; L00048aec
-                cmp.l   #'CAT',d1               ; #$43415420,d1
+                cmp.l   #'CAT ',d1               ; #$43415420,d1
                 beq.w   process_cat_chunk       ; L00048aae
                 move.w  #$0001,sample_status    ; missing expected FORM/CAT
                 clr.l   d0
@@ -201,7 +201,7 @@ L00048b34       cmp.l   #'FORM',d1              ; #$464f524d,d1
                 beq.b   process_form_chunk      ; L00048aec
                 cmp.l   #'LIST',d1              ; #$4c495354,d1
                 beq.b   process_list_chunk      ; L00048acc
-                cmp.l   #'CAT',d1               ; #$43415420,d1
+                cmp.l   #'CAT ',d1              ; #$43415420,d1
                 beq.w   process_cat_chunk       ; L00048aae
                 cmp.l   #'VHDR',d1              ; #$56484452,d1
                 beq.w   process_vhdr_chunk      ; L00048b84
