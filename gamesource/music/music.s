@@ -94,7 +94,7 @@ kill_system
                 ;   #$0d = Explosion (grenade)
                 ;--------------------------------------------------
 
-SOUND_TO_PLAY   EQU     $01                                   ; valid range #$01 to #$0d
+SOUND_TO_PLAY   EQU     $05                                   ; valid range #$01 to #$0d
 
 init_test_prg
                 jsr     Init_Player                           ; init music routine/instruments
@@ -109,9 +109,11 @@ init_test_prg
                 jsr     Init_Song                               ; init song 1
 
 loop
+                add.w   #$1,color
+                move.w  color,$dff180
                 jmp     loop     
 
-
+colour:         dc.w    $0000
 
                 ;---------------- level 3 interrupt ----------------
                 ; vertical blank interrupt handler.
