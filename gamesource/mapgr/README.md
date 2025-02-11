@@ -1,5 +1,5 @@
-# Example Workspace for Amiga Assembly extension
+# MAPGR.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
+This project is data only, it contains the level map data and GFX for Level 1 (Axis Chemicals)
+It also contains a few constants and equates for data file offsets.
 
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.

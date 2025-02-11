@@ -1,5 +1,4 @@
-# Example Workspace for Amiga Assembly extension
+# MAPGR2.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
+This file contains data only anf GFX for Level 5 (Catherdral)
 
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.

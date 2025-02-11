@@ -86,6 +86,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 ## Progress to Date
 
+**2025-02-11 - Levels 2 & 4** - Finished disassembling the Music.IFF file containing the music & SFX for Levels 2 & 4. Included a test program to allow playback of the sounds. You can also cycle through the sounds using the left mouse button.
+
 **2025-02-07 - Levels 2 & 4** - Started disassembling the music code for the levels. Still work in progress.
 
 **2025-02-07 - Levels 2 & 4** - Fixed all assembler errors,can now build the 'code' executable for the level. Nextjob is to begin including the data files and start getting the executable to run from within VSCode.

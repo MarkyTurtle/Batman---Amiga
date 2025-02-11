@@ -1,5 +1,7 @@
-# Example Workspace for Amiga Assembly extension
+# PANEL.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
+This file is loaded at the start (during the Title Screen load). It loaded the bottom score/energy panel into memory and
+it stays resident in memory for thelife of the game.
 
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.
+The project has been modified to enable test builds to be made and the panel included into those builds.
+

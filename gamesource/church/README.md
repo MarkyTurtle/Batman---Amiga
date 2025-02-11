@@ -1,5 +1,5 @@
-# Example Workspace for Amiga Assembly extension
+# CHURCH.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
+This file contains the Muusic & SFX for Level 5 (Cathedral)
 
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.
+TODO: Dump and disassemble Code & Data.

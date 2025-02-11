@@ -1,5 +1,4 @@
-# Example Workspace for Amiga Assembly extension
+# CODE5.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
-
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.
+This project contains the main code for Level 5 (Cathedral).
+There is a test build that enables the level to be built and played in VSCode using the Amiga Assemly plug-in.

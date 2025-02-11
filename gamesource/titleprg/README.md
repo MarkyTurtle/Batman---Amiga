@@ -1,5 +1,4 @@
-# Example Workspace for Amiga Assembly extension
+# TITLEPRG.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
-
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.
+This is the game title screen, music and GFX all in one load.
+It can be executed as a test build using VSCode and the Amiga Assembly plug-in

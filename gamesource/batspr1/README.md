@@ -1,5 +1,5 @@
-# Example Workspace for Amiga Assembly extension
+# BATSPR1.IFF
 
-This workspace will be downloaded by the Amiga Assembly extension.
+This project contains the dumped data for the BATSPR1.IFF file. 
+No code only data and some equates for file offsets.
 
-Please see the [getting started page](https://github.com/prb28/vscode-amiga-assembly/wiki/Getting-started) to see how to use it.
