@@ -11,6 +11,8 @@
                 INCDIR      "include"
                 INCLUDE     "hw.i"
 
+;TEST_MUSIC_BUILD SET 1                 ; run a test build with imported GFX
+;TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
 
                 section chem,code_c
 
@@ -52,7 +54,6 @@ SFX_Ricochet        EQU         $0c
 SFX_EXPLOSION       EQU         $0d
 
 
-;TEST_MUSIC_BUILD SET 1             ; run a test build with imported GFX
 
         IFND TEST_MUSIC_BUILD
                 IFND TEST_BUILD_LEVEL
@@ -180,12 +181,12 @@ current_song    dc.b    SOUND_TO_PLAY
 
 L00047fe4               bra.b L00048000                         ; initialise music player.
 
-L00047fe6               dc.w  $0001, $091a                      ; or.b #$1a,d1
-L00047fea               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00047fee               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00047ff2               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00047ff6               dc.w  $0000, $0000                      ; or.b #$00,d0
-L00047ffa               dc.w  $0000, $0000                      ; or.b #$00,d0
+L00047fe6               dc.w  $0001, $091a                      ; Length of file?
+L00047fea               dc.w  $0000, $0000                      ; 
+L00047fee               dc.w  $0000, $0000                      ; 
+L00047ff2               dc.w  $0000, $0000                      ; 
+L00047ff6               dc.w  $0000, $0000                      ; 
+L00047ffa               dc.w  $0000, $0000                      ; 
 L00047ffe               dc.w  $0000
 
 Init_Player                                                     ; original address $00048000
