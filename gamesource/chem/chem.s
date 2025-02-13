@@ -1776,7 +1776,7 @@ sounds_table                                            ; original address $0005
 sound_01        ; Level Music                           ; original address $0005847e
 L0005847e       dc.w    sound_01_chan_00-sound_01       ; pattern sequence byte offset: $0005847e + $00aa = $00058528
                 dc.w    sound_01_chan_01-(sound_01+2)   ; pattern sequence byte offset: $00058480 + $00cd = $0005854d - ; *** offset was a byte out, altered to be $0005854e 
-                dc.w    sound_01_chan_02-(sound_01+4)   ; pattern sequence byte offset: $00058480 + $00da = $0005855c
+                dc.w    sound_01_chan_02-(sound_01+4)   ; pattern sequence byte offset: $00058482 + $00da = $0005855c
                 dc.w    $0000                           ; unused channel - reserved for SFX 
 
 sound_02        ; Level Completed                       ; original address $00058486
@@ -1797,7 +1797,6 @@ L00058496       dc.w    sound_04_chan_00-sound_04       ; pattern sequence byte 
                 dc.w    sound_04_chan_01-(sound_04+2)   ; pattern sequence byte offset: $00058498 + $03A1 = $00058839
                 dc.w    sound_04_chan_02-(sound_04+4)   ; pattern sequence byte offset: $0005849a + $03A3 = $0005883d
                 dc.w    $0000                           ; unused channel - reserved for SFX 
-
 
 sound_05        ; sfx - drip                            ; original address $0005849e
 L0005849e       dc.w    $0000,$0000,$0000               ; unused channels 0-2 - reserved for Music
