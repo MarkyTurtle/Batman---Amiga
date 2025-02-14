@@ -35,26 +35,26 @@ This exercise is not one of speed, but of learning. The intention is to spend mo
    - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) - In Progress (game/timer speed up, level 2 onwards)
    - Load time is far too slow, need to change packer
  - Disassemble the Game Panel
-    - [Code Project](./gamesource/panel/)
+    - ['panel' Project](./gamesource/panel/)
     - [Test .adf disk image](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
  - Disassemble the Title Screen.
-    - [Code Project](./gamesource/titleprg)
+    - ['titleprg' Project](./gamesource/titleprg)
     - The Title Screen code can be rebuilt from source and executed in VSCode
     - Updated Test ADF with Title Screen rebuilt from Source Code - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) 
  - Disassemble the Platform Levels 1 and 5.
-    - [Code Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/SFX
-    - Code Project - Music & SFX for Level 5 - TODO
-    - [Code Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done
-    - [Code Project](./gamesource/code5/) - Cathedral - Level5 - Done 
-    - [Code Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Done
-    - [Code Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
-    - [Code Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
+    - ['chem' Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/SFX
+    - ['church' Project](./gamesource/church/) - Music & SFX for Level 5 - TODO
+    - ['code1' Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done
+    - ['code5' Project](./gamesource/code5/) - Cathedral - Level5 - Done 
+    - ['batspr1 Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Done
+    - ['mapgr' Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
+    - ['mapgr2' Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
  - Disassemble the Batmobile/Batwing Levels.
-    - [Code Project](./gamesource/music) - Music & SFX for Level 2 & 4
-    - [Code Project](./gamesource/data) - Shared common data file for Levels 2 & 4 - Done
-    - [Code Project](./gamesource/data2) - Level 2 specific data file. - Done
-    - [Code Project](./gamesource/data4) - Level 4 specific data file. - Done
-    - [Code Project](./gamesource/code) - Shared code executable for Levels 2 & 4
+    - ['music' Project](./gamesource/music) - Music & SFX for Level 2 & 4
+    - ['data' Project](./gamesource/data) - Shared common data file for Levels 2 & 4 - Done
+    - ['data2' Project](./gamesource/data2) - Level 2 specific data file. - Done
+    - ['data4' Project](./gamesource/data4) - Level 4 specific data file. - Done
+    - ['code' Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
 
 
@@ -85,6 +85,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 
 ## Progress to Date
+
+**2025-02-14 - Level 5** - Finished disassembling the Church.IFF file containing the music && SFX for Level 5 and added it to the test build. Next job,back to fixing bugs in Level 2 & 4 (Batmobile & Batwing).
 
 **2025-02-11 - Levels 2 & 4** - Finished disassembling the Music.IFF file containing the music & SFX for Levels 2 & 4. Included a test program to allow playback of the sounds. You can also cycle through the sounds using the left mouse button.
 
