@@ -8044,8 +8044,8 @@ chipmem_doublebuffer            dcb.b   CODE1_DOUBLE_BUFFER_BYTESIZE,$55
 
             ; If Test Build - Include the Level Music and SFX
             IFD TEST_BUILD_LEVEL
-                incdir      "../chem/"
-                include     "chem.s"
+                incdir      "../church/"
+                include     "church.s"
             ENDC
 
             ; padding - see if it fixes map data corruption

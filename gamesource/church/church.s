@@ -11,8 +11,8 @@
                 INCDIR      "include"
                 INCLUDE     "hw.i"
 
-TEST_MUSIC_BUILD SET 1                 ; run a test build with imported GFX
-TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
+;TEST_MUSIC_BUILD SET 1                 ; run a test build with imported GFX
+;TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
 
                 section church,code_c
 
@@ -44,9 +44,9 @@ SFX_LEVEL_MUSIC     EQU         $01
 SFX_LEVEL_COMPLETE  EQU         $02
 SFX_LIFE_LOST       EQU         $03
 SFX_TIMER_EXPIRED   EQU         $04
-SFX_DRIP            EQU         $05
-SFX_GASLEAK         EQU         $06
-SFX_BATROPE         EQU         $07
+SFX_DRIP            EQU         $05             ; Empty Sounds (Level 5)
+SFX_GASLEAK         EQU         $06             ; Empty Sounds (Level 5)
+SFX_BATROPE         EQU         $07             
 SFX_BATARANG        EQU         $08
 SFX_GRENADE         EQU         $09
 SFX_GUYHIT          EQU         $0a
