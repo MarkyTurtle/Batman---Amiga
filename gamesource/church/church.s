@@ -1534,13 +1534,13 @@ L00048d98
 .data_01        dc.l    sample_file_01-.data_01         ; $00048E0C - $00048d98 = $00000074
                 dc.w    $0030, $0000                            
 .data_02        dc.l    sample_file_02-.data_02         ; $0004AA74 - $00048dA0 = $00001CD4
-                dc.w    $0030, $0000
+                dc.w    $0018, $0000
 .data_03        dc.l    sample_file_03-.data_03         ; $0004c5c8 - $00048dA0 = $00003820
-                dc.w    $001D, $FFFF
+                dc.w    $0030, $0000
 .data_04        dc.l    sample_file_04-.data_04         ; $0004d090 - $00048DB0 = $000042E0
                 dc.w    $0018, $FFFF
 .data_05        dc.l    sample_file_05-.data_05         ; $0004e492 - $00048DB8 = $000056DA
-                dc.w    $0018, $0000
+                dc.w    $0039, $0000
 .data_06        dc.l    sample_file_06-.data_06         ; $0004fcf0 - $00048DC0 = $00006F30
                 dc.w    $0018, $0000
 .data_07        dc.l    sample_file_07-.data_07         ; $00050c50 - $00048DC8 = $00007E88
