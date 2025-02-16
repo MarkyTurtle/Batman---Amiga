@@ -36,7 +36,7 @@
                 ; 
 
 
-                section titleprg,code_c
+                section titleprg_iff,code_c
                 ;opt     o-
 
 

@@ -3,7 +3,7 @@
 INFINITE_ENERGY_CHEAT   SET 1                           ; if defined then the 'JAMMMM' cheat also gives infinite energy.
 
 
-                section panel,code_c
+                section panel_iff,code_c
 
             IFND    TEST_BUILD_LEVEL
                 org     $7C7FC                                      ; original load address

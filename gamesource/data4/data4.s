@@ -1,5 +1,5 @@
 
-                section panel,code_c
+                section data4_iff,code_c
     IFND TEST_BUILD_LEVEL
                 org $2a416
     ENDC

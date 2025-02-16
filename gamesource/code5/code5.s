@@ -158,7 +158,7 @@ DISPLAY_BUFFER_BPL3_OFFSET  EQU     DISPLAY_BUFFER_BYTES*3
 
 
 
-                section code1,code_c
+                section code5_iff,code_c
                 
              
             ; if not test then org $2FFC   

@@ -14,7 +14,7 @@
 ;TEST_MUSIC_BUILD SET 1                 ; run a test build with imported GFX
 ;TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
 
-                section chem,code_c
+                section chem_iff,code_c
 
                 IFND TEST_BUILD_LEVEL
 ; Music Player Constants

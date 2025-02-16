@@ -6,7 +6,7 @@
                 INCLUDE     "hw.i"
 
 
-                section mapgr,code_c
+                section mapgr_iff,code_c
 
 
         IFND    TEST_BUILD_LEVEL

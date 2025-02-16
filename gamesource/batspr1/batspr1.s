@@ -6,7 +6,7 @@
                 INCLUDE     "hw.i"
 
 
-                section batspr1,code_c
+                section batspr1_iff,code_c
 
 
 ;TEST_TITLEPRG SET 1             ; run a test build with imported GFX

@@ -20,7 +20,8 @@
                 ; Notes:
                 ;  The memory map for these levels are packed full of data.
                 ;
-                section level24,code_c
+                
+                section code_iff,code_c
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
@@ -63,16 +64,39 @@ DISPLAY_BUFFER_2        EQU     DISPLAY_BUFFER+$5f00
         ENDC
 
 
+
+    IFD TEST_BUILD_LEVEL
+DATA_ADDRESS                    EQU     L0001fffc
+ 
+    ELSE
+DATA_ADDRESS                    EQU     $0001fffc           
+    ENDC
+DATA_OFFSET_0                   EQU    DATA_ADDRESS+$4                  ; $00020000 - $0001fffc = $4       
+DATA_OFFSET_1                   EQU    DATA_ADDRESS+$4b04               ; $00024b00 - $0001fffc = $4b04
+DATA_OFFSET_2                   EQU    DATA_ADDRESS+$6bea               ; $00026be6 - $0001fffc = $6bea
+DATA_OFFSET_3                   EQU    DATA_ADDRESS+$8804               ; $00028800 - $0001fffc = $8804
+
+
+        ; DATA2.IFF/DATA4.IFF - Constants
         IFND    TEST_BUILD_LEVEL
 DATA24_ADDRESS                  EQU     $0002a416
         ENDC
         IFD     TEST_BUILD_LEVEL
 DATA24_ADDRESS                  EQU     L0002a416
         ENDC
-DATA24_OFFSET_1                 EQU     DATA24_ADDRESS+$13aaa           ; $0003dec0     ; Data2/Data4 offset address $3dec0-$2a416=$13aaa
-DATA24_OFFSET_2                 EQU     DATA24_ADDRESS+$1b812           ; $00045c28     ; Data2/4 offset address $45c28-$2a416=$1b812
-DATA24_OFFSET_3                 EQU     DATA24_ADDRESS+$1a230           ; $00044646     ; Data2/4 offset $$00044646-$2a416=$1a230
-DATA24_OFFSET_4                 EQU     DATA24_ADDRESS+$21fe5           ; $0004c3fe     ; Data2/4 offset $0004c3fe-$2a416=$21fe5
+
+; sorted by address location
+DATA24_OFFSET_0                 EQU     DATA24_ADDRESS+$4               ; $0002a41a     ; start address
+DATA24_OFFSET_7                 EQU     DATA24_ADDRESS+$b49a            ; $000358b0 - $2a416 = $b49a
+DATA24_OFFSET_6                 EQU     DATA24_ADDRESS+$b936            ; $00035d4c - $2a416 = $b936
+DATA24_OFFSET_5                 EQU     DATA24_ADDRESS+$be18            ; $0003622e - $2a416 = $be18
+DATA24_OFFSET_9                 EQU     DATA24_ADDRESS+$cbb2            ; $00036fc8 - $2a416 = $cbb2
+DATA24_OFFSET_8                 EQU     DATA24_ADDRESS+$12dfe           ; $0003d214 - $2a416 = $12dfe
+DATA24_OFFSET_1                 EQU     DATA24_ADDRESS+$13aaa           ; $0003dec0 - $2a416 = $13aaa
+DATA24_OFFSET_10                EQU     DATA24_ADDRESS+$1817c           ; $00042592 - $2a416 = $1817c
+DATA24_OFFSET_2                 EQU     DATA24_ADDRESS+$1b812           ; $00045c28 - $2a416 = $1b812
+DATA24_OFFSET_3                 EQU     DATA24_ADDRESS+$1a230           ; $00044646 - $2a416 = $1a230
+DATA24_OFFSET_4                 EQU     DATA24_ADDRESS+$21fe5           ; $0004c3fe - $2a416 = $21fe5
 
 
         IFD     TEST_BUILD_LEVEL
@@ -154,11 +178,11 @@ L000030e8               move.b  #$ff,$00bfd100
 L000030f0               move.b  #$ff,$00bfd300
 
                         ; init stack
-L000030f8               lea.l   STACK_TOP,a7                    ;$0005c1f0,a7 ; stack
+L000030f8               lea.l   STACK_TOP,a7                    ; $0005c1f0,a7 ; stack
 
 L000030fe               jsr     L0000310a
-                        ;pea.l   L0000310a
-L00003104               ;jmp     $00068f80                       ; music
+                        pea.l   L0000310a
+L00003104               jmp     AUDIO_PLAYER_INIT               ; $00068f80                       ; music
                         ; return here (pea.l L0000310a)
 
                         ; init interrupt autovectors
@@ -579,11 +603,11 @@ L000035f0                       tst.w   L00008d1e
 L000035f6                       beq.b   L000035fc
 L000035f8                       move.w  #$0384,d1
 L000035fc                       add.w   d1,d0
-L000035fe                       ;move.w  d0,$000690f0            ; music
+L000035fe                       move.w  d0,AUDIO_OFFSET_L000690f0       ; $000690f0 ; music
 
 L00003604                       jmp     L00003610
-                                ;pea.l   L00003610
-L0000360a                       ;jmp     $00068f98               ; music
+                                pea.l   L00003610
+L0000360a                       jmp     AUDIO_PLAYER_UPDATE     ; $00068f98 ; music
 
 L00003610                       move.b  #$00,$00bfee01          ; Clear CIAA control register A - stop CIAA timer A
 L00003618                       movem.l (a7)+,d0-d7/a0-a6
@@ -885,8 +909,8 @@ L000039ae                       move.w  #$0000,L00008d26
 L000039b6                       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875        ; panel
 L000039be                       bne.b   L000039ce
 L000039c0                       moveq   #$01,d0
-L000039c2                       ;pea.l   L000039ce
-L000039c8                       ;jmp     $00068f90                 ; music
+L000039c2                       pea.l   L000039ce
+L000039c8                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; music
 
 
 L000039ce                       jsr     _DEBUG_COLOURS
@@ -937,10 +961,10 @@ L00003a62                       move.w  #$0001,L00008d20
 L00003a6a                       btst.b  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1   ;$0007c874        ; panel
 L00003a72                       bne.w   L00003b18       ; branch = no lives left
 L00003a76                       pea.l   L00003a82
-L00003a7c                       jmp     $00068f84               ; music
+L00003a7c                       jmp     AUDIO_PLAYER_SILENCE    ; $00068f84  ; music
 L00003a82                       pea.l   L00003a90
 L00003a88                       moveq   #$03,d0
-L00003a8a                       jmp     $00068f90               ; music
+L00003a8a                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; music
 
 L00003a90                       btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1   ;$0007c874        ; panel
 L00003a98                       beq.b   L00003abc
@@ -975,10 +999,10 @@ L00003b12                       jmp     PANEL_ADD_LIFE          ; panel
 
 L00003b18                       move.w  #$0001,L00008d20
 L00003b20                       pea.l   L00003b2c
-L00003b26                       jmp     $00068f84               ; music
+L00003b26                       jmp     AUDIO_PLAYER_SILENCE    ; $00068f84 ; music
 L00003b2c                       pea.l   L00003b3a
 L00003b32                       moveq   #$04,d0
-L00003b34                       jmp     $00068f90               ; music
+L00003b34                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; music
 
 L00003b3a                       bsr.w   L00003d5a
 L00003b3e                       lea.l   text_game_over,a0       ; L00003f2c,a0
@@ -990,15 +1014,15 @@ L00003b5a                       bcs.b   L00003b52
 L00003b5c                       bsr.w   L00003d5a
 L00003b60                       bsr.w   L00003d6c
 L00003b64                       bsr.w   panel_fade_out          ; L00003e2c
-L00003b68                       jmp     $00000820               ; loader - TITLE SCREEN
+L00003b68                       jmp     LOADER_TITLE_SCREEN     ; $00000820 ; loader - TITLE SCREEN
 
 
 L00003b6e                       move.w  #$0001,L00008d20
 L00003b76                       pea.l   L00003b82
-L00003b7c                       jmp     $00068f84               ; music
+L00003b7c                       jmp     AUDIO_PLAYER_SILENCE    ; $00068f84 ; music
 L00003b82                       pea.l   L00003b90
 L00003b88                       moveq   #$02,d0
-L00003b8a                       jmp     $00068f90               ; music
+L00003b8a                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90; music
 
 L00003b90                       bsr.w   L00003d5a
 L00003b94                       lea.l   text_escaped_joker,a0   ; L00003e92,a0
@@ -1028,13 +1052,13 @@ L00003bfa                       bne.b   L00003c66
 L00003bfc                       move.w  #$0001,L00008d34
 L00003c04                       move.w  #$0001,L00008d32
 L00003c0c                       moveq   #$07,d0
-L00003c0e                       jmp     $00068f94               ; music
+L00003c0e                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068f94 ; music
 
 L00003c14                       tst.w   L00008d34
 L00003c1a                       beq.b   L00003c66
 L00003c1c                       moveq   #$07,d0
 L00003c1e                       pea.l   L00003c66
-L00003c24                       jmp     $00068f8c               ; music?
+L00003c24                       jmp     AUDIO_PLAYER_INIT_SFX_2         ; $00068f8c ; music
 
 L00003c2a                       tst.w   $0032(a6)
 L00003c2e                       beq.b   L00003c50
@@ -1043,14 +1067,14 @@ L00003c36                       bne.b   L00003c66
 L00003c38                       move.w  #$0001,L00008d34
 L00003c40                       move.w  #$0001,L00008d32
 L00003c48                       moveq   #$09,d0
-L00003c4a                       jmp     $00068f94               ; music?
+L00003c4a                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068f94 ; music
 
 L00003c50                       tst.w   L00008d34
 L00003c56                       beq.b   L00003c66
 L00003c58                       moveq   #$09,d0
 L00003c5a                       pea.l   L00003c66
-L00003c60                       jmp     $00068f8c               ; music?
-L00003c66                       tst.w   $000690a6               ; music?
+L00003c60                       jmp     AUDIO_PLAYER_INIT_SFX_2         ; $00068f8c ; music
+L00003c66                       tst.w   AUDIO_OFFSET_L000690a6          ; $000690a6 ; music
 L00003c6c                       bne.b   L00003c90
 L00003c6e                       move.w  #$0000,L00008d32
 L00003c76                       move.w  #$0000,L00008d34
@@ -1058,7 +1082,7 @@ L00003c7e                       moveq   #$05,d0
 L00003c80                       tst.w   L00008d1e
 L00003c86                       beq.b   L00003c8a
 L00003c88                       moveq   #$06,d0
-L00003c8a                       jmp     $00068f94               ; music
+L00003c8a                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068f94 ; music
 
 L00003c90                       rts  
 
@@ -1066,7 +1090,7 @@ L00003c92                       movem.l d1-d7/a0-a6,-(a7)
 L00003c96                       move.w  #$0001,L00008d32
 L00003c9e                       move.w  #$0000,L00008d34
 L00003ca6                       pea.l   L00003cb2
-L00003cac                       jmp     $00068f94               ;music
+L00003cac                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068f94 ; music
 L00003cb2                       movem.l (a7)+,d1-d7/a0-a6
 L00003cb6                       rts  
 
@@ -1075,7 +1099,7 @@ L00003cc0                       move.w  #$0000,L00008d20
 L00003cc8                       move.w  L00008d3a,d1                    ; horizon position
 L00003cce                       not.b   d1
 L00003cd0                       add.b   #$d9,d1                         ; #$d9 = 217 (-39)
-L00003cd4                       move.b  d1,copper_horizon_wait          ;L00003276
+L00003cd4                       move.b  d1,copper_horizon_wait          ; L00003276
 L00003cda                       cmp.w   #$0002,d0
 L00003cde                       beq.w   L00003d6c
 L00003ce2                       moveq   #$00,d0
@@ -1287,33 +1311,33 @@ L00003fea                       lea.l   text_balloons_value+2,a0                
 L00003ff0                       bsr.w   L00006780
 L00003ff4                       lea.l   text_balloons,a0                        ; L00003f5e,a0
 L00003ffa                       bra.w   small_text_plotter                      ; L0000410e
-L00003ffe                       btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2  ; $0007c875        ; panel
+L00003ffe                       btst.b  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2  ; $0007c875 ; panel
 L00004006                       beq.b   L00003fd6
                                 ; cheat active
 L00004008                       bra.w   L00003b6e
 
                                 ; select music/sfx
-L0000400c                       bchg.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875               ; panel
+L0000400c                       bchg.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2     ; $0007c875 ; panel
 L00004014                       bne.b   L00004024
 L00004016                       moveq   #$01,d0
 L00004018                       pea.l   L00003fd6               
-L0000401e                       jmp     $00068f88               ; music
+L0000401e                       jmp     AUDIO_PLAYER_INIT_SFX_1                 ; $00068f88 ; music
                                 ; return (pea.l L00003fd6)
 
 L00004024                       moveq   #$01,d0
 L00004026                       pea.l   L00003fd6
-L0000402c                       jmp     $00068f90               ; music
+L0000402c                       jmp     AUDIO_PLAYER_INIT_SONG                  ; $00068f90 ; music
                                 ; return (pea.l L00003fd6)
 
                         ; set game over
-L00004032                       bset.b  #PANEL_ST2_GAME_OVER,PANEL_STATUS_2   ;$0007c875        ; panel
+L00004032                       bset.b  #PANEL_ST2_GAME_OVER,PANEL_STATUS_2     ; $0007c875 ; panel
 L0000403a                       bra.w   L00003b18
 
 L0000403e                       move.w  #$0001,L00008d20
 L00004046                       pea.l   L0000405a
 L0000404c                       move.w  L00008d1e,d0
 L00004052                       addq.w  #$05,d0
-L00004054                       jmp     $00068f8c               ; music
+L00004054                       jmp     AUDIO_PLAYER_INIT_SFX_2                 ; $00068f8c ; music
 L0000405a                       bsr.w   L00003728
 L0000405e                       cmp.w   #$0081,d0
 L00004062                       beq.b   L0000405a
@@ -1344,7 +1368,7 @@ L000040ca                       cmp.w   #$0005,d1
 L000040ce                       bcc.b   L000040d2
 L000040d0                       add.w   d1,d0
 L000040d2                       lsl.w   #$04,d0
-L000040d4                       lea.l   $00036fc8,a5                    ; external address
+L000040d4                       lea.l   DATA24_OFFSET_9,a5              ; $00036fc8,a5 ; Data 2/4 - external address
 L000040da                       lea.l   $02(a5,d0.w),a5
 L000040de                       moveq   #$00,d3
 L000040e0                       move.w  (a5)+,d4
@@ -1530,12 +1554,12 @@ L0000431a                       lea.l   L0000423e,a0
 L00004320                       lea.l   $00(a0,d0.w),a0
 L00004324                       move.l  (a0)+,$0012(a6)
 L00004328                       move.b  d1,$0003(a6)
-L0000432c                       move.l  #$00004362,$0016(a6)
+L0000432c                       move.l  #L00004362,$0016(a6)            ; handler routine address
 L00004334                       move.l  a5,$0020(a6)
 L00004338                       move.l  (a0)+,$0012(a5)
 L0000433c                       add.w   (a0)+,d1
 L0000433e                       move.b  d1,$0003(a5)
-L00004342                       move.l  #$00004436,$0016(a5)
+L00004342                       move.l  #L00004436,$0016(a5)            ; handler routine address
 L0000434a                       move.w  (a0)+,$001c(a5)
 L0000434e                       move.l  (a0),$0020(a5)
 L00004352                       move.w  #$0001,$001a(a5)
@@ -1594,7 +1618,7 @@ L00004410                       bne.b   L00004422
 L00004412                       bsr.b   L0000443e
 L00004414                       moveq   #$0e,d0
 L00004416                       pea.l   L00004422
-L0000441c                       jmp     $00068f8c               ; music
+L0000441c                       jmp     AUDIO_PLAYER_INIT_SFX_2         ; $00068f8c ; music
 
 L00004422                       movem.l (a7)+,d7/a1
 L00004426                       moveq   #$0d,d0
@@ -1643,27 +1667,27 @@ L000044bc                       move.w  #$0000,L00008f64
 L000044c4                       bsr.w   L0000475a
 L000044c8                       move.b  #$00,$0005(a6)
 L000044ce                       move.b  L0000478e,$0003(a6)
-L000044d6                       move.l  #$0003d214,$0012(a6)            ; addresses?
-L000044de                       move.l  #$00004572,$0016(a6)            ; addresses?
+L000044d6                       move.l  #DATA24_OFFSET_8,$0012(a6)      ; #$0003d214,$0012(a6) ; DATA2/4 - addresses
+L000044de                       move.l  #L00004572,$0016(a6)            ; addresses (routine below)
 L000044e6                       move.w  #$0001,$0024(a6)
 L000044ec                       bsr.w   L0000475a
 L000044f0                       move.b  #$01,$0005(a6)
 L000044f6                       move.b  L0000478f,$0003(a6)
-L000044fe                       move.l  #$0003d214,$0012(a6)            ; addresses?
-L00004506                       move.l  #$0000478c,$0016(a6)            ; addresses?
+L000044fe                       move.l  #DATA24_OFFSET_8,$0012(a6)      ; #$0003d214,$0012(a6) ; DATA2/4 - addresses
+L00004506                       move.l  #L0000478c,$0016(a6)            ; addresses (rts)
 L0000450e                       move.w  #$0001,$0024(a6)
 L00004514                       move.b  #$15,$0002(a6)
 L0000451a                       bsr.w   L0000475a
 L0000451e                       move.b  #$02,$0005(a6)
 L00004524                       move.b  L00004790,$0003(a6)
-L0000452c                       move.l  #$0003d214,$0012(a6)            ; addresses?
-L00004534                       move.l  #$0000478c,$0016(a6)            ; addresses?
+L0000452c                       move.l  #DATA24_OFFSET_8,$0012(a6)      ; #$0003d214,$0012(a6) ; DATA 2/4 - addresses
+L00004534                       move.l  #L0000478c,$0016(a6)            ; addresses (rts)
 L0000453c                       move.w  #$0001,$0024(a6)
 L00004542                       bsr.w   L0000475a
 L00004546                       move.b  #$03,$0005(a6)
 L0000454c                       move.b  L00004791,$0003(a6)
-L00004554                       move.l  #$0003d214,$0012(a6)            ; addresses?
-L0000455c                       move.l  #$0000478c,$0016(a6)            ; addresses?
+L00004554                       move.l  #DATA24_OFFSET_8,$0012(a6)      ; #$0003d214,$0012(a6) ; DATA 2/4 - addresses
+L0000455c                       move.l  #L0000478c,$0016(a6)            ; addresses (rts)
 L00004564                       move.w  #$0001,$0024(a6)
 L0000456a                       move.b  #$15,$0002(a6)
 L00004570                       rts  
@@ -1708,18 +1732,18 @@ L00004602                       and.w   #$0007,d0
 L00004606                       lsl.w   #$02,d0
 L00004608                       lea.l   L0000461e,a0
 L0000460e                       move.l  $00(a0,d0.w),$0012(a6)
-L00004614                       move.l  #$0000463e,$0016(a6)
+L00004614                       move.l  #L0000463e,$0016(a6)
 L0000461c                       rts  
 
 
-L0000461e                       dc.w    $0003,$8760 
-L00004622                       dc.w    $0003,$bbf4 
-L00004626                       dc.w    $0003,$9092 
-L0000462a                       dc.w    $0003,$9c26 
-L0000462e                       dc.w    $0003,$a4e0 
-L00004632                       dc.w    $0003,$b060 
-L00004636                       dc.w    $0003,$9c26 
-L0000463a                       dc.w    $0003,$a4e0 
+L0000461e                       dc.w    $0003,$8760             ; addresses ?
+L00004622                       dc.w    $0003,$bbf4             ; addresses ?
+L00004626                       dc.w    $0003,$9092             ; addresses ?
+L0000462a                       dc.w    $0003,$9c26             ; addresses ?
+L0000462e                       dc.w    $0003,$a4e0             ; addresses ?
+L00004632                       dc.w    $0003,$b060             ; addresses ?
+L00004636                       dc.w    $0003,$9c26             ; addresses ?
+L0000463a                       dc.w    $0003,$a4e0             ; addresses ?
 
 
 L0000463e                       bsr.w   L000046c2
@@ -3596,7 +3620,7 @@ L00005cf0                       move.w  #$0074,d0
 L00005cf4                       add.w   $00(a4,d3.w),d0
 L00005cf8                       move.w  #$0091,d2
 L00005cfc                       add.w   $02(a4,d3.w),d2
-L00005d00                       lea.l   $0003622e,a5                            ; external address
+L00005d00                       lea.l   DATA24_OFFSET_5,a5      ; $0003622e,a5 ; DATA2.IFF/DATA4.IFF external address
 L00005d06                       movem.l d1-d3/a6,-(a7)
 L00005d0a                       bsr.w   L000062a4
 L00005d0e                       movem.l (a7)+,d1-d3/a6
@@ -3606,7 +3630,7 @@ L00005d1c                       add.w   $00(a4,d3.w),d0
 L00005d20                       move.w  $0010(a6),d2
 L00005d24                       add.w   $02(a4,d3.w),d2
 
-L00005d28                       lea.l   $0002a41a,a5                    ; external address
+L00005d28                       lea.l   DATA24_OFFSET_0,a5      ; $0002a41a,a5 ; DATA2.IFF/DATA4.IFF external address
 L00005d2e                       bsr.w   L000062ce
 L00005d32                       lea.l   L00008d5c,a6
 L00005d38                       move.w  $0026(a6),d0
@@ -3622,7 +3646,7 @@ L00005d52                       mulu.w  #$000f,d1
 L00005d56                       add.w   #$0069,d1
 L00005d5a                       add.w   $0016(a6),d1
 
-L00005d5e                       lea.l   $0002a41a,a5                    ; external address
+L00005d5e                       lea.l   DATA24_OFFSET_0,a5                      ; $0002a41a,a5 ; external address
 L00005d64                       bsr.w   L00006206
 L00005d68                       lea.l   L00008d5c,a6
 L00005d6e                       tst.w   $0018(a6)
@@ -3644,7 +3668,7 @@ L00005da0                       moveq   #$03,d2
 L00005da2                       move.w  $0024(a6),d0
 L00005da6                       move.w  $0016(a6),d1
 
-L00005daa                       lea.l   $0002a41a,a5                    ; external address
+L00005daa                       lea.l   DATA24_OFFSET_0,a5                      ; $0002a41a,a5 ; external address
 L00005db0                       lsr.w   #$01,d2
 L00005db2                       bcc.b   L00005dc8
 L00005db4                       movem.l d0-d2/a5-a6,-(a7)
@@ -3690,7 +3714,8 @@ L00005e2e                       move.w  $02(a0,d1.w),d3
 L00005e32                       add.w   #$0027,d0
 L00005e36                       move.w  #$0087,d1
 L00005e3a                       add.w   $0016(a6),d1
-L00005e3e                       lea.l   $0002a41a,a5                    ; external address
+
+L00005e3e                       lea.l   DATA24_OFFSET_0,a5              ; $0002a41a,a5 ; external address
 L00005e44                       bsr.w   L00006266
 L00005e48                       movem.l (a7)+,d7/a0
 L00005e4c                       lea.l   $001a(a0),a0
@@ -3762,7 +3787,7 @@ L00005f0a                       add.w   $0004(a4),d0
 L00005f0e                       add.w   $0006(a4),d2
 
 L00005f12                       movem.l a4/a6,-(a7)
-L00005f16                       lea.l   $0003622e,a5                    ; external address
+L00005f16                       lea.l   DATA24_OFFSET_5,a5      ; $0003622e,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00005f1c                       bsr.w   L000062a4
 L00005f20                       movem.l (a7)+,a4/a6
 L00005f24                       move.w  $0008(a4),d1
@@ -3771,7 +3796,8 @@ L00005f2c                       move.w  $0042(a6),d2
 L00005f30                       add.w   $000a(a4),d0
 L00005f34                       add.w   $000c(a4),d2
 L00005f38                       movem.l a4/a6,-(a7)
-L00005f3c                       lea.l   $0002a41a,a5                    ;external address
+
+L00005f3c                       lea.l   DATA24_OFFSET_0,a5      ; $0002a41a,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00005f42                       bsr.w   L000062ce
 L00005f46                       movem.l (a7)+,a4/a6
 L00005f4a                       cmp.w   #$0003,$003c(a6)
@@ -3796,10 +3822,10 @@ L00005f78                       lsl.w   #$02,d3
 L00005f7a                       lea.l   L00006704,a1
 L00005f80                       move.w  #$005a,d0
 L00005f84                       add.w   $00(a1,d3.w),d0
-L00005f88                       lea.l   $000358b0,a5                    ; external address
+L00005f88                       lea.l   DATA24_OFFSET_7,a5      ; $000358b0,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00005f8e                       bra.w   L000062a4
 L00005f92                       lea.l   L00008dfc,a6
-L00005f98                       lea.l   $00035d4c,a5                    ; external address
+L00005f98                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00005f9e                       moveq   #$02,d7
 L00005fa0                       move.w  $0000(a6),d1
 L00005fa4                       bne.b   L00005fb0
@@ -3827,7 +3853,7 @@ L00005fe8                       bsr.w   L000062ce
 L00005fec                       movem.l (a7)+,d7/a5-a6
 L00005ff0                       bra.b   L00005fa6
 L00005ff2                       lea.l   L00008dc0,a6
-L00005ff8                       lea.l   $00042592,a5                    ; external address
+L00005ff8                       lea.l   DATA24_OFFSET_10,a5     ; $00042592,a5 ; Data2/4 - external address
 L00005ffe                       moveq   #$02,d7
 L00006000                       tst.w   $0000(a6)
 L00006004                       bne.b   L00006012
@@ -3896,7 +3922,8 @@ L000060ee                       lsl.w   #$01,d3
 L000060f0                       move.w  $00(a5,d3.w),d2
 L000060f4                       move.w  #$0062,d0
 L000060f8                       add.w   $0010(a6),d2
-L000060fc                       lea.l   $0002a41a,a5                    ; external address
+
+L000060fc                       lea.l   DATA24_OFFSET_0,a5              ; $0002a41a,a5 ; external address
 L00006102                       bsr.w   L000062ce
 L00006106                       lea.l   L00008d5c,a6
 L0000610c                       move.w  $0026(a6),d0
@@ -3954,7 +3981,7 @@ L000061ba                       bcc.b   L000061d0
 L000061bc                       move.w  d0,d1
 L000061be                       add.w   #$0011,d0
 
-L000061c2                       lea.l   $00035d4c,a5                    ; external address
+L000061c2                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L000061c8                       lea.l   L00008d5c,a6
 L000061ce                       bsr.b   L00006210
 L000061d0                       movem.l (a7)+,d7/a1
@@ -3976,7 +4003,7 @@ L000061f8                       moveq   #$3c,d1
 L000061fa                       bra.b   L00006240
 
 
-L000061fc                       lea.l   $00035d4c,a5                    ; external address
+L000061fc                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00006202                       add.w   $001e(a6),d1
 L00006206                       add.w   $0012(a6),d1
 L0000620a                       lea.l   L00006430,a1
@@ -3999,7 +4026,7 @@ L0000623a                       bra.w   L00004e20
 
 L0000623e                       rts
 
-L00006240                       lea.l   $00035d4c,a5                    ; external address
+L00006240                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00006246                       add.w   $001e(a6),d1
 L0000624a                       add.w   $0012(a6),d1
 L0000624e                       lea.l   $00006430,a1
@@ -5048,7 +5075,7 @@ L00007270                       btst.l  #$000e,d0
 L00007274                       bne.b   L0000726a
 L00007276                       movem.l (a7)+,d6/a0
 
-L0000727a                       lea.l   $00020000,a4                    ; external gfx?
+L0000727a                       lea.l   DATA_OFFSET_0,a4        ; $00020000,a4 - DATA.IFF - external address
 L00007280                       lea.l   L00008d3c,a5
 L00007286                       move.w  #$0030,d7
 L0000728a                       move.w  $0006(a5),d0
@@ -7179,7 +7206,14 @@ _WAIT_FRAME
                 include     "panel.s" 
                 even
             ENDC
-            
+
+             ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
+            IFD TEST_BUILD_LEVEL
+                incdir      "../music/"
+                include     "music.s" 
+                even
+            ENDC
+                       
             ; Id Test Build - Define Display buffer
             IFD TEST_BUILD_LEVEL
 display_buffer  dcb.l   $2f80,$00000000

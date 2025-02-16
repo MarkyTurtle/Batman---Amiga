@@ -20,7 +20,7 @@
                 INCLUDE     "hw.i"
 
 
-                section music,code_c
+                section music_iff,code_c
 
                 IFND TEST_BUILD_LEVEL
 ; Music Player Constants
@@ -31,6 +31,9 @@ AUDIO_PLAYER_INIT_SFX_2         EQU $00068f8c                       ; same as in
 AUDIO_PLAYER_INIT_SONG          EQU $00068f90                       ; initialise song to play - D0.l = song/sound 1 to 13
 AUDIO_PLAYER_INIT_SFX           EQU $00068f94                       ; initialise sfx to play - d0.l = sfx 5 to 13
 AUDIO_PLAYER_UPDATE             EQU $00068f98                       ; regular update (vblank to keep sounds/music playing)
+AUDIO_OFFSET_L000690a6          EQU $000690a6
+AUDIO_OFFSET_L000690f0          EQU $000690f0
+
                 ENDC
                 IFD TEST_BUILD_LEVEL
 ; Music Player Constants
@@ -41,6 +44,9 @@ AUDIO_PLAYER_INIT_SFX_2         EQU Init_SFX_2                      ; same as in
 AUDIO_PLAYER_INIT_SONG          EQU Init_Song                       ; initialise song to play - D0.l = song/sound 1 to 13
 AUDIO_PLAYER_INIT_SFX           EQU Init_SFX                        ; initialise sfx to play - d0.l = sfx 5 to 13
 AUDIO_PLAYER_UPDATE             EQU Play_Sounds                     ; regular update (vblank to keep sounds/music playing)
+AUDIO_OFFSET_L000690a6          EQU L000690a6
+AUDIO_OFFSET_L000690f0          EQU L000690f0 
+
                 ENDC    
 
 ;Chem.iff - Level Music - Constants
@@ -192,7 +198,7 @@ original_start: ; original address $00068f7c
 
 Init_Player
 L00068f80           bra.w   do_initialise_music_player      ; $00069100
-Stop_Player
+Stop_Playing
 L00068f84           bra.w   do_silence_all_audio            ; $00069114
 Init_SFX_1
 L00068f88           bra.w   do_init_sfx_channels            ; $00069168
@@ -238,7 +244,8 @@ L000690AC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000     ;.......
 L000690BC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000     ;................
 L000690CC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000     ;................
 L000690DC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000     ;................
-L000690EC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0008     ;................
+L000690EC   dc.w    $0000,$0000
+L000690f0       dc.w    $0000,$0000,$0000,$0000,$0000,$0008     ;................
 L000690fc   dc.w    $0000
 
 L000690fe       dc.w    $0000,$41F9,$0006,$9D20,$43F9,$0006,$9BC8     ;....A.... C.....
