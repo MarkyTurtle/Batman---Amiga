@@ -19,6 +19,8 @@
                 INCDIR      "include"
                 INCLUDE     "hw.i"
 
+;TEST_MUSIC_BUILD SET 1             ; run a test build with imported GFX
+
 
                 section music_iff,code_c
 
@@ -66,7 +68,7 @@ SFX_Ricochet        EQU         $0c
 SFX_EXPLOSION       EQU         $0d
 
 
-TEST_MUSIC_BUILD SET 1             ; run a test build with imported GFX
+
 
         IFND TEST_MUSIC_BUILD
                 IFND TEST_BUILD_LEVEL
