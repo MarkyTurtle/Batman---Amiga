@@ -820,8 +820,11 @@ L00003828                       pea.l   PANEL_INIT_LIVES        ; panel
 L0000382e                       jmp     PANEL_INIT_ENERGY       ; panel
 
                                 ;return here (pea.l L00003834)
-L00003834                       tst.w   L00008d1e
-L0000383a                       bne.w   L000038ec
+                                ; test if game already started/initialised
+L00003834                       tst.w   L00008d1e               
+L0000383a                       bne.w   L000038ec               ; if so jump here...
+
+                                ; start level for 1st time?
 L0000383e                       bsr.w   panel_fade_in           ; L00003de0
 
 L00003842                       lea.l   text_introduction,a0    ;L00003e74,a0
@@ -830,7 +833,7 @@ L00003848                       bsr.w   large_text_plotter      ; L0000410a
                                 lea.l   text_test_build,a0
                                 bsr.w   small_text_plotter      ;L0000410e
 
-L0000384c                       bsr.w   L00003d6c
+L0000384c                       bsr.w   wipedisplay_backbuffer_to_front         ;L00003d6c
 L00003850                       bsr.w   L00008158
 L00003854                       bsr.w   L000074a4
 
@@ -864,10 +867,11 @@ L000038de                       move.l  #L00008236,L0000907c
 
 L000038e8                       bra.w   L000039aa
 
-L000038ec                       bsr.w   panel_fade_in           ; L00003de0
-L000038f0                       lea.l   text_gotham_carnival,a0 ; L00003ed0,a0
-L000038f6                       bsr.w   large_text_plotter      ; L0000410a
-L000038fa                       bsr.w   L00003d6c
+L000038ec                       bsr.w   panel_fade_in                   ; L00003de0
+L000038f0                       lea.l   text_gotham_carnival,a0         ; L00003ed0,a0
+L000038f6                       bsr.w   large_text_plotter              ; L0000410a
+L000038fa                       bsr.w   wipedisplay_backbuffer_to_front ; L00003d6c
+
 L000038fe                       bsr.w   L000074a4
 L00003902                       lea.l   DATA24_OFFSET_3,a0      ; $00044646,a0            ; Data2/4 offset $$00044646-$2a416=$1a230
 L00003908                       lea.l   DATA24_OFFSET_4,a1      ; $0004c3fe,a1            ; Data2/4 offset $0004c3fe-$2a416=$21fe5
@@ -975,11 +979,12 @@ L00003a90                       btst.b  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1 
 L00003a98                       beq.b   L00003abc
                         ; timer has expired
 L00003a9a                       bsr.w   L00003d5a
-L00003a9e                       lea.l   text_time_up,a0         ; L00003f20,a0
-L00003aa4                       bsr.w   large_text_plotter      ; L0000410a
-L00003aa8                       bsr.w   L00003d6c
-L00003aac                       clr.w   frame_counter           ; L000037bc
-L00003ab2                       cmp.w   #$0032,frame_counter    ; L000037bc
+L00003a9e                       lea.l   text_time_up,a0                         ; L00003f20,a0
+L00003aa4                       bsr.w   large_text_plotter                      ; L0000410a
+L00003aa8                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
+
+L00003aac                       clr.w   frame_counter                           ; L000037bc
+L00003ab2                       cmp.w   #$0032,frame_counter                    ; L000037bc
 L00003aba                       bcs.b   L00003ab2
 L00003abc                       bsr.w   L00003d5a
 L00003ac0                       lea.l   text_introduction,a0    ;L00003e74,a0
@@ -989,11 +994,11 @@ L00003ad2                       beq.b   L00003ae0
 L00003ad4                       lea.l   text_gotham_carnival,a0 ; L00003ed0,a0
 L00003ada                       lea.l   L0000392e,a1
 L00003ae0                       move.l  a1,(a7)
-L00003ae2                       bsr.w   large_text_plotter      ; L0000410a
+L00003ae2                       bsr.w   large_text_plotter                      ; L0000410a
+L00003ae6                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
 
-L00003ae6                       bsr.w   L00003d6c
-L00003aea                       clr.w   frame_counter           ; L000037bc
-L00003af0                       cmp.w   #$0032,frame_counter    ; L000037bc
+L00003aea                       clr.w   frame_counter                           ; L000037bc
+L00003af0                       cmp.w   #$0032,frame_counter                    ; L000037bc
 L00003af8                       bcs.b   L00003af0
 L00003afa                       cmp.w   #$0001,L00008f66 
 L00003b02                       bne.b   L00003b0a
@@ -1010,16 +1015,17 @@ L00003b32                       moveq   #$04,d0
 L00003b34                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; music
 
 L00003b3a                       bsr.w   L00003d5a
-L00003b3e                       lea.l   text_game_over,a0       ; L00003f2c,a0
-L00003b44                       bsr.w   large_text_plotter      ; L0000410a
-L00003b48                       bsr.w   L00003d6c
-L00003b4c                       clr.w   frame_counter           ; L000037bc
-L00003b52                       cmp.w   #$0050,frame_counter    ; L000037bc
+L00003b3e                       lea.l   text_game_over,a0                       ; L00003f2c,a0
+L00003b44                       bsr.w   large_text_plotter                      ; L0000410a
+L00003b48                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
+
+L00003b4c                       clr.w   frame_counter                           ; L000037bc
+L00003b52                       cmp.w   #$0050,frame_counter                    ; L000037bc
 L00003b5a                       bcs.b   L00003b52
 L00003b5c                       bsr.w   L00003d5a
-L00003b60                       bsr.w   L00003d6c
-L00003b64                       bsr.w   panel_fade_out          ; L00003e2c
-L00003b68                       jmp     LOADER_TITLE_SCREEN     ; $00000820 ; loader - TITLE SCREEN
+L00003b60                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
+L00003b64                       bsr.w   panel_fade_out                          ; L00003e2c
+L00003b68                       jmp     LOADER_TITLE_SCREEN                     ; $00000820 ; loader - TITLE SCREEN
 
 
 L00003b6e                       move.w  #$0001,L00008d20
@@ -1033,15 +1039,15 @@ L00003b90                       bsr.w   L00003d5a
 L00003b94                       lea.l   text_escaped_joker,a0   ; L00003e92,a0
 L00003b9a                       tst.w   L00008d1e 
 L00003ba0                       beq.b   L00003ba8 
-L00003ba2                       lea.l   text_city_is_safe,a0    ; L00003ee8,a0
-L00003ba8                       bsr.w   large_text_plotter      ; L0000410a
-L00003bac                       bsr.w   L00003d6c
-L00003bb0                       clr.w   frame_counter           ; L000037bc
-L00003bb6                       cmp.w   #$0055,frame_counter    ; L000037bc
+L00003ba2                       lea.l   text_city_is_safe,a0                    ; L00003ee8,a0
+L00003ba8                       bsr.w   large_text_plotter                      ; L0000410a
+L00003bac                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
+L00003bb0                       clr.w   frame_counter                           ; L000037bc
+L00003bb6                       cmp.w   #$0055,frame_counter                    ; L000037bc
 L00003bbe                       bcs.b   L00003bb6
 L00003bc0                       bsr.w   L00003d5a
-L00003bc4                       bsr.w   L00003d6c
-L00003bc8                       bsr.w   panel_fade_out          ; L00003e2c
+L00003bc4                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
+L00003bc8                       bsr.w   panel_fade_out                          ; L00003e2c
 L00003bcc                       tst.w   L00008d1e
 L00003bd2                       bne.b   L00003bda
 L00003bd4                       jmp     LOADER_LEVEL_3          ; $0000082c               ; loader
@@ -1107,7 +1113,7 @@ L00003cce                       not.b   d1
 L00003cd0                       add.b   #$d9,d1                         ; #$d9 = 217 (-39)
 L00003cd4                       move.b  d1,copper_horizon_wait          ; L00003276
 L00003cda                       cmp.w   #$0002,d0
-L00003cde                       beq.w   L00003d6c
+L00003cde                       beq.w   wipedisplay_backbuffer_to_front         ; L00003d6c
 L00003ce2                       moveq   #$00,d0
 L00003ce4                       moveq   #$26,d1
 L00003ce6                       movea.l display_buffer1_ptr,a0          ; L000037c0,a0
@@ -1145,18 +1151,28 @@ L00003d64                       clr.l   (a0)+
 L00003d66                       dbf.w   d7,L00003d64
 L00003d6a                       rts  
 
-L00003d6c                       move.w  #$0028,d0
-L00003d70                       move.w  #$0098,d1
+
+
+                ; -------------------- wipe display - back buffer to front --------------------
+                ; Wipes the display buffer by gradually copying the back buffer gfx 
+                ; into the front buffer gfx.
+                ;
+wipedisplay_backbuffer_to_front ; original address L00003d6c
+L00003d6c                       move.w  #$0028,d0                       ; d0 = 40
+L00003d70                       move.w  #$0098,d1                       ; d1 = 151 (scan lines?)
 L00003d74                       movem.l display_buffer_ptrs,a0-a1       ; L000037c0,a0-a1
 L00003d7a                       clr.w   d2
-L00003d7c                       moveq   #$7f,d3
-L00003d7e                       and.w   d2,d3
-L00003d80                       moveq   #$0f,d5
-L00003d82                       lsr.w   #$01,d3
+wd_main_loop
+L00003d7c                       moveq   #$7f,d3                         ; d3 = 127 (low 7 bits)
+L00003d7e                       and.w   d2,d3                           ; d3 = low 7 bits of d2 (clamped to 127)
+L00003d80                       moveq   #$0f,d5                         ; d5 = 15
+L00003d82                       lsr.w   #$01,d3                         ; d3 = low 7 bits / 2
 L00003d84                       bcc.b   L00003d88
-L00003d86                       moveq.l #$fffffff0,d5
-L00003d88                       cmp.w   d0,d3
-L00003d8a                       bcc.b   L00003dd2
+wd_bit_shifted_out
+L00003d86                       moveq.l #$fffffff0,d5                   ; d5 = -16
+wd_no_bit_shifted_out
+L00003d88                       cmp.w   d0,d3                           ; compare d3 with 40
+L00003d8a                       bcc.b   L00003dd2                       ; d3 < 40
 L00003d8c                       move.w  d2,d4
 L00003d8e                       lsr.w   #$05,d4
 L00003d90                       and.w   #$00fc,d4
@@ -1168,27 +1184,32 @@ L00003d9c                       move.w  d2,-(a7)
 L00003d9e                       move.w  d0,d3
 L00003da0                       mulu.w  d1,d3
 L00003da2                       moveq   #$03,d7
+wd_outer_loop
 L00003da4                       move.w  d4,-(a7)
 L00003da6                       moveq   #$03,d2
-L00003da8                       move.b  d5,d6
-L00003daa                       not.w   d6
-L00003dac                       and.b   $00(a0,d4.w),d6
-L00003db0                       move.b  d6,$00(a0,d4.w)
-L00003db4                       move.b  d5,d6
-L00003db6                       and.b   $00(a1,d4.w),d6
-L00003dba                       or.b    $00(a0,d4.w),d6
-L00003dbe                       move.b  d6,$00(a0,d4.w)
-L00003dc2                       add.w   d0,d4
-L00003dc4                       dbf.w   d2,L00003da8
+wd_inner_loop
+L00003da8                       move.b  d5,d6                   ; d5 = display buffer byte mask, either = %00001111 or %11110000
+L00003daa                       not.w   d6                      ; d6 = inverse display buffer byte mask
+L00003dac                       and.b   $00(a0,d4.w),d6         ; d6 = either high 4 or low 4 bits of display byte
+L00003db0                       move.b  d6,$00(a0,d4.w)         ; write back to dispaly (masked out byte)
+
+L00003db4                       move.b  d5,d6                   ; d6 = inverse mask
+L00003db6                       and.b   $00(a1,d4.w),d6         ; and back buffer display byte with mask
+L00003dba                       or.b    $00(a0,d4.w),d6         ; merge back buffer display byte with front buffer
+L00003dbe                       move.b  d6,$00(a0,d4.w)         ; store merged byte into display buffer
+L00003dc2                       add.w   d0,d4                   ; increment display index
+L00003dc4                       dbf.w   d2,wd_inner_loop          ;L00003da8
 L00003dc8                       move.w  (a7)+,d4
 L00003dca                       add.w   d3,d4
-L00003dcc                       dbf.w   d7,L00003da4
+L00003dcc                       dbf.w   d7,wd_outer_loop          ; L00003da4
 L00003dd0                       move.w  (a7)+,d2
-L00003dd2                       mulu.w  #$0555,d2
+
+L00003dd2                       mulu.w  #$0555,d2               ; 1365 (1351,1367 are prime)
 L00003dd6                       addq.w  #$01,d2
-L00003dd8                       and.w   #$1fff,d2
-L00003ddc                       bne.b   L00003d7c
+L00003dd8                       and.w   #$1fff,d2               ; clamp d2 to 8192
+L00003ddc                       bne.b   wd_main_loop               ; L00003d7c
 L00003dde                       rts  
+
 
 
 panel_fade_in
