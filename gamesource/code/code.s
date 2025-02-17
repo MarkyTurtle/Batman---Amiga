@@ -112,7 +112,7 @@ code_start
 
 
 L00002ffc               dc.l    $00002ffc
-
+colourtest              dc.w    $0000
 
                         ; -------------- start batmobile level ------------
 start_batmobile         ; original address $00003000
@@ -254,7 +254,7 @@ L000031ec               dc.w    $0000
 L000031f0               dc.w    $0000
                         dc.w    $00ee
 L000031f4               dc.w    $0000
-                        dc.w    $0180,$0000   
+bgcolour                dc.w    $0180,$0000   
 L000031fa               dc.w    $0182,$0002
                         dc.w    $0184,$0888
                         dc.w    $0186,$0eee
@@ -919,29 +919,29 @@ L000039c8                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; mu
 
                 ; ------------------ game loop ---------------------
 game_loop
-L000039ce                       jsr     _DEBUG_COLOURS
-                                ;bsr.w   L00006ee6
-L000039d2                       ;bsr.w   L000067ba
-L000039d6                       ;bsr.w   L00006b02
-L000039da                       ;bsr.w   L0000764a
-L000039de                       ;bsr.w   L000074c8
-L000039e2                       ;bsr.w   L00006d40
-L000039e6                       ;bsr.w   L000051da
-L000039ea                       ;bsr.w   L00005086
-L000039ee                       ;tst.w   L00008d1e 
-L000039f4                       ;bne.b   L00003a00
-L000039f6                       ;bsr.w   L0000459c
-L000039fa                       ;bsr.w   L000044a8
-L000039fe                       ;bra.b   L00003a04
-L00003a00                       ;bsr.w   L000042be
-L00003a04                       ;bsr.w   L00004792
-L00003a08                       ;bsr.w   L00005764
-L00003a0c                       ;bsr.w   L00006f1c
-L00003a10                       ;bsr.w   L00004cb2
-L00003a14                       ;bsr.w   L00003f70
-L00003a18                       ;bsr.w   L00003be0
-L00003a1c                       ;bsr.w   L00003a34
-                                move.w  frame_counter,$dff180
+L000039ce                       add.w   #1,colourtest
+                                move.w  colourtest,bgcolour+2
+                                bsr.w   L00006ee6                       ; screen wipe?
+L000039d2                       bsr.w   L000067ba
+L000039d6                       bsr.w   L00006b02
+L000039da                       bsr.w   L0000764a
+L000039de                       bsr.w   L000074c8
+L000039e2                       bsr.w   L00006d40
+L000039e6                       bsr.w   L000051da
+L000039ea                       bsr.w   L00005086
+L000039ee                       tst.w   L00008d1e 
+L000039f4                       bne.b   L00003a00
+L000039f6                       bsr.w   L0000459c
+L000039fa                       bsr.w   L000044a8
+L000039fe                       bra.b   L00003a04
+L00003a00                       bsr.w   L000042be
+L00003a04                       bsr.w   L00004792
+L00003a08                       bsr.w   L00005764
+L00003a0c                       bsr.w   L00006f1c               ; draw road (crashing when moving)
+L00003a10                       ;bsr.w   L00004cb2              ; draw sprites (car & buildings? - crashing)
+L00003a14                       bsr.w   L00003f70               ; draw HUD (speed/distance)
+L00003a18                       bsr.w   L00003be0               ; draw direction arrow (top-centre)
+L00003a1c                       bsr.w   L00003a34
 L00003a20                       pea.l   L000039ce                       ; game loop on stack
 L00003a26                       move.w  L00008d2a,d0
 L00003a2c                       bne.w   L00003cb8
@@ -1099,7 +1099,8 @@ L00003cac                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068
 L00003cb2                       movem.l (a7)+,d1-d7/a0-a6
 L00003cb6                       rts  
 
-L00003cb8                       move.w  #$0000,L00008d2a
+L00003cb8                       jsr     _DEBUG_COLOURS_PAUSE
+                                move.w  #$0000,L00008d2a
 L00003cc0                       move.w  #$0000,L00008d20
 L00003cc8                       move.w  L00008d3a,d1                    ; horizon position
 L00003cce                       not.b   d1
@@ -2095,7 +2096,7 @@ L00004a48                       addq.l  #$06,L00008f5e
 L00004a4e                       movea.l $0012(a6),a5
 L00004a52                       lea.l   $00(a5,d5.w),a5
 L00004a56                       move.w  (a5)+,d1
-L00004a58                       move.w  $0010(a6),d0
+L00004a58                       move.w  $0010(a6),d0                    ; bus error exception
 L00004a5c                       bmi.b   L00004a68
 L00004a5e                       cmp.w   #$0140,d0
 L00004a62                       bcs.b   L00004a72
@@ -7364,14 +7365,17 @@ _WAIT_FRAME
                 even
             ENDC
 
+
+                       
+            ; Id Test Build - Define Display buffer
+            IFD TEST_BUILD_LEVEL
+display_buffer  dcb.l   $2f80,$00000000
+            ENDC
+
+
              ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
             IFD TEST_BUILD_LEVEL
                 incdir      "../music/"
                 include     "music.s" 
                 even
-            ENDC
-                       
-            ; Id Test Build - Define Display buffer
-            IFD TEST_BUILD_LEVEL
-display_buffer  dcb.l   $2f80,$00000000
             ENDC
