@@ -5772,15 +5772,18 @@ L00008152       dc.w    $0000,$0000,$0000
 
 
 
-
+                ; some batmobile init routine (similar to below)
 L00008158                       lea.l   L00008272,a5
 L0000815e                       lea.l   L00008288,a0
 L00008164                       lea.l   L000085a8,a1
 L0000816a                       lea.l   L00008642,a2
 L00008170                       lea.l   L00008662,a3
 L00008176                       lea.l   L00008732,a4
-L0000817c                       move.w  (a5)+,d7
-L0000817e                       bmi.b   L000081cc
+
+L0000817c                       move.w  (a5)+,d7                ; get count of something -1
+L0000817e                       bmi.b   L000081cc_exit          ; exit if negative value. L000081cc
+
+L00008180_loop
 L00008180                       bsr.w   L0000421a
 L00008184                       and.w   #$000f,d0
 L00008188                       mulu.w  #$0006,d0
@@ -5800,11 +5803,16 @@ L000081b6                       mulu.w  #$001a,d0
 L000081ba                       lea.l   $00(a3,d0.w),a6
 L000081be                       move.l  a6,(a0)+
 L000081c0                       move.l  a4,(a0)+
-L000081c2                       dbf.w   d7,L00008180
+L000081c2                       dbf.w   d7,L00008180_loop       ; loop for number of times specified - L00008180
+
 L000081c6                       lea.l   $0014(a0),a0
 L000081ca                       bra.b   L0000817c
+L000081cc_exit
 L000081cc                       rts  
 
+
+
+                ; some batwing init routine (similar to above)
 L000081ce                       lea.l   L00008838,a0
 L000081d4                       lea.l   L00008a34,a1
 L000081da                       lea.l   L00008ace,a2
@@ -5854,7 +5862,18 @@ L00008266       dc.l    L00008838
                 dc.l    L00008266
 
 
-L00008272       dc.w    $0004,$0002,$0003,$0005,$0001,$0001,$0004,$0000,$0000,$0000,$ffff
+L00008272       dc.w    $0004           ; a list of number/count of something
+                dc.w    $0002
+                dc.w    $0003
+                dc.w    $0005
+                dc.w    $0001
+                dc.w    $0001
+                dc.w    $0004
+                dc.w    $0000
+                dc.w    $0000
+                dc.w    $0000
+                dc.w    $ffff           ; end of list
+
 
 L00008288       dc.w    $c000,$0000,$0000,$0000,$0000,$0000,$0000    
 L00008296       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
