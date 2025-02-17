@@ -120,12 +120,12 @@ L00003000               bra.b   L00003010
 
                         ; --------------- start/set batwing level ---------------
 start_batwing           ; original address $00003002
-L00003002               move.w  #$0001,L00008d1e        ; batwing = 1
+L00003002               move.w  #$0001,game_type        ; L00008d1e        ; batwing = 1
 L0000300a               jmp     start_common            ; L0000301e
 
                         ; -------------- set batmobile level --------------
 set_batmobile           ; original address $00003010
-L00003010               move.w  #$0000,L00008d1e        ; batmobile = 0
+L00003010               move.w  #$0000,game_type        ; L00008d1e        ; batmobile = 0
 L00003018               jmp    start_common             ; L0000301e
 
 
@@ -599,7 +599,7 @@ L000035e2                       bne.b   L00003604               ; update music/s
 L000035e4                       move.w  L00008f6e,d0
 L000035ea                       neg.w   d0
 L000035ec                       move.w  #$02ee,d1
-L000035f0                       tst.w   L00008d1e 
+L000035f0                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0)
 L000035f6                       beq.b   L000035fc
 L000035f8                       move.w  #$0384,d1
 L000035fc                       add.w   d1,d0
@@ -820,20 +820,26 @@ L00003828                       pea.l   PANEL_INIT_LIVES        ; panel
 L0000382e                       jmp     PANEL_INIT_ENERGY       ; panel
 
                                 ;return here (pea.l L00003834)
-                                ; test if game already started/initialised
-L00003834                       tst.w   L00008d1e               
-L0000383a                       bne.w   L000038ec               ; if so jump here...
 
-                                ; start level for 1st time?
+                                ; test game type
+L00003834                       tst.w   game_type               ; L00008d1e   (batwing = 1, batmobile = 0)             
+L0000383a                       bne.w   batwing_start_level     ; L000038ec    
+
+
+
+                        ; ------------------- batmobile start level ------------------
+batmobile_start_level   ; original address L0000383e
 L0000383e                       bsr.w   panel_fade_in           ; L00003de0
 
+                        ; draw intro text (back buffer)
 L00003842                       lea.l   text_introduction,a0    ;L00003e74,a0
 L00003848                       bsr.w   large_text_plotter      ; L0000410a
-
+                        ; draw debug build text (back buffer)
                                 lea.l   text_test_build,a0
-                                bsr.w   small_text_plotter      ;L0000410e
-
+                                bsr.w   small_text_plotter                      ;L0000410e
+                        ; Wipetext to display.
 L0000384c                       bsr.w   wipedisplay_backbuffer_to_front         ;L00003d6c
+
 L00003850                       bsr.w   L00008158
 L00003854                       bsr.w   L000074a4
 
@@ -867,6 +873,9 @@ L000038de                       move.l  #L00008236,L0000907c
 
 L000038e8                       bra.w   L000039aa
 
+
+                        ; --------------------- batwing start level --------------------------
+batwing_start_level     ; original address L000038ec 
 L000038ec                       bsr.w   panel_fade_in                   ; L00003de0
 L000038f0                       lea.l   text_gotham_carnival,a0         ; L00003ed0,a0
 L000038f6                       bsr.w   large_text_plotter              ; L0000410a
@@ -898,6 +907,8 @@ L00003972                       move.w  d0,L00008d24
 L00003978                       move.l  #L00008266,L0000907c
 L00003982                       bra.w   L000039aa
 
+
+                        ; ------------ unknown init routine -------------
 L00003986                       jsr     _DEBUG_RED_PAUSE
 
                                 lea.l   L00008d26,a0
@@ -910,6 +921,7 @@ L000039a4                       jmp     PANEL_INIT_TIMER        ; panel
                                 ; init timer & return
 
 
+                        ; ------------------- common start level code ---------------
 L000039aa                       jsr     _DEBUG_GREEN_PAUSE
                                ; bsr.w   L00006a2c
                                 jsr     _DEBUG_BLUE_PAUSE
@@ -933,7 +945,7 @@ L000039de                       bsr.w   L000074c8
 L000039e2                       bsr.w   L00006d40
 L000039e6                       bsr.w   L000051da
 L000039ea                       bsr.w   L00005086
-L000039ee                       tst.w   L00008d1e 
+L000039ee                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0) 
 L000039f4                       bne.b   L00003a00
 L000039f6                       bsr.w   L0000459c
 L000039fa                       bsr.w   L000044a8
@@ -959,7 +971,7 @@ L00003a3c                       move.b  PANEL_STATUS_1,d0               ; $0007c
 L00003a42                       and.b   #$07,d0
 L00003a46                       beq.b   L00003a60       ; 0 = exit
                         ; timer, nolives or life lost
-L00003a48                       tst.w   L00008d1e
+L00003a48                       tst.w   game_type                       ; L00008d1e (batwing = 1, batmobile = 0)
 L00003a4e                       beq.b   L00003a62
 L00003a50                       tst.w   L00008d38
 L00003a56                       bne.b   L00003a60
@@ -987,11 +999,11 @@ L00003aac                       clr.w   frame_counter                           
 L00003ab2                       cmp.w   #$0032,frame_counter                    ; L000037bc
 L00003aba                       bcs.b   L00003ab2
 L00003abc                       bsr.w   L00003d5a
-L00003ac0                       lea.l   text_introduction,a0    ;L00003e74,a0
+L00003ac0                       lea.l   text_introduction,a0                    ; L00003e74,a0
 L00003ac6                       lea.l   L00003884,a1
-L00003acc                       tst.w   L00008d1e 
+L00003acc                       tst.w   game_type                               ; L00008d1e (batwing = 1, batmobile = 0) 
 L00003ad2                       beq.b   L00003ae0 
-L00003ad4                       lea.l   text_gotham_carnival,a0 ; L00003ed0,a0
+L00003ad4                       lea.l   text_gotham_carnival,a0                 ; L00003ed0,a0
 L00003ada                       lea.l   L0000392e,a1
 L00003ae0                       move.l  a1,(a7)
 L00003ae2                       bsr.w   large_text_plotter                      ; L0000410a
@@ -1036,8 +1048,8 @@ L00003b88                       moveq   #$02,d0
 L00003b8a                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90; music
 
 L00003b90                       bsr.w   L00003d5a
-L00003b94                       lea.l   text_escaped_joker,a0   ; L00003e92,a0
-L00003b9a                       tst.w   L00008d1e 
+L00003b94                       lea.l   text_escaped_joker,a0                   ; L00003e92,a0
+L00003b9a                       tst.w   game_type                               ; L00008d1e (batwing = 1, batmobile = 0) 
 L00003ba0                       beq.b   L00003ba8 
 L00003ba2                       lea.l   text_city_is_safe,a0                    ; L00003ee8,a0
 L00003ba8                       bsr.w   large_text_plotter                      ; L0000410a
@@ -1048,13 +1060,13 @@ L00003bbe                       bcs.b   L00003bb6
 L00003bc0                       bsr.w   L00003d5a
 L00003bc4                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
 L00003bc8                       bsr.w   panel_fade_out                          ; L00003e2c
-L00003bcc                       tst.w   L00008d1e
+L00003bcc                       tst.w   game_type                               ; L00008d1e (batwing = 1, batmobile = 0)
 L00003bd2                       bne.b   L00003bda
-L00003bd4                       jmp     LOADER_LEVEL_3          ; $0000082c               ; loader
-L00003bda                       jmp     LOADER_LEVEL_5          ; $00000834               ; loader
+L00003bd4                       jmp     LOADER_LEVEL_3                          ; $0000082c               ; loader
+L00003bda                       jmp     LOADER_LEVEL_5                          ; $00000834               ; loader
 
 L00003be0                       lea.l   L00008d5c,a6
-L00003be6                       tst.w   L00008d1e
+L00003be6                       tst.w   game_type                               ; L00008d1e (batwing = 1, batmobile = 0)
 L00003bec                       beq.b   L00003c2a
 L00003bee                       tst.w   $0028(a6)
 L00003bf2                       beq.b   L00003c14 
@@ -1090,7 +1102,7 @@ L00003c6c                       bne.b   L00003c90
 L00003c6e                       move.w  #$0000,L00008d32
 L00003c76                       move.w  #$0000,L00008d34
 L00003c7e                       moveq   #$05,d0
-L00003c80                       tst.w   L00008d1e
+L00003c80                       tst.w   game_type                       ; L00008d1e (batwing = 1, batmobile = 0)
 L00003c86                       beq.b   L00003c8a
 L00003c88                       moveq   #$06,d0
 L00003c8a                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068f94 ; music
@@ -1339,7 +1351,7 @@ L00003fca                       cmp.w   #$001b,d0
 L00003fce                       beq.b   L00004032
 L00003fd0                       cmp.w   #$008a,d0
 L00003fd4                       beq.b   L00003ffe 
-L00003fd6                       tst.w   L00008d1e
+L00003fd6                       tst.w   game_type                               ; L00008d1e (batwing = 1, batmobile = 0)
 L00003fdc                       beq.w   L0000407a
 L00003fe0                       move.w  L00008d24,d0
 L00003fe6                       beq.w   L00003b6e
@@ -1371,7 +1383,7 @@ L0000403a                       bra.w   L00003b18
 
 L0000403e                       move.w  #$0001,L00008d20
 L00004046                       pea.l   L0000405a
-L0000404c                       move.w  L00008d1e,d0
+L0000404c                       move.w  game_type,d0                            ; L00008d1e,d0 (batwing = 1, batmobile = 0)
 L00004052                       addq.w  #$05,d0
 L00004054                       jmp     AUDIO_PLAYER_INIT_SFX_2                 ; $00068f8c ; music
 L0000405a                       bsr.w   L00003728
@@ -2277,7 +2289,7 @@ L00004caa                       dc.w    $0000,$7fff,$0003,$7e12
 
 
 
-L00004cb2                       tst.w   L00008d1e
+L00004cb2                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0)
 L00004cb8                       beq.b   L00004cbe
 L00004cba                       bsr.w   L00005f5a
 L00004cbe                       lea.l   L0000909f,a0
@@ -2297,7 +2309,7 @@ L00004cfc                       lea.l   $00(a3,d0.w),a3
 L00004d00                       move.w  L00009076,d6
 L00004d06                       add.b   #$53,d6
 L00004d0a                       move.w  #$0013,d7
-L00004d0e                       tst.w   L00008d1e
+L00004d0e                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0)
 L00004d14                       beq.w   L00005c88
 L00004d18                       move.w  d7,d5
 L00004d1a                       lsr.w   #$01,d5
@@ -2317,7 +2329,7 @@ L00004d40                       subq.w  #$02,a0
 L00004d42                       subq.w  #$01,a1
 L00004d44                       dbf.w   d7,L00004d0e
 
-L00004d48                       tst.w   L00008d1e
+L00004d48                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0)
 L00004d4e                       beq.w   L00005c9c
 L00004d52                       bra.w   L00005f92
 L00004d56                       lsl.w   #$04,d0
@@ -3164,7 +3176,7 @@ L0000579c                       move.w  L00003708,d5
 L000057a2                       tst.w   L00008f66
 L000057a8                       beq.w   L000057ae 
 L000057ac                       moveq   #$00,d5
-L000057ae                       tst.w   L00008d1e
+L000057ae                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0)
 L000057b4                       bne.w   L00005a28
 L000057b8                       bsr.w   L0000544c
 L000057bc                       move.w  $0018(a6),d0
@@ -6122,7 +6134,9 @@ L00008cf6       dc.w    $0006,$0028,$0028,$0000,$0004,$5c28,$0301,$0000
 L00008d06       dc.w    $0058,$0098,$0070,$0000,$0004,$c3fe,$0102,$0000
 L00008d16       dc.w    $0070,$0098,$0070,$0000
 
+game_type       ; original address L00008d1e (batwing = 1,batmobile = 0)
 L00008d1e       dc.w    $0000
+
 L00008d20       dc.w    $0001
 L00008d22       dc.w    $0000
 L00008d24       dc.w    $0000,$0001,$0000,$0000                  
@@ -7317,7 +7331,7 @@ _DEBUG_COLOURS_PAUSE
                 move.w  d0,$dff180
                 add.w   #$1,d0
                 btst    #6,$bfe001
-                bne.s   _DEBUG_COLOURS
+                bne.s   _DEBUG_COLOURS_PAUSE
                 rts
 
 _DEBUG_RED_PAUSE
@@ -7333,7 +7347,7 @@ _DEBUG_GREEN_PAUSE
                 rts
 
 _DEBUG_BLUE_PAUSE
-                move.w  #$0f0,$dff180
+                move.w  #$00f,$dff180
                 btst    #6,$bfe001
                 bne.s   _DEBUG_RED_PAUSE
                 rts
