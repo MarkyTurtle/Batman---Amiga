@@ -1550,29 +1550,33 @@ L00004216                       bra.b   L000041b2
 L00004218                       rts  
 
 
-
+                ; ----------------- maybe a psuedo random number? -----------------
+                ; OUT: - D0.w = some randomish number?
 L0000421a                       move.l  a0,-(a7)
 L0000421c                       lea.l   L00004238,a0
-L00004222                       addq.w  #$03,(a0)
-L00004224                       move.w  (a0)+,d0
-L00004226                       sub.w   #$008d,(a0)
-L0000422a                       add.w   (a0)+,d0
-L0000422c                       rol.w   #$01,d0
+L00004222                       addq.w  #$03,(a0)               ; $0d83
+L00004224                       move.w  (a0)+,d0                ; d0 = $0d80
+L00004226                       sub.w   #$008d,(a0)             ; $8d = 141
+L0000422a                       add.w   (a0)+,d0                ; d0 = d71
+L0000422c                       rol.w   #$01,d0                 ; $1ae2
 L0000422e                       rol.w   (a0)
 L00004230                       add.w   (a0),d0
 L00004232                       move.w  d0,(a0)
 L00004234                       movea.l (a7)+,a0
 L00004236                       rts  
 
-L00004238                       dc.w    $0d80,$007b,$b26e
-L0000423e                       dc.w    $0003,$90e2,$0003,$b732,$0000         ;...{.n.......2..
-L00004248                       dc.w    $0023,$0000,$4c22,$0003,$90e2,$0003,$d0a4,$0000         ;.#..l"..........
-L00004258                       dc.w    $0023,$0000,$4c22,$0003,$90e2,$0003,$e462,$0000         ;.#..l".......b..
-L00004268                       dc.w    $002d,$0000,$4bda,$0003,$90e2,$0004,$0e00,$0000         ;.-..k...........
-L00004278                       dc.w    $002d,$0000,$4c22,$0003,$a0c2,$0003,$b732,$0000         ;.-..l".......2..
-L00004288                       dc.w    $0037,$0000,$4c22,$0003,$a0c2,$0003,$d0a4,$0000         ;.7..l"..........
-L00004298                       dc.w    $0037,$0000,$4c22,$0003,$a0c2,$0003,$e462,$0000         ;.7..l".......b..
-L000042a8                       dc.w    $0037,$0000,$4bda,$0003,$a0c2,$0004,$0e00,$0000         ;.7..k...........
+L00004238                       dc.w    $0d80
+                                dc.w    $007b,$b26e
+
+
+L0000423e                       dc.w    $0003,$90e2,$0003,$b732,$0000 
+L00004248                       dc.w    $0023,$0000,$4c22,$0003,$90e2,$0003,$d0a4,$0000
+L00004258                       dc.w    $0023,$0000,$4c22,$0003,$90e2,$0003,$e462,$0000
+L00004268                       dc.w    $002d,$0000,$4bda,$0003,$90e2,$0004,$0e00,$0000
+L00004278                       dc.w    $002d,$0000,$4c22,$0003,$a0c2,$0003,$b732,$0000
+L00004288                       dc.w    $0037,$0000,$4c22,$0003,$a0c2,$0003,$d0a4,$0000
+L00004298                       dc.w    $0037,$0000,$4c22,$0003,$a0c2,$0003,$e462,$0000
+L000042a8                       dc.w    $0037,$0000,$4bda,$0003,$a0c2,$0004,$0e00,$0000
 L000042b8                       dc.w    $0037,$0000,$4c22 
 
 
@@ -5773,39 +5777,60 @@ L00008152       dc.w    $0000,$0000,$0000
 
 
                 ; some batmobile init routine (similar to below)
-L00008158                       lea.l   L00008272,a5
-L0000815e                       lea.l   L00008288,a0
-L00008164                       lea.l   L000085a8,a1
-L0000816a                       lea.l   L00008642,a2
-L00008170                       lea.l   L00008662,a3
-L00008176                       lea.l   L00008732,a4
+                ; 20 bytes stored per loop iteration
+                ;    Iteration         Loops   Bytes Stores             StartAddress
+                ;       1               4+1     (20*5)+20 = 120         $00008288
+                ;       2               2+1     (20*3)+20 = 080
+                ;       3               3+1     (20*4)+20 = 100
+                ;       4               5+1     (20*6)+20 = 140
+                ;       5               1+1     (20*2)+20 = 060
+                ;       6               1+1     (20*2)+20 = 060
+                ;       7               4+1     (20*5)+20 = 120
+                ;       8               0+1     (20*1)+20 = 040
+                ;       9               0+1     (20*1)+20 = 040
+                ;       10              0+1     (20*1)+20 = 040
+                ;                                   Total = 800
+                ; these blocks of data may represent road sections or something similar.
+                ; maybe the pre-calculated values are the sections with turns in the road?
+                ;
+                ;
+L00008158                       lea.l   L00008272,a5            ; list of data counts (10 items)
+L0000815e                       lea.l   L00008288,a0            ; 1st list of ptrs (populated by this routine) 17 entries?
 
-L0000817c                       move.w  (a5)+,d7                ; get count of something -1
+L00008164                       lea.l   L000085a8,a1            ; list of 6 byte structure (8 entries)
+L0000816a                       lea.l   L00008642,a2            ; list of ptrs (8 entries)
+L00008170                       lea.l   L00008662,a3            ; list of 26 byte structure (8 entries)
+L00008176                       lea.l   L00008732,a4            ; unknown data
+
+L0000817c                       move.w  (a5)+,d7                ; loop counts (4,2,3,5,1,1,4,0,0,0,-1)
 L0000817e                       bmi.b   L000081cc_exit          ; exit if negative value. L000081cc
 
 L00008180_loop
-L00008180                       bsr.w   L0000421a
-L00008184                       and.w   #$000f,d0
-L00008188                       mulu.w  #$0006,d0
-L0000818c                       lea.l   $00(a1,d0.w),a6
-L00008190                       move.l  a6,(a0)+
-L00008192                       bsr.w   L0000421a
-L00008196                       and.w   #$0007,d0
-L0000819a                       lsl.w   #$02,d0
-L0000819c                       move.l  $00(a2,d0.w),(a0)+
-L000081a0                       bsr.w   L0000421a
-L000081a4                       and.w   #$0007,d0
-L000081a8                       mulu.w  #$001a,d0
-L000081ac                       lea.l   $00(a3,d0.w),a6
-L000081b0                       move.l  a6,(a0)+
-L000081b2                       and.w   #$0007,d0
-L000081b6                       mulu.w  #$001a,d0
-L000081ba                       lea.l   $00(a3,d0.w),a6
-L000081be                       move.l  a6,(a0)+
+L00008180                       bsr.w   L0000421a               ; d0 = randomish number
+L00008184                       and.w   #$000f,d0               ; clamp 0-15
+L00008188                       mulu.w  #$0006,d0               ; multiply by struct size (6 bytes)
+L0000818c                       lea.l   $00(a1,d0.w),a6         ; a6 = address of random struct.
+L00008190                       move.l  a6,(a0)+                ; -- store address ptr 1 --
+
+L00008192                       bsr.w   L0000421a               ; d0 = randomish number
+L00008196                       and.w   #$0007,d0               ; clamp 0-7
+L0000819a                       lsl.w   #$02,d0                 ; multiply by 4
+L0000819c                       move.l  $00(a2,d0.w),(a0)+      ; -- store address ptr 2 --
+
+L000081a0                       bsr.w   L0000421a               ; d0 = randomish number
+L000081a4                       and.w   #$0007,d0               ; clamp 0-7
+L000081a8                       mulu.w  #$001a,d0               ; multiply by struct size (26 bytes)
+L000081ac                       lea.l   $00(a3,d0.w),a6         ; a6 = ptr to struct
+L000081b0                       move.l  a6,(a0)+                ; -- store address ptr 3 --
+
+L000081b2                       and.w   #$0007,d0               ; clamp 0-7
+L000081b6                       mulu.w  #$001a,d0               ; multiply by struct size (26 bytes)
+L000081ba                       lea.l   $00(a3,d0.w),a6         ; a6 = ptr to struct
+L000081be                       move.l  a6,(a0)+                ; -- store address ptr 4 --
 L000081c0                       move.l  a4,(a0)+
 L000081c2                       dbf.w   d7,L00008180_loop       ; loop for number of times specified - L00008180
 
-L000081c6                       lea.l   $0014(a0),a0
+L000081c6                       lea.l   $0014(a0),a0            ; skip 20 bytes after each batch
 L000081ca                       bra.b   L0000817c
 L000081cc_exit
 L000081cc                       rts  
@@ -5818,7 +5843,7 @@ L000081d4                       lea.l   L00008a34,a1
 L000081da                       lea.l   L00008ace,a2
 L000081e0                       lea.l   L00008aee,a3
 L000081e6                       lea.l   L00008732,a4
-L000081ec                       moveq   #$18,d7
+L000081ec                       moveq   #$18,d7                 ; 24 iterations for initialisation
 L000081ee                       bsr.w   L0000421a
 L000081f2                       and.w   #$000f,d0
 L000081f6                       mulu.w  #$0006,d0
@@ -5844,151 +5869,317 @@ L00008234                       rts
 
 ; end of program data? no idea what is contains yet.
 
-                ; Table of Long Memory Pointers
-L00008236       dc.l    L00008288
-                dc.l    L00008300
-                dc.l    L00008350
-                dc.l    L000083b4
-L00008246       dc.l    L00008440
-                dc.l    L0000847c
-                dc.l    L000084b8
-                dc.l    L00008530
-L00008256       dc.l    L00008558
-                dc.l    L00008580
+                ; Table of Long Memory Pointers to each batch 1 to 10 
+                ;   - each batch contains a list of ptrs to other data
+L00008236       dc.l    L00008288       ; batch 1
+                dc.l    L00008300       ; batch 2
+                dc.l    L00008350       ; batch 3
+                dc.l    L000083b4       ; batch 4
+L00008246       dc.l    L00008440       ; batch 5
+                dc.l    L0000847c       ; batch 6
+                dc.l    L000084b8       ; batch 7
+                dc.l    L00008530       ; batch 8
+L00008256       dc.l    L00008558       ; batch 9
+                dc.l    L00008580       ; batch 10
                 dc.l    $00000000               ; NULL ptr
-                dc.l    L00008236
-L00008266       dc.l    L00008838
-                dc.l    $00000000               ; NULL ptr
-                dc.l    L00008266
+
+                dc.l    L00008236       ; ptt to top of list above
+L00008266       dc.l    L00008838       ; ptr to buffer of $1f8 bytes (zeroed values) 504 bytes
+                dc.l    $00000000        ; NULL ptr
+
+                dc.l    L00008266       ; ptr to ptr to buffer of 504 bytes ($1f8 bytes)
 
 
-L00008272       dc.w    $0004           ; a list of number/count of something
-                dc.w    $0002
-                dc.w    $0003
-                dc.w    $0005
-                dc.w    $0001
-                dc.w    $0001
-                dc.w    $0004
-                dc.w    $0000
-                dc.w    $0000
-                dc.w    $0000
+                ; list of counters use by init routine at (L00008158)
+                ; number of iterations for creating the lists of ptrs that follow
+                ; 10 data structures to initialise (starting below this list)
+                ; what the data pointed to by these pointers represents is unkown currently.
+L00008272       dc.w    $0004           ; 4+1 blocks of ptrs
+                dc.w    $0002           ; 2+1 blocks of ptrs
+                dc.w    $0003           ; 3+1 blocks of ptrs
+                dc.w    $0005           ; 5+1 blocks of ptrs            
+                dc.w    $0001           ; 1+1 blocks of ptrs
+                dc.w    $0001           ; 1+1 blocks of ptrs
+                dc.w    $0004           ; 4+1 blocks of ptrs
+                dc.w    $0000           ; 0+1 blocks of ptrs
+                dc.w    $0000           ; 0+1 blocks of ptrs
+                dc.w    $0000           ; 0+1 blocks of ptrs
                 dc.w    $ffff           ; end of list
 
 
-L00008288       dc.w    $c000,$0000,$0000,$0000,$0000,$0000,$0000    
-L00008296       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000082a6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000082b6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000082c6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000082d6       dc.w    $0003,$c000,$0000,$0000,$0000,$0000,$0000,$0000
-L000082e6       dc.w    $0000,$0000,$0000
+                ; list of data ptrs initialised by routine at (L00008158)
+L00008288       
+                ; initialisation ptr batch 1 (5 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L000087d6
                 dc.l    L0000878a
                 dc.l    L00008736
 
-L00008300       dc.w    $0000,$0000,$0000
-L00008306       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008316       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008326       dc.w    $0003,$c000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008336       dc.w    $0000,$0000,$0000
+                ; initialisation ptr batch 2 (3 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L00008300       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+                
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L0000878a
                 dc.l    L000087d6
                 dc.l    L00008760
 
-L00008350       dc.w    $0000,$0000,$0000
-L00008356       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008366       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008376       dc.w    $0003,$c000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008386       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008396       dc.w    $0000,$0000,$0000,$0000,$0000
+                ; initialisation ptr batch 3 (4 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L00008350       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+                
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L000087d6
                 dc.l    L0000878a
                 dc.l    L00008736
 
-L000083b4       dc.w    $0000
-L000083b6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000083c6       dc.w    $0003,$c000,$0000,$0000,$0000,$0000,$0000,$0000
-L000083d6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000083e6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000083f6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008406       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008416       dc.w    $0003,$c000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008426       dc.w    $0000,$0000,$0000
+                ; initialisation ptr batch 4 (6 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L000083b4       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+                
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+                
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation                
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L000087d6
                 dc.l    L0000878a
                 dc.l    L00008736
 
-L00008440       dc.w    $0000,$0000,$0000
-L00008446       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008456       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008466       dc.w    $0003
+                ; initialisation ptr batch 5 (2 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L00008440       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+
+                ; ptrs skipped by initialisation 
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L0000878a
                 dc.l    L000087d6
                 dc.l    L00008760
 
-L0000847c       dc.w    $0000,$0000,$0000,$0000,$0000
-L00008486       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008496       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
+                ; initialisation ptr batch 6 (2 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L0000847c       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation                 
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L000087d6
                 dc.l    L0000878a
                 dc.l    L00008736
 
-L000084b8       dc.w    $c000,$0000,$0000,$0000,$0000,$0000,$0000
-L000084c6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000084d6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000084e6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L000084f6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008506       dc.w    $0003,$c000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008516       dc.w    $0000,$0000,$0000
+                ; initialisation ptr batch 7 (5 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L000084b8       dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000003
+                
+                dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation                 
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L0000878a
                 dc.l    L000087d6
                 dc.l    L00008760
 
-L00008530       dc.w    $0000,$0000,$0000
-L00008536       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
+
+                ; initialisation ptr batch 8 (1 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L00008530       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation                  
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L0000878a
                 dc.l    L000087d6
                 dc.l    L00008760
 
-L00008558       dc.w    $c000,$0000,$0000,$0000,$0000,$0000,$0000
-L00008566       dc.w    $0000,$0000,$0000
+                ; initialisation ptr batch 9 (1 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L00008558       dc.l    $c0000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation                  
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L000087d6
                 dc.l    L0000878a
                 dc.l    L00008736
 
-L00008580       dc.w    $0000,$0000,$0000
-L00008586       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
+                ; initialisation ptr batch 10 (1 blocks of 5 ptrs + 1 block of 5 pre-set ptrs at end)
+L00008580       dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                dc.l    $00000000
+                ; ptrs skipped by initialisation                  
                 dc.l    L00008824
                 dc.l    L00008810
                 dc.l    L0000878a
                 dc.l    L000087d6
                 dc.l    L00008760
 
-L000085a8       dc.w    $f0f0,$f050,$0000,$f0f1,$f150,$0000,$f1f2      
-L000085b6       dc.w    $f150,$0000,$f0f9,$f950,$0000,$f9fa,$f950,$0000
-L000085c6       dc.w    $f0f0,$f059,$0000,$f1f2,$f151,$0000,$f0f0,$f050
-L000085d6       dc.w    $0000,$f1f0,$f950,$0000,$f0f0,$f051,$0000,$f0f9
-L000085e6       dc.w    $fa5a,$0000,$f9f9,$f151,$0000,$f0f0,$f050,$0000
-L000085f6       dc.w    $f1f1,$f050,$0000,$f0f0,$f150,$0000,$f0f0,$f959
-L00008606       dc.w    $0000
+
+                ; 3 words/6 byte struct (16 entries) 
+L000085a8       dc.w    $f0f0,$f050,$0000
+                dc.w    $f0f1,$f150,$0000
+                dc.w    $f1f2,$f150,$0000
+                dc.w    $f0f9,$f950,$0000
+                dc.w    $f9fa,$f950,$0000
+                dc.w    $f0f0,$f059,$0000
+                dc.w    $f1f2,$f151,$0000
+                dc.w    $f0f0,$f050,$0000
+                dc.w    $f1f0,$f950,$0000
+                dc.w    $f0f0,$f051,$0000
+                dc.w    $f0f9,$fa5a,$0000
+                dc.w    $f9f9,$f151,$0000
+                dc.w    $f0f0,$f050,$0000
+                dc.w    $f1f1,$f050,$0000
+                dc.w    $f0f0,$f150,$0000
+                dc.w    $f0f0,$f959,$0000
+
 
 L00008608       dc.w    $f8f8,$f858,$0000
 L0000860e       dc.w    $3847,$3625,$2425,$3647
@@ -5999,6 +6190,7 @@ L0000862e       dc.w    $e827,$2523,$2527,$2829
 L00008636       dc.w    $2b2d,$2b29,$e800
 L0000863c       dc.w    $a4f6,$faac,$0000
 
+                ; list of ptrs to data in block above (8 entries)
 L00008642       dc.l    L00008608         
 L00008646       dc.l    L0000860e
                 dc.l    L00008608
@@ -6008,20 +6200,15 @@ L00008656       dc.l    L0000863c
                 dc.l    L00008608
                 dc.l    L0000860e
 
-L00008662       dc.w    $1210,$1010      
-L00008666       dc.w    $1210,$1218,$1210,$1618,$1618,$1210,$1610,$1216
-L00008676       dc.w    $1010,$1216,$1200,$1012,$1018,$1016,$1016,$1016
-L00008686       dc.w    $1216,$1216,$1010,$1210,$1216,$1010,$1016,$1200
-L00008696       dc.w    $1019,$1019,$1014,$1014,$1614,$1610,$1610,$1610
-L000086a6       dc.w    $1810,$1610,$1610,$1610,$1000,$1810,$1210,$1410
-L000086b6       dc.w    $1210,$1410,$1610,$1010,$1610,$1610,$1410,$1410
-L000086c6       dc.w    $1610,$1000,$1210,$1210,$1010,$1210,$1012,$1012
-L000086d6       dc.w    $1010,$1910,$1910,$1916,$1910,$1610,$1000,$1610
-L000086e6       dc.w    $1610,$1010,$1810,$1010,$1018,$1010,$1410,$1410
-L000086f6       dc.w    $1810,$1410,$1410,$1000,$1210,$1210,$1216,$1216
-L00008706       dc.w    $1216,$1016,$1016,$1016,$1016,$1010,$1610,$1010
-L00008716       dc.w    $1000,$1812,$1618,$1012,$1014,$1012,$1014,$1014
-L00008726       dc.w    $1014,$1016,$1016,$1010,$1910,$1000
+                ; list of 26 byte structures (8 entries)
+L00008662       dc.w    $1210,$1010,$1210,$1218,$1210,$1618,$1618,$1210,$1610,$1216,$1010,$1216,$1200
+                dc.w    $1012,$1018,$1016,$1016,$1016,$1216,$1216,$1010,$1210,$1216,$1010,$1016,$1200
+                dc.w    $1019,$1019,$1014,$1014,$1614,$1610,$1610,$1610,$1810,$1610,$1610,$1610,$1000
+                dc.w    $1810,$1210,$1410,$1210,$1410,$1610,$1010,$1610,$1610,$1410,$1410,$1610,$1000
+                dc.w    $1210,$1210,$1010,$1210,$1012,$1012,$1010,$1910,$1910,$1916,$1910,$1610,$1000
+                dc.w    $1610,$1610,$1010,$1810,$1010,$1018,$1010,$1410,$1410,$1810,$1410,$1410,$1000
+                dc.w    $1210,$1210,$1216,$1216,$1216,$1016,$1016,$1016,$1016,$1010,$1610,$1010,$1000
+                dc.w    $1812,$1618,$1012,$1014,$1012,$1014,$1014,$1014,$1016,$1016,$1010,$1910,$1000
 
 L00008732       dc.w    $32c0,$0000     
 L00008736       dc.w    $0140,$2300,$0107,$0309,$0105,$0900,$0140,$1700
