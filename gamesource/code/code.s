@@ -846,11 +846,11 @@ L00003854                       bsr.w   preshift_18_words                       
 
 L00003858                       lea.l   DATA24_OFFSET_1,a0                      ; $0003dec0,a0 ; Data2/Data4 offset address $3dec0-$2a416=$13aaa
 L0000385e                       lea.l   DATA24_OFFSET_2,a1                      ; $00045c28,a1 ; Data2/4 offset address $45c28-$2a416=$1b812
-L00003864                       bsr.w   L00007b20
+L00003864                       bsr.w   mirror_sprite_gfx                       ; L00007b20
 
 L00003868                       lea.l   DATA_OFFSET_2,a0                        ; $00026be6,a0 ; Data offset address $00026be6-$1fffc=$6bea
 L0000386e                       lea.l   DATA_OFFSET_3,a1                        ; $00028800,a1 ; Data offset address $00028800=$1fffc=$8804
-L00003874                       bsr.w   L00007b20
+L00003874                       bsr.w   mirror_sprite_gfx                       ; L00007b20
 
 L00003878                       bsr.w   panel_fade_in                           ; L00003de0
 L0000387c                       move.w  #$03e7,L00008d22
@@ -888,11 +888,11 @@ L000038fe                       bsr.w   preshift_18_words               ; L00007
 
 L00003902                       lea.l   DATA24_OFFSET_3,a0              ; $00044646,a0 ; Data2/4 offset $$00044646-$2a416=$1a230
 L00003908                       lea.l   DATA24_OFFSET_4,a1              ; $0004c3fe,a1 ; Data2/4 offset $0004c3fe-$2a416=$21fe5
-L0000390e                       bsr.w   L00007b20
+L0000390e                       bsr.w   mirror_sprite_gfx               ; L00007b20
 
 L00003912                       lea.l   DATA_OFFSET_2,a0                ; $00026be6,a0 ; external address
 L00003918                       lea.l   DATA_OFFSET_3,a1                ; $00028800,a1 ; external address
-L0000391e                       bsr.w   L00007b20
+L0000391e                       bsr.w   mirror_sprite_gfx               ; L00007b20
 
 L00003922                       bsr.w   initialise_batwing_data         ; L000081ce
 L00003926                       move.w  #$0064,L00008d24
@@ -5623,6 +5623,7 @@ L00007b10       dc.w    $0f0e,$0c0c,$0000,$0000,$0000,$0000,$0000,$0000
 
                                 ; a0 = Data Address Offset 1 (source data address)
                                 ; a1 = Data Address Offset 2 (destination data address)
+mirror_sprite_gfx       ; original address $00007b20
 L00007b20                       moveq   #$08,d7                 ; 8+1 outer loop count L00007b26_loop
 L00007b22                       lea.l   $0090(a1),a2            ; a2 = source Data 2 offset + $90
 
