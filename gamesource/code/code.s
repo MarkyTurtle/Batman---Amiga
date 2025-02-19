@@ -5621,8 +5621,15 @@ L00007b10       dc.w    $0f0e,$0c0c,$0000,$0000,$0000,$0000,$0000,$0000
 
 
 
-                                ; a0 = Data Address Offset 1 (source data address)
-                                ; a1 = Data Address Offset 2 (destination data address)
+
+                        ; ----------------------- mirror sprite gfx ---------------------------
+                        ; Appears to be a routine that creates mirror images of the level gfx.
+                        ; looks like it mirrors 9 blocks of sprite data (maybe zoom levels?)
+                        ;
+                        ; IN:-
+                        ;       a0 = Source Data Address Offset 1 
+                        ;       a1 = Destination Data Address Offset 2 (mirrored gfx)
+                        ;
 mirror_sprite_gfx       ; original address $00007b20
 L00007b20                       moveq   #$08,d7                 ; 8+1 outer loop count L00007b26_loop
 L00007b22                       lea.l   $0090(a1),a2            ; a2 = source Data 2 offset + $90
