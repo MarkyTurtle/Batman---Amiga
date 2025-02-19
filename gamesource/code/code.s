@@ -5671,7 +5671,7 @@ L00007b58                       subq.w  #$01,d5                 ; subtract 1 to 
 
 
                         ; ----- do next sprite ----- 
-L00007b5a__loop
+L00007b5a_loop
 L00007b5a                       lea.l   $00(a2,d1.w),a2         ; a2 = end gfx ptr
 L00007b5e                       move.w  d5,d6                   ; total number of words
 L00007b60                       moveq   #$00,d2
