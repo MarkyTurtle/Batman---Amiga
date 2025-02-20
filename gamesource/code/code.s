@@ -589,8 +589,8 @@ L000035c8                       tst.w   L00008d20
 L000035ce                       bne.b   L00003604               ; update music/sfx and exit
 
                                 ; update score panel
-L000035d0                       pea.l   L000035dc
-L000035d6                       jmp     PANEL_UPDATE            ; panel
+L000035d0                      ;; pea.l   L000035dc
+L000035d6                       jsr     PANEL_UPDATE            ; panel
                                 ; return to here (pea.l L000035dc)
 
 L000035dc                       tst.w   L00008d32
@@ -605,9 +605,9 @@ L000035f8                       move.w  #$0384,d1
 L000035fc                       add.w   d1,d0
 L000035fe                       move.w  d0,AUDIO_OFFSET_L000690f0       ; $000690f0 ; music
 
-L00003604                       jmp     L00003610
-                                pea.l   L00003610
-L0000360a                       jmp     AUDIO_PLAYER_UPDATE     ; $00068f98 ; music
+L00003604
+                                ;;;pea.l   L00003610
+L0000360a                       ;jsr     AUDIO_PLAYER_UPDATE     ; $00068f98 ; music
 
 L00003610                       move.b  #$00,$00bfee01          ; Clear CIAA control register A - stop CIAA timer A
 L00003618                       movem.l (a7)+,d0-d7/a0-a6
