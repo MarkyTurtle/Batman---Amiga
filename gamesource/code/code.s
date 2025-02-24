@@ -827,6 +827,7 @@ L0000383a                       bne.w   batwing_start_level     ; L000038ec
 
 
 
+
                         ; ------------------- batmobile start level ------------------
 batmobile_start_level   ; original address L0000383e
 L0000383e                       bsr.w   panel_fade_in                           ; L00003de0
@@ -854,10 +855,11 @@ L00003874                       bsr.w   mirror_sprite_gfx                       
 
 L00003878                       bsr.w   panel_fade_in                           ; L00003de0
 
-L0000387c                       move.w  #$03e7,L00008d22                        ; #$3e7 = 999
-L00003884                       move.w  #$0500,d0                               ; #$500 = 1280
-L00003888                       bsr.w   L00003986
+L0000387c                       move.w  #$03e7,L00008d22                        ; #$3e7 = 999 (Distance?)
+L00003884                       move.w  #$0500,d0                               ; BCD Timer Start Value 05:00 minutes
+L00003888                       bsr.w   clear_state_init_panel                  ; L00003986
 
+                                ; init unknown data values
 L0000388c                       lea.l   L00008d5c,a0
 L00003892                       move.w  #$0091,$0010(a0)
 L00003898                       move.w  #$00bc,$0030(a0)
@@ -868,18 +870,18 @@ L000038b0                       move.w  #$0004,L00008d2c
 L000038b8                       move.w  #$0008,L00008d2e
 L000038c0                       move.w  #$0002,L00008d30
 
-                                ; clamp L00008d22 in range 500-999
-L000038c8                       move.w  #$01f4,d0                               ; #$1f4 = 500
+                                ; Set (re)start distance to 999 or 500
+L000038c8                       move.w  #$01f4,d0                               ; #$1f4 = 500 (level mid-point distance)
 L000038cc                       cmp.w   L00008d22,d0                            
 L000038d2                       bcc.b   L000038d8                               ; if L00008d22 < 500 then 
-L000038d4                       move.w  #$03e7,d0                               ; then clamp to 999
+L000038d4                       move.w  #$03e7,d0                               ; reset distance to 999
 L000038d8                       move.w  d0,L00008d22
 
-L000038de                       move.l  #L00008236,L0000907c
+L000038de                       move.l  #batmobile_section_list,road_section_list_ptr   ;#L00008236,L0000907c ; set initial road data ptr
 
-                                jsr     _DEBUG_COLOURS
+L000038e8                       bra.w   common_game_initialisation              ; L000039aa
 
-L000038e8                       bra.w   L000039aa
+
 
 
                         ; --------------------- batwing start level --------------------------
@@ -901,10 +903,11 @@ L0000391e                       bsr.w   mirror_sprite_gfx               ; L00007
 
 L00003922                       bsr.w   initialise_batwing_data         ; L000081ce
 
-L00003926                       move.w  #$0064,L00008d24
-L0000392e                       move.w  #$0300,d0
-L00003932                       bsr.w   L00003986
+L00003926                       move.w  #$0064,L00008d24                ; Balloons to Pop? #$64 = 100
+L0000392e                       move.w  #$0300,d0                       ; BCD Level Timer Value 03:00 minutes
+L00003932                       bsr.w   clear_state_init_panel          ; L00003986
 
+                                ; init unknown data values
 L00003936                       lea.l   L00008d5c,a0
 L0000393c                       move.w  #$0064,$0010(a0)
 L00003942                       move.w  #$0078,L00008f6e
@@ -913,32 +916,54 @@ L00003950                       move.w  #$0070,$002e(a0)
 L00003956                       move.w  #$0001,$002a(a0)
 L0000395c                       move.w  #$ffec,$002c(a0)
 
-L00003962                       move.w  #$0032,d0
+                                ; set (re)start balloon total (100 or 50)
+L00003962                       move.w  #$0032,d0                       ; d0 = #$32 = 50
 L00003966                       cmp.w   L00008d24,d0
 L0000396c                       bcc.b   L00003972
-L0000396e                       move.w  #$0064,d0
-L00003972                       move.w  d0,L00008d24
-L00003978                       move.l  #L00008266,L0000907c
-L00003982                       bra.w   L000039aa
+L0000396e                       move.w  #$0064,d0                       ; reset balloons to 100
+L00003972                       move.w  d0,L00008d24                    ; set balloon total
+
+L00003978                       move.l  #batwing_section_list,road_section_list_ptr     ; #L00008266,L0000907c ; set initial road data ptr
+
+L00003982                       bra.w   common_game_initialisation                      ; L000039aa
 
 
-                        ; ------------ unknown init routine -------------
+
+                        ; ------------ clear level state and init the panel -------------
+                        ; This routine clears 888 bytes of state between $8d26 - $909e
+                        ; and initialises the panel timer with BCD value and player
+                        ; energy.
+                        ; IN:-
+                        ;       d0.w = BCD Timer Value eg #$0300 = 03:00 minutes
+                        ;
+clear_state_init_panel
 L00003986                       jsr     _DEBUG_RED_PAUSE
 
                                 lea.l   L00008d26,a0
-L0000398c                       move.w  #$01bb,d7
-L00003990                       clr.w   (a0)+
-L00003992                       dbf.w   d7,L00003990
+L0000398c                       move.w  #$01bb,d7               ; $1bb = (443 + 1 )* 2 = 888 bytes
+L00003990_loop                  clr.w   (a0)+
+L00003992                       dbf.w   d7,L00003990_loop
+
 L00003996                       move.w  #$0002,L00008d2a
 L0000399e                       pea.l   PANEL_INIT_ENERGY       ; panel
 L000039a4                       jmp     PANEL_INIT_TIMER        ; panel
                                 ; init timer & return
 
 
+
+
                         ; ------------------- common start level code ---------------
+                        ; common game initialisation code jumped to after
+                        ; batmobile or batwing specific initialisation.
+                        ;
+common_game_initialisation
 L000039aa                       jsr     _DEBUG_GREEN_PAUSE
-                               ; bsr.w   L00006a2c
+
+                                bsr.w   L00006a2c
+
                                 jsr     _DEBUG_BLUE_PAUSE
+
+
 
 L000039ae                       move.w  #$0000,L00008d26
 L000039b6                       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875        ; panel
@@ -1238,6 +1263,7 @@ L00003dde                       rts
 
 
 
+                ; -------------------- panel fade in ---------------------
 panel_fade_in
 L00003de0                       moveq   #$0f,d7
 L00003de2                       lea.l   copper_panel_colours+2,a0               ; L000032a4,a0
@@ -1268,6 +1294,8 @@ L00003e26                       dbf.w   d7,L00003de2
 L00003e2a                       rts  
 
 
+
+                ; ------------------- panel fade out ---------------------
 panel_fade_out
 L00003e2c                       moveq   #$0f,d7
 L00003e2e                       lea.l   copper_panel_colours+2,a0       ; L000032a4,a0
@@ -1294,6 +1322,7 @@ L00003e66                       cmp.w   frame_counter,d0        ; L000037bc,d0
 L00003e6c                       bne.b   L00003e66
 L00003e6e                       dbf.w   d7,L00003e2e
 L00003e72                       rts 
+
 
                                 even
 text_test_build                 dc.b    $05,$08,'TEST BUILD 08/02/2025',$00,$ff
@@ -2319,7 +2348,7 @@ L00004cd4                       add.b   d0,(a1)+
 L00004cd6                       dbf.w   d7,L00004cd2
 L00004cda                       lea.l   L00008116,a0
 L00004ce0                       lea.l   L000090b2,a1
-L00004ce6                       lea.l   L00008f74,a2
+L00004ce6                       lea.l   current_road_section_64_block_ptrs,a2   ; L00008f74,a2
 L00004cec                       lea.l   L00007a20,a3
 L00004cf2                       move.w  L00009078,d0
 L00004cf8                       and.w   #$00e0,d0
@@ -2652,7 +2681,7 @@ L000050f4                       move.w  L00009078,d3
 L000050fa                       and.w   #$00e0,d3
 L000050fe                       lea.l   $00(a2,d3.w),a2
 L00005102                       lea.l   L0000909f,a4
-L00005108                       lea.l   L00008f74,a5
+L00005108                       lea.l   current_road_section_64_block_ptrs,a5           ; L00008f74,a5
 L0000510e                       add.b   L00009077,d2
 L00005114                       move.b  $00(a5,d2.w),d1
 L00005118                       bne.b   L0000512a
@@ -2995,7 +3024,7 @@ L000054e6                       neg.w   d0
 L000054e8                       add.w   d0,$004a(a6)
 L000054ec                       move.w  (a0)+,$0054(a6)
 L000054f0                       move.l  a0,$0046(a6)
-L000054f4                       lea.l   L00008f74,a0
+L000054f4                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
 L000054fa                       move.w  L00009076,d0
 L00005500                       moveq   #$00,d6
 L00005502                       add.b   #$40,d0
@@ -3465,7 +3494,7 @@ L00005a9a                       bcc.b   L00005a9e
 L00005a9c                       moveq   #$78,d1
 L00005a9e                       move.w  d1,L00008f6e
 
-L00005aa4                       lea.l   L00008f74,a0
+L00005aa4                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
 L00005aaa                       move.w  L00009076,d0
 L00005ab0                       add.b   #$20,d0
 L00005ab4                       moveq   #$00,d1
@@ -4300,7 +4329,7 @@ L000067f4                       addq.b  #$01,d0
 L000067f6                       move.w  d0,L00009076
 L000067fc                       addq.w  #$01,L00008f72
 L00006802                       addq.w  #$01,L00008d26
-L00006808                       lea.l   L00008f74,a0
+L00006808                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
 L0000680e                       move.w  L00009076,d0
 L00006814                       add.b   #$1f,d0
 L00006818                       move.b  L00009098,d1
@@ -4442,20 +4471,29 @@ L00006a28                       bra.w   L00006808
 
 
 
-L00006a2c                       movea.l L0000907c,a0
-L00006a32                       move.l  (a0)+,d0
-L00006a34                       bne.b   L00006a3a
-L00006a36                       movea.l (a0),a0
-L00006a38                       bra.b   L00006a32
-L00006a3a                       move.l  d0,L00009080
-L00006a40                       move.l  a0,L0000907c
+
+
+                ; on initialisation, the road_section_ptr is either:-
+                ;       - batmobile_section_list
+                ;       - batwing_section_list
+                ;
+L00006a2c                       movea.l road_section_list_ptr,a0                ; L0000907c,a0 
+L00006a32_loop                  move.l  (a0)+,d0
+L00006a34                       bne.b   L00006a3a                               ; road block ptr is NOT NULL
+L00006a36                       movea.l (a0),a0                                 ; if = $00000000 then next ptr back to start of list
+L00006a38                       bra.b   L00006a32_loop
+
+                                ; d0 = ptr to block of 5 road data ptrs.
+L00006a3a                       move.l  d0,L00009080                            ; L00009080 = d0 (current road data ptrs) 
+L00006a40                       move.l  a0,road_section_list_ptr                ; L0000907c - update to next road section ptr.
 L00006a46                       moveq   #$00,d0
 L00006a48                       move.w  d0,L00009076
 L00006a4e                       move.w  d0,L00009078
-L00006a54                       lea.l   L00008f74,a0
-L00006a5a                       move.w  #$003f,d7
-L00006a5e                       move.l  d0,(a0)+
-L00006a60                       dbf.w   d7,L00006a5e 
+                                ; copy ptr to road section block 64 times
+L00006a54                       lea.l   current_road_section_64_block_ptrs,a0   ; L00008f74,a0
+L00006a5a                       move.w  #$003f,d7                               ; 63+1 loop counter
+L00006a5e_loop                  move.l  d0,(a0)+
+L00006a60                       dbf.w   d7,L00006a5e_loop
 
 L00006a64                       bsr.w   L000069ca
 L00006a68                       moveq   #$1f,d7
@@ -4603,7 +4641,7 @@ L00006bd4                       add.w   d3,$0004(a0)
 L00006bd8                       rts 
 
 
-L00006bda                       lea.l   L00008f74,a6
+L00006bda                       lea.l   current_road_section_64_block_ptrs,a6           ; L00008f74,a6
 L00006be0                       lea.l   L00008d3c,a0
 L00006be6                       lea.l   L00006ae2,a2
 L00006bec                       lea.l   L00006ab9,a3
@@ -4904,7 +4942,7 @@ L00006f32                       moveq   #$00,d5
 L00006f34                       move.l  #$00000130,d6
 L00006f3a                       moveq   #$60,d7
 L00006f3c                       sub.b   (a4),d7
-L00006f3e                       lea.l   L00008f74,a2
+L00006f3e                       lea.l   current_road_section_64_block_ptrs,a2   ; L00008f74,a2
 L00006f44                       move.w  L00009076,d4
 L00006f4a                       move.w  d4,d0
 L00006f4c                       move.w  d4,d1
@@ -5321,7 +5359,7 @@ L000074d6                       bsr.w   L000074e6
 L000074da                       move.w  (a7)+,d5
 L000074dc                       sub.w   #$01a9,d5
 L000074e0                       lea.l   L00007bc8,a5
-L000074e6                       lea.l   L00008f74,a0
+L000074e6                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
 L000074ec                       move.w  L00009076,d6
 L000074f2                       move.b  $00(a0,d6.w),d2
 L000074f6                       move.w  L00009078,d1
@@ -5469,7 +5507,7 @@ L00007644                       dbf.w   d7,L0000758e
 L00007648                       rts 
 
 
-L0000764a                       lea.l   L00008f74,a0
+L0000764a                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
 L00007650                       move.w  L00009076,d6
 L00007656                       add.b   #$20,d6
 L0000765a                       move.b  $00(a0,d6.w),d2
@@ -5980,7 +6018,9 @@ L00008234                       rts
 
 
                 ; Batmobile level data structure ptrs
+                ;   - list of road section ptrs for the Batmobile (guessing 1 section per turn-off)
                 ;   - each containing batch (of 5 ptrs) contains a list of ptrs to other data
+batmobile_section_list
 L00008236       dc.l    L00008288       ; batch 1
                 dc.l    L00008300       ; batch 2
                 dc.l    L00008350       ; batch 3
@@ -5992,14 +6032,17 @@ L00008246       dc.l    L00008440       ; batch 5
 L00008256       dc.l    L00008558       ; batch 9
                 dc.l    L00008580       ; batch 10
                 dc.l    $00000000       ; NULL ptr
-                dc.l    L00008236       ; ptr to top of list above
+                dc.l    L00008236       ; ptr back to top of list above (for looping the road sections?)
+
 
 
                 ; Batwing level data structure ptrs
+                ;  - list of road section ptrs for the batwing (only 1 as no turn-offs)
                 ;  - contains batches of 5 ptrs to other data
-L00008266       dc.l    L00008838       ; Batwing 5 ptr batches (25 * 20 = 500 byte)
+batwing_section_list
+L00008266       dc.l    L00008838       ; Spawn point/level start point. Batwing 5 ptr batches (25 * 20 = 500 byte)
                 dc.l    $00000000       ; NULL ptr
-                dc.l    L00008266       ; ptr to top of list above
+                dc.l    L00008266       ; ptr back to top of road section list (for looping the road section?)
 
 
 
@@ -6623,16 +6666,22 @@ L00008d16       dc.w    $0070,$0098,$0070,$0000
 
 
 
-
+                even
 game_type       ; original address L00008d1e (batwing = 1,batmobile = 0)
 L00008d1e       dc.w    $0000
 
 L00008d20       dc.w    $0001
-L00008d22       dc.w    $0000
-L00008d24       dc.w    $0000,$0001,$0000,$0000                  
+L00008d22       dc.w    $0000                           ; batmobile distance through level- initialised to #$03e7 (999)
+L00008d24       dc.w    $0000                           ; batwing number of balloons left - initialised to #$0064 (100)
+                dc.w    $0001,$0000,$0000 
+
+
+
+                ; routine @L00003986 clears 888 bytes of data between $8d26 - $909e
+                ;       - $8d26 + $378 = $909e
 L00008d26       dc.w    $0000
 L00008d28       dc.w    $0000
-L00008d2a       dc.w    $0000
+L00008d2a       dc.w    $0000                           ; initialised to the value #$0002
 L00008d2c       dc.w    $0000
 L00008d2e       dc.w    $0000
 L00008d30       dc.w    $0000
@@ -6696,36 +6745,52 @@ L00008f66       dc.w    $0000
 L00008f68       dc.w    $0000
 L00008f6a       dc.w    $0000
 L00008f6c       dc.w    $0000
+
 L00008f6e       dc.b    $00
 L00008f6f       dc.b    $00
+                even
+
 L00008f70       dc.w    $0000
 L00008f72       dc.w    $0000
-L00008f74       dc.w    $0000       
-L00008f76       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008f86       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008f96       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008fa6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008fb6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008fc6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008fd6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008fe6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00008ff6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009006       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009016       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009026       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009036       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009046       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009056       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000         ;................
-L00009066       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
 
-L00009074       dc.w    $0000     
+
+                ; block of 64 ptrs to the current road section
+                ; all initalised to the block of 5 ptrs
+current_road_section_64_block_ptrs
+L00008f74       dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+                dc.l    $00000000,$00000000,$00000000,$00000000
+
+
+L00009074       dc.w    $0000  
+
 L00009076       dc.b    $00
 L00009077       dc.b    $00
 L00009078       dc.b    $00
 L00009079       dc.b    $00
+                even
+
 L0000907a       dc.w    $0000
-L0000907c       dc.w    $0000,$0000
-L00009080       dc.w    $0000,$0000
+
+road_section_list_ptr              
+L0000907c       dc.l    $00000000                       ; ptr to entry in batmobile_section_list or batwing_section_list
+
+road_section_5_ptrs
+L00009080       dc.l    $00000000                       ; ptr to block 5 ptrs for current road block
+
 L00009084       dc.w    $0000    
 L00009086       dc.w    $0000
 L00009088       dc.w    $0000,$0000,$0000
@@ -6739,8 +6804,15 @@ L0000909a       dc.b    $00
 L0000909b       dc.b    $00
 L0000909c       dc.b    $00
 L0000909d       dc.b    $00
+                ; routine @L00003986 clears 888 bytes of data between $8d26 - $909e
+                ;       - $8d26 + $378 = $909e
+
+
+
 L0000909e       dc.b    $60
 L0000909f       dc.b    $00
+                even
+
 L000090a0       dc.w    $0000,$0000,$0000   
 L000090a6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000
 L000090b2       dc.w    $0000,$0000    
@@ -6752,6 +6824,8 @@ L000090e6       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L000090f6       dc.w    $0000
 L000090f8       dc.b    $00
 L000090f9       dc.b    $00
+                even
+
 L000090fa       dc.w    $0000,$0000,$0000,$0000,$0000,$0000 
 L00009106       dc.w    $0000,$0000,$0000,$0000
 
