@@ -2348,7 +2348,7 @@ L00004cd4                       add.b   d0,(a1)+
 L00004cd6                       dbf.w   d7,L00004cd2
 L00004cda                       lea.l   L00008116,a0
 L00004ce0                       lea.l   L000090b2,a1
-L00004ce6                       lea.l   current_road_section_64_block_ptrs,a2   ; L00008f74,a2
+L00004ce6                       lea.l   current_road_section_256_bytes,a2   ; L00008f74,a2
 L00004cec                       lea.l   L00007a20,a3
 L00004cf2                       move.w  L00009078,d0
 L00004cf8                       and.w   #$00e0,d0
@@ -2681,7 +2681,7 @@ L000050f4                       move.w  L00009078,d3
 L000050fa                       and.w   #$00e0,d3
 L000050fe                       lea.l   $00(a2,d3.w),a2
 L00005102                       lea.l   L0000909f,a4
-L00005108                       lea.l   current_road_section_64_block_ptrs,a5           ; L00008f74,a5
+L00005108                       lea.l   current_road_section_256_bytes,a5           ; L00008f74,a5
 L0000510e                       add.b   L00009077,d2
 L00005114                       move.b  $00(a5,d2.w),d1
 L00005118                       bne.b   L0000512a
@@ -3024,7 +3024,7 @@ L000054e6                       neg.w   d0
 L000054e8                       add.w   d0,$004a(a6)
 L000054ec                       move.w  (a0)+,$0054(a6)
 L000054f0                       move.l  a0,$0046(a6)
-L000054f4                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
+L000054f4                       lea.l   current_road_section_256_bytes,a0           ; L00008f74,a0
 L000054fa                       move.w  L00009076,d0
 L00005500                       moveq   #$00,d6
 L00005502                       add.b   #$40,d0
@@ -3494,7 +3494,7 @@ L00005a9a                       bcc.b   L00005a9e
 L00005a9c                       moveq   #$78,d1
 L00005a9e                       move.w  d1,L00008f6e
 
-L00005aa4                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
+L00005aa4                       lea.l   current_road_section_256_bytes,a0           ; L00008f74,a0
 L00005aaa                       move.w  L00009076,d0
 L00005ab0                       add.b   #$20,d0
 L00005ab4                       moveq   #$00,d1
@@ -4329,11 +4329,12 @@ L000067f4                       addq.b  #$01,d0
 L000067f6                       move.w  d0,L00009076
 L000067fc                       addq.w  #$01,L00008f72
 L00006802                       addq.w  #$01,L00008d26
-L00006808                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
+
+L00006808                       lea.l   current_road_section_256_bytes,a0           ; L00008f74,a0
 L0000680e                       move.w  L00009076,d0
-L00006814                       add.b   #$1f,d0
+L00006814                       add.b   #$1f,d0                                 ; add 31 (#$1f)
 L00006818                       move.b  L00009098,d1
-L0000681e                       sub.b   #$10,d1
+L0000681e                       sub.b   #$10,d1                                 ; sub 16 (#$10)
 L00006822                       bcc.b   L0000683a
 L00006824                       movea.l L00009084,a1
 L0000682a                       move.b  (a1)+,d1
@@ -4447,11 +4448,17 @@ L000069c4                       dbf.w   d7,L0000698e
 L000069c8                       rts 
 
 
+
+                ;-------------------- initialise road section values? -------------------
+                ; sets up ptrs and clears values for the 1st/current road section
+                ;
+set_road_section_values
 L000069ca                       movea.l L00009080,a0
-L000069d0                       move.l  (a0)+,d0
+L000069d0_loop                  move.l  (a0)+,d0
 L000069d2                       bne.b   L000069d8
 L000069d4                       movea.l (a0),a0
-L000069d6                       bra.b   L000069d0
+L000069d6                       bra.b   L000069d0_loop
+
 L000069d8                       move.l  d0,L00009084
 L000069de                       move.l  (a0)+,L00009088
 L000069e4                       move.l  (a0)+,L00009094
@@ -4489,13 +4496,15 @@ L00006a40                       move.l  a0,road_section_list_ptr                
 L00006a46                       moveq   #$00,d0
 L00006a48                       move.w  d0,L00009076
 L00006a4e                       move.w  d0,L00009078
-                                ; copy ptr to road section block 64 times
-L00006a54                       lea.l   current_road_section_64_block_ptrs,a0   ; L00008f74,a0
+
+                                ; clear block 64 longs (256 bytes)
+L00006a54                       lea.l   current_road_section_256_bytes,a0       ; L00008f74,a0
 L00006a5a                       move.w  #$003f,d7                               ; 63+1 loop counter
 L00006a5e_loop                  move.l  d0,(a0)+
 L00006a60                       dbf.w   d7,L00006a5e_loop
 
 L00006a64                       bsr.w   L000069ca
+
 L00006a68                       moveq   #$1f,d7
 L00006a6a                       move.w  d7,-(a7)
 L00006a6c                       bsr.w   L000067ee
@@ -4641,7 +4650,7 @@ L00006bd4                       add.w   d3,$0004(a0)
 L00006bd8                       rts 
 
 
-L00006bda                       lea.l   current_road_section_64_block_ptrs,a6           ; L00008f74,a6
+L00006bda                       lea.l   current_road_section_256_bytes,a6           ; L00008f74,a6
 L00006be0                       lea.l   L00008d3c,a0
 L00006be6                       lea.l   L00006ae2,a2
 L00006bec                       lea.l   L00006ab9,a3
@@ -4942,7 +4951,7 @@ L00006f32                       moveq   #$00,d5
 L00006f34                       move.l  #$00000130,d6
 L00006f3a                       moveq   #$60,d7
 L00006f3c                       sub.b   (a4),d7
-L00006f3e                       lea.l   current_road_section_64_block_ptrs,a2   ; L00008f74,a2
+L00006f3e                       lea.l   current_road_section_256_bytes,a2   ; L00008f74,a2
 L00006f44                       move.w  L00009076,d4
 L00006f4a                       move.w  d4,d0
 L00006f4c                       move.w  d4,d1
@@ -5359,7 +5368,7 @@ L000074d6                       bsr.w   L000074e6
 L000074da                       move.w  (a7)+,d5
 L000074dc                       sub.w   #$01a9,d5
 L000074e0                       lea.l   L00007bc8,a5
-L000074e6                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
+L000074e6                       lea.l   current_road_section_256_bytes,a0           ; L00008f74,a0
 L000074ec                       move.w  L00009076,d6
 L000074f2                       move.b  $00(a0,d6.w),d2
 L000074f6                       move.w  L00009078,d1
@@ -5507,7 +5516,7 @@ L00007644                       dbf.w   d7,L0000758e
 L00007648                       rts 
 
 
-L0000764a                       lea.l   current_road_section_64_block_ptrs,a0           ; L00008f74,a0
+L0000764a                       lea.l   current_road_section_256_bytes,a0           ; L00008f74,a0
 L00007650                       move.w  L00009076,d6
 L00007656                       add.b   #$20,d6
 L0000765a                       move.b  $00(a0,d6.w),d2
@@ -6756,7 +6765,7 @@ L00008f72       dc.w    $0000
 
                 ; block of 64 ptrs to the current road section
                 ; all initalised to the block of 5 ptrs
-current_road_section_64_block_ptrs
+current_road_section_256_bytes
 L00008f74       dc.l    $00000000,$00000000,$00000000,$00000000
                 dc.l    $00000000,$00000000,$00000000,$00000000
                 dc.l    $00000000,$00000000,$00000000,$00000000
@@ -6783,7 +6792,7 @@ L00009078       dc.b    $00
 L00009079       dc.b    $00
                 even
 
-L0000907a       dc.w    $0000
+L0000907a       dc.w    $0000                           ; current road section value
 
 road_section_list_ptr              
 L0000907c       dc.l    $00000000                       ; ptr to entry in batmobile_section_list or batwing_section_list
@@ -6791,14 +6800,12 @@ L0000907c       dc.l    $00000000                       ; ptr to entry in batmob
 road_section_5_ptrs
 L00009080       dc.l    $00000000                       ; ptr to block 5 ptrs for current road block
 
-L00009084       dc.w    $0000    
-L00009086       dc.w    $0000
-L00009088       dc.w    $0000,$0000,$0000
-L0000908c       dc.w    $0000
-L00009090       dc.w    $0000,$0000
-L00009094       dc.w    $0000   
-L00009096       dc.w    $0000
-L00009098       dc.b    $00
+L00009084       dc.l    $00000000                       ; current road section 5 ptrs (copy/working values)
+L00009088       dc.l    $00000000
+L0000908c       dc.l    $00000000
+L00009090       dc.l    $00000000
+L00009094       dc.l    $00000000
+L00009098       dc.b    $00                             ; current road section byte values
 L00009099       dc.b    $00
 L0000909a       dc.b    $00
 L0000909b       dc.b    $00
