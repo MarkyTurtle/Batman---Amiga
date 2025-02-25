@@ -937,9 +937,7 @@ L00003982                       bra.w   common_game_initialisation              
                         ;       d0.w = BCD Timer Value eg #$0300 = 03:00 minutes
                         ;
 clear_state_init_panel
-L00003986                       jsr     _DEBUG_RED_PAUSE
-
-                                lea.l   L00008d26,a0
+L00003986                       lea.l   L00008d26,a0
 L0000398c                       move.w  #$01bb,d7               ; $1bb = (443 + 1 )* 2 = 888 bytes
 L00003990_loop                  clr.w   (a0)+
 L00003992                       dbf.w   d7,L00003990_loop
@@ -947,7 +945,7 @@ L00003992                       dbf.w   d7,L00003990_loop
 L00003996                       move.w  #$0002,L00008d2a
 L0000399e                       pea.l   PANEL_INIT_ENERGY       ; panel
 L000039a4                       jmp     PANEL_INIT_TIMER        ; panel
-                                ; init timer & return
+                                ; init timer, init energy & return
 
 
 
@@ -957,13 +955,7 @@ L000039a4                       jmp     PANEL_INIT_TIMER        ; panel
                         ; batmobile or batwing specific initialisation.
                         ;
 common_game_initialisation
-L000039aa                       jsr     _DEBUG_GREEN_PAUSE
-
-                                bsr.w   L00006a2c
-
-                                jsr     _DEBUG_BLUE_PAUSE
-
-
+L000039aa                       bsr.w   L00006a2c
 
 L000039ae                       move.w  #$0000,L00008d26
 L000039b6                       btst.b  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2   ;$0007c875        ; panel
@@ -974,8 +966,11 @@ L000039c8                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; mu
 
                 ; ------------------ game loop ---------------------
 game_loop
-L000039ce                       add.w   #1,colourtest
+L000039ce                       
+                                ; increment background colour (show if game loop is running)
+                                add.w   #1,colourtest
                                 move.w  colourtest,bgcolour+2
+
                                 bsr.w   L00006ee6                       ; screen wipe?
 L000039d2                       bsr.w   L000067ba
 L000039d6                       bsr.w   L00006b02
@@ -7156,7 +7151,9 @@ _WAIT_FRAME
             ; if Test Build - Include Data.s
             IFD TEST_BUILD_LEVEL
                 incdir  "../data/"
+;                incdir "../../rawrippedfiles/disk2files-unpacked"
                 include "data.s"
+;L0001fffc       incbin "data.iff"
                 even
             ENDC
 
@@ -7165,7 +7162,9 @@ _WAIT_FRAME
             IFD TEST_BUILD_LEVEL
                 IFD TEST_BATMOBILE
                   incdir "../data2/"
+;                  incdir "../../rawrippedfiles/disk2files-unpacked"
                   include "data2.s"
+;L0002a416         incbin "data2.iff"
                   even
                 ELSE
                   incdir "../data4/"
