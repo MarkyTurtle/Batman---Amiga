@@ -133,34 +133,37 @@ L00003018               jmp    start_common             ; L0000301e
 start_common            ; original address $0000301e
                         ;jsr     _DEBUG_COLOURS
 L0000301e               moveq   #$00,d0
-L00003020               move.w  #$7fff,$00dff09a
-L00003028               move.w  #$1fff,$00dff096
-L00003030               move.w  #$0200,$00dff100
-L00003038               move.l  d0,$00dff102
-L0000303e               move.w  #$4000,$00dff024
-L00003046               move.l  d0,$00dff040
-L0000304c               move.w  #$0041,$00dff058
+L00003020               move.w  #$7fff,CUSTOM+INTENA            ; $00dff09a
+L00003028               move.w  #$1fff,CUSTOM+DMACON            ; $00dff096
+L00003030               move.w  #$0200,CUSTOM+BPLCON0           ; $00dff100
+L00003038               move.l  d0,CUSTOM+BPLCON1               ; $00dff102
+L0000303e               move.w  #$4000,CUSTOM+DSKLEN            ; $00dff024
+L00003046               move.l  d0,CUSTOM+BLTCON0               ; $00dff040
+L0000304c               move.w  #$0041,CUSTOM+BLTSIZE           ; $00dff058 *** WHY! ***
 
-L00003054               move.w  #$8340,$00dff096
-L0000305c               move.w  #$7fff,$00dff09e
+L00003054               move.w  #$8340,CUSTOM+DMACON            ; $00dff096 - ENABLE,BITPLANE,DMAEN,BLITTER
+L0000305c               move.w  #$7fff,CUSTOM+ADKCON            ; $00dff09e
 
                         ; reset sprites
 L00003064               moveq   #$07,d7
-L00003066               lea.l   $00dff140,a0
-L0000306c               move.w  d0,(a0)
+L00003066               lea.l   CUSTOM+SPR0POS,a0               ; $00dff140,a0
+L0000306c_loop          move.w  d0,(a0)
 L0000306e               addq.w  #$08,a0
-L00003070               dbf.w   d7,L0000306c 
+L00003070               dbf.w   d7,L0000306c_loop 
+
                         ; reset audio
 L00003074               moveq   #$03,d7
-L00003076               lea.l   $00dff0a8,a0
-L0000307c               move.w  d0,(a0) 
+L00003076               lea.l   CUSTOM+AUD0VOL,a0               ; $00dff0a8,a0
+L0000307c_loop          move.w  d0,(a0) 
 L0000307e               lea.l   $0010(a0),a0
-L00003082               dbf.w   d7,L0000307c
+L00003082               dbf.w   d7,L0000307c_loop
+
                         ; reset colours
-L00003086               lea.l   $00dff180,a0
+L00003086               lea.l   CUSTOM+COLOR00,a0               ; $00dff180,a0
 L0000308c               moveq   #$1f,d7
-L0000308e               move.w  d0,(a0)+
-L00003090               dbf.w   d7,L0000308e
+L0000308e_loop          move.w  d0,(a0)+
+L00003090               dbf.w   d7,L0000308e_loop
+
                         ; init CIAA & CIAB
 L00003094               move.b  #$7f,$00bfed01
 L0000309c               move.b  d0,$00bfee01
@@ -193,8 +196,8 @@ L00003118               move.l  (a0)+,(a1)+
 L0000311a               dbf.w   d7,L00003118
 
                         ; more JOYDAT and CIA init
-L0000311e               move.w  #$ff00,$00dff034
-L00003126               move.w  d0,$00dff036
+L0000311e               move.w  #$ff00,CUSTOM+POTGO             ; $00dff034
+L00003126               move.w  d0,CUSTOM+JOYTEST               ; $00dff036
 L0000312c               or.b    #$ff,$00bfd100
 L00003134               and.b   #$87,$00bfd100
 L0000313c               and.b   #$87,$00bfd100
@@ -206,19 +209,19 @@ L00003164               move.b  #$91,$00bfd600
 L0000316c               move.b  d0,$00bfdb00
 L00003172               move.b  d0,$00bfdf00
 
-L00003178               move.w  #$7fff,$00dff09c
+L00003178               move.w  #$7fff,CUSTOM+INTREQ            ; $00dff09c
 L00003180               tst.b   $00bfed01
 L00003186               move.b  #$8a,$00bfed01
 L0000318e               tst.b   $00bfdd00
 L00003194               move.b  #$93,$00bfdd00
-L0000319c               move.w  #$e078,$00dff09a        ; intena (PORTS 2, COPER,VERTB,BLIT 3)
+L0000319c               move.w  #$e078,CUSTOM+INTENA            ; $00dff09a - (PORTS 2, COPER,VERTB,BLIT 3)
 
-L000031a4               bsr.w   clear_display_memory    ; L00003810
-L000031a8               lea.l   copper_list,a0          ; L000031d2,a0
-L000031ae               bsr.w   initialise_display      ; L00003758
-L000031b2               bsr.w   double_buffer_display   ; L000037c8
+L000031a4               bsr.w   clear_display_memory            ; L00003810
+L000031a8               lea.l   copper_list,a0                  ; L000031d2,a0
+L000031ae               bsr.w   initialise_display              ; L00003758
+L000031b2               bsr.w   double_buffer_display           ; L000037c8
 
-L000031b6               bra.w   initalise_game          ; L00003822
+L000031b6               bra.w   initalise_game                  ; L00003822
 
 
 
@@ -321,24 +324,6 @@ copper_panel_colours
                         dc.w    $019a,$0000  
                         dc.w    $019c,$0000
                         dc.w    $019e,$0000
-;copper_panel_colours
-;                        dc.w    $0180,$0000
-;                        dc.w    $0182,$0060
-;                        dc.w    $0184,$0fff
-;                        dc.w    $0186,$0008
-;                        dc.w    $0188,$0a22
-;                        dc.w    $018a,$0444  
-;                        dc.w    $018c,$0862
-;                        dc.w    $018e,$0666
-;                        dc.w    $0190,$0888
-;                        dc.w    $0192,$0aaa   
-;                        dc.w    $0194,$0a40
-;                        dc.w    $0196,$0c60
-;                        dc.w    $0198,$0e80
-;                        dc.w    $019a,$0ea0  
-;                        dc.w    $019c,$0ec0
-;                        dc.w    $019e,$0eee
-;                        dc.w    $ffff,$fffe
 
                         ; colours (panel fade in/out)
 panel_colours           ; original address $000032e6
@@ -353,7 +338,7 @@ L000032fa               dc.w    $0a40,$0c60,$0e80,$0ea0,$0ec0,$0eee
                 ; installed as the level 1 autovector interrupt handler.
 level1_interrupt_handler        ; original address $00003306
 L00003306               move.l  d0,-(a7)
-L00003308               move.w  $00dff01e,d0            ; intreqr
+L00003308               move.w  CUSTOM+INTREQR,d0       ; $00dff01e,d0
 L0000330e               btst.l  #$0002,d0               ; SOFTINT
 L00003312               bne.b   softint_interrupt       ; L00003332 ; clear SOFTINT and exit
 
@@ -361,19 +346,20 @@ L00003314               btst.l  #$0001,d0               ; DSKBLK
 L00003318               bne.b   dskblk_interrupt        ; L00003326 ; clear DSKBLK and exit
 
 tbe_interrupt
-L0000331a               move.w  #$0001,$00dff09c        ; clear TBE and exit
+L0000331a               move.w  #$0001,CUSTOM+INTREQ    ; $00dff09c ; clear TBE and exit
 L00003322               move.l  (a7)+,d0
 L00003324               rte
 
 dskblk_interrupt
-L00003326               move.w  #$0002,$00dff09c
+L00003326               move.w  #$0002,CUSTOM+INTREQ    ; $00dff09c ; clear DSKBLK and exit
 L0000332e               move.l (a7)+,d0
 L00003330               rte 
 
 softint_interrupt
-L00003332               move.w  #$0004,$00dff09c
+L00003332               move.w  #$0004,CUSTOM+INTREQ    ; $00dff09c ; clear SOFTINT and exit
 L0000333a               move.l  (a7)+,d0
 L0000333c               rte  
+
 
 
 
@@ -386,12 +372,12 @@ L00003346               bpl.b   not_ciaa_interrupt      ; L00003358 ; not CIAA i
 
 L00003348               bsr.w   handle_ciaa_interrupt   ; L0000341a ; handle CIAA interrupt
 
-L0000334c               move.w  #$0008,$00dff09c        ; clear PORTS and exit
+L0000334c               move.w  #$0008,CUSTOM+INTREQ    ; $00dff09c ; clear PORTS and exit
 L00003354               move.l  (a7)+,d0
 L00003356               rte  
 
 not_ciaa_interrupt
-L00003358               move.w #$0008,$00dff09c
+L00003358               move.w #$0008,CUSTOM+INTREQ     ; $00dff09c ; clear PORTS and exit
 L00003360               move.l (a7)+,d0
 L00003362               rte  
 
@@ -401,26 +387,26 @@ L00003362               rte
                 ; installed as the level 3 autovector interrupt handler.
 level3_interrupt_handler        ; original address $00003364
 L00003364               move.l  d0,-(a7)
-L00003366               move.w  $00dff01e,d0            ; intreqr
+L00003366               move.w  CUSTOM+INTREQR,d0       ; $00dff01e,d0            ; intreqr
 L0000336c               btst.l  #$0004,d0               ; COPER
-L00003370               bne.b   coper_interrupt         ; L00003394 ; clear COPER and exit
+L00003370               bne.b   coper_interrupt         ; L00003394 
 
 L00003372               btst.l  #$0005,d0               ; VERTB
 L00003376               bne.b   vertb_interrupt         ; L00003384       
 
 blit_interrupt
-L00003378               move.w  #$0040,$00dff09c        ; clear BLIT and exit
+L00003378               move.w  #$0040,CUSTOM+INTREQ    ; $00dff09c ; clear BLIT and exit
 L00003380               move.l  (a7)+,d0
 L00003382               rte  
 
 vertb_interrupt
 L00003384               bsr.w   vertb_interrupt_handler ; L00003568 ; handle VERTB
-L00003388               move.w  #$0020,$00dff09c        ; clear VERTB and exit
+L00003388               move.w  #$0020,CUSTOM+INTREQ    ; $00dff09c ; clear VERTB and exit
 L00003390               move.l  (a7)+,d0
 L00003392               rte  
 
 coper_interrupt
-L00003394               move.w #$0010,$00dff09c
+L00003394               move.w #$0010,CUSTOM+INTREQ     ; $00dff09c ; clear COPER and exit
 L0000339c               move.l (a7)+,d0
 L0000339e               rte 
 
@@ -431,9 +417,9 @@ L0000339e               rte
 level4_interrupt_handler        ; original address L000033a0
                         jsr     _DEBUG_ERROR            ; if called will hold on a flashing screen
 L000033a0               move.l  d0,-(a7)
-L000033a2               move.w  $00dff01e,d0            ; intreqr
+L000033a2               move.w  CUSTOM+INTREQR,d0       ; $00dff01e,d0
 L000033a8               and.w   #$0780,d0               ; clear audio interrupts
-L000033ac               move.w  d0,$00dff09a
+L000033ac               move.w  d0,CUSTOM+INTENA        ; $00dff09a - disable audio interrupts
 L000033b2               move.l  (a7)+,d0
 L000033b4               rte  
 
@@ -444,15 +430,15 @@ L000033b4               rte
 level5_interrupt_handler        ; original address $000033b6
                         jsr     _DEBUG_ERROR            ; if called will hold on a flashing screen
 L000033b6               move.l  d0,-(a7)
-L000033b8               move.w  $00dff01e,d0            ; intreqr
+L000033b8               move.w  CUSTOM+INTREQR,d0       ; $00dff01e,d0 
 L000033be               btst.l  #$000c,d0               ; DSKSYN
-L000033c2               bne.b   dsksyn_interrupt         ; L000033d0
-L000033c4               move.w  #$0800,$00dff09c        ; clear RBF (serial buffer interrupt)
+L000033c2               bne.b   dsksyn_interrupt        ; L000033d0
+L000033c4               move.w  #$0800,CUSTOM+INTREQ    ; $00dff09c ; clear RBF (serial buffer interrupt)
 L000033cc               move.l  (a7)+,d0
 L000033ce               rte 
 
 dsksyn_interrupt
-L000033d0               move.w  #$1000,$00dff09c
+L000033d0               move.w  #$1000,CUSTOM+INTREQ    ; $00dff09c ; Clear DISKSYN and exit
 L000033d8               move.l  (a7)+,d0
 L000033da               rte  
 
@@ -463,25 +449,25 @@ L000033da               rte
 level6_interrupt_handler        ; original address $000033dc
                         jsr     _DEBUG_ERROR
 L000033dc               move.l  d0,-(a7)
-L000033de               move.w  $00dff01e,d0            ; intreqr
-L000033e4               btst.l  #$000e,d0               ; INTEN (h/w ref says enable only - don't think this is evet set on read)
+L000033de               move.w  CUSTOM+INTREQR,d0       ; $00dff01e,d0
+L000033e4               btst.l  #$000e,d0               ; INTEN (h/w ref says enable only - don't think this is ever set on read)
 L000033e8               bne.b   inten_interrupt         ; L0000340e
 
 L000033ea               move.b  $00bfdd00,d0
 L000033f0               bpl.b   not_ciab_interrupt      ; L00003402
 
 L000033f2               bsr.w   ciab_interrupt_handler  ; L0000355a
-L000033f6               move.w  #$2000,$00dff09c        ; clear EXTER (CIAB & disk index flag)
+L000033f6               move.w  #$2000,CUSTOM+INTREQ    ; $00dff09c ; clear EXTER (CIAB & disk index flag)
 L000033fe               move.l  (a7)+,d0
 L00003400               rte  
 
 not_ciab_interrupt
-L00003402               move.w  #$2000,$00dff09c
+L00003402               move.w  #$2000,CUSTOM+INTREQ    ; $00dff09c ; clear EXTER (CIAB & disk index flag)
 L0000340a               move.l  (a7)+,d0
 L0000340c               rte 
 
 inten_interrupt
-L0000340e               move.w #$4000,$00dff09c
+L0000340e               move.w #$4000,CUSTOM+INTREQ     ; $00dff09c ; clear INTEN (doesnt make sense)
 L00003416               move.l (a7)+,d0
 L00003418               rte 
 
@@ -635,9 +621,9 @@ L00003656                       add.w   d2,L00003716
 L0000365c                       btst.b  #$0006,$00bfe001
 L00003664                       seq.b   L00003704 
 L0000366a                       seq.b   L00003712 
-L00003670                       btst.b  #$0002,$00dff016
+L00003670                       btst.b  #$0002,$00dff016        ; POTGOR
 L00003678                       seq.b   L00003713 
-L0000367e                       move.w  $00dff00c,d0
+L0000367e                       move.w  CUSTOM+JOY1DAT,d0       ; $00dff00c,d0
 L00003684                       move.w  L00003700,d1
 L0000368a                       move.w  d0,L00003700 
 L00003690                       bsr.b   L000036c8
@@ -647,7 +633,7 @@ L0000369e                       add.w   d2,L0000371c
 L000036a4                       btst.b  #$0007,$00bfe001
 L000036ac                       seq.b   L00003708 
 L000036b2                       seq.b   L00003718 
-L000036b8                       btst.b  #$0006,$00dff016
+L000036b8                       btst.b  #$0006,$00dff016        ; POTGOR
 L000036c0                       seq.b   L00003719 
 L000036c6                       rts  
 
@@ -719,13 +705,13 @@ L00003756                       rts
                         ; a0 = copper_list
                         ;
 initialise_display      ; original address $00003758
-L00003758                       move.w  #$0080,$00dff096
-L00003760                       move.l  a0,$00dff080                    ; copper list
-L00003766                       move.w  a0,$00dff088                    ; copper list
-L0000376c                       move.w  #$0038,$00dff092
-L00003774                       move.w  #$00d0,$00dff094
-L0000377c                       move.w  #$4181,$00dff08e
-L00003784                       move.w  #$09c1,$00dff090
+L00003758                       move.w  #$0080,CUSTOM+DMACON            ; $00dff096 - Disable COPPER
+L00003760                       move.l  a0,CUSTOM+COP1LC                ; $00dff080 ; copper list
+L00003766                       move.w  a0,CUSTOM+COPJMP1               ; $00dff088 ; copper strobe
+L0000376c                       move.w  #$0038,CUSTOM+DDFSTRT           ; $00dff092
+L00003774                       move.w  #$00d0,CUSTOM+DDFSTOP           ; $00dff094
+L0000377c                       move.w  #$4181,CUSTOM+DIWSTRT           ; $00dff08e
+L00003784                       move.w  #$09c1,CUSTOM+DIWSTOP           ; $00dff090
 L0000378c                       move.w  #$0000,$00dff108
 L00003794                       move.w  #$0000,$00dff10a
 L0000379c                       move.w  #$4200,$00dff100
