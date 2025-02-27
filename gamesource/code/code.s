@@ -712,9 +712,9 @@ L0000376c                       move.w  #$0038,CUSTOM+DDFSTRT           ; $00dff
 L00003774                       move.w  #$00d0,CUSTOM+DDFSTOP           ; $00dff094
 L0000377c                       move.w  #$4181,CUSTOM+DIWSTRT           ; $00dff08e
 L00003784                       move.w  #$09c1,CUSTOM+DIWSTOP           ; $00dff090
-L0000378c                       move.w  #$0000,$00dff108
-L00003794                       move.w  #$0000,$00dff10a
-L0000379c                       move.w  #$4200,$00dff100
+L0000378c                       move.w  #$0000,CUSTOM+BPL1MOD           ; $00dff108
+L00003794                       move.w  #$0000,CUSTOM+BPL2MOD           ; $00dff10a
+L0000379c                       move.w  #$4200,CUSTOM+BPLCON0           ; $00dff100 - 4 bitplanes, Colour
 
                   ; set bitplane ptrs if running a test build
                 IFD     TEST_BUILD_LEVEL
@@ -747,7 +747,7 @@ L0000379c                       move.w  #$4200,$00dff100
 L000037a4                       clr.w   frame_counter                   ; L000037bc
 L000037aa                       tst.w   frame_counter                   ; L000037bc
 L000037b0                       beq.b   L000037aa
-L000037b2                       move.w  #$8180,$00dff096                ; dmacon
+L000037b2                       move.w  #$8180,CUSTOM+DMACON            ; $00dff096 - Enable,Bitplane,Copper
 L000037ba                       rts  
 
 
@@ -2422,13 +2422,17 @@ L00004dfe                       bsr.b   L00004e08
 L00004e00                       movem.l (a7)+,d5-d7/a0-a3
 L00004e04                       bra.w   L00004d3c
 
+                                ; a1 = object data (x,y, sprite id etc)
+                                ; a5 = sprite/gfx data
 L00004e08                       moveq   #$00,d6
 L00004e0a                       move.w  (a5)+,d4
-L00004e0c                       move.w  (a5)+,d5
-L00004e0e                       move.w  (a5)+,d7
+L00004e0c                       move.w  (a5)+,d5                ; width?
+L00004e0e                       move.w  (a5)+,d7                ; height
+
 L00004e10                       moveq   #$00,d3
 L00004e12                       move.w  d3,d2
-L00004e14                       move.w  d3,d1
+L00004e14                       move.w  d3,d1                   ; d1,d2,d3 = $0.l
+
 L00004e16                       move.b  (a1),d1
 L00004e18                       move.b  $0043(a1),d2
 L00004e1c                       sub.w   d2,d1
@@ -2456,7 +2460,7 @@ L00004e44                       add.w   d6,d1
 L00004e46                       move.w  d1,d6
 L00004e48                       beq.b   L00004e20
 L00004e4a                       bmi.b   L00004e20
-L00004e4c                       subq.w  #$01,d7
+L00004e4c                       subq.w  #$01,d7                 ; d7 = blit height
 L00004e4e                       sub.w   d6,d7
 L00004e50                       bcs.b   L00004e3a
 L00004e52                       addq.w  #$01,d7
@@ -2481,88 +2485,127 @@ L00004e80                       bra.b   L00004e9a
 
 L00004e82                       move.w  d4,d1
 L00004e84                       bra.b   L00004e9a
+
 L00004e86                       add.w   d4,d1
-L00004e88                       sub.w   #$0000,d1
+L00004e88                       sub.w   #$0000,d1                       ; d1 = blit width
 L00004e8c                       move.w  d1,d6
 L00004e8e                       neg.w   d6
 L00004e90                       add.w   d4,d6
+
 L00004e92                       and.w   #$000f,d0
 L00004e96                       or.w    #$0000,d0
+
 L00004e9a                       movea.l display_buffer2_ptr,a0          ; L000037c4,a0
 L00004ea0                       addq.w  #$01,d2
-L00004ea2                       sub.w   d7,d2
-L00004ea4                       move.w  d2,d4
-L00004ea6                       lsl.w   #$02,d2
-L00004ea8                       add.w   d4,d2
-L00004eaa                       lsl.w   #$03,d2
-L00004eac                       move.w  d0,d4
-L00004eae                       lsr.w   #$03,d0
-L00004eb0                       bclr.l  #$0000,d0
-L00004eb4                       add.w   d2,d0
-L00004eb6                       lea.l   $00(a0,d0.w),a0
-L00004eba                       and.w   #$000f,d4
-L00004ebe                       jmp     (a6)
+L00004ea2                       sub.w   d7,d2                           ; d7 = blit height
 
-L00004ec0                       move.w  #$0000,$00dff046
-L00004ec8                       move.w  #$ffff,$00dff044
+
+                                ; d2 = x value stored as byte
+                                ; multiply d2 by 40 (screen width)
+L00004ea4                       move.w  d2,d4
+L00004ea6                       lsl.w   #$02,d2                         ; multiply by 4
+L00004ea8                       add.w   d4,d2                           ; d2 = multiplied by 5
+L00004eaa                       lsl.w   #$03,d2                         ; further multiply by 8 (5*8 = 40)
+
+                                ; d0 = x value stored as byte (2 pixel resolution)
+L00004eac                       move.w  d0,d4
+L00004eae                       lsr.w   #$03,d0                         ; divide by 8 (x value stored as byte?)
+L00004eb0                       bclr.l  #$0000,d0                       ; make even (word offset)
+L00004eb4                       add.w   d2,d0                           ; add Y (d2) to X (d0)
+L00004eb6                       lea.l   $00(a0,d0.w),a0                 ; a0 = playfield dest ptr
+L00004eba                       and.w   #$000f,d4
+
+L00004ebe                       jmp     (a6)                            ; Blit the GFX - $4fcc or 4ec0
+
+
+                                ; d0 
+                                ; d3 = ?????
+                                ; d4 = shift/scroll value
+                                ; d6 = ?????
+L00004ec0                       move.w  #$0000,CUSTOM+BLTALWM           ; $00dff046 - Blitter Last Word Mask
+L00004ec8                       move.w  #$ffff,CUSTOM+BLTAFWM           ; $00dff044 - Blitter First Word Mask
+
 L00004ed0                       lsl.w   #$01,d6
-L00004ed2                       beq.b   L00004f06
+L00004ed2                       beq.b   L00004f06_do_blit
 L00004ed4                       bmi.b   L00004ef2
-L00004ed6                       add.w   d6,d3
-L00004ed8                       move.w  d4,d6
+L00004ed6                       add.w   d6,d3                           ; source gfx x offset (bytes)
+
+L00004ed8                       move.w  d4,d6                           ; d4,d6 = 0-15 shift value
 L00004eda                       lsl.w   #$01,d6
-L00004edc                       lea.l   L00004fac,a1
-L00004ee2                       move.w  $00(a1,d6.w),$00dff044
-L00004eea                       subq.w  #$02,a0
-L00004eec                       subq.w  #$02,d3
-L00004eee                       addq.w  #$01,d1
-L00004ef0                       bra.b   L00004f06
+
+L00004edc                       lea.l   blitter_first_word_masks,a1     ; L00004fac,a1
+L00004ee2                       move.w  $00(a1,d6.w),CUSTOM+BLTAFWM     ; $00dff044 - Blitter First Word Mask
+
+
+L00004eea                       subq.w  #$02,a0                         ; decrement playfield dest ptr (16 pixels)
+L00004eec                       subq.w  #$02,d3                         ; source gfx x offset (bytes)
+L00004eee                       addq.w  #$01,d1                         ; increase blit width (16 pixels)
+L00004ef0                       bra.b   L00004f06_do_blit
+
 L00004ef2                       move.w  d4,d6
 L00004ef4                       lsl.w   #$01,d6
 
 L00004ef6                       lea.l   L00004f8c,a1
-L00004efc                       move.w  $00(a1,d6.w),$00dff046
-L00004f04                       subq.w  #$01,d1
-L00004f06                       move.l  (a5),d0
-L00004f08                       lea.l   $00(a5,d0.l),a4
-L00004f0c                       lea.l   $00(a4,d3.w),a4
-L00004f10                       move.l  $0004(a5),d3
-L00004f14                       lsl.w   #$06,d7
-L00004f16                       addq.w  #$01,d1
+L00004efc                       move.w  $00(a1,d6.w),CUSTOM+BLTALWM     ; $00dff046 - Blitter Last Word Mask
+
+L00004f04                       subq.w  #$01,d1                         ; descrease blit width
+
+                                ; Cookie Cutter Blit Minterm $CA
+                                ;  - A = Mask
+                                ;  - B = GFX
+                                ;  - C = Background
+                                ;  - D = Background (dest)
+                                ; d3 = source offset gfx data (clip value left/top)
+                                ; d4 = shift value 0-15
+                                ; d7 = blit height
+L00004f06_do_blit               move.l  (a5),d0                         ; d0 = offset to start of GFX Data (from current ptr)
+L00004f08                       lea.l   $00(a5,d0.l),a4                 ; a4 = Start of GFX Data
+L00004f0c                       lea.l   $00(a4,d3.w),a4                 ; a4 = Source Mask GFX Data (top left)
+L00004f10                       move.l  $0004(a5),d3                    ; d3 = mask size/per bitplane size
+
+L00004f14                       lsl.w   #$06,d7                         ; d7 = blit height in words
+L00004f16                       addq.w  #$01,d1                         ; d1 = blit width in words
 L00004f18                       move.w  d1,d2
-L00004f1a                       or.w    d7,d1
-L00004f1c                       ror.w   #$04,d4
-L00004f1e                       move.w  d4,$00dff042
-L00004f24                       or.w    #$0fca,d4
-L00004f28                       move.w  d4,$00dff040
+L00004f1a                       or.w    d7,d1                           ; d1 = blitsize value
+L00004f1c                       ror.w   #$04,d4                         ; d4 = blit Shift Values
+L00004f1e                       move.w  d4,CUSTOM+BLTCON1               ; $00dff042
+L00004f24                       or.w    #$0fca,d4                       ; MINTERMS $CA = Cookie Cutter
+L00004f28                       move.w  d4,CUSTOM+BLTCON0               ; $00dff040
+
 L00004f2e                       lsl.w   #$01,d2
 L00004f30                       sub.w   d2,d5
 L00004f32                       not.w   d2
-L00004f34                       add.w   #$0029,d2
-L00004f38                       movea.l a4,a1
-L00004f3a                       move.w  d5,$00dff064
-L00004f40                       move.w  d5,$00dff062
-L00004f46                       move.w  d2,$00dff060
-L00004f4c                       move.w  d2,$00dff066
-L00004f52                       moveq   #$03,d7
-L00004f54                       lea.l   $00(a1,d3.l),a1
-L00004f58                       move.l  a4,$00dff050
-L00004f5e                       move.l  a1,$00dff04c
-L00004f64                       move.l  a0,$00dff048
-L00004f6a                       move.l  a0,$00dff054
-L00004f70                       move.w  d1,$00dff058
-L00004f76                       move.w  $00dff002,d0
+L00004f34                       add.w   #$0029,d2                       ; add 41 to playfield modulo
+L00004f38                       movea.l a4,a1                           ; a1,a4 = ptr to sprite GFX (starts with mask)
+L00004f3a                       move.w  d5,CUSTOM+BLTAMOD               ; $00dff064 - Mask Modulo
+L00004f40                       move.w  d5,CUSTOM+BLTBMOD               ; $00dff062 - Gfx Modulo
+L00004f46                       move.w  d2,CUSTOM+BLTCMOD               ; $00dff060 - Playfield Modulo
+L00004f4c                       move.w  d2,CUSTOM+BLTDMOD               ; $00dff066 - Playfield Modulo
+
+L00004f52                       moveq   #$03,d7                         ; 3+1 bitplanes
+L00004f54_blit_loop             lea.l   $00(a1,d3.l),a1                 ; a1 = Add bitplane size to a1 get source data address.
+L00004f58                       move.l  a4,CUSTOM+BLTAPT                ; $00dff050 - Mask Source Data
+L00004f5e                       move.l  a1,CUSTOM+BLTBPT                ; $00dff04c - GFX Source Data
+L00004f64                       move.l  a0,CUSTOM+BLTCPT                ; $00dff048 - Playfield Source Data
+L00004f6a                       move.l  a0,CUSTOM+BLTDPT                ; $00dff054 - Playfield Dest Data
+L00004f70                       move.w  d1,CUSTOM+BLTSIZE               ; $00dff058 - Start Blit
+
+L00004f76_blit_wait             move.w  CUSTOM+DMACONR,d0               ; $00dff002,d0
 L00004f7c                       btst.l  #$000e,d0
-L00004f80                       bne.b   L00004f76
-L00004f82                       lea.l   $17c0(a0),a0
-L00004f86                       dbf.w   d7,L00004f54
+L00004f80                       bne.b   L00004f76_blit_wait
+
+L00004f82                       lea.l   $17c0(a0),a0                    ; next dest playfield bitplane
+L00004f86                       dbf.w   d7,L00004f54_blit_loop
 L00004f8a                       rts 
 
 
-
+blitter_word_masks              ; original address L00004f8c
+blitter_last_word_masks         ; original address L00004f8c
 L00004f8c                       dc.w    $ffff,$fffe,$fffc,$fff8,$fff0,$ffe0,$ffc0 
 L00004f9a                       dc.w    $ff80,$ff00,$fe00,$fc00,$f800,$f000,$e000,$c000 
 L00004faa                       dc.w    $8000
+
+blitter_first_word_masks        ; original address L00004fac
 L00004fac                       dc.w    $0000,$0001,$0003,$0007,$000f,$001f,$003f 
 L00004fba                       dc.w    $007f,$00ff,$01ff,$03ff,$07ff,$0fff,$1fff,$3fff
 L00004fca                       dc.w    $7fff 
@@ -2571,14 +2614,17 @@ L00004fca                       dc.w    $7fff
 
 L00004fcc                       move.w  #$0000,$00dff046
 L00004fd4                       move.w  #$ffff,$00dff044
+
 L00004fdc                       lsl.w   #$01,d6
 L00004fde                       beq.b   L00005012
 L00004fe0                       bmi.b   L00004ffe
 L00004fe2                       add.w   d6,d3
 L00004fe4                       move.w  d4,d6
 L00004fe6                       lsl.w   #$01,d6
-L00004fe8                       lea.l   L00004fac,a1
+L00004fe8                       lea.l   blitter_first_word_masks,a1             ; L00004fac,a1
 L00004fee                       move.w  $00(a1,d6.w),$00dff044
+
+
 L00004ff6                       subq.w  #$02,a0
 L00004ff8                       subq.w  #$02,d3
 L00004ffa                       addq.w  #$01,d1
@@ -2586,9 +2632,12 @@ L00004ffc                       bra.b   L00005012
 
 L00004ffe                       move.w  d4,d6
 L00005000                       lsl.w   #$01,d6
-L00005002                       lea.l   L00004f8c,a1
+L00005002                       lea.l   blitter_last_word_masks,a1              ; L00004f8c,a1
 L00005008                       move.w  $00(a1,d6.w),$00dff046
+
 L00005010                       subq.w  #$01,d1
+
+
 L00005012                       move.l  (a5),d0
 L00005014                       lea.l   $00(a5,d0.l),a4
 L00005018                       lea.l   $00(a4,d3.w),a4
@@ -5141,7 +5190,7 @@ L000071bc                       move.w  d0,$00dff040
 L000071c2                       move.w  #$0000,$00dff042
 L000071ca                       lsl.w   #$01,d2
 
-L000071cc                       lea.l   L00004f8c,a1
+L000071cc                       lea.l   blitter_last_word_masks,a1      ; L00004f8c,a1
 L000071d2                       move.w  $00(a1,d2.w),$00dff046
 L000071da                       move.w  $20(a1,d2.w),$00dff044
 L000071e2                       and.w   #$fff0,d1
@@ -5217,9 +5266,10 @@ L000072ee                       or.w    #$0fca,d0
 L000072f2                       move.w  d0,$00dff040
 L000072f8                       lsl.w   #$01,d2
 
-L000072fa                       lea.l   L00004f8c,a1
+L000072fa                       lea.l   blitter_word_masks,a1           ; L00004f8c,a1
 L00007300                       move.w  $00(a1,d2.w),$00dff046
 L00007308                       move.w  $20(a1,d2.w),$00dff044
+
 L00007310                       and.w   #$fff0,d1
 L00007314                       lsr.w   #$03,d1
 L00007316                       neg.w   d1
