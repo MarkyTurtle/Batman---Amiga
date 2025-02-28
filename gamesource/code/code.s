@@ -71,10 +71,13 @@ DATA_ADDRESS                    EQU     L0001fffc
     ELSE
 DATA_ADDRESS                    EQU     $0001fffc           
     ENDC
-DATA_OFFSET_0                   EQU    DATA_ADDRESS+$4                  ; $00020000 - $0001fffc = $4       
-DATA_OFFSET_1                   EQU    DATA_ADDRESS+$4b04               ; $00024b00 - $0001fffc = $4b04
-DATA_OFFSET_2                   EQU    DATA_ADDRESS+$6bea               ; $00026be6 - $0001fffc = $6bea
-DATA_OFFSET_3                   EQU    DATA_ADDRESS+$8804               ; $00028800 - $0001fffc = $8804
+DATA_OFFSET_0                   EQU     DATA_ADDRESS+$4                 ; $00020000 - $0001fffc = $4       
+DATA_OFFSET_1                   EQU     DATA_ADDRESS+$4b04              ; $00024b00 - $0001fffc = $4b04
+DATA_OFFSET_2                   EQU     DATA_ADDRESS+$6bea              ; $00026be6 - $0001fffc = $6bea
+DATA_OFFSET_3                   EQU     DATA_ADDRESS+$8804              ; $00028800 - $0001fffc = $8804
+DATA_OFFSET_4                   EQU     DATA_ADDRESS+$5504              ; $00025500 - $0001fffc = $5504
+DATA_OFFSET_5                   EQU     DATA_ADDRESS+$6048              ; $00026044 - $0001fffc = $6048
+DATA_OFFSET_6                   EQU     DATA_ADDRESS+$6538              ; $00026534 - $0001fffc = $6538
 
 
         ; DATA2.IFF/DATA4.IFF - Constants
@@ -91,6 +94,12 @@ DATA24_OFFSET_7                 EQU     DATA24_ADDRESS+$b49a            ; $00035
 DATA24_OFFSET_6                 EQU     DATA24_ADDRESS+$b936            ; $00035d4c - $2a416 = $b936
 DATA24_OFFSET_5                 EQU     DATA24_ADDRESS+$be18            ; $0003622e - $2a416 = $be18
 DATA24_OFFSET_9                 EQU     DATA24_ADDRESS+$cbb2            ; $00036fc8 - $2a416 = $cbb2
+DATA24_OFFSET_11                EQU     DATA24_ADDRESS+$e34a            ; $00038760 - $2a416 = $e34a
+DATA24_OFFSET_12                EQU     DATA24_ADDRESS+$ec7c            ; $00039092 - $2a416 = $ec7c
+DATA24_OFFSET_13                EQU     DATA24_ADDRESS+$f810            ; $00039c26 - $2a416 = $f810
+DATA24_OFFSET_14                EQU     DATA24_ADDRESS+$100ca           ; $0003a4e0 - $2a416 = $100ca
+DATA24_OFFSET_15                EQU     DATA24_ADDRESS+$10c4a           ; $0003b060 - $2a416 = $10c4a
+DATA24_OFFSET_16                EQU     DATA24_ADDRESS+$117de           ; $0003bbf4 - $2a416 = $117de
 DATA24_OFFSET_8                 EQU     DATA24_ADDRESS+$12dfe           ; $0003d214 - $2a416 = $12dfe
 DATA24_OFFSET_1                 EQU     DATA24_ADDRESS+$13aaa           ; $0003dec0 - $2a416 = $13aaa
 DATA24_OFFSET_10                EQU     DATA24_ADDRESS+$1817c           ; $00042592 - $2a416 = $1817c
@@ -1812,14 +1821,15 @@ L00004614                       move.l  #L0000463e,$0016(a6)
 L0000461c                       rts  
 
 
-L0000461e                       dc.w    $0003,$8760             ; addresses ?
-L00004622                       dc.w    $0003,$bbf4             ; addresses ?
-L00004626                       dc.w    $0003,$9092             ; addresses ?
-L0000462a                       dc.w    $0003,$9c26             ; addresses ?
-L0000462e                       dc.w    $0003,$a4e0             ; addresses ?
-L00004632                       dc.w    $0003,$b060             ; addresses ?
-L00004636                       dc.w    $0003,$9c26             ; addresses ?
-L0000463a                       dc.w    $0003,$a4e0             ; addresses ?
+                                ; address offsets
+L0000461e                       dc.l    DATA24_OFFSET_11        ; $00038760  
+L00004622                       dc.l    DATA24_OFFSET_16        ; $0003bbf4  
+L00004626                       dc.l    DATA24_OFFSET_12        ; $00039092  
+L0000462a                       dc.l    DATA24_OFFSET_13        ; $00039c26  
+L0000462e                       dc.l    DATA24_OFFSET_14        ; $0003a4e0  
+L00004632                       dc.l    DATA24_OFFSET_15        ; $0003b060  
+L00004636                       dc.l    DATA24_OFFSET_13        ; $00039c26  
+L0000463a                       dc.l    DATA24_OFFSET_14        ; $0003a4e0  
 
 
 L0000463e                       bsr.w   L000046c2
@@ -2360,10 +2370,10 @@ L00004d44                       dbf.w   d7,L00004d0e
 L00004d48                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0)
 L00004d4e                       beq.w   L00005c9c
 L00004d52                       bra.w   L00005f92
-L00004d56                       lsl.w   #$04,d0
+L00004d56                       lsl.w   #$04,d0                 ; 4 byte structure?
 L00004d58                       and.w   #$00f0,d0
 L00004d5c                       lea.l   L00008bae,a4            ; direct reference to game init data?
-L00004d62                       movea.l $00(a4,d0.w),a5
+L00004d62                       movea.l $00(a4,d0.w),a5         ; display object data struct (sprite/bob)
 L00004d66                       move.b  $04(a4,d0.w),d1
 L00004d6a                       move.b  $05(a4,d0.w),d2
 L00004d6e                       move.b  $00(a3,d7.w),d0
@@ -2393,7 +2403,7 @@ L00004da6                       bra.b   L00004d30
 L00004da8                       lsl.w   #$04,d0
 L00004daa                       and.w   #$00f0,d0
 L00004dae                       lea.l   L00008c5e,a4
-L00004db4                       movea.l $00(a4,d0.w),a5
+L00004db4                       movea.l $00(a4,d0.w),a5         ; display object data struct (sprite/bob)
 L00004db8                       move.b  $04(a4,d0.w),d1
 L00004dbc                       move.b  $05(a4,d0.w),d2
 L00004dc0                       move.b  $00(a3,d7.w),d0
@@ -2423,7 +2433,7 @@ L00004e00                       movem.l (a7)+,d5-d7/a0-a3
 L00004e04                       bra.w   L00004d3c
 
                                 ; a1 = object data (x,y, sprite id etc)
-                                ; a5 = sprite/gfx data
+                                ; a5 = bob sprite object data
 L00004e08                       moveq   #$00,d6
 L00004e0a                       move.w  (a5)+,d4
 L00004e0c                       move.w  (a5)+,d5                ; width?
@@ -2465,27 +2475,33 @@ L00004e4e                       sub.w   d6,d7
 L00004e50                       bcs.b   L00004e3a
 L00004e52                       addq.w  #$01,d7
 L00004e54                       bra.b   L00004e24
-L00004e56                       lea.l   L00004fcc,a6
+
+                                ; select blit routine 2
+L00004e56                       lea.l   L00004fcc,a6                    ; select blit routine
 L00004e5c                       bra.b   L00004e64
 
-L00004e5e                       lea.l   L00004ec0,a6
-L00004e64                       move.w  d0,d1
-L00004e66                       asr.w   #$04,d1
+                                ; select blit routine 1
+L00004e5e                       lea.l   L00004ec0,a6                    ; select blit routine
+L00004e64                       move.w  d0,d1                           ; d0,d1 = x
+L00004e66                       asr.w   #$04,d1                         ; divide by 16
 L00004e68                       bmi.b   L00004e86
 L00004e6a                       cmp.w   #$0000,d1
 L00004e6e                       bcs.b   L00004e86
 L00004e70                       moveq   #$00,d6
-L00004e72                       add.w   d4,d1
-L00004e74                       sub.w   #$0014,d1
+L00004e72                       add.w   d4,d1                           ; add offset to x value
+L00004e74                       sub.w   #$0014,d1                       ; sub 20 from x (word offset) - mid screen? (20 bytes)
 L00004e78                       bcs.b   L00004e82
+                                ; d1 >= 20
 L00004e7a                       sub.w   d4,d1
 L00004e7c                       neg.w   d1
 L00004e7e                       not.w   d6
 L00004e80                       bra.b   L00004e9a
 
+                                ; d1 < 20
 L00004e82                       move.w  d4,d1
 L00004e84                       bra.b   L00004e9a
 
+                                ; clip left? 0 or -ve x value?
 L00004e86                       add.w   d4,d1
 L00004e88                       sub.w   #$0000,d1                       ; d1 = blit width
 L00004e8c                       move.w  d1,d6
@@ -2500,7 +2516,7 @@ L00004ea0                       addq.w  #$01,d2
 L00004ea2                       sub.w   d7,d2                           ; d7 = blit height
 
 
-                                ; d2 = x value stored as byte
+                                ; d2 = y value stored as byte
                                 ; multiply d2 by 40 (screen width)
 L00004ea4                       move.w  d2,d4
 L00004ea6                       lsl.w   #$02,d2                         ; multiply by 4
@@ -2518,35 +2534,39 @@ L00004eba                       and.w   #$000f,d4
 L00004ebe                       jmp     (a6)                            ; Blit the GFX - $4fcc or 4ec0
 
 
+                                ; ------------- blit routine 1 ---------------
                                 ; d0 
                                 ; d3 = ?????
                                 ; d4 = shift/scroll value
-                                ; d6 = ?????
+                                ; d6 = ????? - maybe x pixel value/byte offset?
+                                ; d7 = Blit Height
 L00004ec0                       move.w  #$0000,CUSTOM+BLTALWM           ; $00dff046 - Blitter Last Word Mask
 L00004ec8                       move.w  #$ffff,CUSTOM+BLTAFWM           ; $00dff044 - Blitter First Word Mask
 
 L00004ed0                       lsl.w   #$01,d6
-L00004ed2                       beq.b   L00004f06_do_blit
+L00004ed2                       beq.b   L00004f06_do_blit               ; no shift, do blit.
 L00004ed4                       bmi.b   L00004ef2
-L00004ed6                       add.w   d6,d3                           ; source gfx x offset (bytes)
 
+                        
+                                ; set first word mask (and something to d3)
+L00004ed6                       add.w   d6,d3                           ; source gfx x offset (bytes)
 L00004ed8                       move.w  d4,d6                           ; d4,d6 = 0-15 shift value
 L00004eda                       lsl.w   #$01,d6
-
 L00004edc                       lea.l   blitter_first_word_masks,a1     ; L00004fac,a1
-L00004ee2                       move.w  $00(a1,d6.w),CUSTOM+BLTAFWM     ; $00dff044 - Blitter First Word Mask
+L00004ee2                       move.w  $00(a1,d6.w),CUSTOM+BLTAFWM     ; $00dff044 - Blitter First Word Mask based on shift value
 
-
+                                ; if shift to left then blit starts 16 pixels further left?
 L00004eea                       subq.w  #$02,a0                         ; decrement playfield dest ptr (16 pixels)
 L00004eec                       subq.w  #$02,d3                         ; source gfx x offset (bytes)
 L00004eee                       addq.w  #$01,d1                         ; increase blit width (16 pixels)
 L00004ef0                       bra.b   L00004f06_do_blit
 
+
+                                ; set last word mask 
 L00004ef2                       move.w  d4,d6
 L00004ef4                       lsl.w   #$01,d6
-
-L00004ef6                       lea.l   L00004f8c,a1
-L00004efc                       move.w  $00(a1,d6.w),CUSTOM+BLTALWM     ; $00dff046 - Blitter Last Word Mask
+L00004ef6                       lea.l   blitter_last_word_masks,a1      ; L00004f8c,a1
+L00004efc                       move.w  $00(a1,d6.w),CUSTOM+BLTALWM     ; $00dff046 - Blitter Last Word Mask based on shift value
 
 L00004f04                       subq.w  #$01,d1                         ; descrease blit width
 
@@ -2555,35 +2575,47 @@ L00004f04                       subq.w  #$01,d1                         ; descre
                                 ;  - B = GFX
                                 ;  - C = Background
                                 ;  - D = Background (dest)
-                                ; d3 = source offset gfx data (clip value left/top)
-                                ; d4 = shift value 0-15
+                                ; d3 = source offset gfx data (clip value top-left offset to add)
+                                ; d4 = GFX shift value 0-15
+                                ; d5 = sprite width (unclipped bytes)
                                 ; d7 = blit height
+                                ; a5 = bob struct
 L00004f06_do_blit               move.l  (a5),d0                         ; d0 = offset to start of GFX Data (from current ptr)
 L00004f08                       lea.l   $00(a5,d0.l),a4                 ; a4 = Start of GFX Data
 L00004f0c                       lea.l   $00(a4,d3.w),a4                 ; a4 = Source Mask GFX Data (top left)
+
+                                ; get sprite per/bitplane size
 L00004f10                       move.l  $0004(a5),d3                    ; d3 = mask size/per bitplane size
 
 L00004f14                       lsl.w   #$06,d7                         ; d7 = blit height in words
-L00004f16                       addq.w  #$01,d1                         ; d1 = blit width in words
+L00004f16                       addq.w  #$01,d1                         ; d1 = increase blit width (words)
 L00004f18                       move.w  d1,d2
 L00004f1a                       or.w    d7,d1                           ; d1 = blitsize value
-L00004f1c                       ror.w   #$04,d4                         ; d4 = blit Shift Values
+
+                                ; set A/B SRC shift and MINTERMS 
+L00004f1c                       ror.w   #$04,d4                         ; d4 = blit Shift Values (into high 4 bits)
 L00004f1e                       move.w  d4,CUSTOM+BLTCON1               ; $00dff042
-L00004f24                       or.w    #$0fca,d4                       ; MINTERMS $CA = Cookie Cutter
+L00004f24                       or.w    #$0fca,d4                       ; MINTERMS $CA = Cookie Cutter (use A,B,C,D channels)
 L00004f28                       move.w  d4,CUSTOM+BLTCON0               ; $00dff040
 
-L00004f2e                       lsl.w   #$01,d2
-L00004f30                       sub.w   d2,d5
+                                ; calc dest modulo based on 'clipped sprite' width
+L00004f2e                       lsl.w   #$01,d2                         ; convert 'clipped sprite' blit width to bytes (*2)
+L00004f30                       sub.w   d2,d5                           ; sprite width (bytes)
 L00004f32                       not.w   d2
-L00004f34                       add.w   #$0029,d2                       ; add 41 to playfield modulo
+L00004f34                       add.w   #$0029,d2                       ; add 41 to playfield modulo (modulo ignores odd values?)
+
+                                ; keep a4 as mask ptr, a1 = src bitplane ptr
 L00004f38                       movea.l a4,a1                           ; a1,a4 = ptr to sprite GFX (starts with mask)
+
+                                ; set up blit params
 L00004f3a                       move.w  d5,CUSTOM+BLTAMOD               ; $00dff064 - Mask Modulo
 L00004f40                       move.w  d5,CUSTOM+BLTBMOD               ; $00dff062 - Gfx Modulo
-L00004f46                       move.w  d2,CUSTOM+BLTCMOD               ; $00dff060 - Playfield Modulo
-L00004f4c                       move.w  d2,CUSTOM+BLTDMOD               ; $00dff066 - Playfield Modulo
+L00004f46                       move.w  d2,CUSTOM+BLTCMOD               ; $00dff060 - Playfield Modulo (pf width-clipped sprite width)
+L00004f4c                       move.w  d2,CUSTOM+BLTDMOD               ; $00dff066 - Playfield Modulo (pf width-clipped sprite width)
 
+                                ; blit for each bitplane
 L00004f52                       moveq   #$03,d7                         ; 3+1 bitplanes
-L00004f54_blit_loop             lea.l   $00(a1,d3.l),a1                 ; a1 = Add bitplane size to a1 get source data address.
+L00004f54_blit_loop             lea.l   $00(a1,d3.l),a1                 ; a1 = Add bitplane size to a1 get source GFX data address.
 L00004f58                       move.l  a4,CUSTOM+BLTAPT                ; $00dff050 - Mask Source Data
 L00004f5e                       move.l  a1,CUSTOM+BLTBPT                ; $00dff04c - GFX Source Data
 L00004f64                       move.l  a0,CUSTOM+BLTCPT                ; $00dff048 - Playfield Source Data
@@ -2594,7 +2626,8 @@ L00004f76_blit_wait             move.w  CUSTOM+DMACONR,d0               ; $00dff
 L00004f7c                       btst.l  #$000e,d0
 L00004f80                       bne.b   L00004f76_blit_wait
 
-L00004f82                       lea.l   $17c0(a0),a0                    ; next dest playfield bitplane
+                                ; next bitplane
+L00004f82                       lea.l   $17c0(a0),a0                    ; increment dest playfield bitplane
 L00004f86                       dbf.w   d7,L00004f54_blit_loop
 L00004f8a                       rts 
 
@@ -6419,7 +6452,7 @@ L00008662       dc.w    $1210,$1010,$1210,$1218,$1210,$1618,$1618,$1210,$1610,$1
 
 
 
-                ; level data address shared between Batmobile & Batwing stages
+                ; level data shared between Batmobile & Batwing stages
 L00008732       dc.w    $32c0,$0000   
 
        
@@ -6674,34 +6707,52 @@ L00008aee       dc.w    $1b10,$1b10,$1b10,$1b10,$1b10,$1b10,$1b10,$1b10,$1b10,$1
 L00008bae       dc.w    $101b,$101b,$181b,$101b,$101b,$101b,$101b,$1000 ; routine at L00004d5c has its dirty fingers referencing this data directly. 
 
 
+  ; contains DATA/GFX pointer offsets?
+L00008bbe       dc.l    DATA_OFFSET_3                           ; $00028800
+                dc.w    $0000,$0004,$0010,$005e,$0000,$0000
+                dc.l    DATA24_OFFSET_1                         ; $0003dec0
+                dc.w    $0101,$0018,$0058,$0098,$0000,$0000
+                dc.l    DATA24_OFFSET_3                         ; $00044646
+                dc.w    $0101,$0000,$0070,$0098,$0000,$0000
+                dc.l    DATA24_OFFSET_1                         ; $0003dec0
+                dc.w    $0201,$0018,$0058,$0098,$0000,$0000
+                dc.l    DATA24_OFFSET_3                         ; $00044646
+                dc.w    $0201,$0000,$0070,$0098,$0000,$0000
+                dc.l    DATA_OFFSET_3                           ; $00028800
+                dc.w    $0102,$0004,$0010,$005e,$0000,$0000
+                dc.l    DATA_OFFSET_4                           ; $00025500
+                dc.w    $0102,$0004,$000f,$0038,$0000,$0000
+                dc.l    DATA_OFFSET_5                           ; $00026044
+                dc.w    $0102,$0002,$0012,$0019,$0000,$0000
+                dc.l    DATA_OFFSET_6                           ; $00026534
+                dc.w    $0102,$0002,$0006,$0028,$0000,$0000
+                dc.l    DATA24_OFFSET_2                         ; $00045c28
+                dc.w    $0301,$0000,$0058,$0098,$0000,$0000
 
-
-
-L00008bbe       dc.w    $0002,$8800,$0000,$0004 
-L00008bc6       dc.w    $0010,$005e,$0000,$0000,$0003,$dec0,$0101,$0018         ; contains DATA/GFX pointer offsets?
-L00008bd6       dc.w    $0058,$0098,$0000,$0000,$0004,$4646,$0101,$0000 
-L00008be6       dc.w    $0070,$0098,$0000,$0000,$0003,$dec0,$0201,$0018 
-L00008bf6       dc.w    $0058,$0098,$0000,$0000,$0004,$4646,$0201,$0000 
-L00008c06       dc.w    $0070,$0098,$0000,$0000,$0002,$8800,$0102,$0004 
-L00008c16       dc.w    $0010,$005e,$0000,$0000,$0002,$5500,$0102,$0004 
-L00008c26       dc.w    $000f,$0038,$0000,$0000,$0002,$6044,$0102,$0002 
-L00008c36       dc.w    $0012,$0019,$0000,$0000,$0002,$6534,$0102,$0002 
-L00008c46       dc.w    $0006,$0028,$0000,$0000,$0004,$5c28,$0301,$0000 
-
-L00008c56       dc.w    $0058,$0098,$0000,$0000
-L00008c5e       dc.w    $0004,$4646,$0102,$0000       
-L00008c66       dc.w    $0070,$0098,$0000,$0000,$0002,$6be6,$0001,$0004
-L00008c76       dc.w    $0010,$005e,$002c,$0000,$0004,$5c28,$0101,$0000         ; contains DATA/GFX pointer offsets?
-L00008c86       dc.w    $0058,$0098,$0070,$0000,$0004,$c3fe,$0101,$0000
-L00008c96       dc.w    $0070,$0098,$0070,$0000,$0004,$5c28,$0201,$0000
-L00008ca6       dc.w    $0058,$0098,$0070,$0000,$0004,$c3fe,$0201,$0000
-L00008cb6       dc.w    $0070,$0098,$0070,$0000,$0002,$6be6,$0102,$0004
-L00008cc6       dc.w    $0010,$005e,$002c,$0000,$0002,$5500,$0102,$0004
-L00008cd6       dc.w    $000f,$0038,$0038,$0000,$0002,$6044,$0102,$0002
-L00008ce6       dc.w    $0012,$0019,$0019,$0000,$0002,$6534,$0102,$0002
-L00008cf6       dc.w    $0006,$0028,$0028,$0000,$0004,$5c28,$0301,$0000
-L00008d06       dc.w    $0058,$0098,$0070,$0000,$0004,$c3fe,$0102,$0000
-L00008d16       dc.w    $0070,$0098,$0070,$0000
+L00008c5e       dc.l    DATA24_OFFSET_3                         ; $00044646
+                dc.w    $0102,$0000,$0070,$0098,$0000,$0000
+                dc.l    DATA_OFFSET_2                           ; $00026be6
+                dc.w    $0001,$0004,$0010,$005e,$002c,$0000
+                dc.l    DATA24_OFFSET_2                         ; $00045c28
+                dc.w    $0101,$0000,$0058,$0098,$0070,$0000
+                dc.l    DATA24_OFFSET_4                         ; $0004c3fe
+                dc.w    $0101,$0000,$0070,$0098,$0070,$0000
+                dc.l    DATA24_OFFSET_2                         ; $00045c28
+                dc.w    $0201,$0000,$0058,$0098,$0070,$0000
+                dc.l    DATA24_OFFSET_4                         ; $0004c3fe
+                dc.w    $0201,$0000,$0070,$0098,$0070,$0000
+                dc.l    DATA_OFFSET_2                           ; $00026be6
+                dc.w    $0102,$0004,$0010,$005e,$002c,$0000
+                dc.l    DATA_OFFSET_4                           ; $00025500
+                dc.w    $0102,$0004,$000f,$0038,$0038,$0000
+                dc.l    DATA_OFFSET_5                           ; $00026044
+                dc.w    $0102,$0002,$0012,$0019,$0019,$0000
+                dc.l    DATA_OFFSET_6                           ; $00026534
+                dc.w    $0102,$0002,$0006,$0028,$0028,$0000
+                dc.l    DATA24_OFFSET_2                         ; $00045c28
+                dc.w    $0301,$0000,$0058,$0098,$0070,$0000
+                dc.l    DATA24_OFFSET_4                         ; $0004c3fe
+                dc.w    $0102,$0000,$0070,$0098,$0070,$0000
 
 
 
