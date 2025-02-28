@@ -86,6 +86,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 ## Progress to Date
 
+**2025-02-28 - Level 2 & 4** - THe Batmobile Level is now building and runnable from within Visual Studio Code. There are no other cars displayed on the road presently, obviously something stillnot quite right but almost there..."
+
 **2025-02-14 - Level 5** - Finished disassembling the Church.IFF file containing the music && SFX for Level 5 and added it to the test build. Next job,back to fixing bugs in Level 2 & 4 (Batmobile & Batwing).
 
 **2025-02-11 - Levels 2 & 4** - Finished disassembling the Music.IFF file containing the music & SFX for Levels 2 & 4. Included a test program to allow playback of the sounds. You can also cycle through the sounds using the left mouse button.

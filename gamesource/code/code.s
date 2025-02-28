@@ -28,11 +28,24 @@
                 INCLUDE     "hw.i"
 
 TEST_BUILD_LEVEL        EQU     1
-TEST_BATMOBILE          EQU     1                               ; comment out to test Batwing
+;TEST_BATMOBILE          EQU     1                               ; comment out to test Batwing
+
+        IFD TEST_BUILD_LEVEL
+BATMOBILE_TIMERVALUE    EQU     $6000                           ;  60 minutes on the timer for testing
+BATWING_TIMERVALUE      EQU     $6000                           ;  60 minutes on the timer for testing
+        ELSE
+BATMOBILE_TIMERVALUE    EQU     $6000                           ;  Original minutes on the timer for testing
+BATWING_TIMERVALUE      EQU     $6000                           ;  Original minutes on the timer for testing
+        ENDC
+
+
 
         IFND    TEST_BUILD_LEVEL
                 org     $2ffc                                         ; original load address
         ENDC
+
+
+
 
 ; Loader Constants
 LOADER_TITLE_SCREEN             EQU $00000820                       ; Load Title Screen 
@@ -867,7 +880,9 @@ L00003874                       bsr.w   mirror_sprite_gfx                       
 L00003878                       bsr.w   panel_fade_in                           ; L00003de0
 
 L0000387c                       move.w  #$03e7,L00008d22                        ; #$3e7 = 999 (Distance?)
-L00003884                       move.w  #$0500,d0                               ; BCD Timer Start Value 05:00 minutes
+
+L00003884                       move.w  #BATMOBILE_TIMERVALUE,d0
+                                ;move.w  #$0500,d0                               ; BCD Timer Start Value 05:00 minutes
 L00003888                       bsr.w   clear_state_init_panel                  ; L00003986
 
                                 ; init unknown data values
@@ -900,6 +915,11 @@ batwing_start_level     ; original address L000038ec
 L000038ec                       bsr.w   panel_fade_in                   ; L00003de0
 L000038f0                       lea.l   text_gotham_carnival,a0         ; L00003ed0,a0
 L000038f6                       bsr.w   large_text_plotter              ; L0000410a
+
+                        ; draw debug build text (back buffer)
+                                lea.l   text_test_build,a0
+                                bsr.w   small_text_plotter  
+
 L000038fa                       bsr.w   wipedisplay_backbuffer_to_front ; L00003d6c
 
 L000038fe                       bsr.w   preshift_18_words               ; L000074a4
@@ -915,7 +935,8 @@ L0000391e                       bsr.w   mirror_sprite_gfx               ; L00007
 L00003922                       bsr.w   initialise_batwing_data         ; L000081ce
 
 L00003926                       move.w  #$0064,L00008d24                ; Balloons to Pop? #$64 = 100
-L0000392e                       move.w  #$0300,d0                       ; BCD Level Timer Value 03:00 minutes
+L0000392e                       move.w  #BATWING_TIMERVALUE,d0
+                                ;move.w  #$0300,d0                       ; BCD Level Timer Value 03:00 minutes
 L00003932                       bsr.w   clear_state_init_panel          ; L00003986
 
                                 ; init unknown data values
@@ -979,7 +1000,7 @@ L000039c8                       jmp     AUDIO_PLAYER_INIT_SONG  ; $00068f90 ; mu
 game_loop
 L000039ce                       
                                 ; increment background colour (show if game loop is running)
-                                add.w   #1,colourtest
+                                ;add.w   #1,colourtest
                                 move.w  colourtest,bgcolour+2
 
                                 bsr.w   L00006ee6                       ; screen wipe?
@@ -999,7 +1020,7 @@ L00003a00                       bsr.w   L000042be
 L00003a04                       bsr.w   L00004792
 L00003a08                       bsr.w   L00005764
 L00003a0c                       bsr.w   L00006f1c               ; draw road (crashing when moving)
-L00003a10                       ;bsr.w   L00004cb2              ; draw sprites (car & buildings? - crashing)
+L00003a10                       bsr.w   L00004cb2              ; draw sprites (car & buildings? - crashing)
 L00003a14                       bsr.w   L00003f70               ; draw HUD (speed/distance)
 L00003a18                       bsr.w   L00003be0               ; draw direction arrow (top-centre)
 L00003a1c                       bsr.w   L00003a34
@@ -1048,10 +1069,12 @@ L00003ac0                       lea.l   text_introduction,a0                    
 L00003ac6                       lea.l   L00003884,a1
 L00003acc                       tst.w   game_type                               ; L00008d1e (batwing = 1, batmobile = 0) 
 L00003ad2                       beq.b   L00003ae0 
+
 L00003ad4                       lea.l   text_gotham_carnival,a0                 ; L00003ed0,a0
 L00003ada                       lea.l   L0000392e,a1
 L00003ae0                       move.l  a1,(a7)
 L00003ae2                       bsr.w   large_text_plotter                      ; L0000410a
+
 L00003ae6                       bsr.w   wipedisplay_backbuffer_to_front         ; L00003d6c
 
 L00003aea                       clr.w   frame_counter                           ; L000037bc
@@ -1162,7 +1185,7 @@ L00003cac                       jmp     AUDIO_PLAYER_INIT_SFX           ; $00068
 L00003cb2                       movem.l (a7)+,d1-d7/a0-a6
 L00003cb6                       rts  
 
-L00003cb8                       jsr     _DEBUG_COLOURS_PAUSE
+L00003cb8                       ;jsr     _DEBUG_COLOURS_PAUSE
                                 move.w  #$0000,L00008d2a
 L00003cc0                       move.w  #$0000,L00008d20
 L00003cc8                       move.w  L00008d3a,d1                    ; horizon position
@@ -1174,7 +1197,7 @@ L00003cde                       beq.w   wipedisplay_backbuffer_to_front         
 L00003ce2                       moveq   #$00,d0
 L00003ce4                       moveq   #$26,d1
 L00003ce6                       movea.l display_buffer1_ptr,a0          ; L000037c0,a0
-L00003cec                       movea.l display_buffer2_ptr,a0          ; L000037c4,a1
+L00003cec                       movea.l display_buffer2_ptr,a1          ; L000037c4,a1
 L00003cf2                       lea.l   $28(a0,d1.w),a2
 L00003cf6                       lea.l   $28(a1,d1.w),a3
 L00003cfa                       lea.l   $00(a0,d0.w),a0
@@ -1331,7 +1354,7 @@ L00003e72                       rts
 
 
                                 even
-text_test_build                 dc.b    $05,$08,'TEST BUILD 08/02/2025',$00,$ff
+text_test_build                 dc.b    $05,$08,'TEST BUILD 28/02/2025',$00,$ff
 
                                 even
 text_introduction
