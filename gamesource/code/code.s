@@ -96,16 +96,22 @@ DATA24_OFFSET_5                 EQU     DATA24_ADDRESS+$be18            ; $00036
 DATA24_OFFSET_9                 EQU     DATA24_ADDRESS+$cbb2            ; $00036fc8 - $2a416 = $cbb2
 DATA24_OFFSET_11                EQU     DATA24_ADDRESS+$e34a            ; $00038760 - $2a416 = $e34a
 DATA24_OFFSET_12                EQU     DATA24_ADDRESS+$ec7c            ; $00039092 - $2a416 = $ec7c
+DATA24_OFFSET_17                EQU     DATA24_ADDRESS+$eccc            ; $000390e2 - $2a416 = $eccc
 DATA24_OFFSET_13                EQU     DATA24_ADDRESS+$f810            ; $00039c26 - $2a416 = $f810
+DATA24_OFFSET_18                EQU     DATA24_ADDRESS+$fcac            ; $0003a0c2 - $2a416 = $fcac
 DATA24_OFFSET_14                EQU     DATA24_ADDRESS+$100ca           ; $0003a4e0 - $2a416 = $100ca
 DATA24_OFFSET_15                EQU     DATA24_ADDRESS+$10c4a           ; $0003b060 - $2a416 = $10c4a
+DATA24_OFFSET_19                EQU     DATA24_ADDRESS+$1131c           ; $0003b732 - $2a416 = $1131c
 DATA24_OFFSET_16                EQU     DATA24_ADDRESS+$117de           ; $0003bbf4 - $2a416 = $117de
+DATA24_OFFSET_20                EQU     DATA24_ADDRESS+$12c8e           ; $0003d0a4 - $2a416 = $12c8e
 DATA24_OFFSET_8                 EQU     DATA24_ADDRESS+$12dfe           ; $0003d214 - $2a416 = $12dfe
 DATA24_OFFSET_1                 EQU     DATA24_ADDRESS+$13aaa           ; $0003dec0 - $2a416 = $13aaa
+DATA24_OFFSET_21                EQU     DATA24_ADDRESS+$1404c           ; $0003e462 - $2a416 = $1404c
+DATA24_OFFSET_22                EQU     DATA24_ADDRESS+$169ea           ; $00040e00 - $2a416 = $169ea
 DATA24_OFFSET_10                EQU     DATA24_ADDRESS+$1817c           ; $00042592 - $2a416 = $1817c
 DATA24_OFFSET_2                 EQU     DATA24_ADDRESS+$1b812           ; $00045c28 - $2a416 = $1b812
 DATA24_OFFSET_3                 EQU     DATA24_ADDRESS+$1a230           ; $00044646 - $2a416 = $1a230
-DATA24_OFFSET_4                 EQU     DATA24_ADDRESS+$21fe5           ; $0004c3fe - $2a416 = $21fe5
+DATA24_OFFSET_4                 EQU     DATA24_ADDRESS+$21fe8           ; $0004c3fe - $2a416 = $21fe8
 
 
         IFD     TEST_BUILD_LEVEL
@@ -889,7 +895,7 @@ L000038fa                       bsr.w   wipedisplay_backbuffer_to_front ; L00003
 L000038fe                       bsr.w   preshift_18_words               ; L000074a4
 
 L00003902                       lea.l   DATA24_OFFSET_3,a0              ; $00044646,a0 ; Data2/4 offset $$00044646-$2a416=$1a230
-L00003908                       lea.l   DATA24_OFFSET_4,a1              ; $0004c3fe,a1 ; Data2/4 offset $0004c3fe-$2a416=$21fe5
+L00003908                       lea.l   DATA24_OFFSET_4,a1              ; $0004c3fe,a1 ; Data2/4 offset $0004c3fe-$2a416=$21fe8
 L0000390e                       bsr.w   mirror_sprite_gfx               ; L00007b20
 
 L00003912                       lea.l   DATA_OFFSET_2,a0                ; $00026be6,a0 ; external address
@@ -1602,15 +1608,50 @@ L00004238                       dc.w    $0d80
                                 dc.w    $007b,$b26e
 
 
-L0000423e                       dc.w    $0003,$90e2,$0003,$b732,$0000 
-L00004248                       dc.w    $0023,$0000,$4c22,$0003,$90e2,$0003,$d0a4,$0000
-L00004258                       dc.w    $0023,$0000,$4c22,$0003,$90e2,$0003,$e462,$0000
-L00004268                       dc.w    $002d,$0000,$4bda,$0003,$90e2,$0004,$0e00,$0000
-L00004278                       dc.w    $002d,$0000,$4c22,$0003,$a0c2,$0003,$b732,$0000
-L00004288                       dc.w    $0037,$0000,$4c22,$0003,$a0c2,$0003,$d0a4,$0000
-L00004298                       dc.w    $0037,$0000,$4c22,$0003,$a0c2,$0003,$e462,$0000
-L000042a8                       dc.w    $0037,$0000,$4bda,$0003,$a0c2,$0004,$0e00,$0000
-L000042b8                       dc.w    $0037,$0000,$4c22 
+
+
+
+
+L0000423e                       dc.l    DATA24_OFFSET_17                ; $000390e2
+                                dc.l    DATA24_OFFSET_19                ; $0003b732
+                                dc.w    $0000,$0023
+                                dc.l    L00004c22
+                                
+                                dc.l    DATA24_OFFSET_17                ; $000390e2
+                                dc.l    DATA24_OFFSET_20                ; $0003d0a4
+                                dc.w    $0000,$0023
+                                dc.l    L00004c22
+                                
+                                dc.l    DATA24_OFFSET_17                ; $000390e2
+                                dc.l    DATA24_OFFSET_21                ; $0003e462
+                                dc.w    $0000,$002d
+                                dc.l    L00004bda
+                                
+                                dc.l    DATA24_OFFSET_17                ; $000390e2
+                                dc.l    DATA24_OFFSET_22                ; $00040e00
+                                dc.w    $0000,$002d
+                                dc.l    L00004c22
+                                
+                                dc.l    DATA24_OFFSET_18                ; $0003a0c2
+                                dc.l    DATA24_OFFSET_19                ; $0003b732
+                                dc.w    $0000,$0037
+                                dc.l    L00004c22
+                                
+                                dc.l    DATA24_OFFSET_18                ; $0003a0c2
+                                dc.l    DATA24_OFFSET_20                ; $0003d0a4
+                                dc.w    $0000,$0037
+                                dc.l    L00004c22
+                                
+                                dc.l    DATA24_OFFSET_18                ; $0003a0c2
+                                dc.l    DATA24_OFFSET_21                ; $0003e462
+                                dc.w    $0000,$0037
+                                dc.l    L00004bda
+                                
+                                dc.l    DATA24_OFFSET_18                ; $0003a0c2
+                                dc.l    DATA24_OFFSET_22                ; $00040e00
+                                dc.w    $0000,$0037
+                                dc.l    L00004c22 
+
 
 
 L000042be                       move.w  L00008f72,d0
@@ -1635,6 +1676,7 @@ L0000430c                       move.b  $00(a0,d0.w),d1
 L00004310                       bsr.w   L0000421a
 L00004314                       and.w   #$0007,d0
 L00004318                       lsl.w   #$04,d0
+
 L0000431a                       lea.l   L0000423e,a0
 L00004320                       lea.l   $00(a0,d0.w),a0
 L00004324                       move.l  (a0)+,$0012(a6)
@@ -2314,7 +2356,9 @@ L00004bda                       dc.w    $0032,$ffdc,$000a,$0000,$0021,$ffe4,$000
 L00004bea                       dc.w    $0018,$ffea,$0006,$0000,$0013,$ffee,$0004,$0000
 L00004bfa                       dc.w    $0011,$fff2,$0002,$0000,$000e,$fff4,$0002,$0000
 L00004c0a                       dc.w    $000c,$fff6,$0002,$0000,$000b,$fff8,$0002,$0000
-L00004c1a                       dc.w    $000b,$fffa,$0002,$0000,$001d,$ffdc,$000a,$0000
+L00004c1a                       dc.w    $000b,$fffa,$0002,$0000
+
+L00004c22                       dc.w    $001d,$ffdc,$000a,$0000
 L00004c2a                       dc.w    $0013,$ffe4,$0008,$0000,$000e,$ffea,$0006,$0000
 L00004c3a                       dc.w    $000b,$ffee,$0004,$0000,$0009,$fff2,$0002,$0000
 L00004c4a                       dc.w    $0008,$fff4,$0002,$0000,$0007,$fff6,$0002,$0000
