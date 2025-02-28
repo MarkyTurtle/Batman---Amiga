@@ -7322,6 +7322,6 @@ display_buffer  dcb.l   $2f80,$00000000
              ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
             IFD TEST_BUILD_LEVEL
                 incdir      "../music/"
-                include     "music.s" 
+                include     "musicempty.s" 
                 even
             ENDC
