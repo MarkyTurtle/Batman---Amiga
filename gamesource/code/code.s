@@ -94,6 +94,16 @@ DATA24_OFFSET_7                 EQU     DATA24_ADDRESS+$b49a            ; $00035
 DATA24_OFFSET_6                 EQU     DATA24_ADDRESS+$b936            ; $00035d4c - $2a416 = $b936
 DATA24_OFFSET_5                 EQU     DATA24_ADDRESS+$be18            ; $0003622e - $2a416 = $be18
 DATA24_OFFSET_9                 EQU     DATA24_ADDRESS+$cbb2            ; $00036fc8 - $2a416 = $cbb2
+DATA24_OFFSET_23                EQU     DATA24_ADDRESS+$d8cc            ; $00037ce2 - $2a416 = $d8cc
+DATA24_OFFSET_24                EQU     DATA24_ADDRESS+$d90c            ; $00037d22 - $2a416 = $d90c
+DATA24_OFFSET_25                EQU     DATA24_ADDRESS+$d93c            ; $00037d52 - $2a416 = $d93c
+DATA24_OFFSET_26                EQU     DATA24_ADDRESS+$d96c            ; $00037d82 - $2a416 = $d96c
+DATA24_OFFSET_27                EQU     DATA24_ADDRESS+$d98c            ; $00037da2 - $2a416 = $d98c
+DATA24_OFFSET_28                EQU     DATA24_ADDRESS+$d9ac            ; $00037dc2 - $2a416 = $d9ac
+DATA24_OFFSET_31                EQU     DATA24_ADDRESS+$d9cc            ; $00037de2 - $2a416 = $d9cc
+
+DATA24_OFFSET_29                EQU     DATA24_ADDRESS+$d9dc            ; $00037df2 - $2a416 = $d9dc
+DATA24_OFFSET_30                EQU     DATA24_ADDRESS+$d9fc            ; $00037e12 - $2a416 = $d9fc
 DATA24_OFFSET_11                EQU     DATA24_ADDRESS+$e34a            ; $00038760 - $2a416 = $e34a
 DATA24_OFFSET_12                EQU     DATA24_ADDRESS+$ec7c            ; $00039092 - $2a416 = $ec7c
 DATA24_OFFSET_17                EQU     DATA24_ADDRESS+$eccc            ; $000390e2 - $2a416 = $eccc
@@ -1357,7 +1367,7 @@ text_speed_value                dc.b    $0c,$02,'000',$00,$ff
                                 even
 text_distance  
 L00003f4a                       dc.b    $02,$1f,'DISTANCE',$00
-text_distance_value             dc.b    $0c,$21,'99.9',$00,$ff  
+text_distance_value             dc.b    $0c,$21,'99',$2e,'9',$00,$ff  
 
                                 even
 text_balloons
@@ -1990,12 +2000,28 @@ L0000478e                       dc.b    $28
 L0000478f                       dc.b    $64
 L00004790                       dc.b    $a4
 L00004791                       dc.b    $e2
-L00004792                       dc.w    $41f9,$0000,$8122,$23c8,$0000,$8f5e         ;(d..a...."#....^
-L0000479e                       dc.w    $70ff,$3080,$5c48,$3080,$5c48,$3080,$5c48,$3080         ;p.0.\h0.\h0.\h0.
-L000047ae                       dc.w    $5c48,$3080,$5c48,$3080,$5c48,$3080,$5c48,$3080         ;\h0.\h0.\h0.\h0.
-L000047be                       dc.w    $5c48,$3080 
 
 
+L00004792                       LEA.L   L00008122,A0
+L00004798                       MOVE.L  A0,L00008f5e
+L0000479E                       MOVE.L  #$ffffffff,D0
+L000047A0                       MOVE.W  D0,(A0)
+L000047A2                       ADDA.W  #$00000006,A0
+L000047A4                       MOVE.W  D0,(A0)
+L000047A6                       ADDA.W  #$00000006,A0
+L000047A8                       MOVE.W  D0,(A0)
+L000047AA                       ADDA.W  #$00000006,A0
+L000047AC                       MOVE.W  D0,(A0)
+L000047AE                       ADDA.W  #$00000006,A0
+L000047B0                       MOVE.W  D0,(A0)
+L000047B2                       ADDA.W  #$00000006,A0
+L000047B4                       MOVE.W  D0,(A0)
+L000047B6                       ADDA.W  #$00000006,A0
+L000047B8                       MOVE.W  D0,(A0)
+L000047BA                       ADDA.W  #$00000006,A0
+L000047BC                       MOVE.W  D0,(A0)
+L000047BE                       ADDA.W  #$00000006,A0
+L000047C0                       MOVE.W  D0,(A0)
 
 L000047c2                       lea.l   L0000909e,a0
 L000047c8                       lea.l   L00008e0e,a1
@@ -2363,11 +2389,26 @@ L00004c2a                       dc.w    $0013,$ffe4,$0008,$0000,$000e,$ffea,$000
 L00004c3a                       dc.w    $000b,$ffee,$0004,$0000,$0009,$fff2,$0002,$0000
 L00004c4a                       dc.w    $0008,$fff4,$0002,$0000,$0007,$fff6,$0002,$0000
 L00004c5a                       dc.w    $0006,$fff8,$0002,$0000,$0006,$fffa,$0002,$0000
-L00004c6a                       dc.w    $0030,$07ff,$0003,$7ce2,$ffff,$07ff,$0003,$7d22
-L00004c7a                       dc.w    $ffff,$0fff,$0003,$7d52,$0010,$0fff,$0003,$7d82
-L00004c8a                       dc.w    $0010,$1fff,$0003,$7da2,$0010,$3fff,$0003,$7dc2
-L00004c9a                       dc.w    $0000,$3fff,$0003,$7de2,$0010,$7fff,$0003,$7df2
-L00004caa                       dc.w    $0000,$7fff,$0003,$7e12 
+
+                                ; word, word, long (address)
+L00004c6a                       dc.w    $0030,$07ff
+                                dc.l    DATA24_OFFSET_23                ; $00037ce2
+                                dc.w    $ffff,$07ff
+                                dc.l    DATA24_OFFSET_24                ; $00037d22
+                                dc.w    $ffff,$0fff
+                                dc.l    DATA24_OFFSET_25                ; $00037d52
+                                dc.w    $0010,$0fff
+                                dc.l    DATA24_OFFSET_26                ; $00037d82
+                                dc.w    $0010,$1fff
+                                dc.l    DATA24_OFFSET_27                ; $00037da2
+                                dc.w    $0010,$3fff
+                                dc.l    DATA24_OFFSET_28                ; $00037dc2
+                                dc.w    $0000,$3fff
+                                dc.l    DATA24_OFFSET_31                ; $00037de2
+                                dc.w    $0010,$7fff
+                                dc.l    DATA24_OFFSET_29                ; $00037df2
+                                dc.w    $0000,$7fff
+                                dc.l    DATA24_OFFSET_30                ; $00037e12 
 
 
 
@@ -2893,10 +2934,8 @@ L00005244                       dc.w    $0001,$001e
 L00005248                       dc.w    $0000,$0032
 L0000524c                       dc.w    $0000
 
-L0000524e                       dc.w    $2a79
-L00005250                       dc.w    $0000,$37c4
 
-
+L0000524e                       MOVEA.L L000037c4,A5
 L00005254                       lea.l   L00009bce,a4
 L0000525a                       move.w  $0040(a6),d0
 L0000525e                       move.w  $004a(a6),d1
