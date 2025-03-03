@@ -102,7 +102,7 @@ DATA24_ADDRESS                  EQU     L0002a416
         ENDC
 
 ; sorted by address location
-DATA24_OFFSET_0                 EQU     DATA24_ADDRESS+$4               ; $0002a41a     ; start address
+DATA24_OFFSET_0                 EQU     DATA24_ADDRESS+$4               ; $0002a41a - $2a416 =     ; start address
 DATA24_OFFSET_7                 EQU     DATA24_ADDRESS+$b49a            ; $000358b0 - $2a416 = $b49a
 DATA24_OFFSET_6                 EQU     DATA24_ADDRESS+$b936            ; $00035d4c - $2a416 = $b936
 DATA24_OFFSET_5                 EQU     DATA24_ADDRESS+$be18            ; $0003622e - $2a416 = $be18
@@ -4071,6 +4071,7 @@ L00005f54                       bne.w   L0000524e
 L00005f58                       rts  
 
 
+                        ; --------------- update traffic - maybe ------------------
 
 L00005f5a                       lea.l   L00008d5c,a6
 L00005f60                       move.w  $0020(a6),d1
@@ -4088,18 +4089,21 @@ L00005f80                       move.w  #$005a,d0
 L00005f84                       add.w   $00(a1,d3.w),d0
 L00005f88                       lea.l   DATA24_OFFSET_7,a5      ; $000358b0,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00005f8e                       bra.w   L000062a4
+
 L00005f92                       lea.l   L00008dfc,a6
 L00005f98                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00005f9e                       moveq   #$02,d7
-L00005fa0                       move.w  $0000(a6),d1
+L00005fa0_loop                  move.w  $0000(a6),d1
 L00005fa4                       bne.b   L00005fb0
 L00005fa6                       lea.l   $0006(a6),a6
-L00005faa                       dbf.w   d7,L00005fa0
+L00005faa                       dbf.w   d7,L00005fa0_loop
 L00005fae                       bra.b   L00005ff2
+
 L00005fb0                       cmp.w   #$0009,d1
 L00005fb4                       bcs.b   L00005fbe
 L00005fb6                       move.w  #$0000,$0000(a6)
 L00005fbc                       bra.b   L00005fa6
+
 L00005fbe                       addq.w  #$01,$0000(a6)
 L00005fc2                       subq.w  #$01,d1
 L00005fc4                       lsr.w   #$01,d1
@@ -4113,18 +4117,19 @@ L00005fd8                       add.w   $00(a0,d3.w),d0
 L00005fdc                       move.w  $0004(a6),d2
 L00005fe0                       add.w   $02(a0,d3.w),d2
 L00005fe4                       movem.l d7/a5-a6,-(a7)
-L00005fe8                       bsr.w   L000062ce
+L00005fe8                       bsr.w   L000062ce               ; ***** check this out *****
 L00005fec                       movem.l (a7)+,d7/a5-a6
+
 L00005ff0                       bra.b   L00005fa6
+
 L00005ff2                       lea.l   L00008dc0,a6
 L00005ff8                       lea.l   DATA24_OFFSET_10,a5     ; $00042592,a5 ; Data2/4 - external address
 L00005ffe                       moveq   #$02,d7
-L00006000                       tst.w   $0000(a6)
+L00006000_loop                  tst.w   $0000(a6)
 L00006004                       bne.b   L00006012
 L00006006                       lea.l   $0014(a6),a6
-L0000600a                       dbf.w   d7,L00006000
+L0000600a                       dbf.w   d7,L00006000_loop
 L0000600e                       bra.w   L000060c6
-
 
 L00006012                       subq.w  #$01,$0000(a6)
 L00006016                       move.w  $0002(a6),d1
@@ -4134,7 +4139,7 @@ L00006020                       addq.w  #$01,$0002(a6)
 L00006024                       move.w  $0004(a6),d0
 L00006028                       move.w  $0006(a6),d2
 L0000602c                       movem.l d7/a5-a6,-(a7)
-L00006030                       bsr.w   L000062ce
+L00006030                       bsr.w   L000062ce               ; ***** check this out *****
 L00006034                       movem.l (a7)+,d7/a5-a6
 L00006038                       bra.b   L00006006
 
@@ -4144,7 +4149,7 @@ L00006042                       moveq   #$05,d1
 L00006044                       sub.w   #$0010,$0004(a6)
 L0000604a                       add.w   #$0010,$0006(a6)
 L00006050                       movem.l d7/a5-a6,-(a7)
-L00006054                       bsr.w   L000062c6
+L00006054                       bsr.w   L000062c6               ; ***** check this out *****
 L00006058                       movem.l (a7)+,d7/a5-a6
 L0000605c                       move.w  $0008(a6),d0
 L00006060                       move.w  $000a(a6),d2
@@ -4152,7 +4157,7 @@ L00006064                       moveq   #$06,d1
 L00006066                       add.w   #$0010,$0008(a6)
 L0000606c                       add.w   #$0010,$000a(a6)
 L00006072                       movem.l d7/a5-a6,-(a7)
-L00006076                       bsr.w   L000062c6
+L00006076                       bsr.w   L000062c6               ; ***** check this out *****
 L0000607a                       movem.l (a7)+,d7/a5-a6
 L0000607e                       move.w  $000c(a6),d0
 L00006082                       move.w  $000e(a6),d2
@@ -4160,23 +4165,23 @@ L00006086                       moveq   #$03,d1
 L00006088                       add.w   #$0010,$000c(a6)
 L0000608e                       sub.w   #$0010,$000e(a6)
 L00006094                       movem.l d7/a5-a6,-(a7)
-L00006098                       bsr.w   L000062c6
+L00006098                       bsr.w   L000062c6               ; ***** check this out *****
 L0000609c                       movem.l (a7)+,d7/a5-a6
 L000060a0                       move.w  $0010(a6),d0
 L000060a4                       move.w  $0012(a6),d2
 L000060a8                       moveq   #$04,d1
 L000060aa                       sub.w   #$0010,$0010(a6)
 L000060b0                       sub.w   #$0010,$0012(a6)
-
 L000060b6                       movem.l d7/a5-a6,-(a7)
-L000060ba                       bsr.w   L000062c6
+L000060ba                       bsr.w   L000062c6               ; ***** check this out *****
 L000060be                       movem.l (a7)+,d7/a5-a6
 L000060c2                       bra.w   L00006006
 
 L000060c6                       lea.l   L00008d5c,a6
 L000060cc                       cmp.w   #$000a,$001e(a6)
 L000060d2                       bne.b   L000060d8
-L000060d4                       bsr.w   L000061de
+
+L000060d4                       bsr.w   L000061de               ; ***** check this out *****
 L000060d8                       lea.l   L00008d5c,a6
 L000060de                       lea.l   L00006412,a5
 L000060e4                       move.w  $0012(a6),d1
@@ -4188,7 +4193,7 @@ L000060f4                       move.w  #$0062,d0
 L000060f8                       add.w   $0010(a6),d2
 
 L000060fc                       lea.l   DATA24_OFFSET_0,a5              ; $0002a41a,a5 ; external address
-L00006102                       bsr.w   L000062ce
+L00006102                       bsr.w   L000062ce               ; ***** check this out *****
 L00006106                       lea.l   L00008d5c,a6
 L0000610c                       move.w  $0026(a6),d0
 L00006110                       beq.b   L00006132
@@ -4223,21 +4228,22 @@ L0000616a                       bsr.w   L000061fc
 L0000616e                       lea.l   L00008d5c,a6
 L00006174                       cmp.w   #$000a,$001e(a6)
 L0000617a                       beq.b   L0000617e
-L0000617c                       bsr.b   L000061de
+L0000617c                       bsr.b   L000061de               ; ***** check this out *****
 L0000617e                       tst.w   L00008d38
 L00006184                       beq.b   L000061dc
 L00006186                       subq.w  #$01,L00008d38
 L0000618c                       bne.b   L00006196
 L0000618e                       move.w  #$0002,L00008f66
-L00006196                       lea.l   L00006688,a1
+
+L00006196                       lea.l   L00006688,a1            ; 18 byte struct? 
 L0000619c                       moveq   #$05,d7
-L0000619e                       movem.l d7/a1,-(a7)
+L0000619e_loop                  movem.l d7/a1,-(a7)
 L000061a2                       move.w  (a1),d0
 L000061a4                       addq.w  #$01,d0
 L000061a6                       cmp.w   #$000c,d0
 L000061aa                       bcs.b   L000061b4
 L000061ac                       moveq   #$0d,d0
-L000061ae                       bsr.w   L00003c92
+L000061ae                       bsr.w   L00003c92               ; ***** check this out *****
 L000061b2                       moveq   #$00,d0
 L000061b4                       move.w  d0,(a1)+ 
 L000061b6                       cmp.w   #$0004,d0
@@ -4247,10 +4253,10 @@ L000061be                       add.w   #$0011,d0
 
 L000061c2                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L000061c8                       lea.l   L00008d5c,a6
-L000061ce                       bsr.b   L00006210
+L000061ce                       bsr.b   L00006210               ; ***** check this out *****
 L000061d0                       movem.l (a7)+,d7/a1
 L000061d4                       lea.l   $0012(a1),a1
-L000061d8                       dbf.w   d7,L0000619e
+L000061d8                       dbf.w   d7,L0000619e_loop
 L000061dc                       rts  
 
 
@@ -4280,7 +4286,7 @@ L0000621c                       move.w  (a5)+,d7
 L0000621e                       move.w  #$0062,d0
 L00006222                       move.w  $00(a1,d1.w),d2
 L00006226                       cmp.w   #$0064,d2
-L0000622a                       beq.b   L0000623e
+L0000622a                       beq.b   L0000623e_rts
 L0000622c                       add.w   d2,d0
 L0000622e                       move.w  $0010(a6),d2
 L00006232                       add.w   $02(a1,d1.w),d2
@@ -4288,7 +4294,9 @@ L00006236                       moveq   #$00,d3
 L00006238                       move.w  d3,d6
 L0000623a                       bra.w   L00004e20
 
-L0000623e                       rts
+L0000623e_rts                   rts
+
+
 
 L00006240                       lea.l   DATA24_OFFSET_6,a5      ; $00035d4c,a5 ; DATA2.IFF/DATA4.IFF - external address
 L00006246                       add.w   $001e(a6),d1
@@ -4302,6 +4310,7 @@ L0000625e                       move.w  (a5)+,d5
 L00006260                       move.w  (a5)+,d7
 L00006262                       sub.w   d3,d7
 L00006264                       bra.b   L0000621e
+
 L00006266                       add.w   $0012(a6),d1
 L0000626a                       lea.l   L00006430,a1
 L00006270                       lsl.w   #$04,d0
@@ -4314,7 +4323,7 @@ L0000627e                       move.w  #$0062,d0
 L00006282                       add.w   d2,d0
 L00006284                       move.w  $00(a1,d1.w),d2
 L00006288                       cmp.w   #$0064,d2
-L0000628c                       beq.b   L000062a2
+L0000628c                       beq.b   L000062a2_rts
 L0000628e                       add.w   d2,d0
 L00006290                       move.w  $0010(a6),d2
 L00006294                       add.w   d3,d2
@@ -4323,7 +4332,9 @@ L0000629a                       moveq   #$00,d3
 L0000629c                       move.w  d3,d6
 L0000629e                       bra.w   L00004e20
 
-L000062a2                       rts
+L000062a2_rts                   rts
+
+
 
 L000062a4                       lsl.w   #$04,d1
 L000062a6                       lea.l   $00(a5,d1.w),a5
