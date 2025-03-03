@@ -1002,7 +1002,7 @@ L000039ce
                                 ; increment background colour (show if game loop is running)
                                 ;add.w   #1,colourtest
                                 move.w  colourtest,bgcolour+2
-
+                        ; common code (batmobile & batwing)
                                 bsr.w   L00006ee6                       ; screen wipe?
 L000039d2                       bsr.w   L000067ba
 L000039d6                       bsr.w   L00006b02
@@ -1012,12 +1012,18 @@ L000039e2                       bsr.w   L00006d40
 L000039e6                       bsr.w   L000051da
 L000039ea                       bsr.w   L00005086
 L000039ee                       tst.w   game_type               ; L00008d1e (batwing = 1, batmobile = 0) 
-L000039f4                       bne.b   L00003a00
-L000039f6                       bsr.w   L0000459c
+L000039f4                       bne.b   L00003a00_batwing
+
+                        ; batmobile specific
+L000039f6_batmobile             bsr.w   L0000459c
 L000039fa                       bsr.w   L000044a8
-L000039fe                       bra.b   L00003a04
-L00003a00                       bsr.w   L000042be
-L00003a04                       bsr.w   L00004792
+L000039fe                       bra.b   L00003a04_common
+
+                        ; batwing specific
+L00003a00_batwing               bsr.w   L000042be
+
+                        ; common code again (batmobile & batwing)
+L00003a04_common                bsr.w   L00004792
 L00003a08                       bsr.w   L00005764
 L00003a0c                       bsr.w   L00006f1c               ; draw road (crashing when moving)
 L00003a10                       bsr.w   L00004cb2              ; draw sprites (car & buildings? - crashing)
