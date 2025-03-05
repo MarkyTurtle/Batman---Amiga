@@ -6,8 +6,8 @@
             "request": "launch",
             "name": "WinUAE Debug",
             "stopOnEntry": false,
-            "program": "${workspaceFolder}/uae/dh0/titleprg",
-            "remoteProgram": "titleprg",
+            "program": "${workspaceFolder}/uae/dh0/batcave",
+            "remoteProgram": "batcave",
             "emulatorType": "winuae",
             "emulatorArgs": [
                 "-s",
@@ -20,8 +20,8 @@
             "request": "launch",
             "name": "WinUAE Launch",
             "noDebug": true,
-            "program": "${workspaceFolder}/uae/dh0/titleprg",
-            "remoteProgram": "titleprg",
+            "program": "${workspaceFolder}/uae/dh0/batcave",
+            "remoteProgram": "batcave",
             "emulatorType": "winuae",
             "emulatorArgs": [
                 "-s",

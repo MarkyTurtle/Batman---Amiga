@@ -17,8 +17,8 @@
 				"command": "${config:amiga-assembly.binDir}/vlink",
 				"includes": "*.{s,S,asm,ASM}",
 				"excludes": "",
-				"exefilename": "../uae/dh0/titleprg",
-				"entrypoint": "titleprg.s",
+				"exefilename": "../uae/dh0/batcave",
+				"entrypoint": "batcave.s",
 				"args": [
 					"-bamigahunk",
 					"-Bstatic"
@@ -46,8 +46,8 @@
 				"command": "${config:amiga-assembly.binDir}/vlink",
 				"includes": "*.{s,S,asm,ASM}",
 				"excludes": "",
-				"exefilename": "../uae/dh0/titleprg",
-				"entrypoint": "titleprg.s",
+				"exefilename": "../uae/dh0/batcave",
+				"entrypoint": "batcave.s",
 				"args": [
 					"-brawbin2",
 					"-Bstatic"

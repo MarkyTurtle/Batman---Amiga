@@ -5,9 +5,12 @@
  - [Resources and Acknowledgements](#resources-and-acknowledgements)
  - [Progress to date](#progress-to-date)
 
-This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particular (Level 1 & Level 5 are buildable and playable from source).
+This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particular (Level 1,2,4 & Level 5 are buildable and playable from source). Level 3 (Batcave) is the only level remaining, along with fixing music bugs for level 2 & 4.
 
  - [Level 1 (Axis Chemicals) Code Project](./gamesource/code1)
+ - [Level 2 (Batmobile/Batwing) Code Project](./gamesource/code)
+ - [Level 3 (BatCave) Code Project](./gamesource/batcave) **TODO**
+ - [Level 4 (Batmobile/Batwing) Code Project](./gamesource/code/)
  - [Level 5 (Cathedral) Code Project](./gamesource/code5)
   
 This repo contains many individual code projects organised into its sub folders. 
@@ -43,20 +46,20 @@ This exercise is not one of speed, but of learning. The intention is to spend mo
     - Updated Test ADF with Title Screen rebuilt from Source Code - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) 
  - Disassemble the Platform Levels 1 and 5.
     - ['chem' Project](./gamesource/chem/) - Music & SFX for Level1 - Done with test program to play Music/SFX
-    - ['church' Project](./gamesource/church/) - Music & SFX for Level 5 - TODO
-    - ['code1' Project](./gamesource/code1/) - Axis Chemicals - Level1 - Done
-    - ['code5' Project](./gamesource/code5/) - Cathedral - Level5 - Done 
-    - ['batspr1 Project](./gamesource/batspr1/) - Game Sprites - Level1/5 - Done
-    - ['mapgr' Project](./gamesource/mapgr/) - Level GFX & Data - Level1 - Done
-    - ['mapgr2' Project](./gamesource/mapgr2/) - Level GFX & Data - Level5 - Done
+    - ['church' Project](./gamesource/church/) - Music & SFX for Level 5
+    - ['code1' Project](./gamesource/code1/) - Axis Chemicals - Level1 
+    - ['code5' Project](./gamesource/code5/) - Cathedral - Level5
+    - ['batspr1 Project](./gamesource/batspr1/) - Game Sprites - Level1/5
+    - ['mapgr' Project](./gamesource/mapgr/) - Level GFX & Data - Level1
+    - ['mapgr2' Project](./gamesource/mapgr2/) - Level GFX & Data - Level5
  - Disassemble the Batmobile/Batwing Levels.
-    - ['music' Project](./gamesource/music) - Music & SFX for Level 2 & 4
-    - ['data' Project](./gamesource/data) - Shared common data file for Levels 2 & 4 - Done
-    - ['data2' Project](./gamesource/data2) - Level 2 specific data file. - Done
-    - ['data4' Project](./gamesource/data4) - Level 4 specific data file. - Done
+    - ['music' Project](./gamesource/music) - Music & SFX for Level 2 & 4 (**TODO Bug Fixes**)
+    - ['data' Project](./gamesource/data) - Shared common data file for Levels 2 & 4
+    - ['data2' Project](./gamesource/data2) - Level 2 specific data file.
+    - ['data4' Project](./gamesource/data4) - Level 4 specific data file.
     - ['code' Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
-
+    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**TODO**)
 
 ## Resources and Acknowledgements
 - Check out the latest updated Test ADFs
@@ -85,6 +88,9 @@ Resources and code used in this project is listed below. If there's anything use
 
 
 ## Progress to Date
+
+**2025-03-05 - Level 2 & 4**
+  - Both levels are now buildable and playable from VSCode, the music/SFX is currently switched off as there are bugs still to fix.
 
 **2025-02-28 - Level 2 & 4** 
   - The Batwing Level is now building and looks like its running as expected with the balloons displaying as expected. 
