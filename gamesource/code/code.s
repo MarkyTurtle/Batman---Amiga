@@ -1693,11 +1693,12 @@ L0000423e                       dc.l    DATA24_OFFSET_17                ; $00039
 
 
 
+                ;------------------ batwing specific ------------------
 L000042be                       move.w  L00008f72,d0
 L000042c4                       beq.w   L00004358
 L000042c8                       sub.w   d0,L00008d2c
 L000042ce                       bcc.w   L00004358
-L000042d2                       bsr.w   L0000421a
+L000042d2                       bsr.w   L0000421a                       ; d0 = randomish number
 L000042d6                       and.w   #$000f,d0
 L000042da                       add.w   #$000a,d0
 L000042de                       move.w  d0,L00008d2c
@@ -1706,13 +1707,13 @@ L000042e8                       movea.l a6,a5
 L000042ea                       pea.l   L0000435a
 L000042f0                       bsr.w   L0000475a
 L000042f4                       addq.l  #$04,a7
-L000042f6                       bsr.w   L0000421a
+L000042f6                       bsr.w   L0000421a                       ; d0 = randomish number
 L000042fa                       and.w   #$0003,d0
 L000042fe                       move.b  d0,$0005(a5)
 L00004302                       move.b  d0,$0005(a6)
 L00004306                       lea.l   L0000478e,a0
 L0000430c                       move.b  $00(a0,d0.w),d1
-L00004310                       bsr.w   L0000421a
+L00004310                       bsr.w   L0000421a                       ; d0 = randomish number
 L00004314                       and.w   #$0007,d0
 L00004318                       lsl.w   #$04,d0
 
@@ -1794,6 +1795,9 @@ L0000442e                       jmp     PANEL_LOSE_ENERGY       ; panel
 
 L00004434                       rts 
 
+
+
+
 L00004436                       move.b  $0008(a1),d0
 L0000443a                       bne.b   L0000443e
 L0000443c                       rts  
@@ -1871,29 +1875,37 @@ L00004592                       bcc.b   L0000459a
 L00004594                       move.w  d0,L00008f6e
 L0000459a                       rts  
 
+
+
+                ; --------------- batmobile specific update 1 ----------------
+                ; 1st batmobile specific routine called from game_loop
+                ;
 L0000459c                       move.w  L00008f72,d0
 L000045a2                       beq.w   L0000461c
 L000045a6                       sub.w   d0,L00008d2c
 L000045ac                       bcc.w   L0000461c
-L000045b0                       bsr.w   L0000421a
+L000045b0                       bsr.w   L0000421a                       ; d0 = randomish number
 L000045b4                       and.w   #$000f,d0
 L000045b8                       add.w   L00008d2e,d0
 L000045be                       move.w  d0,L00008d2c
+                        ; find free object (a6)
 L000045c4                       moveq   #$03,d7
-L000045c6                       bsr.w   L0000475c
-L000045ca                       bsr.w   L0000421a
+                        ; search for free object struct (d7 = check 1st 4 entries)
+L000045c6                       bsr.w   L0000475c                       
+                        ; a6 = initialise object struct (or exit back to caller)
+L000045ca                       bsr.w   L0000421a                       ; d0 = randomish number
 L000045ce                       and.w   #$0003,d0
-L000045d2                       move.b  $0005d0,(a6)
+L000045d2                       move.b  d0,$0005(a6)
 L000045d6                       lea.l   L0000478e,a0
 L000045dc                       move.b  $00(a0,d0.w),$0003(a6)
-L000045e2                       bsr.w   L0000421a
+L000045e2                       bsr.w   L0000421a                       ; d0 = randomish number
 L000045e6                       and.w   #$00ff,d0
 L000045ea                       add.w   #$0032,d0
 L000045ee                       cmp.w   #$0096,d0
 L000045f2                       bcc.w   L000045fa
 L000045f6                       add.w   #$0096,d0
 L000045fa                       move.w  d0,$0006(a6)
-L000045fe                       bsr.w   L0000421a
+L000045fe                       bsr.w   L0000421a                       ; d0 = randomish number
 L00004602                       and.w   #$0007,d0
 L00004606                       lsl.w   #$02,d0
 L00004608                       lea.l   L0000461e,a0
@@ -1982,7 +1994,7 @@ L00004714                       bne.b   L0000471a
 L00004716                       moveq   #$02,d2
 L00004718                       bra.b   L00004728
 
-L0000471a                       bsr.w   L0000421a
+L0000471a                       bsr.w   L0000421a               ; d0 = randomish number
 L0000471e                       addq.b  #$01,d2
 L00004720                       btst.l  #$0000,d0
 L00004724                       beq.b   L00004728 
@@ -2008,18 +2020,24 @@ L00004754                       move.b  d0,$0003(a1)
 L00004758                       rts  
 
 L0000475a                       moveq   #$07,d7
-L0000475c                       lea.l   L00008e0e,a6
-L00004762                       tst.b   $0000(a6)
-L00004766                       beq.b   L00004774
-L00004768                       lea.l   $002a(a6),a6
-L0000476c                       dbf.w   d7,L00004762
-L00004770                       addq.l  #$04,a7
-L00004772                       rts 
 
-L00004774                       moveq   #$14,d7
+                        ; find unused data structure (free actor object maybe?)
+                        ; if found, a6 = address ptr
+                        ; if not found return to caller of the caller
+                        ; IN: d7 = loop counter
+L0000475c                       lea.l   L00008e0e,a6
+L00004762_loop                  tst.b   $0000(a6)
+L00004766                       beq.b   L00004774
+L00004768                       lea.l   $002a(a6),a6            ; 42 byte data structure
+L0000476c                       dbf.w   d7,L00004762_loop
+L00004770                       addq.l  #$04,a7                 ; scrub off original return address
+L00004772                       rts                             ; return to caller of the caller
+
+                        ; clear 42 byte struct & initialise values
+L00004774                       moveq   #$14,d7                 ; clear 21 words (42 bytes)
 L00004776                       movea.l a6,a4
-L00004778                       move.w  #$0000,(a4)+
-L0000477c                       dbf.w   d7,L00004778
+L00004778_loop                  move.w  #$0000,(a4)+
+L0000477c                       dbf.w   d7,L00004778_loop
 L00004780                       move.b  #$16,$0002(a6)
 L00004786                       move.b  #$01,$0000(a6)
 L0000478c                       rts 
@@ -3967,7 +3985,7 @@ L00005dfe                       move.w  (a0),d0
 L00005e00                       addq.w  #$01,d0
 L00005e02                       cmp.w   #$000c,d0
 L00005e06                       bne.b   L00005e14
-L00005e08                       bsr.w   L0000421a
+L00005e08                       bsr.w   L0000421a               ; d0 = randomish number
 L00005e0c                       and.w   #$000f,d0
 L00005e10                       add.w   #$000c,d0
 L00005e14                       cmp.w   #$0014,d0
