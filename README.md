@@ -1,4 +1,5 @@
 # Batman The Movie - Amiga A500
+![Batman the Movie](/images/batman.jpeg)
 [Batman The Movie, Amiga, 2 Disk Europe, Ocean](https://www.lemonamiga.com/games/details.php?id=131)
 
  - [Overview](#overview)
@@ -7,12 +8,18 @@
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particular (Level 1,2,4 & Level 5 are buildable and playable from source). Level 3 (Batcave) is the only level remaining, along with fixing music bugs for level 2 & 4.
 
+## Main Code Projects
  - [Level 1 (Axis Chemicals) Code Project](./gamesource/code1)
  - ![Axis Chemicals - Level 1](/images/axischemicals.jpeg)
  - [Level 2 (Batmobile/Batwing) Code Project](./gamesource/code)
+ - ![Batmobile - Level 2](/images/batmobile.jpeg)
  - [Level 3 (BatCave) Code Project](./gamesource/batcave) **TODO**
+ - ![Batmobile - Level 3](/images/batcave.jpeg)
  - [Level 4 (Batmobile/Batwing) Code Project](./gamesource/code/)
+ - ![Batwing - Level 4](/images/batwing.jpeg)
  - [Level 5 (Cathedral) Code Project](./gamesource/code5)
+ - ![Cathedral - Level 5](/images/cathedral.jpeg)
+
   
 This repo contains many individual code projects organised into its sub folders. 
 
