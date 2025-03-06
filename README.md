@@ -21,12 +21,12 @@ The folder names for the projects below reflect the file names of the executable
  - [Level 5 (Cathedral) Code Project](./gamesource/code5)
 <br/>![Cathedral - Level 5](/images/cathedral.jpeg)
 
-## Aditional Code Projects
- - [Title Screen)(./gamesource/titleprg)
+## Additional Code Projects
+ - [Title Screen](./gamesource/titleprg)
 <br/>![Title Screen](/images/titleprg.jpeg)
- - [Boot Block)(./loader/bootblock)
+ - [Boot Block](./loader/bootblock)
 <br/>![Boot Block](/images/bootblock.jpeg)
- - [Game Loader)(./loader/gameloader/modified/src)
+ - [Game Loader](./loader/gameloader/modified/src)
 <br/>![Game Loader](/images/batmanloader.jpeg)  
 
 
