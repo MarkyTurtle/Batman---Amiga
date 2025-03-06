@@ -41,17 +41,6 @@ This exercise is not one of speed, but of learning. The intention is to understa
    - [Disk 1 Unpacked](./rawrippedfiles/disk1files-unpacked/)
    - [Disk 2 Unpacked](./rawrippedfiles/disk2files-unpacked/)
    - [File Memory Map](./FileRelocation.md) - File Relocation/Load Table
- - Re-pack the files for reuse. [Files Folder](./crack/packedcrack/)
-   - [Shrinkler Disk 1](./crack/packedcrack/shrinkfiles/disk1/)
-   - [Shrinkler Disk 2](./crack/packedcrack/shrinkfiles/disk2/)
-   - [ZX0 Disk 1](./crack/packedcrack/zx0files/disk1/)
-   - [ZX0 Disk 2](./crack/packedcrack/zx0files/disk2/)
- - Create a Cracked Version of the Disk. - Amiga DOS disk with custom loader (rnc dosio)
-   - **Dos Crack V2**
-   - [DosCrackZX0.adf](./crack/packedcrack/DosCrackZX0.adf) - In Progress (semi functional some loading corruption, game/timer speed up, level 2 onwards)
-   - **Dos Crack V1** - 
-   - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) - In Progress (game/timer speed up, level 2 onwards)
-   - Load time is far too slow, need to change packer
  - Disassemble the Game Panel
     - ['panel' Project](./gamesource/panel/)
     - [Test .adf disk image](./crack/packedcrack/DosCrackShrinkler_rebuild.adf)
@@ -77,10 +66,6 @@ This exercise is not one of speed, but of learning. The intention is to understa
     - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**TODO**)
 
 ## Resources and Acknowledgements
-- Check out the latest updated Test ADFs
-     - [DosCrackShrinkler_rebuild.adf](./crack/packedcrack/DosCrackShrinkler_rebuild.adf) containing the **Title Screen** rebuilt from Source Code (**SOME GFX CORRUPTION**)
-     - [DosCrackShrinkler.adf](./crack/packedcrack/DosCrackShrinkler.adf) containing the original game files repacked on a single disk. 
-  
 The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
 
  - [Youtube](https://www.youtube.com/@HoffmanYouTube)
