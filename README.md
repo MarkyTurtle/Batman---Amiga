@@ -106,6 +106,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 **2025-03-05 - Level 2 & 4**
   - Both levels are now buildable and playable from VSCode, the music/SFX is currently switched off as there are bugs still to fix.
+  - To build and run the **Batmobile** Level ensure **TEST_BATMOBILE** equate is uncommented (i.e. no semicolon prefix)
+  - To build and run the **Batwing** Level ensure that **TEST_BATMOBILE** is commented out. (i.e. with semicolon prefix)
 
 **2025-02-28 - Level 2 & 4** 
   - The Batwing Level is now building and looks like its running as expected with the balloons displaying as expected. 
