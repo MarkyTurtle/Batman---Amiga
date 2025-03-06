@@ -8,6 +8,7 @@
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particular (Level 1,2,4 & Level 5 are buildable and playable from source). Level 3 (Batcave) is the only level remaining, along with fixing music bugs for level 2 & 4.
 
  - [Level 1 (Axis Chemicals) Code Project](./gamesource/code1)
+ - ![Axis Chemicals - Level 1](/images/axischemicals.jpeg)
  - [Level 2 (Batmobile/Batwing) Code Project](./gamesource/code)
  - [Level 3 (BatCave) Code Project](./gamesource/batcave) **TODO**
  - [Level 4 (Batmobile/Batwing) Code Project](./gamesource/code/)
