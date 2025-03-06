@@ -24,7 +24,7 @@ This repo contains my progress of the disassembling of the 2 Disk version of Bat
 This repo contains many individual code projects organised into its sub folders. 
 
 ## Overview
-This exercise is not one of speed, but of learning. The intention is to spend more time disassembling all parts of the code that wouldn't normally be disassembled to crack the game. I'll be following the steps below, like all plans likely to change.
+This exercise is not one of speed, but of learning. The intention is to understand how an iconic game for the Amiga was organised and put together. This repo contains many individual code projects organised into its sub folders. The steps followed to disassemble along with links to individual code projects (all contained within this single repository) are listed below.
 
  - Disassemble the boot loader. [Code Folder](./loader/bootblock/)
  - Disassemble the game loader. [Code Folder](./loader/gameloader/modified/)
@@ -203,7 +203,7 @@ May also need to insert other copy protection data into memory, will test when I
 
 **2024-05-21 - Disk Image** - Created first verison of a single disk crack. The ADF can be found here [packedfiles.adf](./crack/packedcrack/packedfiles.adf). The load time is far too slow due to the packer used (shrinkler). Need to find a packer with a faster decruncher which still has a decent pack ratio.
 
-**2024-05-20 - Disk Image ** - Successfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
+**2024-05-20 - Disk Image** - Successfully created a test crack disk that boots the title screen and first level of the game from an Amiga DOS disk. [TestCrack.adf](./crack/testcrack.adf)
 
 **2024-05-17 - Disk Image** - Created a test disk image [testcrack.adf](./crack/testcrack.adf) which can load the and start the *Title Screen* from the Amiga DOS formatted disk. The game will crash if you try to start it as theres no code to load the levels etc. *Ive borked the test loader, try running on emulator with plenty of memory, think its got stack corruption at the moment*
 
