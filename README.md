@@ -89,6 +89,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 ## Progress to Date
 
+**2025-03-08 - Level 3** - Started disassembling Level 3, unlike other levels this is a single load containing the Code, GFX and Music.
+
 **2025-03-05 - Level 2 & 4**
   - Both levels are now buildable and playable from VSCode, the music/SFX is currently switched off as there are bugs still to fix.
   - To build and run the **Batmobile** Level ensure **TEST_BATMOBILE** equate is uncommented (i.e. no semicolon prefix)
