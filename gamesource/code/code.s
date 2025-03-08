@@ -28,7 +28,7 @@
                 INCLUDE     "hw.i"
 
 TEST_BUILD_LEVEL        EQU     1
-;TEST_BATMOBILE          EQU     1                               ; comment out to test Batwing
+TEST_BATMOBILE          EQU     1                               ; comment out to test Batwing
 
         IFD TEST_BUILD_LEVEL
 BATMOBILE_TIMERVALUE    EQU     $6000                           ;  60 minutes on the timer for testing
