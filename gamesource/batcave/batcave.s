@@ -76,9 +76,9 @@ L0000D0C8               dc.w    $0000
 
 
                     ;----------------- return to title screen --------------
-L0000D0CA               MOVE.W  #$0064,D0
-L0000D0CE               BSR.W   L0000D1EE
-L0000D0D2               BSR.W   L0000E630
+L0000D0CA               MOVE.W  #$0064,D0                       ; frames to wait/skip
+L0000D0CE               BSR.W   wait_frame                      ; L0000D1EE
+L0000D0D2               BSR.W   fade_panel_out                  ; L0000E630
 L0000D0D6               JMP     $00000820                       ; loader - load title screen
                     ; ---------------------------------------------
                     ; NEVER RETURNS
@@ -91,7 +91,7 @@ L0000D0DC               MOVE.W  #$9999,$0007c882                ; panel
 L0000D0E4               MOVE.L  #$0005ed00,L0000e55a            ; external address (display?)
 L0000D0EE               MOVE.L  #$00067680,L0000e55e            ; external address (display?)
 L0000D0F8               BSR.W   L0000E562
-L0000D0FC               BSR.W   L0000E630
+L0000D0FC               BSR.W   fade_panel_out                  ; L0000E630
 L0000D100               JSR     L00004008                       ; music ?
 L0000D106               JMP     $00000830                       ; loader - load batwing level 4
                     ; ---------------------------------------------
@@ -110,20 +110,23 @@ L0000D124               BNE.W   L0000D0DC
 L0000D128               JSR     L00004008                       ; music ?
 L0000D12E               LEA.L   L0000EF96,A7
 L0000D134               BSR.W   L0000D38C
-L0000D138               BSR.W   L0000E5EA
+L0000D138               BSR.W   panel_fade_in                   ; L0000E5EA
 L0000D13C               BSR.W   L0000E4F2
 L0000D140               CLR.W   $0007c882                       ; panel
 L0000D146               MOVE.L  #$00000001,D0
 L0000D148               BSR.W   L0000D26E
 L0000D14C               CLR.W   L0000D1E6
-L0000D152               MOVE.L  #$00000000,D0
-L0000D154               BSR.W   L0000D1EE
+L0000D152               MOVE.L  #$00000000,D0                   ; number of frames to wait/skip
+L0000D154               BSR.W   wait_frame                      ; L0000D1EE
 L0000D158               BSR.W   L0000DC1C
 L0000D15C               BSR.W   L0000D56A
 L0000D160               JSR     L0000D222
 L0000D166               BTST.B  #$0000,$0007c874               ; panel
 L0000D16E               BEQ.B   L0000D152 
 L0000D170               BRA.W   L0000D9E6 
+
+
+
 
 level1_interrupt_handler    ; original address L0000D174
 L0000D174               RTE 
@@ -166,9 +169,15 @@ L0000D1EA               dc.w    $0000
 L0000D1EC               dc.w    $0000
 
 
-
+                    ; ------------- wait frame count -------------
+                    ; Wait for number of specified frames.
+                    ; Contains a dodgy processor loop to wait for beam to end the current raster.
+                    ; IN:
+                    ;   D0.w = frame count
+                    ;
+wait_frame          ; original address $0000D1EE
 L0000D1EE_loop          CMP.B   #$c1,$00dff006
-L0000D1F6               BNE.B   L0000D1EE 
+L0000D1F6               BNE.B   L0000D1EE_loop 
 L0000D1F8               MOVE.W  #$0064,D1
 L0000D1FC_loop          DBF.W   D1,L0000D1FC_loop
 L0000D200               DBF.W   D0,L0000D1EE_loop
@@ -180,8 +189,8 @@ L0000D20A               ADDA.L  #$00000002,A1
 L0000D20C_loop          MOVE.W  (A0)+,(A1)+
 L0000D20E               ADDA.L  #$00000002,A1
 L0000D210               DBF.W   D0,L0000D20C_loop 
-L0000D214               MOVE.L  #$00000001,D0
-L0000D216               BRA.W   L0000D1EE_loop 
+L0000D214               MOVE.L  #$00000001,D0           ; frames to wait/skip
+L0000D216               BRA.W   wait_frame              ; L0000D1EE_loop 
 L0000D21A               CLR.W   L0000D1EC
 L0000D220               RTS 
 
@@ -281,10 +290,10 @@ L0000D394               MOVE.W  #$0040,$00dff104
 L0000D39C               MOVE.L  #$003800d0,$00dff092
 L0000D3A6               MOVE.L  #$2c81f4c1,$00dff08e
 L0000D3B0               MOVE.L  #$ffffffff,$00dff044
-L0000D3BA               CLR.L   $0000dbfc
-L0000D3C0               CLR.W   $0000dc00
-L0000D3C6               CLR.L   $0000dc02
-L0000D3CC               CLR.W   $0000ee04
+L0000D3BA               CLR.L   L0000DBFC
+L0000D3C0               CLR.W   L0000DC00
+L0000D3C6               CLR.L   L0000DC02
+L0000D3CC               CLR.W   L0000EE04
 L0000D3D2               MOVE.W  #$0003,L0000DBFA
 L0000D3DA               MOVE.W  #$0001,L0000DC06
 L0000D3E2               MOVE.W  #$0073,L0000D8D8
@@ -292,7 +301,7 @@ L0000D3EA               MOVE.W  #$0006,L0000DC00
 L0000D3F2               MOVE.W  #$0018,L0000E124
 L0000D3FA               MOVE.W  #$0012,L0000E128
 L0000D402               LEA.L   L0000F6CE,A0
-L0000D408               LEA.L   $0000FBE6,A1
+L0000D408               LEA.L   L0000FBE6,A1
 L0000D40E               BSR.W   L0000D206
 L0000D412               MOVE.L  #$00001a20,L0000DC14            ; offset/address?
 L0000D41C               MOVE.L  #$0005ed00,L0000DC18            ; external address (display?)
@@ -330,7 +339,8 @@ L0000D4A4               BNE.B   L0000D48E
 L0000D4A6               RTS 
 
 
-
+                ; ------------ unreferenced code? --------------
+                ; some unknown address ranges accessed in here
 L0000D4A8               LEA.L   $0001fffa,A0                ; gfx?
 L0000D4AE               LEA.L   $0005ed00,A1                ; display buffer?
 L0000D4B4               LEA.L   $000231d2,A2
@@ -345,6 +355,8 @@ L0000D4D6               DBF.W   D0,L0000D4D0_loop
 L0000D4DA               RTS 
 
 
+                ; ------------ unreferenced code? --------------
+                ; some unknown address ranges accessed in here
 L0000D4DC               LEA.L   $00019588,A0                ; external address
 L0000D4E2               LEA.L   $00063b66,A1                ; external address
 L0000D4E8               MOVE.W  #$1a20,D0
@@ -353,11 +365,15 @@ L0000D4EE               DBF.W   D0,L0000D4EC_loop
 L0000D4F2               RTS 
 
 
-L0000D4F4               LEA.L   $00010000,A0                ; external address
+
+
+
+
+L0000D4F4               LEA.L   L00010000,A0
 L0000D4FA               LEA.L   $0005ed00,A1                ; external address
-L0000D500               MOVE.W  #$1398,D0
-L0000D504               MOVE.L  (A0)+,(A1)+
-L0000D506               DBF.W   D0,L0000D504 
+L0000D500               MOVE.W  #$1398,D0                   ; 5017*4 = 20068 bytes
+L0000D504_loop          MOVE.L  (A0)+,(A1)+
+L0000D506               DBF.W   D0,L0000D504_loop 
 L0000D50A               MOVE.W  #$0688,D0
 L0000D50E               CLR.L   (A1)+
 L0000D510               DBF.W   D0,L0000D50E 
@@ -606,20 +622,20 @@ L0000D94A               ASL.L   #$00000004,D0
 L0000D94C               JSR     $0007c82a               ; Panel
 L0000D952               MOVE.W  #$ffff,L0000D0C8
 L0000D95A               MOVE.W  #$9999,$0007c882        ; Panel
-L0000D962               MOVE.W  #$00c8,D0
-L0000D966               BSR.W   L0000D1EE_loop
+L0000D962               MOVE.W  #$00c8,D0               ; frames to wait/skip
+L0000D966               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000D96A               MOVE.W  #$2260,D0
 L0000D96E               LEA.L   $00067680,A0            ; external address
 L0000D974               CLR.L   (A0)+
 L0000D976               DBF.W   D0,L0000D974 
 L0000D97A               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000D984               LEA.L   L0000E680,A0
+L0000D984               LEA.L   text_simlex_success,a0  ; L0000E680,A0
 L0000D98A               BSR.W   L0000E6E4
 L0000D98E               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000D998               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000D9A2               BSR.W   L0000E572
-L0000D9A6               MOVE.W  #$00c8,D0
-L0000D9AA               BSR.W   L0000D1EE_loop
+L0000D9A6               MOVE.W  #$00c8,D0               ; frames to wait/skip
+L0000D9AA               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000D9AE               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000D9B8               MOVE.L  #$00067680,L0000E55A    ; external address
 L0000D9C2               BSR.W   L0000E562
@@ -640,8 +656,8 @@ L0000D9F4               BSR.W   L0000DAAA
 L0000D9F8               MOVE.L  #$00000003,D0
 L0000D9FA               JSR     L00004010
 L0000DA00               MOVE.W  #$9999,$0007c882        ; Panel
-L0000DA08               MOVE.W  #$00c8,D0
-L0000DA0C               BSR.W   L0000D1EE_loop
+L0000DA08               MOVE.W  #$00c8,D0               ; frames to wait/skip
+L0000DA0C               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000DA10               MOVE.W  #$2260,D0
 L0000DA14               LEA.L   $00067680,A0            ; External Address
 L0000DA1A               CLR.L   (A0)+
@@ -654,18 +670,18 @@ L0000DA3C               BNE.B   L0000DA42
 L0000DA3E               BRA.W   L0000DA7E 
 
 L0000DA42               MOVE.L  #$00000004,D0
-L0000DA44               JSR     L00004010
-L0000DA4A               LEA.L   L0000E6D6,A0
+L0000DA44               JSR     L00004010               ; Panel
+L0000DA4A               LEA.L   text_game_over,a0       ; L0000E6D6,A0
 L0000DA50               BRA.W   L0000DA5A 
 
 
-L0000DA54               LEA.L   L0000E6CA,A0
+L0000DA54               LEA.L   text_time_out,a0        ; L0000E6CA,A0
 L0000DA5A               BSR.W   L0000E6E4
 L0000DA5E               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000DA68               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000DA72               BSR.W   L0000E572
-L0000DA76               MOVE.W  #$00c8,D0
-L0000DA7A               BSR.W   L0000D1EE_loop
+L0000DA76               MOVE.W  #$00c8,D0               ; frames to wait/skip
+L0000DA7A               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000DA7E               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000DA88               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000DA92               BSR.W   L0000E562
@@ -677,20 +693,20 @@ L0000DAA6               BRA.W   L0000D112
 
 L0000DAAA               MOVE.W  #$9999,$0007c882        ; Panel
 L0000DAB2               BSR.W   L0000E110
-L0000DAB6               MOVE.W  #$0025,D0
-L0000DABA               BSR.W   L0000D1EE_loop
+L0000DAB6               MOVE.W  #$0025,D0               ; frames to wait/skip
+L0000DABA               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000DABE               BSR.W   L0000D4F4
 L0000DAC2               LEA.L   L0000D36C,A0
 L0000DAC8               LEA.L   L0000DB52,A1
 L0000DACE               MOVE.L  #$00000000,D2
-L0000DAD0               MOVE.W  #$0005,D0
-L0000DAD4               BSR.W   L0000D1EE_loop
+L0000DAD0               MOVE.W  #$0005,D0               ; frames to wait/skip
+L0000DAD4               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000DAD8               BSR.W   L0000DB2E
 L0000DADC               ADD.W   #$00000002,D2
 L0000DADE               CMP.W   #$0012,D2
 L0000DAE2               BNE.B   L0000DAD0 
-L0000DAE4               MOVE.W  #$0004,D0
-L0000DAE8               BSR.W   L0000D1EE_loop
+L0000DAE4               MOVE.W  #$0004,D0               ; frames to wait/skip
+L0000DAE8               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000DAEC               ADD.W   #$0001,D3
 L0000DAF0               CMP.W   #$000c,D3
 L0000DAF4               BNE.B   L0000DB0A 
@@ -706,8 +722,8 @@ L0000DB20               BSR.W   L0000DE94
 L0000DB24               RTS 
 
 
-L0000DB26               MOVE.W  #$0060,D0
-L0000DB2A               BRA.W   L0000D1EE_loop 
+L0000DB26               MOVE.W  #$0060,D0               ; frames to wait/skip
+L0000DB2A               BRA.W   wait_frame              ; L0000D1EE_loop 
 L0000DB2E               MOVE.W  $00(A0,D2.w),L0000E122
 L0000DB36               MOVE.W  $00(A1,D2.w),L0000E126
 L0000DB3E               MOVE.W  D3,L0000E154
@@ -722,66 +738,70 @@ L0000DB62               dc.w    $3039,$0000,$DC06
 
 
 L0000DB68               MOVE.W  D0,D1
-L0000DB6A               LEA.L   $0000dbf2,A0
+L0000DB6A               LEA.L   L0000DBF2,A0
 L0000DB70               ADD.W   D0,D0
-L0000DB72               MOVE.W  (A0, D0.W*1, $fffffffe) == $ffffeaf0,$0000e126
-L0000DB7A               MOVE.W  $0000e124,$0000e122
-L0000DB84               ADD.W   #$0003,$0000e122
-L0000DB8C               CMP.W   #$0080,$0000e124
-L0000DB94               BLT.W   #$0004 == $0000db9a 
+L0000DB72               MOVE.W  -2(A0,D0.W),L0000E126
+L0000DB7A               MOVE.W  L0000E124,L0000E122
+L0000DB84               ADD.W   #$0003,L0000E122
+L0000DB8C               CMP.W   #$0080,L0000E124
+L0000DB94               BLT.W   L0000DB9A 
 L0000DB98               ADD.W   #$00000004,D1
-L0000DB9A               MOVE.W  D1,$0000e154
-L0000DBA0               BSR.W   #$02f2 == $0000de94
+L0000DB9A               MOVE.W  D1,L0000E154
+L0000DBA0               BSR.W   L0000DE94
 L0000DBA4               RTS 
 
 
-L0000DBA6               MOVE.W  $0000dc06,D0
+L0000DBA6               MOVE.W  L0000DC06,D0
 L0000DBAC               MOVE.W  D0,D1
-L0000DBAE               LEA.L   $0000dbf2,A0
+L0000DBAE               LEA.L   L0000DBF2,A0
 L0000DBB4               ADD.W   D0,D0
-L0000DBB6               MOVE.W  (A0, D0.W*1, $fffffffe) == $ffffeaf0,$0000e126
-L0000DBBE               MOVE.W  $0000e124,$0000e122
-L0000DBC8               ADD.W   #$0001,$0000e122
-L0000DBD0               CMP.W   #$0080,$0000e124
-L0000DBD8               BLT.W   #$0004 == $0000dbde 
+L0000DBB6               MOVE.W  -2(A0,D0.w),L0000E126
+L0000DBBE               MOVE.W  L0000E124,L0000E122
+L0000DBC8               ADD.W   #$0001,L0000E122
+L0000DBD0               CMP.W   #$0080,L0000E124
+L0000DBD8               BLT.W   L0000DBDE 
 L0000DBDC               ADD.W   #$00000004,D1
-L0000DBDE               MOVE.W  #$000a,$0000e154
-L0000DBE6               BRA.W   #$02ac == $0000de94 
-L0000DBEA               CLR.W   $0000dc0e
+L0000DBDE               MOVE.W  #$000a,L0000E154
+L0000DBE6               BRA.W   L0000DE94 
+L0000DBEA               CLR.W   L0000DC0E
 L0000DBF0               RTS 
 
 
-0000DBF2                    dc.w    $0005,$002A,$004F,$0074,$0003,$0000,$0000,$0000
-0000DC02                    dc.w    $0000,$0000,$0001,$0000,$0000,$0000,$0000,$0000
-0000DC12                    dc.w    $0000,$0000,$0000,$0000,$0000
+L0000DBF2               dc.w    $0005,$002A,$004F,$0074,$0003,$0000,$0000
+L0000DC00               dc.w    $0000
+L0000DC02               dc.w    $0000,$0000,$0001,$0000,$0000,$0000
+L0000DC0E               dc.w    $0000,$0000
+L0000DC12               dc.w    $0000
+L0000DC14               dc.w    $0000,$0000
+L0000DC18               dc.w    $0000,$0000
 
 
-L0000DC1C               MOVE.L  #$00001a20,$0000dc14
-L0000DC26               MOVE.L  #$0005ed00,$0000dc18
-L0000DC30               MOVE.W  #$002c,$0000ee00
-L0000DC38               BSR.W   #$000c == $0000dc46
-L0000DC3C               BSR.W   #$f96a == $0000d5a8
-L0000DC40               BSR.W   #$009c == $0000dcde
+L0000DC1C               MOVE.L  #$00001a20,L0000DC14        ; external address?
+L0000DC26               MOVE.L  #$0005ed00,L0000DC18        ; external address?
+L0000DC30               MOVE.W  #$002c,L0000EE00
+L0000DC38               BSR.W   L0000DC46
+L0000DC3C               BSR.W   L0000D5A8
+L0000DC40               BSR.W   L0000DCDE
 L0000DC44               RTS 
 
 
 
 
-L0000DC46               LEA.L   $0000e13e,A1
-L0000DC4C               LEA.L   $0000e146,A2
-L0000DC52               LEA.L   $0000e132,A3
-L0000DC58               LEA.L   $0000e14c,A4
-L0000DC5E               LEA.L   $0000e152,A5
-L0000DC64               CLR.W   $0000e142
-L0000DC6A               CLR.L   $0000e136
-L0000DC70               BSR.W   #$f8ea == $0000d55c
+L0000DC46               LEA.L   L0000E13E,A1
+L0000DC4C               LEA.L   L0000E146,A2
+L0000DC52               LEA.L   L0000E132,A3
+L0000DC58               LEA.L   L0000E14C,A4
+L0000DC5E               LEA.L   L0000E152,A5
+L0000DC64               CLR.W   L0000E142
+L0000DC6A               CLR.L   L0000E136
+L0000DC70               BSR.W   L0000D55C
 L0000DC74               CLR.W   $00dff042
 L0000DC7A               MOVE.W  #$09f0,$00dff040
 L0000DC82               MOVE.W  #$0002,D7
-L0000DC86               MOVE.L  (A1),D2
-L0000DC88               BEQ.W   #$0044 == $0000dcce 
+L0000DC86_loop          MOVE.L  (A1),D2
+L0000DC88               BEQ.W   L0000DCCE 
 L0000DC8C               MOVE.W  (A2),D0
-L0000DC8E               BEQ.B   #$0000003e == $0000dcce 
+L0000DC8E               BEQ.B   L0000DCCE 
 L0000DC90               MOVE.W  D0,D1
 L0000DC92               AND.W   #$003f,D0
 L0000DC96               ASL.W   #$00000001,D0
@@ -789,65 +809,65 @@ L0000DC98               LSR.W   #$00000006,D1
 L0000DC9A               MULU.W  D1,D0
 L0000DC9C               MOVE.L  (A3),D3
 L0000DC9E               MOVE.L  #$00000003,D6
-L0000DCA0               BSR.W   #$f8ba == $0000d55c
+L0000DCA0_loop          BSR.W   L0000D55C
 L0000DCA4               MOVE.L  D2,$00dff054
 L0000DCAA               MOVE.L  D3,$00dff050
 L0000DCB0               MOVE.W  (A4),$00dff066
 L0000DCB6               MOVE.W  (A5),$00dff064
 L0000DCBC               MOVE.W  (A2),$00dff058
 L0000DCC2               ADD.L   D0,D3
-L0000DCC4               ADD.L   $0000dc14,D2
-L0000DCCA               DBF.W   D6,#$ffd4 == $0000dca0 
+L0000DCC4               ADD.L   L0000DC14,D2
+L0000DCCA               DBF.W   D6,L0000DCA0_loop 
 L0000DCCE               SUBA.L  #$00000004,A1
 L0000DCD0               SUBA.L  #$00000002,A2
 L0000DCD2               SUBA.L  #$00000004,A3
 L0000DCD4               SUBA.L  #$00000002,A4
 L0000DCD6               SUBA.L  #$00000002,A5
-L0000DCD8               DBF.W   D7,#$ffac == $0000dc86 
+L0000DCD8               DBF.W   D7,L0000DC86_loop 
 L0000DCDC               RTS 
 
 
-L0000DCDE               BSR.W   #$0430 == $0000e110
-L0000DCE2               MOVE.L  #$00073000,$0000e2c0
-L0000DCEC               LEA.L   $0000e122,A0
-L0000DCF2               LEA.L   $0000e136,A1
-L0000DCF8               LEA.L   $0000e142,A2
-L0000DCFE               LEA.L   $0000e12a,A3
-L0000DD04               LEA.L   $0000e148,A4
-L0000DD0A               LEA.L   $0000e14e,A5
-L0000DD10               LEA.L   $0000e154,A6
+L0000DCDE               BSR.W   L0000E110
+L0000DCE2               MOVE.L  #$00073000,L0000E2C0        ; external address?
+L0000DCEC               LEA.L   L0000E122,A0
+L0000DCF2               LEA.L   L0000E136,A1
+L0000DCF8               LEA.L   L0000E142,A2
+L0000DCFE               LEA.L   L0000E12A,A3
+L0000DD04               LEA.L   L0000E148,A4
+L0000DD0A               LEA.L   L0000E14E,A5
+L0000DD10               LEA.L   L0000E154,A6
 L0000DD16               MOVE.W  #$0001,D7
-L0000DD1A               CLR.L   $0000e2e2
+L0000DD1A               CLR.L   L0000E2E2
 L0000DD20               CMP.W   #$0001,D7
-L0000DD24               BEQ.W   #$015a == $0000de80 
-L0000DD28               BSR.W   #$0288 == $0000dfb2
+L0000DD24               BEQ.W   L0000DE80 
+L0000DD28               BSR.W   L0000DFB2
 L0000DD2C               TST.W   (A2)
-L0000DD2E               BEQ.W   #$0150 == $0000de80 
-L0000DD32               BSR.W   #$f828 == $0000d55c
+L0000DD2E               BEQ.W   L0000DE80 
+L0000DD32               BSR.W   L0000D55C
 L0000DD36               MOVE.W  #$09f0,$00dff040
 L0000DD3E               CLR.W   $00dff066
 L0000DD44               MOVE.W  (A4),$00dff064
-L0000DD4A               MOVE.L  $0000e2c0,(A3)
-L0000DD50               MOVE.L  $0000e2e2,D0
-L0000DD56               BEQ.W   #$0128 == $0000de80 
+L0000DD4A               MOVE.L  L0000E2C0,(A3)
+L0000DD50               MOVE.L  L0000E2E2,D0
+L0000DD56               BEQ.W   L0000DE80 
 L0000DD5A               MOVE.L  D0,(A1)
-L0000DD5C               MOVE.L  $0000e2ca,D2
+L0000DD5C               MOVE.L  L0000E2CA,D2
 L0000DD62               MOVE.L  #$00000003,D6
-L0000DD64               BSR.W   #$f7f6 == $0000d55c
-L0000DD68               MOVE.L  $0000e2c0,$00dff054
+L0000DD64               BSR.W   L0000D55C
+L0000DD68               MOVE.L  L0000E2C0,$00dff054
 L0000DD72               MOVE.L  D0,$00dff050
 L0000DD78               MOVE.W  (A2),$00dff058
-L0000DD7E               ADD.L   D2,$0000e2c0
-L0000DD84               ADD.L   $0000dc14,D0
-L0000DD8A               DBF.W   D6,#$ffd8 == $0000dd64 
+L0000DD7E               ADD.L   D2,L0000E2C0
+L0000DD84               ADD.L   L0000DC14,D0
+L0000DD8A               DBF.W   D6,L0000DD64 
 L0000DD8E               MOVE.W  #$0fca,D1
-L0000DD92               OR.W    $0000e2e8,D1
-L0000DD98               BSR.W   #$f7c2 == $0000d55c
+L0000DD92               OR.W    L0000E2E8,D1
+L0000DD98               BSR.W   L0000D55C
 L0000DD9C               MOVE.W  D1,$00dff040
-L0000DDA2               MOVE.W  $0000e2e8,$00dff042
-L0000DDAC               MOVE.L  $0000e2e2,D0
-L0000DDB2               MOVE.L  $0000e2ce,$00dff04c
-L0000DDBC               MOVE.L  $0000e2de,$00dff050
+L0000DDA2               MOVE.W  L0000E2E8,$00dff042
+L0000DDAC               MOVE.L  L0000E2E2,D0
+L0000DDB2               MOVE.L  L0000E2CE,$00dff04c
+L0000DDBC               MOVE.L  L0000E2DE,$00dff050
 L0000DDC6               MOVE.L  D0,$00dff048
 L0000DDCC               MOVE.L  D0,$00dff054
 L0000DDD2               CLR.W   $00dff064
@@ -855,28 +875,24 @@ L0000DDD8               CLR.W   $00dff062
 L0000DDDE               MOVE.W  (A4),$00dff060
 L0000DDE4               MOVE.W  (A4),$00dff066
 L0000DDEA               MOVE.W  (A2),$00dff058
-L0000DDF0               ADD.L   $0000dc14,D0
-L0000DDF6               BSR.W   #$f764 == $0000d55c
-L0000DDFA               MOVE.L  $0000e2d2,$00dff04c
-L0000DE04               MOVE.L  $0000e2de,$00dff050
+L0000DDF0               ADD.L   L0000DC14,D0
+L0000DDF6               BSR.W   L0000D55C
+L0000DDFA               MOVE.L  L0000E2D2,$00dff04c
+L0000DE04               MOVE.L  L0000E2DE,$00dff050
 L0000DE0E               MOVE.L  D0,$00dff048
 L0000DE14               MOVE.L  D0,$00dff054
-L0000DE1A               MOVE.W  (A2),$00dff058
-L0000DE20               ADD.L   $0000dc14,D0
-L0000DE26               BSR.W   #$f734 == $0000d55c
-
-
-
-
-L0000DE2A               MOVE.L  $0000e2d6,$00dff04c
-L0000DE34               MOVE.L  $0000e2de,$00dff050
+L0000DE1A_loop          MOVE.W  (A2),$00dff058
+L0000DE20               ADD.L   L0000DC14,D0
+L0000DE26               BSR.W   L0000D55C
+L0000DE2A               MOVE.L  L0000E2D6,$00dff04c
+L0000DE34               MOVE.L  L0000E2DE,$00dff050
 L0000DE3E               MOVE.L  D0,$00dff048
 L0000DE44               MOVE.L  D0,$00dff054
 L0000DE4A               MOVE.W  (A2),$00dff058
-L0000DE50               ADD.L   $0000dc14,D0
-L0000DE56               BSR.W   #$f704 == $0000d55c
-L0000DE5A               MOVE.L  $0000e2da,$00dff04c
-L0000DE64               MOVE.L  $0000e2de,$00dff050
+L0000DE50               ADD.L   L0000DC14,D0
+L0000DE56               BSR.W   L0000D55C
+L0000DE5A               MOVE.L  L0000E2DA,$00dff04c
+L0000DE64               MOVE.L  L0000E2DE,$00dff050
 L0000DE6E               MOVE.L  D0,$00dff048
 L0000DE74               MOVE.L  D0,$00dff054
 L0000DE7A               MOVE.W  (A2),$00dff058
@@ -887,27 +903,27 @@ L0000DE86               ADDA.L  #$00000004,A3
 L0000DE88               ADDA.L  #$00000002,A4
 L0000DE8A               ADDA.L  #$00000002,A5
 L0000DE8C               ADDA.L  #$00000002,A6
-L0000DE8E               DBF.W   D7,#$fe8a == $0000dd1a 
+L0000DE8E               DBF.W   D7,L0000DD1A_loop 
 L0000DE92               RTS 
 
 
 
-L0000DE94               LEA.L   $0000e122,A0
-L0000DE9A               LEA.L   $0000e142,A2
-L0000DEA0               LEA.L   $0000e12a,A3
-L0000DEA6               LEA.L   $0000e148,A4
-L0000DEAC               LEA.L   $0000e14e,A5
-L0000DEB2               LEA.L   $0000e154,A6
+L0000DE94               LEA.L   L0000E122,A0
+L0000DE9A               LEA.L   L0000E142,A2
+L0000DEA0               LEA.L   L0000E12A,A3
+L0000DEA6               LEA.L   L0000E148,A4
+L0000DEAC               LEA.L   L0000E14E,A5
+L0000DEB2               LEA.L   L0000E154,A6
 L0000DEB8               MOVE.L  #$00000000,D7
-L0000DEBA               BSR.W   #$00f6 == $0000dfb2
+L0000DEBA               BSR.W   L0000DFB2
 L0000DEBE               MOVE.W  #$0fca,D1
-L0000DEC2               OR.W    $0000e2e8,D1
+L0000DEC2               OR.W    L0000E2E8,D1
 L0000DEC8               MOVE.W  D1,$00dff040
-L0000DECE               MOVE.W  $0000e2e8,$00dff042
-L0000DED8               MOVE.L  $0000e2e2,D0
-L0000DEDE               BEQ.W   #$ffb2 == $0000de92 
-L0000DEE2               MOVE.L  $0000e2ce,$00dff04c
-L0000DEEC               MOVE.L  $0000e2de,$00dff050
+L0000DECE               MOVE.W  L0000E2E8,$00dff042
+L0000DED8               MOVE.L  L0000E2E2,D0
+L0000DEDE               BEQ.W   L0000DE92 
+L0000DEE2               MOVE.L  L0000E2CE,$00dff04c
+L0000DEEC               MOVE.L  L0000E2DE,$00dff050
 L0000DEF6               MOVE.L  D0,$00dff048
 L0000DEFC               MOVE.L  D0,$00dff054
 L0000DF02               CLR.W   $00dff064
@@ -915,24 +931,24 @@ L0000DF08               CLR.W   $00dff062
 L0000DF0E               MOVE.W  (A4),$00dff060
 L0000DF14               MOVE.W  (A4),$00dff066
 L0000DF1A               MOVE.W  (A2),$00dff058
-L0000DF20               ADD.L   $0000dc14,D0
-L0000DF26               BSR.W   #$f634 == $0000d55c
-L0000DF2A               MOVE.L  $0000e2d2,$00dff04c
-L0000DF34               MOVE.L  $0000e2de,$00dff050
+L0000DF20               ADD.L   L0000DC14,D0
+L0000DF26               BSR.W   L0000D55C
+L0000DF2A               MOVE.L  L0000E2D2,$00dff04c
+L0000DF34               MOVE.L  L0000E2DE,$00dff050
 L0000DF3E               MOVE.L  D0,$00dff048
 L0000DF44               MOVE.L  D0,$00dff054
 L0000DF4A               MOVE.W  (A2),$00dff058
-L0000DF50               ADD.L   $0000dc14,D0
-L0000DF56               BSR.W   #$f604 == $0000d55c
-L0000DF5A               MOVE.L  $0000e2d6,$00dff04c
-L0000DF64               MOVE.L  $0000e2de,$00dff050
+L0000DF50               ADD.L   L0000DC14,D0
+L0000DF56               BSR.W   L0000D55C
+L0000DF5A               MOVE.L  L0000E2D6,$00dff04c
+L0000DF64               MOVE.L  L0000E2DE,$00dff050
 L0000DF6E               MOVE.L  D0,$00dff048
 L0000DF74               MOVE.L  D0,$00dff054
 L0000DF7A               MOVE.W  (A2),$00dff058
-L0000DF80               ADD.L   $0000dc14,D0
-L0000DF86               BSR.W   #$f5d4 == $0000d55c
-L0000DF8A               MOVE.L  $0000e2da,$00dff04c
-L0000DF94               MOVE.L  $0000e2de,$00dff050
+L0000DF80               ADD.L   L0000DC14,D0
+L0000DF86               BSR.W   L0000D55C
+L0000DF8A               MOVE.L  L0000E2DA,$00dff04c
+L0000DF94               MOVE.L  L0000E2DE,$00dff050
 L0000DF9E               MOVE.L  D0,$00dff048
 L0000DFA4               MOVE.L  D0,$00dff054
 L0000DFAA               MOVE.W  (A2),$00dff058
@@ -941,92 +957,92 @@ L0000DFB0               RTS
 
 
 L0000DFB2               MOVE.L  #$00000000,D0
-L0000DFB4               MOVE.W  $0000ee00,(A4)
+L0000DFB4               MOVE.W  L0000EE00,(A4)
 L0000DFBA               MOVEM.L A0,-(A7)
 L0000DFBE               MOVE.W (A6),D0
 L0000DFC0               MULU.W  #$0018,D0
-L0000DFC4               LEA.L   $0000e158,A0
-L0000DFCA               MOVE.L  (A0, D0.L*1, $00) == $ffffeaf2,$0000e2c6
-L0000DFD2               MOVE.L  (A0, D0.L*1, $04) == $ffffeaf6,$0000e2ce
-L0000DFDA               MOVE.L  (A0, D0.L*1, $08) == $ffffeafa,$0000e2d2
-L0000DFE2               MOVE.L  (A0, D0.L*1, $0c) == $ffffeafe,$0000e2d6
-L0000DFEA               MOVE.L  (A0, D0.L*1, $10) == $ffffeb02,$0000e2da
-L0000DFF2               MOVE.L  (A0, D0.L*1, $14) == $ffffeb06,$0000e2de
+L0000DFC4               LEA.L   L0000E158,A0            ; 24 bytes struct (6 longs)
+L0000DFCA               MOVE.L  $00(A0,D0.l),L0000E2C6
+L0000DFD2               MOVE.L  $04(A0,D0.l),L0000E2CE
+L0000DFDA               MOVE.L  $08(A0,D0.l),L0000E2D2
+L0000DFE2               MOVE.L  $0c(A0,D0.l),L0000E2D6
+L0000DFEA               MOVE.L  $10(A0,D0.l),L0000E2DA
+L0000DFF2               MOVE.L  $14(A0,D0.l),L0000E2DE
 L0000DFFA               MOVEM.L (A7)+,A0
 L0000DFFE               MOVE.W  (A0),D0
 L0000E000               MOVE.W  D0,D2
 L0000E002               AND.W   #$000f,D2
 L0000E006               LSR.W   #$00000003,D0
-L0000E008               MOVE.W  (A0, $0004) == $00000b66,D1
+L0000E008               MOVE.W  $0004(A0),D1
 L0000E00C               ADD.W   #$0100,D1
 L0000E010               EXT.W   D0
 L0000E012               ADD.W   #$0100,D0
-L0000E016               MOVE.W  $0000e2c8,D4
+L0000E016               MOVE.W  L0000E2C8,D4
 L0000E01C               MOVE.W  D1,D3
 L0000E01E               CMP.W   #$0197,D3
-L0000E022               BGT.W   #$0016 == $0000e03a 
+L0000E022               BGT.W   L0000E03A 
 L0000E026               ADD.W   D4,D3
 L0000E028               CMP.W   #$0197,D3
-L0000E02C               BLT.W   #$0014 == $0000e042 
+L0000E02C               BLT.W   L0000E042 
 L0000E030               SUB.W   #$0197,D3
 L0000E034               SUB.W   D3,D4
-L0000E036               BEQ.B   #$00000002 == $0000e03a 
-L0000E038               BPL.B   #$00000008 == $0000e042 
-L0000E03A               CLR.L   $0000e2e2
+L0000E036               BEQ.B   L0000E03A 
+L0000E038               BPL.B   L0000E042 
+L0000E03A               CLR.L   L0000E2E2
 L0000E040               RTS 
 
 
 
 L0000E042               CMP.W   #$0100,D1
-L0000E046               BGT.W   #$0044 == $0000e08c 
+L0000E046               BGT.W   L0000E08C 
 L0000E04A               MOVE.W  D1,D3
 L0000E04C               ADD.W   D4,D3
 L0000E04E               SUB.W   #$0100,D3
-L0000E052               BMI.W   #$ffe6 == $0000e03a 
+L0000E052               BMI.W   L0000E03A 
 L0000E056               MOVE.W  D3,D4
-L0000E058               BEQ.W   #$ffe0 == $0000e03a 
-L0000E05C               SUB.W   $0000e2c8,D3
+L0000E058               BEQ.W   L0000E03A 
+L0000E05C               SUB.W   L0000E2C8,D3
 L0000E062               NEG.W   D3
-L0000E064               MULU.W  $0000e2c6,D3
-L0000E06A               ADD.L   D3,$0000e2ce
-L0000E070               ADD.L   D3,$0000e2d2
-L0000E076               ADD.L   D3,$0000e2d6
-L0000E07C               ADD.L   D3,$0000e2da
-L0000E082               ADD.L   D3,$0000e2de
+L0000E064               MULU.W  L0000E2C6,D3
+L0000E06A               ADD.L   D3,L0000E2CE
+L0000E070               ADD.L   D3,L0000E2D2
+L0000E076               ADD.L   D3,L0000E2D6
+L0000E07C               ADD.L   D3,L0000E2DA
+L0000E082               ADD.L   D3,L0000E2DE
 L0000E088               MOVE.W  #$0100,D1
 L0000E08C               CLR.W   (A5)
 L0000E08E               CMP.W   #$0130,D0
-L0000E092               BGT.W   #$ffa6 == $0000e03a 
+L0000E092               BGT.W   L0000E03A 
 L0000E096               CMP.W   #$0100,D0
-L0000E09A               BGT.W   #$0012 == $0000e0ae 
+L0000E09A               BGT.W   L0000E0AE 
 L0000E09E               MOVE.W  D0,D3
 L0000E0A0               SUB.W   #$0100,D3
-L0000E0A4               BMI.W   #$ff94 == $0000e03a 
+L0000E0A4               BMI.W   L0000E03A 
 L0000E0A8               NOP 
 L0000E0AA               MOVE.W  #$0100,D0
 L0000E0AE               MOVE.W  D0,D3
-L0000E0B0               ADD.W   $0000e2c6,D3
+L0000E0B0               ADD.W   L0000E2C6,D3
 L0000E0B6               CMP.W   #$0130,D3
-L0000E0BA               BLT.W   #$0006 == $0000e0c2 
-L0000E0BE               BRA.W   #$ff7a == $0000e03a 
+L0000E0BA               BLT.W   L0000E0C2 
+L0000E0BE               BRA.W   L0000E03A 
 
 
-L0000E0C2               MOVE.W  $0000e2c6,D6
+L0000E0C2               MOVE.W  L0000E2C6,D6
 L0000E0C8               SUB.W   D6,(A4)
 L0000E0CA               SUB.W   #$0100,D0
 L0000E0CE               SUB.W   #$0100,D1
-L0000E0D2               MULU.W  $0000ee00,D1
+L0000E0D2               MULU.W  L0000EE00,D1
 L0000E0D8               ADD.L   D1,D0
-L0000E0DA               MOVE.L  $0000dc18,D1
+L0000E0DA               MOVE.L  L0000DC18,D1
 L0000E0E0               ADD.L   D0,D1
-L0000E0E2               MOVE.L  D1,$0000e2e2
+L0000E0E2               MOVE.L  D1,L0000E2E2
 L0000E0E8               ASL.W   #$00000008,D2
 L0000E0EA               ASL.W   #$00000004,D2
-L0000E0EC               MOVE.W  D2,$0000e2e8
-L0000E0F2               MOVE.W  $0000e2c6,D5
+L0000E0EC               MOVE.W  D2,L0000E2E8
+L0000E0F2               MOVE.W  L0000E2C6,D5
 L0000E0F8               MULU.W  D4,D5
-L0000E0FA               MOVE.L  D5,$0000e2ca
-L0000E100               MOVE.W  $0000e2c6,D5
+L0000E0FA               MOVE.L  D5,L0000E2CA
+L0000E100               MOVE.W  L0000E2C6,D5
 L0000E106               LSR.W   #$00000001,D5
 L0000E108               ASL.W   #$00000006,D4
 L0000E10A               OR.W    D4,D5
@@ -1034,20 +1050,38 @@ L0000E10C               MOVE.W  D5,(A2)
 L0000E10E               RTS 
 
 
-
-L0000E110               LEA.L   $0000e142,A0
+                    ; ------ clear 3 words @ $E142 -----
+L0000E110               LEA.L   L0000E142,A0
 L0000E116               MOVE.W  #$0002,D7
-L0000E11A               CLR.W   (A0)+
-L0000E11C               DBF.W   D7,#$fffc == $0000e11a 
+L0000E11A_loop          CLR.W   (A0)+
+L0000E11C               DBF.W   D7,L0000E11A_loop 
 L0000E120               RTS 
 
 
 
-L0000E122                dc.w    $0000,$0018,$0000,$0012,$0000,$0000,$0000,$0000
-L0000E132                dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L0000E142                dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L0000E152                dc.w    $0000,$0000,$0000,$0008,$0055,$0001,$64C0,$0001
-L0000E162                dc.w    $6770,$0001,$6A20,$0001,$6CD0,$0001,$6F80,$0006
+L0000E122               dc.w    $0000,$0018,$0000,$0012
+
+L0000E12A               dc.w    $0000,$0000
+L0000E12E               dc.w    $0000,$0000
+L0000E132               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+
+L0000E142               dc.w    $0000,$0000,$0000
+
+L0000E148               dc.w    $0000,$0000
+L0000E14C               dc.w    $0000
+L0000E14E               dc.w    $0000,$0000
+L0000E152               dc.w    $0000
+L0000E154               dc.w    $0000,$0000
+
+                        ; ; 24 bytes struct (6 longs)
+L0000E158               dc.w    $0008,$0055
+                        dc.w    $0001,$64C0
+                        dc.w    $0001,$6770
+                        dc.w    $0001,$6A20
+                        dc.w    $0001,$6CD0
+                        dc.w    $0001,$6F80
+
+L0000E170                dc.w    $0006
 L0000E172                dc.w    $001E,$0001,$4E40,$0001,$4EF4,$0001,$4FA8,$0001
 L0000E182                dc.w    $505C,$0000,$F5DA,$0006,$001E,$0001,$5110,$0001
 L0000E192                dc.w    $51C4,$0001,$5278,$0001,$532C,$0000,$F5DA,$0006
@@ -1068,208 +1102,225 @@ L0000E272                dc.w    $744C,$0000,$F5DA,$000C,$0068,$0001,$7500,$0001
 L0000E282                dc.w    $79EC,$0001,$7ED8,$0001,$83C4,$0000,$EF9A,$0006
 L0000E292                dc.w    $001E,$0001,$88B0,$0001,$8964,$0001,$8A18,$0001
 L0000E2A2                dc.w    $8ACC,$0000,$F5DA,$000C,$0027,$0001,$8B80,$0001
-L0000E2B2                dc.w    $8D60,$0001,$8F40,$0001,$9120,$0000,$EF9A,$0000
-L0000E2C2                dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L0000E2D2                dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-L0000E2E2                dc.w    $0000,$0000,$0000,$0000  
+L0000E2B2                dc.w    $8D60,$0001,$8F40,$0001,$9120,$0000,$EF9A
+
+L0000E2C0               dc.w    $0000
+L0000E2C2               dc.w    $0000,$0000
+L0000E2C6               dc.w    $0000
+L0000E2C8               dc.w    $0000
+L0000E2CA               dc.w    $0000,$0000
+L0000E2CE               dc.w    $0000,$0000
+L0000E2D2               dc.w    $0000,$0000
+L0000E2D6               dc.w    $0000,$0000
+L0000E2DA               dc.w    $0000,$0000
+L0000E2DE               dc.w    $0000,$0000
+
+L0000E2E2               dc.w    $0000,$0000,$0000
+L0000E2E8               dc.w    $0000  
 
 L0000E2EA               RTS     ; 4e75
 
 
 L0000E2EC               MOVEM.L D0-D7/A0-A6,-(A7)
-L0000E2F0               BSR.W   #$0020 == $0000e312
+L0000E2F0               BSR.W   L000E312
 L0000E2F4               MOVEM.L (A7)+,D0-D7/A0-A6
 L0000E2F8               RTS 
 
 
 L0000E2FA               ADD.W   #$0001,D0
-L0000E2FE               BRA.W   #$fffa == $0000e2fa 
+L0000E2FE               BRA.W   L0000E2FA 
 
 
-0000E302                dc.w    $0000,$3030,$3030,$FF00,$0000 
+L0000E302               dc.w    $0000
+L0000E304               dc.w    $3030,$3030,$FF00           ; debug value to print '0000'
+L0000E30A               dc.w    $0000 
 
 
-L0000E30C               CLR.W   $0000e30a
-L0000E312               MOVE.L  #$0007c89a,$0000edfc
-L0000E31C               LEA.L   $0000e304,A6
-L0000E322               LEA.L   $0000e36e,A5
-L0000E328               MOVE.W  D1,$0000e302
+                ; ----------- debug text display ------------
+                ; write a debug value into the panel area
+                ;
+L0000E30C               CLR.W   L0000E30A
+L0000E312               MOVE.L  #$0007c89a,L0000EDFC        ; panel
+L0000E31C               LEA.L   L0000E304,A6
+L0000E322               LEA.L   L0000E36E,A5                ; array of characters 0-9A-F
+L0000E328               MOVE.W  D1,L0000E302
 L0000E32E               MOVE.W  D0,D1
 L0000E330               LSR.W   #$00000008,D0
 L0000E332               LSR.W   #$00000004,D0
-L0000E334               MOVE.B  (A5, D0.W*1, $00) == $00bfb090,D2
+L0000E334               MOVE.B  $00(A5,D0.w),D2
 L0000E338               MOVE.B  D2,(A6)+
 L0000E33A               MOVE.W  D1,D0
 L0000E33C               LSR.W   #$00000008,D0
 L0000E33E               AND.W   #$000f,D0
-L0000E342               MOVE.B  (A5, D0.W*1, $00) == $00bfb090,D2
+L0000E342               MOVE.B  $00(A5,D0.w),D2
 L0000E346               MOVE.B  D2,(A6)+
 L0000E348               MOVE.W  D1,D0
 L0000E34A               LSR.W   #$00000004,D0
 L0000E34C               AND.W   #$000f,D0
-L0000E350               MOVE.B  (A5, D0.W*1, $00) == $00bfb090,D2
+L0000E350               MOVE.B  $00(A5,D0.w),D2
 L0000E354               MOVE.B  D2,(A6)+
 L0000E356               MOVE.W  D1,D0
-L0000E356               MOVE.W  D1,D0
 L0000E358               AND.W   #$000f,D0
-L0000E35C               MOVE.B  (A5, D0.W*1, $00) == $00bfb090,D2
+L0000E35C               MOVE.B  $00(A5,D0.w),D2
 L0000E360               MOVE.B  D2,(A6)+
-L0000E362               LEA.L   $0000e302,A6
-L0000E368               BRA.W   #$0018 == $0000e382 
+L0000E362               LEA.L   L0000E302,A6
+L0000E368               BRA.W   L0000E382 
 L0000E36C               RTS 
 
 
 
-0000E36E        dc.w    $3031,$3233,$3435,$3637,$3839,$4142,$4344,$4546     ;0123456789ABCDEF
-0000E37E        dc.w    $0000,$0000 
+L0000E36E               dc.w    $3031,$3233,$3435,$3637,$3839,$4142,$4344,$4546     ;0123456789ABCDEF
+L0000E37E               dc.b    $00
+L0000E37F               dc.b    $00
+L0000E380               dc.b    $00,$00 
 
 
 
 
-L0000E382               MOVE.B  (A6)+,$0000e37f
-L0000E388               MOVE.B  (A6)+,$0000e380
+L0000E382               MOVE.B  (A6)+,L0000E37F
+L0000E388               MOVE.B  (A6)+,L0000E380
 L0000E38E               MOVE.L  #$00000000,D0
 L0000E390               MOVE.L  #$00000000,D1
-L0000E392               MOVE.B  $0000e380,D1
+L0000E392               MOVE.B  L0000E380,D1
 L0000E398               MULU.W  #$002c,D1
-L0000E39C               ADD.W   $0000e37e,D1
-L0000E3A2               MOVE.B  (A6)+,D0
+L0000E39C               ADD.W   L0000E37E,D1
+L0000E3A2_loop          MOVE.B  (A6)+,D0
 L0000E3A4               AND.W   #$00ff,D0
 L0000E3A8               CMP.B   #$ff,D0
-L0000E3AC               BEQ.W   #$0132 == $0000e4e0 
+L0000E3AC               BEQ.W   L0000E4E0 
 L0000E3B0               AND.W   #$00ff,D0
 L0000E3B4               CMP.B   #$20,D0
-L0000E3B8               BEQ.W   #$003a == $0000e3f4 
+L0000E3B8               BEQ.W   L0000E3F4 
 L0000E3BC               CMP.B   #$2f,D0
-L0000E3C0               BLE.W   #$0046 == $0000e408 
+L0000E3C0               BLE.W   L0000E408 
 L0000E3C4               CMP.B   #$39,D0
-L0000E3C8               BLE.W   #$002a == $0000e3f4 
+L0000E3C8               BLE.W   L0000E3F4 
 L0000E3CC               CMP.B   #$40,D0
-L0000E3D0               BLE.W   #$0022 == $0000e3f4 
+L0000E3D0               BLE.W   L0000E3F4 
 L0000E3D4               CMP.B   #$5c,D0
-L0000E3D8               BLE.W   #$0022 == $0000e3fc 
+L0000E3D8               BLE.W   L0000E3FC 
 L0000E3DC               CMP.B   #$60,D0
-L0000E3E0               BLE.W   #$0026 == $0000e408 
+L0000E3E0               BLE.W   L0000E408 
 L0000E3E4               CMP.B   #$7a,D0
-L0000E3E8               BGT.W   #$001e == $0000e408 
+L0000E3E8               BGT.W   L0000E408 
 L0000E3EC               SUB.B   #$60,D0
-L0000E3F0               BRA.W   #$001a == $0000e40c 
+L0000E3F0               BRA.W   L0000E40C 
 
 L0000E3F4               AND.W   #$003f,D0
-L0000E3F8               BRA.W   #$0012 == $0000e40c 
+L0000E3F8               BRA.W   L0000E40C 
 
 L0000E3FC               AND.W   #$003f,D0
 L0000E400               ADD.W   #$0040,D0
-L0000E404               BRA.W   #$0006 == $0000e40c 
+L0000E404               BRA.W   L0000E40C 
 
 L0000E408               MOVE.B  #$00,D0
 L0000E40C               ASL.W   #$00000003,D0
-L0000E40E               LEA.L   $00019300,A0
+L0000E40E               LEA.L   L00019300,A0            ; font gfx address?
 L0000E414               ADDA.W  D0,A0
-L0000E416               MOVEA.L $0000edfc,A1
-L0000E41C               TST.W   $0000ee04
-L0000E422               BNE.B   #$0000005e == $0000e482 
-L0000E424               MOVE.B  (A0),(A1, D1.W*1, $00) == $000007ff
+L0000E416               MOVEA.L L0000EDFC,A1
+L0000E41C               TST.W   L0000EE04
+L0000E422               BNE.B   L0000E482 
+L0000E424               MOVE.B  (A0),$00(A1,D1.w)
 L0000E428               ADDA.L  #$0000002c,A1
-L0000E42E               MOVE.B  (A0, $0001) == $00000b63,(A1, D1.W*1, $00) == $000007ff
+L0000E42E               MOVE.B  $01(A0),$00(A1,D1.w)
 L0000E434               ADDA.L  #$0000002c,A1
-L0000E43A               MOVE.B  (A0, $0002) == $00000b64,(A1, D1.W*1, $00) == $000007ff
+L0000E43A               MOVE.B  $02(A0),$00(A1,D1.w)
 L0000E440               ADDA.L  #$0000002c,A1
-L0000E446               MOVE.B  (A0, $0003) == $00000b65,(A1, D1.W*1, $00) == $000007ff
+L0000E446               MOVE.B  $03(A0),$00(A1,D1.w)
 L0000E44C               ADDA.L  #$0000002c,A1
-L0000E452               MOVE.B  (A0, $0004) == $00000b66,(A1, D1.W*1, $00) == $000007ff
+L0000E452               MOVE.B  $04(A0),$00(A1,D1.w)
 L0000E458               ADDA.L  #$0000002c,A1
-L0000E45E               MOVE.B  (A0, $0005) == $00000b67,(A1, D1.W*1, $00) == $000007ff
+L0000E45E               MOVE.B  $05(A0),$00(A1,D1.w)
 L0000E464               ADDA.L  #$0000002c,A1
-L0000E46A               MOVE.B  (A0, $0006) == $00000b68,(A1, D1.W*1, $00) == $000007ff
+L0000E46A               MOVE.B  $06(A0),$00(A1,D1.w)
 L0000E470               ADDA.L  #$0000002c,A1
-L0000E476               MOVE.B  (A0, $0007) == $00000b69,(A1, D1.W*1, $00) == $000007ff
+L0000E476               MOVE.B  $07(A0),$00(A1,D1.w)
 L0000E47C               ADD.L   #$00000001,D1
-L0000E47E               BRA.W   #$ff22 == $0000e3a2 
+L0000E47E               BRA.W   L0000E3A2_loop              ; next char
 
-
-L0000E482           MOVE.B  (A0),(A1, D1.W*1, $00) == $000007ff
-L0000E486           ADDA.L  #$00000004,A1
-L0000E48C           MOVE.B  (A0, $0001) == $00000b63,(A1, D1.W*1, $00) == $000007ff
-L0000E492           ADDA.L  #$00000004,A1
-L0000E498           MOVE.B  (A0, $0002) == $00000b64,(A1, D1.W*1, $00) == $000007ff
-L0000E49E           ADDA.L  #$00000004,A1
-L0000E4A4           MOVE.B  (A0, $0003) == $00000b65,(A1, D1.W*1, $00) == $000007ff
-L0000E4AA           ADDA.L  #$00000004,A1
-L0000E4B0           MOVE.B  (A0, $0004) == $00000b66,(A1, D1.W*1, $00) == $000007ff
-L0000E4B6           ADDA.L  #$00000004,A1
-L0000E4BC           MOVE.B  (A0, $0005) == $00000b67,(A1, D1.W*1, $00) == $000007ff
-L0000E4C2           ADDA.L  #$00000004,A1
-L0000E4C8           MOVE.B  (A0, $0006) == $00000b68,(A1, D1.W*1, $00) == $000007ff
-L0000E4CE           ADDA.L  #$00000004,A1
-L0000E4D4           MOVE.B  (A0, $0007) == $00000b69,(A1, D1.W*1, $00) == $000007ff
-L0000E4DA           ADD.L   #$00000001,D1
-L0000E4DC           BRA.W   #$fec4 == $0000e3a2 
-
-
-L0000E4E0           MOVE.L  #$0007c89a,$0000edfc
-L0000E4EA           CLR.W   $0000ee04
-L0000E4F0           RTS 
+L0000E482               MOVE.B  (A0),$00(A1,D1.w)
+L0000E486               ADDA.L  #$00000004,A1
+L0000E48C               MOVE.B  $01(A0),$00(A1,D1.w)
+L0000E492               ADDA.L  #$00000004,A1
+L0000E498               MOVE.B  $02(A0),$00(A1,D1.w)
+L0000E49E               ADDA.L  #$00000004,A1
+L0000E4A4               MOVE.B  $03(A0),$00(A1,D1.w)
+L0000E4AA               ADDA.L  #$00000004,A1
+L0000E4B0               MOVE.B  $04(A0),$00(A1,D1.w)
+L0000E4B6               ADDA.L  #$00000004,A1
+L0000E4BC               MOVE.B  $05(A0),$00(A1,D1.w)
+L0000E4C2               ADDA.L  #$00000004,A1
+L0000E4C8               MOVE.B  $06(A0),$00(A1,D1.w)
+L0000E4CE               ADDA.L  #$00000004,A1
+L0000E4D4               MOVE.B  $07(A0),$00(A1,D1.w)
+L0000E4DA               ADD.L   #$00000001,D1
+L0000E4DC               BRA.W   L0000E3A2_loop              ; next_char
 
 
 
-L0000E4F2           LEA.L   $0005ed00,A0
-L0000E4F8           LEA.L   $00067680,A1
-L0000E4FE           MOVE.W  #$1a20,D0
-L0000E502           MOVE.L  (A0),(A1)+
-L0000E504           CLR.L   (A0)+
-L0000E506           DBF.W   D0,#$fffa == $0000e502 
-L0000E50A           MOVE.W  #$0688,D0
-L0000E50E           CLR.L   (A0)+
-L0000E510           DBF.W   D0,#$fffc == $0000e50e 
-L0000E514           MOVE.L  #$00000000,D0
-L0000E516           MOVE.L  #$0005ed00,$0000e55e
-L0000E520           LEA.L   $0000e670,A0
-L0000E526           BSR.W   #$01bc == $0000e6e4
-L0000E52A           LEA.L   $0000fcbe,A0
-L0000E530           LEA.L   $0000fbe6,A1
-L0000E536           BSR.W   #$ecce == $0000d206
-L0000E53A           MOVE.W  #$00b4,D0
-L0000E53E           BSR.W   #$ecae == $0000d1ee
-L0000E542           MOVE.L  #$0005ed00,$0000e55a
-L0000E54C           MOVE.L  #$00067680,$0000e55e
-L0000E556           BRA.W   #$001a == $0000e572 
+L0000E4E0               MOVE.L  #$0007c89a,L0000EDFC        ; panel
+L0000E4EA               CLR.W   L0000EE04
+L0000E4F0               RTS 
 
 
 
-0000E55A            dc.w    $0000,$0000
-0000E55E            dc.w    $0000,$0000
+L0000E4F2               LEA.L   $0005ed00,A0                ; external address
+L0000E4F8               LEA.L   $00067680,A1                ; external address
+L0000E4FE               MOVE.W  #$1a20,D0
+L0000E502               MOVE.L  (A0),(A1)+
+L0000E504               CLR.L   (A0)+
+L0000E506               DBF.W   D0,L0000E502 
+L0000E50A               MOVE.W  #$0688,D0
+L0000E50E               CLR.L   (A0)+
+L0000E510               DBF.W   D0,L0000E50E 
+L0000E514               MOVE.L  #$00000000,D0
+L0000E516               MOVE.L  #$0005ed00,L0000E55E
+L0000E520               LEA.L   text_bat_cave,A0            ; L0000E670,A0
+L0000E526               BSR.W   L0000E6E4
+L0000E52A               LEA.L   L0000FCBE,A0
+L0000E530               LEA.L   L0000FBE6,A1
+L0000E536               BSR.W   L0000D206
+L0000E53A               MOVE.W  #$00b4,D0
+L0000E53E               BSR.W   L000D1EE
+L0000E542               MOVE.L  #$0005ed00,L0000E55A
+L0000E54C               MOVE.L  #$00067680,L0000E55E
+L0000E556               BRA.W   L0000E572 
+
+
+
+L0000E55A               dc.w    $0000,$0000
+L0000E55E               dc.w    $0000,$0000
 
 
 
 L0000E562               MOVE.W  #$225f,D7
-L0000E566               MOVEA.L $0000e55e,A1
+L0000E566               MOVEA.L L0000E55E,A1
 L0000E56C               CLR.L   (A1)+
-L0000E56E               DBF.W   D7,#$fffc == $0000e56c 
+L0000E56E               DBF.W   D7,L0000E56C 
 L0000E572               MOVE.W  #$002c,D0
 L0000E576               MOVE.W  #$0098,D1
 
 
 
-L0000E57A               MOVEM.L $0000e55a,A0-A1
+L0000E57A               MOVEM.L L0000E55A,A0-A1
 L0000E582               CLR.W   D2
 L0000E584               MULU.W  #$0555,D2
 L0000E588               ADD.W   #$00000001,D2
 L0000E58A               AND.W   #$1fff,D2
-L0000E58E               BEQ.B   #$00000058 == $0000e5e8 
+L0000E58E               BEQ.B   L0000E5E8 
 L0000E590               MOVE.L  #$0000007f,D3
 L0000E592               AND.W   D2,D3
 L0000E594               MOVE.L  #$0000000f,D5
 L0000E596               LSR.W   #$00000001,D3
-L0000E598               BCC.B   #$00000002 == $0000e59c 
+L0000E598               BCC.B   L0000E59C 
 L0000E59A               MOVE.L  #$fffffff0,D5
 L0000E59C               CMP.W   D0,D3
-L0000E59E               BCC.B   #$ffffffe4 == $0000e584 
+L0000E59E               BCC.B   L0000E584 
 L0000E5A0               MOVE.W  D2,D4
 L0000E5A2               LSR.W   #$00000005,D4
 L0000E5A4               AND.W   #$00fc,D4
 L0000E5A8               CMP.W   D1,D4
-L0000E5AA               BCC.B   #$ffffffd8 == $0000e584 
+L0000E5AA               BCC.B   L0000E584 
 L0000E5AC               MULU.W  D0,D4
 L0000E5AE               ADD.W   D3,D4
 L0000E5B0               MOVE.W  D2,-(A7)
@@ -1280,86 +1331,106 @@ L0000E5B8               MOVE.W  D4,-(A7)
 L0000E5BA               MOVE.L  #$00000003,D2
 L0000E5BC               MOVE.B  D5,D6
 L0000E5BE               NOT.W   D6
-L0000E5C0               AND.B   (A0, D4.W*1, $00) == $00000b62,D6
-L0000E5C4               MOVE.B  D6,(A0, D4.W*1, $00) == $00000b62
+L0000E5C0               AND.B   $00(A0,D4.w),D6
+L0000E5C4               MOVE.B  D6,$00(A0,D4.w)
 L0000E5C8               MOVE.B  D5,D6
-L0000E5CA               AND.B   (A1, D4.W*1, $00) == $00000800,D6
-L0000E5CE               OR.B    (A0, D4.W*1, $00) == $00000b62,D6
-L0000E5D2               MOVE.B  D6,(A0, D4.W*1, $00) == $00000b62
+L0000E5CA               AND.B   $00(A1,D4.w),D6
+L0000E5CE               OR.B    $00(A0,D4.w),D6
+L0000E5D2               MOVE.B  D6,$00(A0,D4.w)
 L0000E5D6               ADD.W   D0,D4
-L0000E5D8               DBF.W   D2,#$ffe2 == $0000e5bc 
+L0000E5D8               DBF.W   D2,L0000E5BC 
 L0000E5DC               MOVE.W  (A7)+,D4
 L0000E5DE               ADD.W   D3,D4
-L0000E5E0               DBF.W   D7,#$ffd6 == $0000e5b8 
+L0000E5E0               DBF.W   D7,L0000E5B8 
 L0000E5E4               MOVE.W  (A7)+,D2
-L0000E5E6               BRA.B   #$ffffff9c == $0000e584 
+L0000E5E6               BRA.B   L0000E584 
 L0000E5E8               RTS 
 
 
 
-
+                ; ---------------- fade panel in (to palette) --------------
+panel_fade_in
 L0000E5EA               MOVE.L  #$0000000f,D7
-L0000E5EC               LEA.L   $0000fc54,A0
-L0000E5F2               LEA.L   $0000fc9e,A1
+L0000E5EC_loop          LEA.L   copper_panel_palette+2,a0       ;L0000FC54,A0
+L0000E5F2               LEA.L   panel_colour_palette,a1         ;L0000FC9E,A1
 L0000E5F8               MOVE.L  #$0000000f,D6
-L0000E5FA               MOVE.W  (A0),D0
+L0000E5FA_loop          MOVE.W  (A0),D0
 L0000E5FC               MOVE.W  (A1)+,D1
 L0000E5FE               EOR.W   D0,D1
 L0000E600               MOVE.L  #$0000000f,D2
 L0000E602               AND.W   D1,D2
-L0000E604               BEQ.B   #$00000002 == $0000e608 
+L0000E604               BEQ.B   L0000E608 
 L0000E606               ADD.W   #$00000001,D0
 L0000E608               MOVE.L  #$fffffff0,D2
 L0000E60A               AND.B   D1,D2
-L0000E60C               BEQ.B   #$00000004 == $0000e612 
+L0000E60C               BEQ.B   L0000E612 
 L0000E60E               ADD.W   #$0010,D0
 L0000E612               AND.W   #$0f00,D1
-L0000E616               BEQ.B   #$00000004 == $0000e61c 
+L0000E616               BEQ.B   L0000E61C 
 L0000E618               ADD.W   #$0100,D0
 L0000E61C               MOVE.W  D0,(A0)
 L0000E61E               ADDA.W  #$00000004,A0
-L0000E620               DBF.W   D6,#$ffd8 == $0000e5fa 
-L0000E624               MOVE.L  #$00000003,D0
-L0000E626               BSR.W   #$ebc6 == $0000d1ee
-L0000E62A               DBF.W   D7,#$ffc0 == $0000e5ec 
+L0000E620               DBF.W   D6,L0000E5FA_loop 
+L0000E624               MOVE.L  #$00000003,D0               ; frames to wait/skip
+L0000E626               BSR.W   wait_frame                  ;L0000D1EE_loop
+L0000E62A               DBF.W   D7,L0000E5EC_loop
 L0000E62E               RTS 
 
 
 
-
+                ; ---------------- fade panel out (to black) --------------
+fade_panel_out
 L0000E630               MOVE.L  #$0000000f,D7
-L0000E632               LEA.L   $0000fc54,A0
+L0000E632_loop          LEA.L   copper_panel_palette+2,a0   ;L0000FC54,A0
 L0000E638               MOVE.L  #$0000000f,D6
-L0000E63A               MOVE.W  (A0),D0
-L0000E63C               MOVE.L  #$0000000f,D1
+L0000E63A_loop          MOVE.W  (A0),D0                 ; get colour value from copper 
+L0000E63C               MOVE.L  #$0000000f,D1           ; fade blue component
 L0000E63E               AND.W   D0,D1
-L0000E640               BEQ.B   #$00000002 == $0000e644 
-L0000E642               SUB.W   #$00000001,D0
-L0000E644               MOVE.W  #$00f0,D1
+L0000E640               BEQ.B   L0000E644 
+L0000E642               SUB.W   #$00000001,D0           ; fade blue towards black
+L0000E644               MOVE.W  #$00f0,D1               ; fade green component
 L0000E648               AND.W   D0,D1
-L0000E64A               BEQ.B   #$00000004 == $0000e650 
-L0000E64C               SUB.W   #$0010,D0
-L0000E650               MOVE.W  #$0f00,D1
+L0000E64A               BEQ.B   L0000E650 
+L0000E64C               SUB.W   #$0010,D0               ; fade green towards black
+L0000E650               MOVE.W  #$0f00,D1               ; fade red component
 L0000E654               AND.W   D0,D1
-L0000E656               BEQ.B   #$00000004 == $0000e65c 
-L0000E658               SUB.W   #$0100,D0
-L0000E65C               MOVE.W  D0,(A0)
-L0000E65E               ADDA.W  #$00000004,A0
-L0000E660               DBF.W   D6,#$ffd8 == $0000e63a 
-L0000E664               MOVE.L  #$00000003,D0
-L0000E666               BSR.W   #$eb86 == $0000d1ee
-L0000E66A               DBF.W   D7,#$ffc6 == $0000e632 
+L0000E656               BEQ.B   L0000E65C 
+L0000E658               SUB.W   #$0100,D0               ; fade red to black
+L0000E65C               MOVE.W  D0,(A0)                 ; store faded colour back into copper
+L0000E65E               ADDA.W  #$00000004,A0           ; next colour 
+L0000E660               DBF.W   D6,L0000E63A_loop       ; next colour loop
+L0000E664               MOVE.L  #$00000003,D0           ; frames to wait/skip
+L0000E666               BSR.W   wait_frame              ; L0000D1EE_loop
+L0000E66A               DBF.W   D7,L0000E632_loop       ; fade all again.
 L0000E66E               RTS 
 
 
-0000E670                dc.b    $46,$10,$54,$48,$45,$20,$42,$41,$54,$43,$41,$56,$45,$00,$FF,$41     ;F.THE BATCAVE..A
-0000E680                dc.b    $14,$08,$53,$4D,$49,$4C,$45,$58,$20,$53,$55,$43,$43,$45,$53,$53     ;..SMILEX SUCCESS
-0000E690                dc.b    $46,$55,$4C,$4C,$59,$20,$41,$4E,$41,$4C,$59,$53,$45,$44,$00,$3C     ;FULLY ANALYSED.<
-0000E6A0                dc.b    $0C,$4E,$4F,$57,$20,$54,$48,$57,$41,$52,$54,$20,$54,$48,$45,$20     ;.NOW THWART THE 
-0000E6B0                dc.b    $4A,$4F,$4B,$45,$52,$53,$00,$50,$10,$43,$41,$52,$4E,$49,$56,$41     ;JOKERS.P.CARNIVA
-0000E6C0                dc.b    $4C,$20,$50,$4C,$4F,$54,$2E,$00,$FF,$20,$46,$13,$54,$49,$4D,$45     ;L PLOT... F.TIME
-0000E6D0                dc.b    $20,$4F,$55,$54,$00,$FF,$46,$12,$47,$41,$4D,$45,$20,$4F,$56,$45     ; OUT..F.GAME OVE
-0000E6E0                dc.b    $52,$00,$FF,$45 ; last byte = pad byte                              ;R
+
+text_bat_cave
+L0000E670               dc.b    $46,$10
+L0000E672               dc.b    $54,$48,$45,$20,$42,$41,$54,$43,$41,$56,$45,$00,$FF                 ;THE BATCAVE..
+L0000E67F               dc.b    $41
+
+text_simlex_success
+L0000E680               dc.b    $14,$08
+L0000E682               dc.b    $53,$4D,$49,$4C,$45,$58,$20,$53,$55,$43,$43,$45,$53,$53             ;SMILEX SUCCESS
+L0000E690               dc.b    $46,$55,$4C,$4C,$59,$20,$41,$4E,$41,$4C,$59,$53,$45,$44,$00         ;FULLY ANALYSED.
+L0000E69F               dc.b    $3C,$0C     
+L0000E6A1               dc.b    $4E,$4F,$57,$20,$54,$48,$57,$41,$52,$54,$20,$54,$48,$45,$20         ;NOW THWART THE 
+L0000E6B0               dc.b    $4A,$4F,$4B,$45,$52,$53,$00                                         ;JOKERS
+L0000E6B7               dc.b    $50,$10
+L0000E6B9               dc.b    $43,$41,$52,$4E,$49,$56,$41,$4C,$20,$50,$4C,$4F,$54,$2E,$00,$FF     ;CARNIVAL PLOT.
+L0000E6C9               dc.b    $20     ; last byte = pad byte 
+
+text_time_out
+L0000E6CA               dc.b    $46,$13
+L0000E6CC               dc.b    $54,$49,$4D,$45,$20,$4F,$55,$54,$00,$FF                             ;TIME OUT
+
+text_game_over
+L0000E6D6               dc.b    $46,$12
+L0000E6D8               dc.b    $47,$41,$4D,$45,$20,$4F,$56,$45,$52,$00,$FF                         ;GAME OVER
+L0000E6E3               dc.b    $45     ; last byte = pad byte 
+
 
 
 L0000E6E4               MOVE.B  (A0)+,D0
@@ -1538,7 +1609,14 @@ L0000EDBC       dc.w    $787E,$0600,$C330,$3C0C,$00C7,$3038,$0800,$C730
 L0000EDCC       dc.w    $3808,$00E7,$0018,$1800,$03FC,$FC00,$0001,$CCFE
 L0000EDDC       dc.w    $3200,$8118,$7E66,$00C3,$303C,$0C00,$8760,$7818
 L0000EDEC       dc.w    $0003,$CCFC,$3000,$01FC,$FE02,$0081,$007E,$7E00
-L0000EDFC       dc.w    $0007,$C89A,$0000,$0000,$0000,$C89A,$002C,$FFFF
+L0000EDFC       dc.w    $0007,$C89A
+
+L0000EE00       dc.w    $0000
+
+L0000EE02       dc.w    $0000
+L0000EE04       dc.w    $0000
+
+L0000EE06       dc.w    $C89A,$002C,$FFFF
 L0000EE0C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000EE1C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000EE2C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
@@ -1759,26 +1837,78 @@ L0000FB8C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000FB9C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000FBAC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000 
 
-; copper list
-L0000FBBA       dc.w    $00FF
-L0000FBBC       dc.w    $FF00,$0108,$0004,$010A,$0004,$00E0,$0005,$00E2
-L0000FBCC       dc.w    $ED02,$00E4,$0006,$00E6,$0722,$00E8,$0006,$00EA
-L0000FBDC       dc.w    $2142,$00EC,$0006,$00EE,$3B62,$0180,$0000,$0182
-L0000FBEC       dc.w    $0000,$0184,$0000,$0186,$0000,$0188,$0000,$018A
-L0000FBFC       dc.w    $0000,$018C,$0000,$018E,$0000,$0190,$0000,$0192
-L0000FC0C       dc.w    $0000,$0194,$0000,$0196,$0000,$0198,$0000,$019A
-L0000FC1C       dc.w    $0000,$019C,$0000,$019E,$0000,$C401,$FF00,$00E0
-L0000FC2C       dc.w    $0007,$00E2,$C89A,$00E4,$0007,$00E6,$D01A,$00E8
-L0000FC3C       dc.w    $0007,$00EA,$D79A,$00EC,$0007,$00EE,$DF1A,$0108
-L0000FC4C       dc.w    $0000,$010A,$0000,$0180,$0000,$0182,$0000,$0184
-L0000FC5C       dc.w    $0000,$0186,$0000,$0188,$0000,$018A,$0000,$018C
-L0000FC6C       dc.w    $0000,$018E,$0000,$0190,$0000,$0192,$0000,$0194
-L0000FC7C       dc.w    $0000,$0196,$0000,$0198,$0000,$019A,$0000,$019C
-L0000FC8C       dc.w    $0000,$019E,$0000,$F301,$FFFE,$0180,$0000,$FFFF
-L0000FC9C       dc.w    $FFFE 
+
+
+            ; ----------------- copper list -----------------
+L0000FBBA   ; original address $000fbba
+                ; game screen display
+                dc.w    $00FF,$FF00
+                dc.w    $0108,$0004
+                dc.w    $010A,$0004
+                dc.w    $00E0,$0005
+                dc.w    $00E2,$ED02     ; $5ED02 - bpl0
+                dc.w    $00E4,$0006
+                dc.w    $00E6,$0722     ; $60722 - bpl1
+                dc.w    $00E8,$0006
+                dc.w    $00EA,$2142     ; $62142 - bpl2
+                dc.w    $00EC,$0006
+                dc.w    $00EE,$3B62     ; $63B63 - bpl3
+
+                ; game screen palette (4 bitplanes/16 colours)
+L0000FBE6       dc.w    $0180,$0000
+                dc.w    $0182,$0000
+                dc.w    $0184,$0000
+                dc.w    $0186,$0000
+                dc.w    $0188,$0000
+                dc.w    $018A,$0000
+                dc.w    $018C,$0000
+                dc.w    $018E,$0000
+                dc.w    $0190,$0000
+                dc.w    $0192,$0000
+                dc.w    $0194,$0000
+                dc.w    $0196,$0000
+                dc.w    $0198,$0000
+                dc.w    $019A,$0000
+                dc.w    $019C,$0000
+                dc.w    $019E,$0000
+                ; panel display start
+L0000FC26       dc.w    $C401,$FF00
+                dc.w    $00E0,$0007
+                dc.w    $00E2,$C89A     ; $7C89A - bpl0
+                dc.w    $00E4,$0007
+                dc.w    $00E6,$D01A     ; $7D01A - bpl1
+                dc.w    $00E8,$0007
+                dc.w    $00EA,$D79A     ; $7D79A - bpl2
+                dc.w    $00EC,$0007
+                dc.w    $00EE,$DF1A     ; $7DF1A - bpl3
+                dc.w    $0108,$0000
+                dc.w    $010A,$0000
+                ; panel palette (4 bitplanes/16 colours)
+copper_panel_palette
+L0000FC52       dc.w    $0180,$0000
+                dc.w    $0182,$0000
+                dc.w    $0184,$0000
+                dc.w    $0186,$0000
+                dc.w    $0188,$0000
+                dc.w    $018A,$0000
+                dc.w    $018C,$0000
+                dc.w    $018E,$0000
+                dc.w    $0190,$0000
+                dc.w    $0192,$0000
+                dc.w    $0194,$0000
+                dc.w    $0196,$0000
+                dc.w    $0198,$0000
+                dc.w    $019A,$0000
+                dc.w    $019C,$0000
+                dc.w    $019E,$0000
+                ; end of the display
+                dc.w    $F301,$FFFE
+                dc.w    $0180,$0000
+                dc.w    $FFFF,$FFFE 
 
 
 ; colour table (panel?)
+panel_colour_palette
 L0000FC9E       dc.w    $0000,$0060,$0FFF,$0008,$0A22,$0444,$0862
 L0000FCAC       dc.w    $0666,$0888,$0AAA,$0A40,$0C60,$0E80,$0EA0,$0EC0
 L0000FCBC       dc.w    $0EEE,$0000,$0130,$0111,$0333,$0555,$0777,$0BBB
@@ -1835,7 +1965,9 @@ L0000FFBC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000FFCC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
 L0000FFDC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
 L0000FFEC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
-L0000FFFC   dc.w    $0000,$0000,$0000,$0000,$0000,$005D,$0000,$0000  
+L0000FFFC   dc.w    $0000,$0000
+
+L00010000   dc.w    $0000,$0000,$0000,$005D,$0000,$0000  
 L0001000C   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
 L0001001C   dc.w    $0000,$0000,$0000,$0000,$BA0B,$40A8,$01C0,$0000  
 L0001002C   dc.w    $0000,$0680,$0000,$0001,$82FF,$FFFF,$FE00,$0000  
