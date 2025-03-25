@@ -402,7 +402,7 @@ L0000D568               dc.w    $4E75 ; RTS ?
 
 
 
-L0000D56A               TST.W   0000DC02
+L0000D56A               TST.W   L0000DC02
 L0000D570               BEQ.W   L0000D588 
 L0000D574               MOVE.W  L0000DC0A,D0
 L0000D57A               ADD.W   D0,L0000E128
@@ -569,7 +569,7 @@ L0000D88C               JSR     $0007c82a               ; Panel
 L0000D892               NOT.W   L0000EE04
 L0000D898               MOVE.L  #$0000f68e,L0000EDFC
 L0000D8A2               LEA.L   L0000D8D4,A6
-L0000D8A8               BSR.W   L0000E382
+L0000D8A8               BSR.W   debug_text_typer        ; L0000E382 
 L0000D8AC               MOVE.W  #$0009,L0000E154
 L0000D8B4               MOVE.W  L0000D8D8,L0000E122
 L0000D8BE               MOVE.W  #$006e,L0000E126
@@ -577,7 +577,7 @@ L0000D8C6               BSR.W   L0000DE94
 L0000D8CA               ADD.W   #$0013,L0000D8D8
 L0000D8D2               RTS 
 
-
+                        ; display characters (x,y,char,$ff)
 L0000D8D4               dc.w    $0000,$30ff
 L0000D8D8               dc.w    $0073 
 
@@ -630,7 +630,7 @@ L0000D974               CLR.L   (A0)+
 L0000D976               DBF.W   D0,L0000D974 
 L0000D97A               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000D984               LEA.L   text_simlex_success,a0  ; L0000E680,A0
-L0000D98A               BSR.W   L0000E6E4
+L0000D98A               BSR.W   game_text_typer         ; L0000E6E4
 L0000D98E               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000D998               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000D9A2               BSR.W   L0000E572
@@ -676,7 +676,7 @@ L0000DA50               BRA.W   L0000DA5A
 
 
 L0000DA54               LEA.L   text_time_out,a0        ; L0000E6CA,A0
-L0000DA5A               BSR.W   L0000E6E4
+L0000DA5A               BSR.W   game_text_typer         ; L0000E6E4
 L0000DA5E               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000DA68               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000DA72               BSR.W   L0000E572
@@ -1130,9 +1130,9 @@ L0000E2F8               RTS
 L0000E2FA               ADD.W   #$0001,D0
 L0000E2FE               BRA.W   L0000E2FA 
 
-
-L0000E302               dc.w    $0000
-L0000E304               dc.w    $3030,$3030,$FF00           ; debug value to print '0000'
+                        ; text to type
+L0000E302               dc.w    $0000                       ; x,y co-ords
+L0000E304               dc.w    $3030,$3030,$FF00           ; debug value to print '0000' - last $00 maybe pad byte
 L0000E30A               dc.w    $0000 
 
 
@@ -1164,62 +1164,69 @@ L0000E358               AND.W   #$000f,D0
 L0000E35C               MOVE.B  $00(A5,D0.w),D2
 L0000E360               MOVE.B  D2,(A6)+
 L0000E362               LEA.L   L0000E302,A6
-L0000E368               BRA.W   L0000E382 
+L0000E368               BRA.W   debug_text_typer            ; L0000E382
 L0000E36C               RTS 
 
-
-
+                        ; convert hex to ascii routine above
 L0000E36E               dc.w    $3031,$3233,$3435,$3637,$3839,$4142,$4344,$4546     ;0123456789ABCDEF
-L0000E37E               dc.b    $00
-L0000E37F               dc.b    $00
-L0000E380               dc.b    $00,$00 
+                        even
+                        ; text typer co-ords
+L0000E37E               dc.b    $00     ; x co-ord word (combined with below byte)
+L0000E37F               dc.b    $00     ; x co-ord byte (char 8 pixel resolution)
+L0000E380               dc.b    $00     ; y co-ord byte (line 1 pixel resolution) 
+                        dc.b    $00     ; unused/pad byte
 
 
 
-
-L0000E382               MOVE.B  (A6)+,L0000E37F
-L0000E388               MOVE.B  (A6)+,L0000E380
+                    ; IN:-
+                    ;   A6.l = ptr to x,y co-ords as bytes
+                    ;
+debug_text_typer
+L0000E382               MOVE.B  (A6)+,L0000E37F     ; byte x co-ord (byte resolution) - 8 pixels
+L0000E388               MOVE.B  (A6)+,L0000E380     ; byte y co-ord (line resolution) - 1 pixel
 L0000E38E               MOVE.L  #$00000000,D0
 L0000E390               MOVE.L  #$00000000,D1
 L0000E392               MOVE.B  L0000E380,D1
-L0000E398               MULU.W  #$002c,D1
+L0000E398               MULU.W  #$002c,D1           ; y co-ord? mult by 40
 L0000E39C               ADD.W   L0000E37E,D1
 L0000E3A2_loop          MOVE.B  (A6)+,D0
 L0000E3A4               AND.W   #$00ff,D0
 L0000E3A8               CMP.B   #$ff,D0
 L0000E3AC               BEQ.W   L0000E4E0 
 L0000E3B0               AND.W   #$00ff,D0
-L0000E3B4               CMP.B   #$20,D0
+L0000E3B4               CMP.B   #$20,D0             ; space
 L0000E3B8               BEQ.W   L0000E3F4 
-L0000E3BC               CMP.B   #$2f,D0
+L0000E3BC               CMP.B   #$2f,D0             ; /
 L0000E3C0               BLE.W   L0000E408 
-L0000E3C4               CMP.B   #$39,D0
+L0000E3C4               CMP.B   #$39,D0             ; 9
 L0000E3C8               BLE.W   L0000E3F4 
-L0000E3CC               CMP.B   #$40,D0
+L0000E3CC               CMP.B   #$40,D0             ; @
 L0000E3D0               BLE.W   L0000E3F4 
-L0000E3D4               CMP.B   #$5c,D0
+L0000E3D4               CMP.B   #$5c,D0             ; \
 L0000E3D8               BLE.W   L0000E3FC 
-L0000E3DC               CMP.B   #$60,D0
+L0000E3DC               CMP.B   #$60,D0             ; ` (61 = a)
 L0000E3E0               BLE.W   L0000E408 
-L0000E3E4               CMP.B   #$7a,D0
+L0000E3E4               CMP.B   #$7a,D0             ; z
 L0000E3E8               BGT.W   L0000E408 
-L0000E3EC               SUB.B   #$60,D0
+L0000E3EC               SUB.B   #$60,D0             ; ` (61 = a)
 L0000E3F0               BRA.W   L0000E40C 
 
-L0000E3F4               AND.W   #$003f,D0
+L0000E3F4               AND.W   #$003f,D0           
 L0000E3F8               BRA.W   L0000E40C 
 
 L0000E3FC               AND.W   #$003f,D0
 L0000E400               ADD.W   #$0040,D0
 L0000E404               BRA.W   L0000E40C 
 
-L0000E408               MOVE.B  #$00,D0
-L0000E40C               ASL.W   #$00000003,D0
-L0000E40E               LEA.L   L00019300,A0            ; font gfx address?
+L0000E408               MOVE.B  #$00,D0             ; '/' = first character
+
+L0000E40C               ASL.W   #$00000003,D0       ; divide by 8
+L0000E40E               LEA.L   L00019300,A0        ; font gfx address?
 L0000E414               ADDA.W  D0,A0
-L0000E416               MOVEA.L L0000EDFC,A1
-L0000E41C               TST.W   L0000EE04
+L0000E416               MOVEA.L L0000EDFC,A1        ; destination display buffer 
+L0000E41C               TST.W   L0000EE04           ; 1 = 4 byte per line buffer, 0 = 40 byte per line buffer
 L0000E422               BNE.B   L0000E482 
+                        ; do 40 bytes per line destination buffer
 L0000E424               MOVE.B  (A0),$00(A1,D1.w)
 L0000E428               ADDA.L  #$0000002c,A1
 L0000E42E               MOVE.B  $01(A0),$00(A1,D1.w)
@@ -1238,6 +1245,7 @@ L0000E476               MOVE.B  $07(A0),$00(A1,D1.w)
 L0000E47C               ADD.L   #$00000001,D1
 L0000E47E               BRA.W   L0000E3A2_loop              ; next char
 
+                        ; do 4 bytes per line destination buffer
 L0000E482               MOVE.B  (A0),$00(A1,D1.w)
 L0000E486               ADDA.L  #$00000004,A1
 L0000E48C               MOVE.B  $01(A0),$00(A1,D1.w)
@@ -1274,22 +1282,20 @@ L0000E50A               MOVE.W  #$0688,D0
 L0000E50E               CLR.L   (A0)+
 L0000E510               DBF.W   D0,L0000E50E 
 L0000E514               MOVE.L  #$00000000,D0
-L0000E516               MOVE.L  #$0005ed00,L0000E55E
+L0000E516               MOVE.L  #$0005ed00,L0000E55E        ; external address
 L0000E520               LEA.L   text_bat_cave,A0            ; L0000E670,A0
-L0000E526               BSR.W   L0000E6E4
+L0000E526               BSR.W   game_text_typer             ; L0000E6E4
 L0000E52A               LEA.L   L0000FCBE,A0
 L0000E530               LEA.L   L0000FBE6,A1
 L0000E536               BSR.W   L0000D206
 L0000E53A               MOVE.W  #$00b4,D0
 L0000E53E               BSR.W   L000D1EE
-L0000E542               MOVE.L  #$0005ed00,L0000E55A
-L0000E54C               MOVE.L  #$00067680,L0000E55E
+L0000E542               MOVE.L  #$0005ed00,L0000E55A        ; external address
+L0000E54C               MOVE.L  #$00067680,L0000E55E        ; external address
 L0000E556               BRA.W   L0000E572 
 
-
-
-L0000E55A               dc.w    $0000,$0000
-L0000E55E               dc.w    $0000,$0000
+L0000E55A               dc.l    $00000000                   ; address ptr
+L0000E55E               dc.l    $00000000                   ; address ptr
 
 
 
@@ -1299,8 +1305,6 @@ L0000E56C               CLR.L   (A1)+
 L0000E56E               DBF.W   D7,L0000E56C 
 L0000E572               MOVE.W  #$002c,D0
 L0000E576               MOVE.W  #$0098,D1
-
-
 
 L0000E57A               MOVEM.L L0000E55A,A0-A1
 L0000E582               CLR.W   D2
@@ -1408,107 +1412,116 @@ L0000E66E               RTS
 
 text_bat_cave
 L0000E670               dc.b    $46,$10
-L0000E672               dc.b    $54,$48,$45,$20,$42,$41,$54,$43,$41,$56,$45,$00,$FF                 ;THE BATCAVE..
+L0000E672               dc.b    'THE BATCAVE',$00,$ff
 L0000E67F               dc.b    $41
 
 text_simlex_success
 L0000E680               dc.b    $14,$08
-L0000E682               dc.b    $53,$4D,$49,$4C,$45,$58,$20,$53,$55,$43,$43,$45,$53,$53             ;SMILEX SUCCESS
-L0000E690               dc.b    $46,$55,$4C,$4C,$59,$20,$41,$4E,$41,$4C,$59,$53,$45,$44,$00         ;FULLY ANALYSED.
+L0000E682               dc.b    'SMILEX SUCCESSFULLY ANALYSED',$00
 L0000E69F               dc.b    $3C,$0C     
-L0000E6A1               dc.b    $4E,$4F,$57,$20,$54,$48,$57,$41,$52,$54,$20,$54,$48,$45,$20         ;NOW THWART THE 
-L0000E6B0               dc.b    $4A,$4F,$4B,$45,$52,$53,$00                                         ;JOKERS
+L0000E6A1               dc.b    'NOW THWART THE JOKERS',$00
 L0000E6B7               dc.b    $50,$10
-L0000E6B9               dc.b    $43,$41,$52,$4E,$49,$56,$41,$4C,$20,$50,$4C,$4F,$54,$2E,$00,$FF     ;CARNIVAL PLOT.
-L0000E6C9               dc.b    $20     ; last byte = pad byte 
+L0000E6B9               dc.b    'CARNIVAL PLOT.',$00,$ff
+L0000E6C9               dc.b    $20 ; pad byte 
 
 text_time_out
 L0000E6CA               dc.b    $46,$13
-L0000E6CC               dc.b    $54,$49,$4D,$45,$20,$4F,$55,$54,$00,$FF                             ;TIME OUT
+L0000E6CC               dc.b    'TIME OUT',$00,$ff
 
 text_game_over
 L0000E6D6               dc.b    $46,$12
-L0000E6D8               dc.b    $47,$41,$4D,$45,$20,$4F,$56,$45,$52,$00,$FF                         ;GAME OVER
-L0000E6E3               dc.b    $45     ; last byte = pad byte 
+L0000E6D8               dc.b    'GAME OVER',$00,$ff
+L0000E6E3               dc.b    $45 ; pad byte 
 
 
 
+                    ; ------------------- game text typer -------------------
+                    ; routine displays text (see above)
+                    ; Each line of text starts with 2 bytes (y co-ord, x co-ord)
+                    ; followed by null terminated text ($00)
+                    ; a final terminator ($ff) or another line of text starting with x,y co-ords
+                    ; can follow the previous line.
+                    ;
+game_text_typer     ; original address L0000E6E4
 L0000E6E4               MOVE.B  (A0)+,D0
-L0000E6E6               BMI.W   #$00d2 == $0000e7ba 
-L0000E6EA               AND.W   #$00ff,D0
+L0000E6E6               BMI.W   L0000E7BA           ; $ff = exit
+L0000E6EA               AND.W   #$00ff,D0           ; d0 = y co-ord
 L0000E6EE               MULU.W  #$002c,D0
-L0000E6F2               MOVE.B  (A0)+,D1
+L0000E6F2               MOVE.B  (A0)+,D1            ; d1 = x co-ord
 L0000E6F4               EXT.W   D1
-L0000E6F6               ADD.W   D1,D0
-L0000E6F8               MOVEA.L $0000e55e,A1
-L0000E6FE               LEA.L   (A1, D0.W*1, $00) == $ffffe790,A1
-L0000E702               MOVE.L  #$00000000,D0
+L0000E6F6               ADD.W   D1,D0               ; d0 = x & y byte offset for display
+L0000E6F8               MOVEA.L L0000E55E,A1        ; destination display ptr
+L0000E6FE               LEA.L   $00(A1,D0.w),A1     ; a1 = dest gfx buffer
+
+                    ; do next character
+L0000E702_loop          MOVE.L  #$00000000,D0
 L0000E704               MOVE.B  (A0)+,D0
-L0000E706               BEQ.B   #$ffffffdc == $0000e6e4 
+L0000E706               BEQ.B   L0000E6E4           ; $00 = end of line
+
 L0000E708               CMP.B   #$20,D0
-L0000E70C               BEQ.W   #$00a4 == $0000e7b2 
+L0000E70C               BEQ.W   L0000E7B2 
 L0000E710               MOVE.L  #$ffffffcd,D1
 L0000E712               CMP.B   #$41,D0
-L0000E716               BCC.B   #$00000026 == $0000e73e 
+L0000E716               BCC.B   L0000E73E 
 L0000E718               MOVE.L  #$ffffffd4,D1
 L0000E71A               CMP.B   #$30,D0
-L0000E71E               BCC.B   #$0000001e == $0000e73e 
+L0000E71E               BCC.B   L0000E73E 
 L0000E720               MOVE.L  #$00000000,D1
 L0000E722               CMP.B   #$21,D0
-L0000E726               BEQ.B   #$0000001c == $0000e744 
+L0000E726               BEQ.B   L0000E744 
 L0000E728               MOVE.L  #$00000001,D1
 L0000E72A               CMP.B   #$28,D0
-L0000E72E               BEQ.B   #$00000014 == $0000e744 
+L0000E72E               BEQ.B   L0000E744 
 L0000E730               MOVE.L  #$00000002,D1
 L0000E732               CMP.B   #$29,D0
-L0000E736               BEQ.B   #$0000000c == $0000e744 
+L0000E736               BEQ.B   L0000E744 
 L0000E738               MOVE.L  #$00000003,D1
-L0000E73A               BRA.W   #$0008 == $0000e744 
+L0000E73A               BRA.W   L0000E744 
 
 L0000E73E               ADD.B   D0,D1
 L0000E740               AND.W   #$00ff,D1
 L0000E744               MULU.W  #$0028,D1
-L0000E748               LEA.L   $0000e7bc,A2
-L0000E74E               LEA.L   (A2, D1.W*1, $00) == $00000000,A2
-L0000E752               MOVE.L  #$00000007,D7
+L0000E748               LEA.L   L0000E7BC,A2            ; font gfx address
+L0000E74E               LEA.L   $00(A2,D1.w),A2
+L0000E752               MOVE.L  #$00000007,D7           ; 8 pixel font
 L0000E754               MOVEA.L A1,A3
-L0000E756               MOVE.B  (A2)+,D1
+L0000E756_loop          MOVE.B  (A2)+,D1
 L0000E758               AND.B   D1,(A3)
 L0000E75A               MOVE.B  (A2)+,D2
 L0000E75C               OR.B    D2,(A3)
-L0000E75E               AND.B   D1,(A3, $1a20) == $00fea10e
+L0000E75E               AND.B   D1,$1a20(A3)
 L0000E762               MOVE.B  (A2)+,D2
-L0000E764               OR.B    D2,(A3, $1a20) == $00fea10e
-L0000E768               AND.B   D1,(A3, $3440) == $00febb2e
+L0000E764               OR.B    D2,$1a20(A3)
+L0000E768               AND.B   D1,$3440(A3)
 L0000E76C               MOVE.B  (A2)+,D2
-L0000E76E               OR.B    D2,(A3, $3440) == $00febb2e
-L0000E772               AND.B   D1,(A3, $4e60) == $00fed54e
+L0000E76E               OR.B    D2,$3440(A3)
+L0000E772               AND.B   D1,$4e60(A3)
 L0000E776               MOVE.B  (A2)+,D2
-L0000E778               OR.B    D2,(A3, $4e60) == $00fed54e
-L0000E77C               LEA.L   (A3, $002c) == $00fe871a,A3
-L0000E780               LEA.L   (A2, -$0005) == $fffffffc,A2
+L0000E778               OR.B    D2,$4e60(A3)
+L0000E77C               LEA.L   $002c(A3),A3
+L0000E780               LEA.L   -$0005(A2),A2
 L0000E784               MOVE.B  (A2)+,D1
 L0000E786               AND.B   D1,(A3)
 L0000E788               MOVE.B  (A2)+,D2
 L0000E78A               OR.B    D2,(A3)
-L0000E78C               AND.B   D1,(A3, $1a20) == $00fea10e
+L0000E78C               AND.B   D1,$1a20(A3)
 L0000E790               MOVE.B  (A2)+,D2
-L0000E792               OR.B    D2,(A3, $1a20) == $00fea10e
-L0000E796               AND.B   D1,(A3, $3440) == $00febb2e
+L0000E792               OR.B    D2,$1a20(A3)
+L0000E796               AND.B   D1,$3440(A3)
 L0000E79A               MOVE.B  (A2)+,D2
-L0000E79C               OR.B    D2,(A3, $3440) == $00febb2e
-L0000E79C               OR.B    D2,(A3, $3440) == $00febb2e
-L0000E7A0               AND.B   D1,(A3, $4e60) == $00fed54e
+L0000E79C               OR.B    D2,$3440(A3)
+L0000E7A0               AND.B   D1,$4e60(A3)
 L0000E7A4               MOVE.B  (A2)+,D2
-L0000E7A6               OR.B    D2,(A3, $4e60) == $00fed54e
-L0000E7AA               LEA.L   (A3, $002c) == $00fe871a,A3
-L0000E7AE               DBF.W   D7,#$ffa6 == $0000e756 
-L0000E7B2               LEA.L   (A1, $0001) == $00000801,A1
-L0000E7B6               BRA.W   #$ff4a == $0000e702 
+L0000E7A6               OR.B    D2,$4e60(A3)
+L0000E7AA               LEA.L   $002c(A3),A3
+L0000E7AE               DBF.W   D7,L0000E756_loop 
+
+L0000E7B2               LEA.L   $0001(A1),A1
+L0000E7B6               BRA.W   L0000E702_loop 
 L0000E7BA               RTS 
 
 
-
+                ; multi-colour 4 bpl 8x8 pixel font - used by game text typer
 L0000E7BC       dc.w    $CF30,$3000,$00C7,$3038,$0800,$C730,$3808,$00C7
 L0000E7CC       dc.w    $3038,$0800,$C730,$3808,$00E7,$0018,$1800,$CF30
 L0000E7DC       dc.w    $3000,$00E7,$0018,$1800,$F30C,$0C00,$00E1,$181E
@@ -1966,6 +1979,8 @@ L0000FFCC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000FFDC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
 L0000FFEC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
 L0000FFFC   dc.w    $0000,$0000
+
+
 
 L00010000   dc.w    $0000,$0000,$0000,$005D,$0000,$0000  
 L0001000C   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
@@ -4319,7 +4334,11 @@ L000192BC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L000192CC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000     
 L000192DC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000     
 L000192EC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0130,$0111     
-L000192FC   dc.w    $0333,$0555,$3C66,$6E6E,$6062,$3C00,$0000,$3C06     
+L000192FC   dc.w    $0333,$0555
+
+            ; font 8x8
+L00019300   dc.b    $3C,$66,$6E,$6E,$60,$62,$3C,$00
+            dc.b    $00,$00,$3C,$06     
 L0001930C   dc.w    $3E66,$3E00,$0060,$607C,$6666,$7C00,$0000,$3C60     
 L0001931C   dc.w    $6060,$3C00,$0006,$063E,$6666,$3E00,$0000,$3C66     
 L0001932C   dc.w    $7E60,$3C00,$000E,$183E,$1818,$1800,$0000,$3E66     
