@@ -25,18 +25,26 @@ start
 
                 dc.l    $00004000
             ENDC    
-           
 
+L00004000           rts
+L00004004           rts          
+L00004008           rts
+L00004010           rts          
+L00004014           rts
+L00004018           rts
 
-
+stack_memory        ; original address L0000EF96
+L0000EF96
 
                     ;------------------------- code entry point on load ---------------------------
                     ;
 code_entry_point
 L0000D000               LEA.L   L0000EF96,A7                ; stack
 L0000D006               JSR     L00004000                   ; music?
-L0000D00C               MOVE.W  #$013f,D7
-L0000D010               LEA.L   L0000E7BC,A0
+
+                    ; init font - 320 lines of 5 byte struct (4bpl + mask)
+L0000D00C               MOVE.W  #$013f,D7                   ; d7 = 320
+L0000D010               LEA.L   font8x8x5,a0                ; L0000E7BC,A0
 L0000D016_loop          MOVE.B  $0004(A0),D0
 L0000D01A               AND.B   $0001(A0),D0
 L0000D01E               NOT.B   D0
@@ -50,32 +58,35 @@ L0000D036               AND.B   $0001(A0),D0
 L0000D03A               AND.B   $0002(A0),D0
 L0000D03E               EOR.B   D0,$0001(A0)
 L0000D042               EOR.B   D0,$0003(A0)
-L0000D046               ADDA.L  #$00000005,A0
+L0000D046               ADDA.L  #$00000005,A0           ; next struct (5 bytes)
 L0000D048               DBF.W   D7,L0000D016_loop 
 
 L0000D04C               MOVE.W  #$7fff,D0
-L0000D050               MOVE.W  D0,$00dff002
-L0000D056               MOVE.W  D0,$00dff09a
-L0000D05C               MOVE.W  D0,$00dff09c
-L0000D062               MOVE.W  #$e028,$00dff09a
-L0000D06A               MOVE.W  #$83c0,$00dff096
-L0000D072               MOVE.L  #L0000FBBA,$00dff080                            ; copper list
-L0000D07C               MOVE.W  $00dff088,D0
+L0000D050               MOVE.W  D0,CUSTOM+DMACONR                   ; $00dff002; writing to RO register = BAD NEWS
+L0000D056               MOVE.W  D0,CUSTOM+INTENA                    ; $00dff09a - disable interrupts
+L0000D05C               MOVE.W  D0,CUSTOM+INTREQ                    ; $00dff09c - clear current interrupt flags
+L0000D062               MOVE.W  #$e028,CUSTOM+INTENA                ; $00dff09a - SET|INTEN|EXTER|COPER|VERTB|PORTS
+L0000D06A               MOVE.W  #$83c0,CUSTOM+DMACON                ; $00dff096 - SET|DMAEN|BPLEN|COPEN|BLTEN
+L0000D072               MOVE.L  #copper_list,CUSTOM+COP1LC          ; $00dff080 - copper list
+L0000D07C               MOVE.W  CUSTOM+COPJMP1,D0                   ; $00dff088,D0 - reading from WO register - BAD NEWS
+
 L0000D082               MOVE.L  #level1_interrupt_handler,$00000064             ; exception vector - Level 1
 L0000D08C               MOVE.L  #level2_interrupt_handler,$00000068             ; exception vector - Level 2
 L0000D096               MOVE.L  #level3_interrupt_handler,$0000006c             ; exception vector - Level 3
 L0000D0A0               MOVE.L  #level4_interrupt_handler,$00000070             ; exception vector - Level 4
 L0000D0AA               MOVE.L  #level5_interrupt_handler,$00000074             ; exception vector - Level 5
+
 L0000D0B4               MOVE.B  #$7f,$00bfed01
 L0000D0BC               MOVE.B  #$7f,$00bfed01
 L0000D0C4               BRA.W   L0000D10C 
                             ;-------------------------------------
 
-
+level_status        ; original address L0000D0C8 ( > 0 = level completed )
 L0000D0C8               dc.w    $0000 
 
 
                     ;----------------- return to title screen --------------
+return_to_title_screen  ; original address L0000D0CA
 L0000D0CA               MOVE.W  #$0064,D0                       ; frames to wait/skip
 L0000D0CE               BSR.W   wait_frame                      ; L0000D1EE
 L0000D0D2               BSR.W   fade_panel_out                  ; L0000E630
@@ -87,9 +98,10 @@ L0000D0D6               JMP     $00000820                       ; loader - load 
 
 
                     ;-------------------- level completed ------------------
-L0000D0DC               MOVE.W  #$9999,$0007c882                ; panel
-L0000D0E4               MOVE.L  #$0005ed00,L0000e55a            ; external address (display?)
-L0000D0EE               MOVE.L  #$00067680,L0000e55e            ; external address (display?)
+level_completed     ; original address L0000D0DC
+L0000D0DC               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ;$0007c882 ; panel
+L0000D0E4               MOVE.L  #$0005ed00,L0000E55A            ; external address (display?)
+L0000D0EE               MOVE.L  #$00067680,L0000E55E            ; external address (display?)
 L0000D0F8               BSR.W   L0000E562
 L0000D0FC               BSR.W   fade_panel_out                  ; L0000E630
 L0000D100               JSR     L00004008                       ; music ?
@@ -102,17 +114,19 @@ L0000D106               JMP     $00000830                       ; loader - load 
 
 
                     ;-------------------- continue game start --------------------
-L0000D10C               JSR     L00004008                       ; music ?
-L0000D112               BTST.B  #$0001,$0007c874                ; panel 
-L0000D11A               BNE.W   L0000D0CA 
-L0000D11E               TST.W   L0000D0C8
-L0000D124               BNE.W   L0000D0DC 
+L0000D10C               JSR     L00004008                                   ; music ?
+L0000D112               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874 ; panel 
+L0000D11A               BNE.W   return_to_title_screen                      ; L0000D0CA
+
+L0000D11E               TST.W   level_status                                ; L0000D0C8
+L0000D124               BNE.W   level_completed                             ; L0000D0DC
+
 L0000D128               JSR     L00004008                       ; music ?
 L0000D12E               LEA.L   L0000EF96,A7
 L0000D134               BSR.W   L0000D38C
 L0000D138               BSR.W   panel_fade_in                   ; L0000E5EA
 L0000D13C               BSR.W   L0000E4F2
-L0000D140               CLR.W   $0007c882                       ; panel
+L0000D140               CLR.W   PANEL_TIMER_UPDATE_VALUE        ; $0007c882                       ; panel
 L0000D146               MOVE.L  #$00000001,D0
 L0000D148               BSR.W   L0000D26E
 L0000D14C               CLR.W   L0000D1E6
@@ -121,7 +135,7 @@ L0000D154               BSR.W   wait_frame                      ; L0000D1EE
 L0000D158               BSR.W   L0000DC1C
 L0000D15C               BSR.W   L0000D56A
 L0000D160               JSR     L0000D222
-L0000D166               BTST.B  #$0000,$0007c874               ; panel
+L0000D166               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1           ; #$0000,$0007c874               ; panel
 L0000D16E               BEQ.B   L0000D152 
 L0000D170               BRA.W   L0000D9E6 
 
@@ -149,7 +163,7 @@ L0000D1BA               MOVE.B  #$08,$00bfee01
 L0000D1C2               MOVE.B  #$88,$00bfed01
 L0000D1CA               NOT.W   L0000EE02
 L0000D1D0               JSR     L00004018                     ; music - update
-L0000D1D6               JSR     $0007c800                     ; panel - update
+L0000D1D6               JSR     PANEL_UPDATE                    ; $0007c800 ; panel - update
 L0000D1DC               MOVEM.L (A7)+,D0-D7/A0-A6
 L0000D1E0               RTE 
 
@@ -163,7 +177,8 @@ L0000D1E4               RTE
 
 
 
-L0000D1E6               dc.w    $0000
+L0000D1E6               dc.b    $00
+L0000D1E7               dc.b    $00
 L0000D1E8               dc.w    $0000 
 L0000D1EA               dc.w    $0000
 L0000D1EC               dc.w    $0000
@@ -200,18 +215,18 @@ L0000D222               BTST.B  #$0000,L0000D1E7
 L0000D22A               BNE.W   L0000D21A 
 L0000D22E               TST.W   L0000D1EC
 L0000D234               BNE.W   L0000D220 
-L0000D238               CMP.W   #$004c,L0000D1E6
-L0000D240               BEQ.W   L0000D2D8 
-L0000D244               CMP.W   #$005c,L0000D1E6
-L0000D24C               BEQ.W   L0000D260 
-L0000D250               CMP.W   #$0074,L0000D1E6
-L0000D258               BEQ.W   L0000D2C2 
+L0000D238               CMP.W   #$004c,L0000D1E6        ; $4c = 76 (cursor up keycode)
+L0000D240               BEQ.W   L0000D2D8               ; skip level
+L0000D244               CMP.W   #$005c,L0000D1E6        ; $5c = 92 
+L0000D24C               BEQ.W   L0000D260               ; toggle music (forward slash keypad)
+L0000D250               CMP.W   #$0074,L0000D1E6        ; $74 = 116
+L0000D258               BEQ.W   L0000D2C2               ; end the game ()
 L0000D25C               BRA.W   L0000D21A 
 
 
 L0000D260               NOT.W   L0000D1EC
-L0000D266               BCHG.B  #$0000,$0007c875            ; panel
-L0000D26E               BTST.B  #$0000,$0007c875            ; panel
+L0000D266               BCHG.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2       ; #$0000,$0007c875            ; panel
+L0000D26E               BTST.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2       ; #$0000,$0007c875            ; panel
 L0000D276               BEQ.B   L0000D27E 
 L0000D278               JMP     L00004004                   ; music ?
 L0000D27E               MOVE.L  #$00000001,D0
@@ -220,13 +235,13 @@ L0000D286               CLR.W   L0000D1EC
 L0000D28C               RTS 
 
 
-L0000D28E               MOVE.W  #$9999,$0007c882           ; panel
+L0000D28E               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882           ; panel
 L0000D296               NOT.W   L0000D2C0
 L0000D29C               CLR.W   L0000D1E6
 L0000D2A2               CMP.W   #$005e,L0000D1E6
 L0000D2AA               BNE.B   L0000D2A2 
 L0000D2AC               CLR.W   L0000D1E6
-L0000D2B2               CLR.W   $0007c882                   ; panel
+L0000D2B2               CLR.W   PANEL_TIMER_UPDATE_VALUE            ; $0007c882           ; panel
 L0000D2B8               CLR.W   L0000D2C0
 L0000D2BE               RTS 
 
@@ -235,13 +250,15 @@ L0000D2BE               RTS
 L0000D2C0                dc.w    $0000 
 
 
+                    ; -------------- no lives left/end level -------------
+L0000D2C2               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE             ; $0007c882            ; panel
+L0000D2CA               BSET.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874     ; panel
+L0000D2D2               JMP     L0000DA10 
 
-L0000D2C2               MOVE.W  #$9999,$0007c882            ; panel
-L0000D2CA               BSET.B  #$0001,$0007c874            ; panel
-L0000D2D2               JMP     L0000DA10   
-L0000D2D8               BTST.B  #$0007,$0007c875            ;panel
+                    ; ------------- skip level -------------
+L0000D2D8               BTST.B  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2      ; #$0007,$0007c875     ;panel
 L0000D2E0               BEQ.B   L0000D2EE 
-L0000D2E2               NOT.W   L0000D0C8
+L0000D2E2               NOT.W   level_status                                ; L0000D0C8
 L0000D2E8               JMP     L0000DA10
 L0000D2EE               RTS 
 
@@ -310,9 +327,9 @@ L0000D42E               BSR.W   L0000D4F4
 L0000D432               BSR.W   L0000D2F0
 L0000D436               BSR.W   L0000D462
 L0000D43A               MOVE.W  #$0059,D0
-L0000D43E               JSR     $0007c80e                   ; panel
-L0000D444               MOVE.W  #$9999,$0007c882            ; panel
-L0000D44C               JSR     $0007c854                   ; panel
+L0000D43E               JSR     PANEL_INIT_TIMER                    ; $0007c80e ; panel
+L0000D444               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; panel
+L0000D44C               JSR     PANEL_INIT_ENERGY                   ; $0007c854 ; panel
 L0000D452               CLR.L   L0000D846
 L0000D458               CLR.W   L0000D84A
 L0000D45E               BRA.W   L0000E110 
@@ -396,9 +413,14 @@ L0000D548               RTS
 
 
 L0000D54A               dc.w    $1164
-L0000d54c               dc.w    $F051,$FFE0,$CF01,$337F,$FEEF,$0506,$0838
-L0000D55A               dc.w    $0012,$0839,$0006,$00DF,$F002,$6600,$FFF6
-L0000D568               dc.w    $4E75 ; RTS ?
+L0000D54C               dc.w    $F051,$FFE0,$CF01,$337F,$FEEF,$0506,$0838
+L0000D55A               dc.w    $0012
+
+
+
+L0000D55C               BTST.B  #$0006,$00dff002
+L0000D564               BNE.W   L0000D55C
+L0000D568               RTS 
 
 
 
@@ -406,7 +428,7 @@ L0000D56A               TST.W   L0000DC02
 L0000D570               BEQ.W   L0000D588 
 L0000D574               MOVE.W  L0000DC0A,D0
 L0000D57A               ADD.W   D0,L0000E128
-L0000D580               SUB.W   #$0001,L000DC02
+L0000D580               SUB.W   #$0001,L0000DC02
 L0000D588               TST.W   L0000DC04
 L0000D58E               BEQ.W   L0000D5A6 
 L0000D592               MOVE.W  L0000DC08,D0
@@ -483,7 +505,7 @@ L0000D6EC               RTS
 
 
 
-L0000D6EE               MOVE.W  L000DC08,D0
+L0000D6EE               MOVE.W  L0000DC08,D0
 L0000D6F4               OR.W    L0000DC0A,D0
 L0000D6FA               OR.W    L0000DC04,D0
 L0000D700               OR.W    L0000DC02,D0
@@ -513,7 +535,7 @@ L0000D776               BSR.W   L0000DBA6
 L0000D77A               SUB.W   #$0001,L0000DBFA
 L0000D782               BNE.W   L0000D7D4 
 L0000D786               BSR.W   L0000D86A
-L0000D78A               CMP.B   #$33,L0000D8D6
+L0000D78A               CMP.B   #$33,L0000D8D6          ; display char
 L0000D792               BNE.B   L0000D798 
 L0000D794               BRA.W   L0000D930 
 
@@ -526,13 +548,13 @@ L0000D7AC               BRA.W   L0000D9E6
 
 
 L0000D7B0               MOVE.L  #$00000006,D0
-L0000D7B2               JSR     $0007c870                   ; Panel
+L0000D7B2               JSR     PANEL_LOSE_ENERGY       ; $0007c870 ; Panel
 L0000D7B8               MOVE.W  #$0003,L0000DBFA
 L0000D7C0               MOVE.W  #$fffe,L0000DBFE
 L0000D7C8               CLR.L   L0000D846
 L0000D7CE               CLR.W   L0000D84A
 L0000D7D4               NOT.W   L0000DC0E
-L0000D7DA               ADD.W   #$0002,L0000DCFC
+L0000D7DA               ADD.W   #$0002,L0000DBFC
 L0000D7E2               ADD.W   #$0002,L0000DBFE
 L0000D7EA               RTS 
 
@@ -540,10 +562,18 @@ L0000D7EA               RTS
 
 L0000D7EC               dc.w    $0068,$0068,$0068,$007B,$007B,$007B,$008E,$008E
 L0000D7FC               dc.w    $008E,$00A1,$00A1,$00A1,$00B4,$00B4,$00B4,$00C7
-L0000D80C               dc.w    $00C7,$00C7,$00DA,$00DA,$00DA,$0013,$0031,$004F
+L0000D80C               dc.w    $00C7,$00C7,$00DA,$00DA,$00DA
+
+L0000D816               dc.w    $0013,$0031,$004F
 L0000D81C               dc.w    $0013,$0031,$004F,$0013,$0031,$004F,$0013,$0031
 L0000D82C               dc.w    $004F,$0013,$0031,$004F,$0013,$0031,$004F,$0013
-L0000D83C               dc.w    $0031,$004F,$0001,$0002,$0003,$0000,$0000,$0000
+L0000D83C               dc.w    $0031,$004F
+L0000D840               dc.w    $0001
+L0000D842               dc.w    $0002
+L0000D844               dc.w    $0003
+L0000D846               dc.w    $0000
+L0000D848               dc.w    $0000
+L0000D84A               dc.w    $0000
 
 
 
@@ -560,14 +590,14 @@ L0000D86A               BSR.W   L0000D318
 L0000D86E               CLR.W   L0000DC0E
 L0000D874               MOVE.B  #$30,D7
 L0000D878               BSR.W   L0000D8DA
-L0000D87C               MOVE.B  D7,L0000D8D6
+L0000D87C               MOVE.B  D7,L0000D8D6            ; display char
 L0000D882               MOVE.L  #$00000000,D0
 L0000D884               MOVE.B  D7,D0
 L0000D886               SUB.B   #$30,D0
 L0000D88A               ASL.L   #$00000008,D0
-L0000D88C               JSR     $0007c82a               ; Panel
+L0000D88C               JSR     PANEL_ADD_SCORE         ; $0007c82a ; Panel
 L0000D892               NOT.W   L0000EE04
-L0000D898               MOVE.L  #$0000f68e,L0000EDFC
+L0000D898               MOVE.L  #debug_typer_buffer,debug_display_buffer_ptr     ; #L0000F68E,L0000EDFC
 L0000D8A2               LEA.L   L0000D8D4,A6
 L0000D8A8               BSR.W   debug_text_typer        ; L0000E382 
 L0000D8AC               MOVE.W  #$0009,L0000E154
@@ -578,7 +608,8 @@ L0000D8CA               ADD.W   #$0013,L0000D8D8
 L0000D8D2               RTS 
 
                         ; display characters (x,y,char,$ff)
-L0000D8D4               dc.w    $0000,$30ff
+L0000D8D4               dc.w    $0000
+L0000D8D6               dc.w    $30ff
 L0000D8D8               dc.w    $0073 
 
 
@@ -602,7 +633,7 @@ L0000D910               RTS
 
 L0000D912               CMP.W   L0000D846,D0
 L0000D918               BEQ.B   L0000D92C 
-L0000D91A               CMP.W   L00000D848,D0
+L0000D91A               CMP.W   L0000D848,D0
 L0000D920               BEQ.B   L0000D92C 
 L0000D922               CMP.W   L0000D84A,D0
 L0000D928               BEQ.B   L0000D92C 
@@ -616,12 +647,13 @@ L0000D934               BSR.W   L0000DAAA
 L0000D938               MOVE.L  #$00000002,D0
 L0000D93A               JSR     L00004010
 L0000D940               MOVE.L  #$00000000,D0
-L0000D942               MOVE.W  $0007c884,D0            ; Panel
+L0000D942               MOVE.W  PANEL_TIMER_VALUE,D0                ; $0007c884,D0 ; Panel
 L0000D948               ASL.L   #$00000008,D0
 L0000D94A               ASL.L   #$00000004,D0
-L0000D94C               JSR     $0007c82a               ; Panel
-L0000D952               MOVE.W  #$ffff,L0000D0C8
-L0000D95A               MOVE.W  #$9999,$0007c882        ; Panel
+L0000D94C               JSR     PANEL_ADD_SCORE                     ; $0007c82a ; Panel
+L0000D952               MOVE.W  #$ffff,level_status                 ; L0000D0C8 - level completed
+
+L0000D95A               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; Panel
 L0000D962               MOVE.W  #$00c8,D0               ; frames to wait/skip
 L0000D966               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000D96A               MOVE.W  #$2260,D0
@@ -645,27 +677,28 @@ L0000D9D2               BSR.W   L0000D206
 L0000D9D6               BRA.W   L0000D112 
 
 
-L0000D9DA               MOVE.W  #$0001,L0000D0C8
+L0000D9DA               MOVE.W  #$0001,level_status     ; L0000D0C8 - level completed
 L0000D9E2               BRA.W   L0000DA00 
 
 
 L0000D9E6               MOVE.W  #$0080,D0
-L0000D9EA               JSR     $0007c870               ; Panel
+L0000D9EA               JSR     PANEL_LOSE_ENERGY       ; $0007c870 ; Panel
 L0000D9F0               MOVE.W  #$000b,D3
 L0000D9F4               BSR.W   L0000DAAA
 L0000D9F8               MOVE.L  #$00000003,D0
 L0000D9FA               JSR     L00004010
-L0000DA00               MOVE.W  #$9999,$0007c882        ; Panel
+L0000DA00               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; Panel
 L0000DA08               MOVE.W  #$00c8,D0               ; frames to wait/skip
 L0000DA0C               BSR.W   wait_frame              ; L0000D1EE_loop
+
 L0000DA10               MOVE.W  #$2260,D0
 L0000DA14               LEA.L   $00067680,A0            ; External Address
 L0000DA1A               CLR.L   (A0)+
 L0000DA1C               DBF.W   D0,L0000DA1A 
 L0000DA20               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000DA2A               BTST.B  #$0000,$0007c874        ; Panel
+L0000DA2A               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1   ; #$0000,$0007c874        ; Panel
 L0000DA32               BNE.B   L0000DA54 
-L0000DA34               BTST.B  #$0001,$0007c874        ; Panel
+L0000DA34               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1   ; #$0001,$0007c874        ; Panel
 L0000DA3C               BNE.B   L0000DA42 
 L0000DA3E               BRA.W   L0000DA7E 
 
@@ -691,7 +724,7 @@ L0000DAA2               BSR.W   L0000D206
 L0000DAA6               BRA.W   L0000D112 
 
 
-L0000DAAA               MOVE.W  #$9999,$0007c882        ; Panel
+L0000DAAA               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; Panel
 L0000DAB2               BSR.W   L0000E110
 L0000DAB6               MOVE.W  #$0025,D0               ; frames to wait/skip
 L0000DABA               BSR.W   wait_frame              ; L0000D1EE_loop
@@ -767,11 +800,22 @@ L0000DBEA               CLR.W   L0000DC0E
 L0000DBF0               RTS 
 
 
-L0000DBF2               dc.w    $0005,$002A,$004F,$0074,$0003,$0000,$0000
+L0000DBF2               dc.w    $0005,$002A,$004F,$0074
+L0000DBFA               dc.w    $0003
+L0000DBFC               dc.w    $0000
+L0000DBFE               dc.w    $0000
 L0000DC00               dc.w    $0000
-L0000DC02               dc.w    $0000,$0000,$0001,$0000,$0000,$0000
-L0000DC0E               dc.w    $0000,$0000
-L0000DC12               dc.w    $0000
+L0000DC02               dc.w    $0000
+L0000DC04               dc.w    $0000
+L0000DC06               dc.w    $0001
+L0000DC08               dc.w    $0000
+L0000DC0A               dc.w    $0000
+L0000DC0C               dc.w    $0000
+L0000DC0E               dc.w    $0000
+L0000DC10               dc.b    $00
+L0000DC11               dc.b    $00
+L0000DC12               dc.b    $00
+L0000DC13               dc.b    $00
 L0000DC14               dc.w    $0000,$0000
 L0000DC18               dc.w    $0000,$0000
 
@@ -837,7 +881,7 @@ L0000DD04               LEA.L   L0000E148,A4
 L0000DD0A               LEA.L   L0000E14E,A5
 L0000DD10               LEA.L   L0000E154,A6
 L0000DD16               MOVE.W  #$0001,D7
-L0000DD1A               CLR.L   L0000E2E2
+L0000DD1A_loop          CLR.L   L0000E2E2
 L0000DD20               CMP.W   #$0001,D7
 L0000DD24               BEQ.W   L0000DE80 
 L0000DD28               BSR.W   L0000DFB2
@@ -1059,13 +1103,19 @@ L0000E120               RTS
 
 
 
-L0000E122               dc.w    $0000,$0018,$0000,$0012
+L0000E122               dc.w    $0000
+L0000E124               dc.w    $0018
+L0000E126               dc.w    $0000
+L0000E128               dc.w    $0012
 
 L0000E12A               dc.w    $0000,$0000
 L0000E12E               dc.w    $0000,$0000
-L0000E132               dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L0000E132               dc.w    $0000,$0000
+L0000E136               dc.w    $0000,$0000,$0000,$0000
+L0000E13E               dc.w    $0000,$0000
 
-L0000E142               dc.w    $0000,$0000,$0000
+L0000E142               dc.w    $0000,$0000
+L0000E146               dc.w    $0000
 
 L0000E148               dc.w    $0000,$0000
 L0000E14C               dc.w    $0000
@@ -1122,7 +1172,7 @@ L0000E2EA               RTS     ; 4e75
 
 
 L0000E2EC               MOVEM.L D0-D7/A0-A6,-(A7)
-L0000E2F0               BSR.W   L000E312
+L0000E2F0               BSR.W   L0000E312
 L0000E2F4               MOVEM.L (A7)+,D0-D7/A0-A6
 L0000E2F8               RTS 
 
@@ -1140,7 +1190,7 @@ L0000E30A               dc.w    $0000
                 ; write a debug value into the panel area
                 ;
 L0000E30C               CLR.W   L0000E30A
-L0000E312               MOVE.L  #$0007c89a,L0000EDFC        ; panel
+L0000E312               MOVE.L  #PANEL_GFX,L0000EDFC        ; $0007c89a panel
 L0000E31C               LEA.L   L0000E304,A6
 L0000E322               LEA.L   L0000E36E,A5                ; array of characters 0-9A-F
 L0000E328               MOVE.W  D1,L0000E302
@@ -1266,7 +1316,7 @@ L0000E4DC               BRA.W   L0000E3A2_loop              ; next_char
 
 
 
-L0000E4E0               MOVE.L  #$0007c89a,L0000EDFC        ; panel
+L0000E4E0               MOVE.L  #PANEL_GFX,L0000EDFC        ; $0007c89a panel
 L0000E4EA               CLR.W   L0000EE04
 L0000E4F0               RTS 
 
@@ -1289,7 +1339,7 @@ L0000E52A               LEA.L   L0000FCBE,A0
 L0000E530               LEA.L   L0000FBE6,A1
 L0000E536               BSR.W   L0000D206
 L0000E53A               MOVE.W  #$00b4,D0
-L0000E53E               BSR.W   L000D1EE
+L0000E53E               BSR.W   wait_frame                  ; $0000d1ee
 L0000E542               MOVE.L  #$0005ed00,L0000E55A        ; external address
 L0000E54C               MOVE.L  #$00067680,L0000E55E        ; external address
 L0000E556               BRA.W   L0000E572 
@@ -1481,7 +1531,7 @@ L0000E73A               BRA.W   L0000E744
 L0000E73E               ADD.B   D0,D1
 L0000E740               AND.W   #$00ff,D1
 L0000E744               MULU.W  #$0028,D1
-L0000E748               LEA.L   L0000E7BC,A2            ; font gfx address
+L0000E748               LEA.L   font8x8x5,a2            ; L0000E7BC,A2            ; font gfx address
 L0000E74E               LEA.L   $00(A2,D1.w),A2
 L0000E752               MOVE.L  #$00000007,D7           ; 8 pixel font
 L0000E754               MOVEA.L A1,A3
@@ -1489,15 +1539,19 @@ L0000E756_loop          MOVE.B  (A2)+,D1
 L0000E758               AND.B   D1,(A3)
 L0000E75A               MOVE.B  (A2)+,D2
 L0000E75C               OR.B    D2,(A3)
+
 L0000E75E               AND.B   D1,$1a20(A3)
 L0000E762               MOVE.B  (A2)+,D2
 L0000E764               OR.B    D2,$1a20(A3)
+
 L0000E768               AND.B   D1,$3440(A3)
 L0000E76C               MOVE.B  (A2)+,D2
 L0000E76E               OR.B    D2,$3440(A3)
+
 L0000E772               AND.B   D1,$4e60(A3)
 L0000E776               MOVE.B  (A2)+,D2
 L0000E778               OR.B    D2,$4e60(A3)
+
 L0000E77C               LEA.L   $002c(A3),A3
 L0000E780               LEA.L   -$0005(A2),A2
 L0000E784               MOVE.B  (A2)+,D1
@@ -1522,9 +1576,76 @@ L0000E7BA               RTS
 
 
                 ; multi-colour 4 bpl 8x8 pixel font - used by game text typer
-L0000E7BC       dc.w    $CF30,$3000,$00C7,$3038,$0800,$C730,$3808,$00C7
-L0000E7CC       dc.w    $3038,$0800,$C730,$3808,$00E7,$0018,$1800,$CF30
-L0000E7DC       dc.w    $3000,$00E7,$0018,$1800,$F30C,$0C00,$00E1,$181E
+                ; 320 rasters (4bpl + mask)
+
+                ; char '!'
+                ; ..11....      ; bpl0
+                ; ..11....
+                ; ..11....
+                ; ..11....
+                ; ..11....
+                ; ........
+                ; ..11....
+                ; ........
+font8x8x5
+L0000E7BC       dc.b    $CF     ; 11..1111      ; mask
+                dc.b    $30     ; ..11....      ; bpl0
+                dc.b    $30     ; ..11....      ; bpl1
+                dc.b    $00     ; ........      ; bpl2
+                dc.b    $00     ; ........      ; bpl3
+
+                dc.b    $C7     ; 11...111
+                dc.b    $30     ; ..11....
+                dc.b    $38     ; ..111...
+                dc.b    $08     ; ....1...
+                dc.b    $00     ; ........
+
+                dc.b    $C7     ; 11...111
+                dc.b    $30     ; ..11....
+                dc.b    $38     ; ..111...
+                dc.b    $08     ; ....1...
+                dc.b    $00     ; ........
+
+                dc.b    $C7     ; 11...111
+L0000E7CC       dc.b    $30     ; ..11....
+                dc.b    $38     ; ..111...
+                dc.b    $08     ; ....1...
+                dc.b    $00     ; ........
+
+                dc.b    $C7     ; 11...111
+                dc.b    $30     ; ..11....
+                dc.b    $38     ; ..111...
+                dc.b    $08     ; ....1...
+                dc.b    $00     ; ........
+
+                dc.b    $E7     ; 111..111
+                dc.b    $00     ; ........
+                dc.b    $18     ; ...11...
+                dc.b    $18     ; ...11...
+                dc.b    $00     ; ........
+
+                dc.b    $CF     ; 11..1111
+                dc.b    $30     ; ..11....
+L0000E7DC       dc.b    $30     ; ..11....
+                dc.b    $00     ; ........
+                dc.b    $00     ; ........
+
+                dc.b    $E7     ; 111..111
+                dc.b    $00     ; ........
+                dc.b    $18     ; ...11...
+                dc.b    $18     ; ...11...
+                dc.b    $00     ; ........
+
+
+
+                dc.b    $F3
+                dc.b    $0C
+                dc.b    $0C
+                dc.b    $00
+                dc.b    $00
+                dc.b    $E1
+                dc.b    $18
+                dc.b    $1E
 L0000E7EC       dc.w    $0600,$E318,$1C04,$00E3,$181C,$0400,$E318,$1C04
 L0000E7FC       dc.w    $00E3,$181C,$0400,$F30C,$0C00,$00F9,$0006,$0600
 L0000E80C       dc.w    $9F60,$6000,$00CF,$3030,$0000,$C730,$3808,$00C7
@@ -1622,7 +1743,11 @@ L0000EDBC       dc.w    $787E,$0600,$C330,$3C0C,$00C7,$3038,$0800,$C730
 L0000EDCC       dc.w    $3808,$00E7,$0018,$1800,$03FC,$FC00,$0001,$CCFE
 L0000EDDC       dc.w    $3200,$8118,$7E66,$00C3,$303C,$0C00,$8760,$7818
 L0000EDEC       dc.w    $0003,$CCFC,$3000,$01FC,$FE02,$0081,$007E,$7E00
-L0000EDFC       dc.w    $0007,$C89A
+                ; ----------- end of font data -------
+
+
+debug_display_buffer_ptr
+L0000EDFC       dc.l    $0007C89A               ; address of panel gfx
 
 L0000EE00       dc.w    $0000
 
@@ -1766,11 +1891,17 @@ L0000F64C       dc.w    $07FF,$FFE0,$0000,$07FF,$FFE0,$0000,$07FF,$FFE0
 L0000F65C       dc.w    $0000,$07FF,$FFE0,$0000,$07FF,$FFE0,$0000,$07FF
 L0000F66C       dc.w    $FFE0,$0000,$07FF,$FFE0,$0000,$07FF,$FFE0,$0000
 L0000F67C       dc.w    $07FF,$FFE0,$0000,$0000,$0000,$0000,$0000,$0000
-L0000F68C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L0000F68C       dc.w    $0000
+
+            ; debug typer buffer (64 bytes)
+debug_typer_buffer  ; original address L0000F68E
+L0000F68E       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F69C       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F6AC       dc.w    $0000,$FF00,$0000,$FF00,$0000,$FF00,$0000,$FF00
 L0000F6BC       dc.w    $0000,$FF00,$0000,$FF00,$0000,$FF00,$0000,$FF00
-L0000F6CC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L0000F6CC       dc.w    $0000
+
+L0000F6CE       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F6DC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F6EC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F6FC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
@@ -1853,6 +1984,7 @@ L0000FBAC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
 
 
             ; ----------------- copper list -----------------
+copper_list ; original address $000fbba
 L0000FBBA   ; original address $000fbba
                 ; game screen display
                 dc.w    $00FF,$FF00
@@ -1924,7 +2056,9 @@ L0000FC52       dc.w    $0180,$0000
 panel_colour_palette
 L0000FC9E       dc.w    $0000,$0060,$0FFF,$0008,$0A22,$0444,$0862
 L0000FCAC       dc.w    $0666,$0888,$0AAA,$0A40,$0C60,$0E80,$0EA0,$0EC0
-L0000FCBC       dc.w    $0EEE,$0000,$0130,$0111,$0333,$0555,$0777,$0BBB
+L0000FCBC       dc.w    $0EEE
+
+L0000FCBE       dc.w    $0000,$0130,$0111,$0333,$0555,$0777,$0BBB
 L0000FCCC       dc.w    $0008,$0A04,$0703,$0000,$0B50,$0F70,$0250,$0F00
 L0000FCDC       dc.w    $0005,$0F70,$0250,$0F00,$0005,$0000,$0000,$0000
 
@@ -5060,3 +5194,11 @@ L0001BFDC   dc.w    $0000,$0000,$0280,$0020,$0000,$0000,$0000,$0000
 L0001BFEC   dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0001BFFC   dc.w    $0000,$0000,$0000
 
+
+
+            ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
+            IFD TEST_BUILD_LEVEL
+                incdir      "../panel/"
+                include     "panel.s" 
+                even
+            ENDC
