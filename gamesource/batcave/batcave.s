@@ -141,44 +141,64 @@ L0000D170               BRA.W   L0000D9E6
 
 
 
-
+                ; ------------ level 1 interrupt handler ------------------
+                ; do nothing, unused
+                ;
 level1_interrupt_handler    ; original address L0000D174
 L0000D174               RTE 
 
 
+                ; ------------ level 2 interrupt handler ------------------
+                ; PORTS interrupt
+                ;  - reading raw keycodes and twiddling bits on CIAA
+                ;  - not the recommended way of reading the keyboard and ack'ing the code, as far as I can see.
+                ;
 level2_interrupt_handler    ; original address L0000D176
-L0000D176               MOVE.B  $00bfec01,L0000D1E7
-L0000D180               MOVE.B  $00bfed01,$00bfed01
-L0000D18A               MOVE.W  #$0808,$00dff09c
-L0000D192               MOVE.B  #$08,$00bfed01
-L0000D19A               MOVE.B  #$60,$00bfee01
+L0000D176               MOVE.B  $00bfec01,L0000D1E7             ; raw key code from keyboard
+L0000D180               MOVE.B  $00bfed01,$00bfed01             ; ICR - unless a CIAA interrupt will clear CIA interrupts?
+L0000D18A               MOVE.W  #$0808,CUSTOM+INTREQ            ; Clear PORTS | RBF? - $00dff09c
+L0000D192               MOVE.B  #$08,$00bfed01                  ; ICR - Clear SP FLAG
+L0000D19A               MOVE.B  #$60,$00bfee01                  ; CRA - INMODE=1, SPMODE=1
 L0000D1A2               RTE 
 
 
+                ;-------------- level 3 interrupt handler -----------------
+                ; COPER & VERTB interrupts
+                ;   - Update Music
+                ;   - Update Score Panel
+                ;   - CIAA Bit twiddling, maybe a keyboard ack, not the recommended way of reading the keyboard and ack'ing the code, as far as I can see.
+                ;
 level3_interrupt_handler    ; original address L0000D1A4
 L0000D1A4               MOVEM.L D0-D7/A0-A6,-(A7)
-L0000D1A8               MOVE.W  #$0020,$00dff09c
-L0000D1B0               MOVE.B  $00bfed01,$00bfed01
-L0000D1BA               MOVE.B  #$08,$00bfee01
-L0000D1C2               MOVE.B  #$88,$00bfed01
-L0000D1CA               NOT.W   L0000EE02
-L0000D1D0               JSR     L00004018                     ; music - update
-L0000D1D6               JSR     PANEL_UPDATE                    ; $0007c800 ; panel - update
+L0000D1A8               MOVE.W  #$0020,CUSTOM+INTREQ            ; Clear VERTB interrupt - $00dff09c
+L0000D1B0               MOVE.B  $00bfed01,$00bfed01             ; ICR - interrupt control register (reading clears it, msb is set/clear so unless cia interrupt has occurred then it will disable ciaa interrupts)
+L0000D1BA               MOVE.B  #$08,$00bfee01                  ; CRA, Set timer A one-shot mode
+L0000D1C2               MOVE.B  #$88,$00bfed01                  ; ICR, Set, SP FLAG (Enable SP Interrupt)
+L0000D1CA               NOT.W   frame_toggle                    ; Frame Toggle (odd/even frame toggle) - unreferenced by game code
+L0000D1D0               JSR     L00004018                       ; music - update
+L0000D1D6               JSR     PANEL_UPDATE                    ; panel - update $0007c800
 L0000D1DC               MOVEM.L (A7)+,D0-D7/A0-A6
 L0000D1E0               RTE 
 
 
+                ; --------------- level 4 interrupt handler ---------------
+                ; unused
+                ;
 level4_interrupt_handler    ; original address L0000D1E2
 L0000D1E2               RTE 
 
 
+                ; --------------- level 5  interrupt handler ---------------
+                ; unused
+                ;
 level5_interrupt_handler    ; original address L0000D1E4
 L0000D1E4               RTE 
 
 
 
 L0000D1E6               dc.b    $00
-L0000D1E7               dc.b    $00
+raw_keycode
+L0000D1E7               dc.b    $00                 ; raw keycode.
 L0000D1E8               dc.w    $0000 
 L0000D1EA               dc.w    $0000
 L0000D1EC               dc.w    $0000
@@ -191,7 +211,7 @@ L0000D1EC               dc.w    $0000
                     ;   D0.w = frame count
                     ;
 wait_frame          ; original address $0000D1EE
-L0000D1EE_loop          CMP.B   #$c1,$00dff006
+L0000D1EE_loop          CMP.B   #$c1,CUSTOM+VHPOSR       ; $00dff006
 L0000D1F6               BNE.B   L0000D1EE_loop 
 L0000D1F8               MOVE.W  #$0064,D1
 L0000D1FC_loop          DBF.W   D1,L0000D1FC_loop
@@ -199,6 +219,20 @@ L0000D200               DBF.W   D0,L0000D1EE_loop
 L0000D204               RTS 
 
 
+                    ; copy word value from (a0)+
+                    ; place that word into last word of 2 word struct (a1)+
+                    ; e.g
+                    ;   - A0 = $1111,$2222,$3333
+                    ;   - a1 = xxxx,$1111,xxxx,$2222,xxxx,$3333
+                    ;   where xxxx is untouched b this routine
+                    ;
+                    ; IN:
+                    ;   A0 = source data words
+                    ;   A1 = dest data structure
+                    ;
+                    ; OUT:
+                    ;   D0.l = $00000001
+                    ;
 L0000D206               MOVE.W  #$000f,D0
 L0000D20A               ADDA.L  #$00000002,A1
 L0000D20C_loop          MOVE.W  (A0)+,(A1)+
@@ -206,12 +240,13 @@ L0000D20E               ADDA.L  #$00000002,A1
 L0000D210               DBF.W   D0,L0000D20C_loop 
 L0000D214               MOVE.L  #$00000001,D0           ; frames to wait/skip
 L0000D216               BRA.W   wait_frame              ; L0000D1EE_loop 
+
 L0000D21A               CLR.W   L0000D1EC
 L0000D220               RTS 
 
 
 
-L0000D222               BTST.B  #$0000,L0000D1E7
+L0000D222               BTST.B  #$0000,raw_keycode      ; test key up/down flag - L0000D1E7
 L0000D22A               BNE.W   L0000D21A 
 L0000D22E               TST.W   L0000D1EC
 L0000D234               BNE.W   L0000D220 
@@ -317,8 +352,8 @@ L0000D3E2               MOVE.W  #$0073,L0000D8D8
 L0000D3EA               MOVE.W  #$0006,L0000DC00
 L0000D3F2               MOVE.W  #$0018,L0000E124
 L0000D3FA               MOVE.W  #$0012,L0000E128
-L0000D402               LEA.L   L0000F6CE,A0
-L0000D408               LEA.L   L0000FBE6,A1
+L0000D402               LEA.L   game_screen_palette,a0          ; L0000F6CE,A0
+L0000D408               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
 L0000D40E               BSR.W   L0000D206
 L0000D412               MOVE.L  #$00001a20,L0000DC14            ; offset/address?
 L0000D41C               MOVE.L  #$0005ed00,L0000DC18            ; external address (display?)
@@ -671,8 +706,8 @@ L0000D9AA               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000D9AE               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000D9B8               MOVE.L  #$00067680,L0000E55A    ; external address
 L0000D9C2               BSR.W   L0000E562
-L0000D9C6               LEA.L   L0000F6CE,A0
-L0000D9CC               LEA.L   L0000FBE6,A1
+L0000D9C6               LEA.L   game_screen_palette,A0      ; L0000F6CE,A0
+L0000D9CC               LEA.L   copper_screen_palette,a1    ; L0000FBE6,A1
 L0000D9D2               BSR.W   L0000D206
 L0000D9D6               BRA.W   L0000D112 
 
@@ -718,8 +753,8 @@ L0000DA7A               BSR.W   wait_frame              ; L0000D1EE_loop
 L0000DA7E               MOVE.L  #$0005ed00,L0000E55A    ; external address
 L0000DA88               MOVE.L  #$00067680,L0000E55E    ; external address
 L0000DA92               BSR.W   L0000E562
-L0000DA96               LEA.L   L0000F6CE,A0
-L0000DA9C               LEA.L   L0000FBE6,A1
+L0000DA96               LEA.L   game_screen_palette,A0      ; L0000F6CE,A0
+L0000DA9C               LEA.L   copper_screen_palette,A1    ; L0000FBE6,A1
 L0000DAA2               BSR.W   L0000D206
 L0000DAA6               BRA.W   L0000D112 
 
@@ -1336,7 +1371,7 @@ L0000E516               MOVE.L  #$0005ed00,L0000E55E        ; external address
 L0000E520               LEA.L   text_bat_cave,A0            ; L0000E670,A0
 L0000E526               BSR.W   game_text_typer             ; L0000E6E4
 L0000E52A               LEA.L   L0000FCBE,A0
-L0000E530               LEA.L   L0000FBE6,A1
+L0000E530               LEA.L   copper_screen_palette,A1    ; L0000FBE6,A1
 L0000E536               BSR.W   L0000D206
 L0000E53A               MOVE.W  #$00b4,D0
 L0000E53E               BSR.W   wait_frame                  ; $0000d1ee
@@ -1751,7 +1786,9 @@ L0000EDFC       dc.l    $0007C89A               ; address of panel gfx
 
 L0000EE00       dc.w    $0000
 
-L0000EE02       dc.w    $0000
+frame_toggle    ; original address L0000EE02
+L0000EE02       dc.w    $0000                   ; frame toggle (NOT.W every VERTB) - unreferenced by code
+
 L0000EE04       dc.w    $0000
 
 L0000EE06       dc.w    $C89A,$002C,$FFFF
@@ -1901,6 +1938,7 @@ L0000F6AC       dc.w    $0000,$FF00,$0000,$FF00,$0000,$FF00,$0000,$FF00
 L0000F6BC       dc.w    $0000,$FF00,$0000,$FF00,$0000,$FF00,$0000,$FF00
 L0000F6CC       dc.w    $0000
 
+game_screen_palette
 L0000F6CE       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F6DC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000F6EC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
@@ -2000,6 +2038,7 @@ L0000FBBA   ; original address $000fbba
                 dc.w    $00EE,$3B62     ; $63B63 - bpl3
 
                 ; game screen palette (4 bitplanes/16 colours)
+copper_screen_palette
 L0000FBE6       dc.w    $0180,$0000
                 dc.w    $0182,$0000
                 dc.w    $0184,$0000
@@ -5202,3 +5241,45 @@ L0001BFFC   dc.w    $0000,$0000,$0000
                 include     "panel.s" 
                 even
             ENDC
+
+
+                    ;-------------------------------------------------------------------------------------------
+                    ; My Debug Routines
+                    ;-------------------------------------------------------------------------------------------
+                    ; I added the following routines to allow 'signals' to be flashed on screen, and/or
+                    ; the game to be paused as required.
+                    ;
+                    ; The routines are used to modify routines so that I can flash the screen, pause the
+                    ; game when certain code is executed.
+                    ;
+
+_DEBUG_COLOUR_RED
+            move.w  #$f00,$dff180
+            rts
+
+_DEBUG_COLOUR_GREEN
+            move.w  #$0f0,$dff180
+            rts
+
+_DEBUG_COLOUR_BLUE
+            move.w  #$00f,$dff180
+            rts                    
+
+_DEBUG_COLOURS
+            move.w  d0,$dff180
+            add.w   #$1,d0
+            btst    #6,$bfe001
+            bne.s   _DEBUG_COLOURS
+            rts
+            
+_DEBUG_RED_PAUSE
+                    move.w  #$f00,$dff180
+                    btst    #6,$bfe001
+                    bne.s   _DEBUG_RED_PAUSE
+                    rts
+
+_MOUSE_WAIT
+            btst    #6,$bfe001
+            bne.s   _MOUSE_WAIT
+            rts
+
