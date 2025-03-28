@@ -6,7 +6,8 @@
  - [Resources and Acknowledgements](#resources-and-acknowledgements)
  - [Progress to date](#progress-to-date)
 
-This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. In Particular (Level 1,2,4 & Level 5 are buildable and playable from source). Level 3 (Batcave) is the only level remaining, along with fixing music bugs for level 2 & 4.
+This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. 
+All Game Levels can be built and played frm the Source Code using VSCode. There are a couple of minor bugs and music to fix for the BatCave and Catherdral Levels.
 
 ## Main Code Projects
 The folder names for the projects below reflect the file names of the executables held on the original disks.
@@ -57,13 +58,13 @@ This exercise is not one of speed, but of learning. The intention is to understa
     - ['mapgr' Project](./gamesource/mapgr/) - Level GFX & Data - Level1
     - ['mapgr2' Project](./gamesource/mapgr2/) - Level GFX & Data - Level5
  - Disassemble the Batmobile/Batwing Levels.
-    - ['music' Project](./gamesource/music) - Music & SFX for Level 2 & 4 (**TODO Bug Fixes**)
+    - ['music' Project](./gamesource/music) - Music & SFX for Level 2 & 4 (**TODO Music**)
     - ['data' Project](./gamesource/data) - Shared common data file for Levels 2 & 4
     - ['data2' Project](./gamesource/data2) - Level 2 specific data file.
     - ['data4' Project](./gamesource/data4) - Level 4 specific data file.
     - ['code' Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
-    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**IN PROGRESS**)
+    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**TOOD Music**)
 
 ## Resources and Acknowledgements
 The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
@@ -88,6 +89,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 
 ## Progress to Date
+
+**2025-03-29 - Level 3** - The GFX Glitches are now fixed and the level is playable.
 
 **2025-03-28 - Level 3** - The Batcave Level is now executing within VSCode, There is Graphics corruption on the sprites making it unplayable for the moment.
 
