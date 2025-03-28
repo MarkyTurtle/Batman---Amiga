@@ -4,7 +4,6 @@
                 ; Code Entry:   $d000
                 ;
                 section panel,code_c
-                org     $0                                          ; original load address
 
 
                 ;--------------------- includes and constants ---------------------------
@@ -33,16 +32,18 @@ L00004010           rts
 L00004014           rts
 L00004018           rts
 
+                    dcb.b   4096,$00
 stack_memory        ; original address L0000EF96
 L0000EF96
 
                     ;------------------------- code entry point on load ---------------------------
                     ;
-code_entry_point
+code_entry_point        JSR     _DEBUG_COLOURS
 L0000D000               LEA.L   L0000EF96,A7                ; stack
 L0000D006               JSR     L00004000                   ; music?
 
                     ; init font - 320 lines of 5 byte struct (4bpl + mask)
+                        JSR     _DEBUG_COLOURS
 L0000D00C               MOVE.W  #$013f,D7                   ; d7 = 320
 L0000D010               LEA.L   font8x8x5,a0                ; L0000E7BC,A0
 L0000D016_loop          MOVE.B  $0004(A0),D0
@@ -78,7 +79,7 @@ L0000D0AA               MOVE.L  #level5_interrupt_handler,$00000074             
 
 L0000D0B4               MOVE.B  #$7f,$00bfed01
 L0000D0BC               MOVE.B  #$7f,$00bfed01
-L0000D0C4               BRA.W   L0000D10C 
+L0000D0C4               BRA.W   game_initialisation                             ; L0000D10C 
                             ;-------------------------------------
 
 level_status        ; original address L0000D0C8 ( > 0 = level completed )
@@ -113,7 +114,8 @@ L0000D106               JMP     $00000830                       ; loader - load 
 
 
 
-                    ;-------------------- continue game start --------------------
+                    ;-------------------- continue game start/game initialisation --------------------
+game_initialisation     ; original address L0000D10C
 L0000D10C               JSR     L00004008                                   ; music ?
 L0000D112               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874 ; panel 
 L0000D11A               BNE.W   return_to_title_screen                      ; L0000D0CA
