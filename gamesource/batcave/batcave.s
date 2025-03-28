@@ -136,6 +136,7 @@ L0000D106               JMP     $00000830                           ; loader - l
 
 
                     ;-------------------- continue game start --------------------
+game_initialisation ; original address L0000D10C
 L0000D10C               JSR     L00004008                                   ; music
                         ; check game over
 L0000D112               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874 ; panel 
@@ -400,6 +401,17 @@ L0000D36C               dc.w    $001C,$001C,$001C,$001C,$0126,$0126,$0126,$0127
 L0000D37C               dc.w    $0005,$002A,$004E,$0074,$0005,$002A,$004F,$0073  
 
 
+set_copper_bitplanes    movem.l d0/d1/d7/a0,-(a7)
+                        moveq.l #3,d7
+.panel_loop             move.w  d0,6(a0)
+                        swap    d0
+                        move.w  d0,2(a0)
+                        swap    d0
+                        lea.l   8(a0),a0
+                        add.l   d1,d0
+                        dbf     d7,.panel_loop
+                        movem.l (a7)+,d0/d1/d7/a0
+                        rts
 
                 ; -------------- init display and game settings ---------------
                 ; Initialise the display, size, palettes etc
@@ -421,6 +433,17 @@ L0000D3E2               MOVE.W  #$0073,L0000D8D8
 L0000D3EA               MOVE.W  #$0006,L0000DC00
 L0000D3F2               MOVE.W  #$0018,L0000E124
 L0000D3FA               MOVE.W  #$0012,L0000E128
+                        ; ------------set panel gfx ------------
+                        move.l  #PANEL_GFX,D0
+                        move.l  #PANEL_DISPLAY_BITPLANEBYTES,d1
+                        lea.l   copper_panel_bpl_ptrs,a0
+                        bsr     set_copper_bitplanes
+                        ; ------------game display gfx-------------
+                        move.l  #BATCAVE_DISPLAY_BUFFER1+2,d0
+                        move.l  #BATCAVE_BPL_SIZE,d1
+                        lea.l   copper_game_bpl_ptrs,a0
+                        bsr     set_copper_bitplanes
+
 L0000D402               LEA.L   game_screen_palette,a0                          ; L0000F6CE,A0
 L0000D408               LEA.L   copper_screen_palette,A1                        ; L0000FBE6,A1
 L0000D40E               BSR.W   copy_palette_to_copper                          ; L0000D206
@@ -1444,6 +1467,11 @@ L0000E4F0               RTS
                     ; - pause 3.5 seconds
                     ; - wipe back buffer to front buffer
 display_level_intro_text    ; original address L0000E4F2
+                    ; set game palette
+L0000E52A               LEA.L   game_screen_palette_2,a0        ; L0000FCBE,A0
+L0000E530               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
+L0000E536               BSR.W   copy_palette_to_copper          ; L0000D206
+
 L0000E4F2               LEA.L   BATCAVE_DISPLAY_BUFFER1,A0                ; external address
 L0000E4F8               LEA.L   BATCAVE_DISPLAY_BUFFER2,A1                ; external address
 L0000E4FE               MOVE.W  #$1a20,D0                   ; $1a20 = 6688 (buffer size?) *4 = 26752 (total bytes cleared)
@@ -1460,9 +1488,9 @@ L0000E516               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr2  ; 
 L0000E520               LEA.L   text_bat_cave,A0                ; L0000E670,A0
 L0000E526               BSR.W   game_text_typer                 ; L0000E6E4
                     ; set game palette
-L0000E52A               LEA.L   game_screen_palette_2,a0        ; L0000FCBE,A0
-L0000E530               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
-L0000E536               BSR.W   copy_palette_to_copper          ; L0000D206
+;L0000E52A               LEA.L   game_screen_palette_2,a0        ; L0000FCBE,A0
+;L0000E530               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
+;L0000E536               BSR.W   copy_palette_to_copper          ; L0000D206
                     ; pause 3.5 seconds
 L0000E53A               MOVE.W  #$00b4,D0                       ; wait 180 frame (3.5 ish seconds)
 L0000E53E               BSR.W   wait_frame                      ; $0000d1ee
