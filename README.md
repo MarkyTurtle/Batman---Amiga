@@ -63,7 +63,7 @@ This exercise is not one of speed, but of learning. The intention is to understa
     - ['data4' Project](./gamesource/data4) - Level 4 specific data file.
     - ['code' Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
-    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**TODO**)
+    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**IN PROGRESS**)
 
 ## Resources and Acknowledgements
 The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
@@ -88,6 +88,8 @@ Resources and code used in this project is listed below. If there's anything use
 
 
 ## Progress to Date
+
+**2025-03-28 - Level 3** - The Batcave Level is now executing within VSCode, There is Graphics corruption on the sprites making it unplayable for the moment.
 
 **2025-03-08 - Level 3** - Started disassembling Level 3, unlike other levels this is a single load containing the Code, GFX and Music.
 
