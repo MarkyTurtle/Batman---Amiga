@@ -3,12 +3,7 @@
                 ; End Address:  $1c001
                 ; Code Entry:   $d000
                 ;
-<<<<<<< HEAD
                 section panel,code_c
-=======
-                section batcave,code_c
-                org     $0                                          ; original load address
->>>>>>> 819a0da2789d4b5590a917c5f7d48ada0a22399e
 
 
                 ;--------------------- includes and constants ---------------------------
@@ -103,15 +98,9 @@ L0000D096               MOVE.L  #level3_interrupt_handler,$0000006c             
 L0000D0A0               MOVE.L  #level4_interrupt_handler,$00000070             ; exception vector - Level 4
 L0000D0AA               MOVE.L  #level5_interrupt_handler,$00000074             ; exception vector - Level 5
 
-<<<<<<< HEAD
 L0000D0B4               MOVE.B  #$7f,$00bfed01
 L0000D0BC               MOVE.B  #$7f,$00bfed01
 L0000D0C4               BRA.W   game_initialisation                             ; L0000D10C 
-=======
-L0000D0B4               MOVE.B  #$7f,$00bfed01                      ; CIAA ICR - Clear Interrupt bits
-L0000D0BC               MOVE.B  #$7f,$00bfed01                      ; CIAA ICR - Clear Interrupt bits
-L0000D0C4               BRA.W   L0000D10C 
->>>>>>> 819a0da2789d4b5590a917c5f7d48ada0a22399e
                             ;-------------------------------------
 
 level_status        ; original address L0000D0C8 ( > 0 = level completed )
@@ -146,15 +135,9 @@ L0000D106               JMP     $00000830                           ; loader - l
 
 
 
-<<<<<<< HEAD
-                    ;-------------------- continue game start/game initialisation --------------------
-game_initialisation     ; original address L0000D10C
-L0000D10C               JSR     L00004008                                   ; music ?
-=======
                     ;-------------------- continue game start --------------------
 L0000D10C               JSR     L00004008                                   ; music
                         ; check game over
->>>>>>> 819a0da2789d4b5590a917c5f7d48ada0a22399e
 L0000D112               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874 ; panel 
 L0000D11A               BNE.W   return_to_title_screen                      ; L0000D0CA
                         ; check level completed
