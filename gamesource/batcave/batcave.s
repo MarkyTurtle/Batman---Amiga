@@ -3,7 +3,12 @@
                 ; End Address:  $1c001
                 ; Code Entry:   $d000
                 ;
+<<<<<<< HEAD
                 section panel,code_c
+=======
+                section batcave,code_c
+                org     $0                                          ; original load address
+>>>>>>> 819a0da2789d4b5590a917c5f7d48ada0a22399e
 
 
                 ;--------------------- includes and constants ---------------------------
@@ -12,6 +17,27 @@
 
 
 TEST_BUILD_LEVEL        EQU     1
+
+
+
+
+; Batcave - Constants
+;----------------------
+            IFD TEST_BUILD_LEVEL
+BATCAVE_DISPLAY_BUFFER1     EQU display_buffer1
+BATCAVE_DISPLAY_BUFFER2     EQU display_buffer2
+BATCAVE_TIMER               EQU $1000                                   ; 10 minutes test timer
+            ELSE
+BATCAVE_DISPLAY_BUFFER1     EQU $0005ED00
+BATCAVE_DISPLAY_BUFFER2     EQU $00067680
+BATCAVE_TIMER               EQU $0059                                   ; 59 seconds timer
+            ENDC
+BATCAVE_DISPLAY_BUFFER_SIZE EQU $8980                                   ; 35200 bytes
+BATCAVE_BPLWIDTH            EQU $2c                                     ; (44 bytes)
+BATCAVE_BPLHEIGHT           EQU $98                                     ; (152 rasters high)
+BATCAVE_BPL_SIZE            EQU BATCAVE_BPLWIDTH*BATCAVE_BPLHEIGHT      ; $1a20 (6688 bytes)
+
+
 
 
 
@@ -59,7 +85,7 @@ L0000D036               AND.B   $0001(A0),D0
 L0000D03A               AND.B   $0002(A0),D0
 L0000D03E               EOR.B   D0,$0001(A0)
 L0000D042               EOR.B   D0,$0003(A0)
-L0000D046               ADDA.L  #$00000005,A0           ; next struct (5 bytes)
+L0000D046               ADDA.L  #$00000005,A0           ; next raster (interleaved font) struct (5 bytes = 4 bpl + mask)
 L0000D048               DBF.W   D7,L0000D016_loop 
 
 L0000D04C               MOVE.W  #$7fff,D0
@@ -77,9 +103,15 @@ L0000D096               MOVE.L  #level3_interrupt_handler,$0000006c             
 L0000D0A0               MOVE.L  #level4_interrupt_handler,$00000070             ; exception vector - Level 4
 L0000D0AA               MOVE.L  #level5_interrupt_handler,$00000074             ; exception vector - Level 5
 
+<<<<<<< HEAD
 L0000D0B4               MOVE.B  #$7f,$00bfed01
 L0000D0BC               MOVE.B  #$7f,$00bfed01
 L0000D0C4               BRA.W   game_initialisation                             ; L0000D10C 
+=======
+L0000D0B4               MOVE.B  #$7f,$00bfed01                      ; CIAA ICR - Clear Interrupt bits
+L0000D0BC               MOVE.B  #$7f,$00bfed01                      ; CIAA ICR - Clear Interrupt bits
+L0000D0C4               BRA.W   L0000D10C 
+>>>>>>> 819a0da2789d4b5590a917c5f7d48ada0a22399e
                             ;-------------------------------------
 
 level_status        ; original address L0000D0C8 ( > 0 = level completed )
@@ -100,13 +132,13 @@ L0000D0D6               JMP     $00000820                       ; loader - load 
 
                     ;-------------------- level completed ------------------
 level_completed     ; original address L0000D0DC
-L0000D0DC               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ;$0007c882 ; panel
-L0000D0E4               MOVE.L  #$0005ed00,L0000E55A            ; external address (display?)
-L0000D0EE               MOVE.L  #$00067680,L0000E55E            ; external address (display?)
-L0000D0F8               BSR.W   L0000E562
-L0000D0FC               BSR.W   fade_panel_out                  ; L0000E630
-L0000D100               JSR     L00004008                       ; music ?
-L0000D106               JMP     $00000830                       ; loader - load batwing level 4
+L0000D0DC               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; panel
+L0000D0E4               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr1      ; L0000E55A ; external address (display?)
+L0000D0EE               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2      ; L0000E55E ; external address (display?)
+L0000D0F8               BSR.W   screen_wipe_to_black                ; L0000E562
+L0000D0FC               BSR.W   fade_panel_out                      ; L0000E630
+L0000D100               JSR     L00004008                           ; music
+L0000D106               JMP     $00000830                           ; loader - load batwing level 4
                     ; ---------------------------------------------
                     ; NEVER RETURNS
                     ;----------------------------------------------
@@ -114,31 +146,43 @@ L0000D106               JMP     $00000830                       ; loader - load 
 
 
 
+<<<<<<< HEAD
                     ;-------------------- continue game start/game initialisation --------------------
 game_initialisation     ; original address L0000D10C
 L0000D10C               JSR     L00004008                                   ; music ?
+=======
+                    ;-------------------- continue game start --------------------
+L0000D10C               JSR     L00004008                                   ; music
+                        ; check game over
+>>>>>>> 819a0da2789d4b5590a917c5f7d48ada0a22399e
 L0000D112               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874 ; panel 
 L0000D11A               BNE.W   return_to_title_screen                      ; L0000D0CA
-
+                        ; check level completed
 L0000D11E               TST.W   level_status                                ; L0000D0C8
 L0000D124               BNE.W   level_completed                             ; L0000D0DC
-
-L0000D128               JSR     L00004008                       ; music ?
+                        ; music init?
+L0000D128               JSR     L00004008                                   ; music
+                        ; set stack ptr
 L0000D12E               LEA.L   L0000EF96,A7
-L0000D134               BSR.W   L0000D38C
-L0000D138               BSR.W   panel_fade_in                   ; L0000E5EA
-L0000D13C               BSR.W   L0000E4F2
-L0000D140               CLR.W   PANEL_TIMER_UPDATE_VALUE        ; $0007c882                       ; panel
+
+L0000D134               BSR.W   init_display_and_game                       ; L0000D38C
+L0000D138               BSR.W   panel_fade_in                               ; L0000E5EA
+L0000D13C               BSR.W   display_level_intro_text                    ; L0000E4F2
+L0000D140               CLR.W   PANEL_TIMER_UPDATE_VALUE                    ; panel - $0007c882
 L0000D146               MOVE.L  #$00000001,D0
-L0000D148               BSR.W   L0000D26E
-L0000D14C               CLR.W   L0000D1E6
-L0000D152               MOVE.L  #$00000000,D0                   ; number of frames to wait/skip
-L0000D154               BSR.W   wait_frame                      ; L0000D1EE
+L0000D148               BSR.W   init_music_sfx                              ; L0000D26E
+L0000D14C               CLR.W   raw_keycode_word                            ; L0000D1E6
+                        ; game loop?
+                        ; wait for end of frame
+L0000D152_loop          MOVE.L  #$00000000,D0                               ; wait end of frame
+L0000D154               BSR.W   wait_frame                                  ; L0000D1EE
+
 L0000D158               BSR.W   L0000DC1C
 L0000D15C               BSR.W   L0000D56A
-L0000D160               JSR     L0000D222
-L0000D166               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1           ; #$0000,$0007c874               ; panel
-L0000D16E               BEQ.B   L0000D152 
+L0000D160               JSR     do_keyboard_actions                         ; L0000D222
+L0000D166               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; #$0000,$0007c874               ; panel
+L0000D16E               BEQ.B   L0000D152_loop 
+
 L0000D170               BRA.W   L0000D9E6 
 
 
@@ -197,12 +241,15 @@ level5_interrupt_handler    ; original address L0000D1E4
 L0000D1E4               RTE 
 
 
-
+                        even
+raw_keycode_word
 L0000D1E6               dc.b    $00
 raw_keycode
 L0000D1E7               dc.b    $00                 ; raw keycode.
 L0000D1E8               dc.w    $0000 
 L0000D1EA               dc.w    $0000
+
+key_down_flag       ; original address L0000D1EC
 L0000D1EC               dc.w    $0000
 
 
@@ -235,6 +282,7 @@ L0000D204               RTS
                     ; OUT:
                     ;   D0.l = $00000001
                     ;
+copy_palette_to_copper
 L0000D206               MOVE.W  #$000f,D0
 L0000D20A               ADDA.L  #$00000002,A1
 L0000D20C_loop          MOVE.W  (A0)+,(A1)+
@@ -243,41 +291,70 @@ L0000D210               DBF.W   D0,L0000D20C_loop
 L0000D214               MOVE.L  #$00000001,D0           ; frames to wait/skip
 L0000D216               BRA.W   wait_frame              ; L0000D1EE_loop 
 
-L0000D21A               CLR.W   L0000D1EC
+clear_key_down_flag
+L0000D21A               CLR.W   key_down_flag          ; L0000D1EC
+exit_keyboard_test
 L0000D220               RTS 
 
 
 
+                ; ------------- do keyboard actions --------------
+                ; check key presses and do stuff.
+                ; code looks a bit strange, may have to debug this
+                ; to see whats going on.
+                ;
+do_keyboard_actions
 L0000D222               BTST.B  #$0000,raw_keycode      ; test key up/down flag - L0000D1E7
-L0000D22A               BNE.W   L0000D21A 
-L0000D22E               TST.W   L0000D1EC
-L0000D234               BNE.W   L0000D220 
-L0000D238               CMP.W   #$004c,L0000D1E6        ; $4c = 76 (cursor up keycode)
-L0000D240               BEQ.W   L0000D2D8               ; skip level
-L0000D244               CMP.W   #$005c,L0000D1E6        ; $5c = 92 
-L0000D24C               BEQ.W   L0000D260               ; toggle music (forward slash keypad)
-L0000D250               CMP.W   #$0074,L0000D1E6        ; $74 = 116
-L0000D258               BEQ.W   L0000D2C2               ; end the game ()
-L0000D25C               BRA.W   L0000D21A 
+L0000D22A               BNE.W   clear_key_down_flag     ; L0000D21A 
+
+L0000D22E               TST.W   key_down_flag           ; L0000D1EC
+L0000D234               BNE.W   exit_keyboard_test      ; L0000D220 
+
+L0000D238               CMP.W   #$004c,raw_keycode_word ; L0000D1E6 ; $4c / 2 = $26 ='J' keyboard?
+L0000D240               BEQ.W   skip_level              ; L0000D2D8 ; skip level
+L0000D244               CMP.W   #$005c,raw_keycode_word ; L0000D1E6 ; $5c / 2 = $2E = '5' keypad? 
+L0000D24C               BEQ.W   toggle_music_sfx        ; L0000D260 
+L0000D250               CMP.W   #$0074,raw_keycode_word ; L0000D1E6 ; $74 / 2 = $3a = '/' keyboard?
+L0000D258               BEQ.W   exit_game               ; L0000D2C2 ; end the game ()
+L0000D25C               BRA.W   clear_key_down_flag     ;L0000D21A 
+                        ; use rts to return to caller
+                        ;---------------------------
 
 
-L0000D260               NOT.W   L0000D1EC
-L0000D266               BCHG.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2       ; #$0000,$0007c875            ; panel
+                    ; ------------- toggle music/sfx ---------------
+toggle_music_sfx    ; original address L0000D260
+L0000D260               NOT.W   key_down_flag                               ; L0000D1EC
+L0000D266               BCHG.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2         ; #$0000,$0007c875            ; panel
+                        ; fall through to init_music_sfx
+
+                    ;------------ initialise music/sfx -------------
+                    ; IN:-
+                    ;   D0.l - $00000001
+init_music_sfx      ; original address L0000D26E
 L0000D26E               BTST.B  #PANEL_ST2_MUSIC_SFX,PANEL_STATUS_2       ; #$0000,$0007c875            ; panel
 L0000D276               BEQ.B   L0000D27E 
-L0000D278               JMP     L00004004                   ; music ?
-L0000D27E               MOVE.L  #$00000001,D0
-L0000D280               JMP     L00004010                   ; music?
-L0000D286               CLR.W   L0000D1EC
+L0000D278               JMP     L00004004                   ; music - init sfx
+                        ; use rts to exit
+                        ;------------------------
+L0000D27E               MOVE.L  #$00000001,D0               ; Set Song Number to Play
+L0000D280               JMP     L00004010                   ; init song -music
+                        ; use rts to exit
+                        ;-------------------------
+
+L0000D286               CLR.W   key_down_flag              ; L0000D1EC
 L0000D28C               RTS 
+
+
 
 
 L0000D28E               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882           ; panel
 L0000D296               NOT.W   L0000D2C0
-L0000D29C               CLR.W   L0000D1E6
-L0000D2A2               CMP.W   #$005e,L0000D1E6
-L0000D2AA               BNE.B   L0000D2A2 
-L0000D2AC               CLR.W   L0000D1E6
+
+L0000D29C               CLR.W   raw_keycode_word                    ; L0000D1E6
+L0000D2A2_loop          CMP.W   #$005e,raw_keycode_word             ; L0000D1E6
+L0000D2AA               BNE.B   L0000D2A2_loop 
+
+L0000D2AC               CLR.W   raw_keycode_word                    ; L0000D1E6
 L0000D2B2               CLR.W   PANEL_TIMER_UPDATE_VALUE            ; $0007c882           ; panel
 L0000D2B8               CLR.W   L0000D2C0
 L0000D2BE               RTS 
@@ -288,11 +365,13 @@ L0000D2C0                dc.w    $0000
 
 
                     ; -------------- no lives left/end level -------------
+exit_game
 L0000D2C2               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE             ; $0007c882            ; panel
 L0000D2CA               BSET.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874     ; panel
 L0000D2D2               JMP     L0000DA10 
 
                     ; ------------- skip level -------------
+skip_level
 L0000D2D8               BTST.B  #PANEL_ST2_CHEAT_ACTIVE,PANEL_STATUS_2      ; #$0007,$0007c875     ;panel
 L0000D2E0               BEQ.B   L0000D2EE 
 L0000D2E2               NOT.W   level_status                                ; L0000D0C8
@@ -336,14 +415,19 @@ L0000D36A               RTS
 
 L0000D36C               dc.w    $001C,$001C,$001C,$001C,$0126,$0126,$0126,$0127  
 L0000D37C               dc.w    $0005,$002A,$004E,$0074,$0005,$002A,$004F,$0073  
-L0000D38C               dc.w    $33FC,$4180,$00DF,$F100 
 
 
 
-L0000D394               MOVE.W  #$0040,$00dff104
-L0000D39C               MOVE.L  #$003800d0,$00dff092
-L0000D3A6               MOVE.L  #$2c81f4c1,$00dff08e
-L0000D3B0               MOVE.L  #$ffffffff,$00dff044
+                ; -------------- init display and game settings ---------------
+                ; Initialise the display, size, palettes etc
+                ; Initialise initial game value, timers, energy etc.
+                ;
+init_display_and_game   ; original address L0000D38C
+L0000D38C               MOVE.W  #$4180,CUSTOM+BPLCON0                           ; 4 bitplanes|Genlock?|UHRES? - $00dff100
+L0000D394               MOVE.W  #$0040,CUSTOM+BPLCON2                           ; Sprite priority - $00dff104
+L0000D39C               MOVE.L  #$003800d0,CUSTOM+DDFSTRT                       ; NTSC Window Settings - $00dff092
+L0000D3A6               MOVE.L  #$2c81f4c1,CUSTOM+DIWSTRT                       ; NTSC Window Settings - $00dff08e
+L0000D3B0               MOVE.L  #$ffffffff,CUSTOM+BLTAFWM                       ; Blitter 1st & last word mask - $00dff044
 L0000D3BA               CLR.L   L0000DBFC
 L0000D3C0               CLR.W   L0000DC00
 L0000D3C6               CLR.L   L0000DC02
@@ -354,23 +438,28 @@ L0000D3E2               MOVE.W  #$0073,L0000D8D8
 L0000D3EA               MOVE.W  #$0006,L0000DC00
 L0000D3F2               MOVE.W  #$0018,L0000E124
 L0000D3FA               MOVE.W  #$0012,L0000E128
-L0000D402               LEA.L   game_screen_palette,a0          ; L0000F6CE,A0
-L0000D408               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
-L0000D40E               BSR.W   L0000D206
-L0000D412               MOVE.L  #$00001a20,L0000DC14            ; offset/address?
-L0000D41C               MOVE.L  #$0005ed00,L0000DC18            ; external address (display?)
-L0000D426               MOVE.W  #$002c,L0000EE00
+L0000D402               LEA.L   game_screen_palette,a0                          ; L0000F6CE,A0
+L0000D408               LEA.L   copper_screen_palette,A1                        ; L0000FBE6,A1
+L0000D40E               BSR.W   copy_palette_to_copper                          ; L0000D206
+L0000D412               MOVE.L  #BATCAVE_BPL_SIZE,L0000DC14                     ; Display buffer bitplane size 44*152
+L0000D41C               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_bitplane_ptr   ; L0000DC18 ; external address (display?)
+L0000D426               MOVE.W  #BATCAVE_BPLWIDTH,display_bitplane_width_bytes  ; #$002c,L0000EE00
 L0000D42E               BSR.W   L0000D4F4
 L0000D432               BSR.W   L0000D2F0
 L0000D436               BSR.W   L0000D462
-L0000D43A               MOVE.W  #$0059,D0
-L0000D43E               JSR     PANEL_INIT_TIMER                    ; $0007c80e ; panel
-L0000D444               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; panel
-L0000D44C               JSR     PANEL_INIT_ENERGY                   ; $0007c854 ; panel
+                        ; set level timer
+L0000D43A               MOVE.W  #BATCAVE_TIMER,D0                               ; BCD Timer Value
+L0000D43E               JSR     PANEL_INIT_TIMER                                ; $0007c80e ; panel
+L0000D444               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE                 ; $0007c882 ; panel
+                        ; set player energy
+L0000D44C               JSR     PANEL_INIT_ENERGY                               ; $0007c854 ; panel
 L0000D452               CLR.L   L0000D846
 L0000D458               CLR.W   L0000D84A
+                        ; clear 3 words (match values?)
 L0000D45E               BRA.W   L0000E110 
-                            ;------------------------------------
+                        ; use rts to return to caller
+                        ;------------------------------------
+
 
 L0000D462               CLR.L   L0000D840
 L0000D468               CLR.W   L0000D844
@@ -393,20 +482,22 @@ L0000D4A4               BNE.B   L0000D48E
 L0000D4A6               RTS 
 
 
+
                 ; ------------ unreferenced code? --------------
                 ; some unknown address ranges accessed in here
 L0000D4A8               LEA.L   $0001fffa,A0                ; gfx?
-L0000D4AE               LEA.L   $0005ed00,A1                ; display buffer?
+L0000D4AE               LEA.L   BATCAVE_DISPLAY_BUFFER1,A1                ; display buffer?
 L0000D4B4               LEA.L   $000231d2,A2
 L0000D4BA               LEA.L   $00060720,A3
 L0000D4C0               LEA.L   $000263aa,A4
 L0000D4C6               LEA.L   $00062140,A5
-L0000D4CC               MOVE.W  #$1a20,D0
+L0000D4CC               MOVE.W  #BATCAVE_BPL_SIZE,D0
 L0000D4D0_loop          MOVE.B  (A0)+,(A1)+
 L0000D4D2               MOVE.B  (A2)+,(A3)+
 L0000D4D4               MOVE.B  (A4)+,(A5)+
 L0000D4D6               DBF.W   D0,L0000D4D0_loop 
 L0000D4DA               RTS 
+
 
 
                 ; ------------ unreferenced code? --------------
@@ -424,7 +515,7 @@ L0000D4F2               RTS
 
 
 L0000D4F4               LEA.L   L00010000,A0
-L0000D4FA               LEA.L   $0005ed00,A1                ; external address
+L0000D4FA               LEA.L   BATCAVE_DISPLAY_BUFFER1,A1                ; external address
 L0000D500               MOVE.W  #$1398,D0                   ; 5017*4 = 20068 bytes
 L0000D504_loop          MOVE.L  (A0)+,(A1)+
 L0000D506               DBF.W   D0,L0000D504_loop 
@@ -691,26 +782,26 @@ L0000D94C               JSR     PANEL_ADD_SCORE                     ; $0007c82a 
 L0000D952               MOVE.W  #$ffff,level_status                 ; L0000D0C8 - level completed
 
 L0000D95A               MOVE.W  #$9999,PANEL_TIMER_UPDATE_VALUE     ; $0007c882 ; Panel
-L0000D962               MOVE.W  #$00c8,D0               ; frames to wait/skip
-L0000D966               BSR.W   wait_frame              ; L0000D1EE_loop
+L0000D962               MOVE.W  #$00c8,D0                           ; frames to wait/skip
+L0000D966               BSR.W   wait_frame                          ; L0000D1EE_loop
 L0000D96A               MOVE.W  #$2260,D0
-L0000D96E               LEA.L   $00067680,A0            ; external address
+L0000D96E               LEA.L   BATCAVE_DISPLAY_BUFFER2,A0                        ; external address
 L0000D974               CLR.L   (A0)+
 L0000D976               DBF.W   D0,L0000D974 
-L0000D97A               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000D984               LEA.L   text_simlex_success,a0  ; L0000E680,A0
-L0000D98A               BSR.W   game_text_typer         ; L0000E6E4
-L0000D98E               MOVE.L  #$0005ed00,L0000E55A    ; external address
-L0000D998               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000D9A2               BSR.W   L0000E572
-L0000D9A6               MOVE.W  #$00c8,D0               ; frames to wait/skip
-L0000D9AA               BSR.W   wait_frame              ; L0000D1EE_loop
-L0000D9AE               MOVE.L  #$0005ed00,L0000E55A    ; external address
-L0000D9B8               MOVE.L  #$00067680,L0000E55A    ; external address
-L0000D9C2               BSR.W   L0000E562
-L0000D9C6               LEA.L   game_screen_palette,A0      ; L0000F6CE,A0
-L0000D9CC               LEA.L   copper_screen_palette,a1    ; L0000FBE6,A1
-L0000D9D2               BSR.W   L0000D206
+L0000D97A               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2      ; L0000E55E ; external address
+L0000D984               LEA.L   text_simlex_success,a0              ; L0000E680,A0
+L0000D98A               BSR.W   game_text_typer                     ; L0000E6E4
+L0000D98E               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr1      ; L0000E55A ; external address
+L0000D998               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2      ; L0000E55E ; external address
+L0000D9A2               BSR.W   screen_wipe_to_backbuffer           ; L0000E572
+L0000D9A6               MOVE.W  #$00c8,D0                           ; frames to wait/skip
+L0000D9AA               BSR.W   wait_frame                  
+L0000D9AE               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr1      ; L0000E55A ; external address
+L0000D9B8               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2      ; L0000E55E ; external address
+L0000D9C2               BSR.W   screen_wipe_to_black                ; L0000E562
+L0000D9C6               LEA.L   game_screen_palette,A0              ; L0000F6CE,A0
+L0000D9CC               LEA.L   copper_screen_palette,a1            ; L0000FBE6,A1
+L0000D9D2               BSR.W   copy_palette_to_copper              ; L0000D206
 L0000D9D6               BRA.W   L0000D112 
 
 
@@ -729,35 +820,35 @@ L0000DA08               MOVE.W  #$00c8,D0               ; frames to wait/skip
 L0000DA0C               BSR.W   wait_frame              ; L0000D1EE_loop
 
 L0000DA10               MOVE.W  #$2260,D0
-L0000DA14               LEA.L   $00067680,A0            ; External Address
+L0000DA14               LEA.L   BATCAVE_DISPLAY_BUFFER2,A0            ; External Address
 L0000DA1A               CLR.L   (A0)+
 L0000DA1C               DBF.W   D0,L0000DA1A 
-L0000DA20               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000DA2A               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1   ; #$0000,$0007c874        ; Panel
+L0000DA20               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2              ; L0000E55E    ; external address
+L0000DA2A               BTST.B  #PANEL_ST1_TIMER_EXPIRED,PANEL_STATUS_1     ; #$0000,$0007c874        ; Panel
 L0000DA32               BNE.B   L0000DA54 
-L0000DA34               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1   ; #$0001,$0007c874        ; Panel
+L0000DA34               BTST.B  #PANEL_ST1_NO_LIVES_LEFT,PANEL_STATUS_1     ; #$0001,$0007c874        ; Panel
 L0000DA3C               BNE.B   L0000DA42 
 L0000DA3E               BRA.W   L0000DA7E 
 
 L0000DA42               MOVE.L  #$00000004,D0
-L0000DA44               JSR     L00004010               ; Panel
-L0000DA4A               LEA.L   text_game_over,a0       ; L0000E6D6,A0
+L0000DA44               JSR     L00004010                   ; Panel
+L0000DA4A               LEA.L   text_game_over,a0           ; L0000E6D6,A0
 L0000DA50               BRA.W   L0000DA5A 
 
 
-L0000DA54               LEA.L   text_time_out,a0        ; L0000E6CA,A0
-L0000DA5A               BSR.W   game_text_typer         ; L0000E6E4
-L0000DA5E               MOVE.L  #$0005ed00,L0000E55A    ; external address
-L0000DA68               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000DA72               BSR.W   L0000E572
-L0000DA76               MOVE.W  #$00c8,D0               ; frames to wait/skip
-L0000DA7A               BSR.W   wait_frame              ; L0000D1EE_loop
-L0000DA7E               MOVE.L  #$0005ed00,L0000E55A    ; external address
-L0000DA88               MOVE.L  #$00067680,L0000E55E    ; external address
-L0000DA92               BSR.W   L0000E562
-L0000DA96               LEA.L   game_screen_palette,A0      ; L0000F6CE,A0
-L0000DA9C               LEA.L   copper_screen_palette,A1    ; L0000FBE6,A1
-L0000DAA2               BSR.W   L0000D206
+L0000DA54               LEA.L   text_time_out,a0                ; L0000E6CA,A0
+L0000DA5A               BSR.W   game_text_typer                 ; L0000E6E4
+L0000DA5E               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr1  ; L0000E55A ; external address
+L0000DA68               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2  ; L0000E55E ; external address
+L0000DA72               BSR.W   screen_wipe_to_backbuffer       ; L0000E572
+L0000DA76               MOVE.W  #$00c8,D0                       ; frames to wait/skip
+L0000DA7A               BSR.W   wait_frame                      ; L0000D1EE_loop
+L0000DA7E               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr1  ; L0000E55A        ; external address
+L0000DA88               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2  ; L0000E55E        ; external address
+L0000DA92               BSR.W   screen_wipe_to_black            ; L0000E562
+L0000DA96               LEA.L   game_screen_palette,A0          ; L0000F6CE,A0
+L0000DA9C               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
+L0000DAA2               BSR.W   copy_palette_to_copper          ; L0000D206
 L0000DAA6               BRA.W   L0000D112 
 
 
@@ -853,13 +944,15 @@ L0000DC10               dc.b    $00
 L0000DC11               dc.b    $00
 L0000DC12               dc.b    $00
 L0000DC13               dc.b    $00
-L0000DC14               dc.w    $0000,$0000
-L0000DC18               dc.w    $0000,$0000
+display_bitplane_size   ; original address L0000DC14
+L0000DC14               dc.l    $00000000
+display_bitplane_ptr    ; original address L0000DC18
+L0000DC18               dc.l    $00000000
 
 
-L0000DC1C               MOVE.L  #$00001a20,L0000DC14        ; external address?
-L0000DC26               MOVE.L  #$0005ed00,L0000DC18        ; external address?
-L0000DC30               MOVE.W  #$002c,L0000EE00
+L0000DC1C               MOVE.L  #BATCAVE_BPL_SIZE,display_bitplane_size   
+L0000DC26               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_bitplane_ptr       ; L0000DC18       
+L0000DC30               MOVE.W  #BATCAVE_BPLWIDTH,display_bitplane_width_bytes      ; #$002c,L0000EE00
 L0000DC38               BSR.W   L0000DC46
 L0000DC3C               BSR.W   L0000D5A8
 L0000DC40               BSR.W   L0000DCDE
@@ -1038,7 +1131,7 @@ L0000DFB0               RTS
 
 
 L0000DFB2               MOVE.L  #$00000000,D0
-L0000DFB4               MOVE.W  L0000EE00,(A4)
+L0000DFB4               MOVE.W  display_bitplane_width_bytes,(A4)           ; L0000EE00,(A4)
 L0000DFBA               MOVEM.L A0,-(A7)
 L0000DFBE               MOVE.W (A6),D0
 L0000DFC0               MULU.W  #$0018,D0
@@ -1112,9 +1205,9 @@ L0000E0C2               MOVE.W  L0000E2C6,D6
 L0000E0C8               SUB.W   D6,(A4)
 L0000E0CA               SUB.W   #$0100,D0
 L0000E0CE               SUB.W   #$0100,D1
-L0000E0D2               MULU.W  L0000EE00,D1
+L0000E0D2               MULU.W  display_bitplane_width_bytes,D1     ; L0000EE00,D1
 L0000E0D8               ADD.L   D1,D0
-L0000E0DA               MOVE.L  L0000DC18,D1
+L0000E0DA               MOVE.L  display_bitplane_ptr,D1             ; L0000DC18,D1
 L0000E0E0               ADD.L   D0,D1
 L0000E0E2               MOVE.L  D1,L0000E2E2
 L0000E0E8               ASL.W   #$00000008,D2
@@ -1359,43 +1452,65 @@ L0000E4F0               RTS
 
 
 
-L0000E4F2               LEA.L   $0005ed00,A0                ; external address
-L0000E4F8               LEA.L   $00067680,A1                ; external address
-L0000E4FE               MOVE.W  #$1a20,D0
-L0000E502               MOVE.L  (A0),(A1)+
+                    ; ---------------- display level intro text -----------------
+                    ; - copy buffer1 to buffer2 $5ed00-$65580 to $67680-$6df00
+                    ;   also clear buffer1 $5ed00-$65580
+                    ; - clear additional buffer ram
+                    ; - display intro text
+                    ; - set copper palette
+                    ; - pause 3.5 seconds
+                    ; - wipe back buffer to front buffer
+display_level_intro_text    ; original address L0000E4F2
+L0000E4F2               LEA.L   BATCAVE_DISPLAY_BUFFER1,A0                ; external address
+L0000E4F8               LEA.L   BATCAVE_DISPLAY_BUFFER2,A1                ; external address
+L0000E4FE               MOVE.W  #$1a20,D0                   ; $1a20 = 6688 (buffer size?) *4 = 26752 (total bytes cleared)
+L0000E502_loop          MOVE.L  (A0),(A1)+
 L0000E504               CLR.L   (A0)+
-L0000E506               DBF.W   D0,L0000E502 
-L0000E50A               MOVE.W  #$0688,D0
+L0000E506               DBF.W   D0,L0000E502_loop
+                    ; clear additional space $65580-$66fa0
+L0000E50A               MOVE.W  #$0688,D0                   ; clear additional $1a20 bytes
 L0000E50E               CLR.L   (A0)+
 L0000E510               DBF.W   D0,L0000E50E 
+                    ; display 'bat cave text'
 L0000E514               MOVE.L  #$00000000,D0
-L0000E516               MOVE.L  #$0005ed00,L0000E55E        ; external address
-L0000E520               LEA.L   text_bat_cave,A0            ; L0000E670,A0
-L0000E526               BSR.W   game_text_typer             ; L0000E6E4
-L0000E52A               LEA.L   L0000FCBE,A0
-L0000E530               LEA.L   copper_screen_palette,A1    ; L0000FBE6,A1
-L0000E536               BSR.W   L0000D206
-L0000E53A               MOVE.W  #$00b4,D0
-L0000E53E               BSR.W   wait_frame                  ; $0000d1ee
-L0000E542               MOVE.L  #$0005ed00,L0000E55A        ; external address
-L0000E54C               MOVE.L  #$00067680,L0000E55E        ; external address
-L0000E556               BRA.W   L0000E572 
+L0000E516               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr2  ; L0000E55E        ; gfx buffer - external address
+L0000E520               LEA.L   text_bat_cave,A0                ; L0000E670,A0
+L0000E526               BSR.W   game_text_typer                 ; L0000E6E4
+                    ; set game palette
+L0000E52A               LEA.L   game_screen_palette_2,a0        ; L0000FCBE,A0
+L0000E530               LEA.L   copper_screen_palette,A1        ; L0000FBE6,A1
+L0000E536               BSR.W   copy_palette_to_copper          ; L0000D206
+                    ; pause 3.5 seconds
+L0000E53A               MOVE.W  #$00b4,D0                       ; wait 180 frame (3.5 ish seconds)
+L0000E53E               BSR.W   wait_frame                      ; $0000d1ee
+                    ; wipe back buffer to display
+L0000E542               MOVE.L  #BATCAVE_DISPLAY_BUFFER1,display_buffer_ptr1  ; L0000E55A        ; external address
+L0000E54C               MOVE.L  #BATCAVE_DISPLAY_BUFFER2,display_buffer_ptr2  ; L0000E55E            ; external address
+L0000E556               BRA.W   screen_wipe_to_backbuffer       ; L0000E572 
+                    ; uses rts above to return
+                    ;---------------------------------
 
+display_buffer_ptrs
+display_buffer_ptr1
 L0000E55A               dc.l    $00000000                   ; address ptr
+display_buffer_ptr2
 L0000E55E               dc.l    $00000000                   ; address ptr
 
 
+                    ; clear buffer (35200 bytes)
+screen_wipe_to_black
+L0000E562               MOVE.W  #$225f,D7               ; $225f+1 = 8800 (*4 = 35200 bytes - $8980)
+L0000E566               MOVEA.L display_buffer_ptr2,A1  ; L0000E55E,A1 ; a1 = display buffer?
+L0000E56C_loop          CLR.L   (A1)+
+L0000E56E               DBF.W   D7,L0000E56C_loop 
 
-L0000E562               MOVE.W  #$225f,D7
-L0000E566               MOVEA.L L0000E55E,A1
-L0000E56C               CLR.L   (A1)+
-L0000E56E               DBF.W   D7,L0000E56C 
-L0000E572               MOVE.W  #$002c,D0
-L0000E576               MOVE.W  #$0098,D1
+screen_wipe_to_backbuffer
+L0000E572               MOVE.W  #$002c,D0               ; d0 = screen width (40 bytes)
+L0000E576               MOVE.W  #$0098,D1               ; d1 = screen height (152 rasters)
 
-L0000E57A               MOVEM.L L0000E55A,A0-A1
+L0000E57A               MOVEM.L display_buffer_ptrs,A0-A1   ; L0000E55A,A0-A1 ; a0,a1 = buffer 1 & buffer 2 ptrs
 L0000E582               CLR.W   D2
-L0000E584               MULU.W  #$0555,D2
+L0000E584_loop          MULU.W  #$0555,D2
 L0000E588               ADD.W   #$00000001,D2
 L0000E58A               AND.W   #$1fff,D2
 L0000E58E               BEQ.B   L0000E5E8 
@@ -1406,12 +1521,12 @@ L0000E596               LSR.W   #$00000001,D3
 L0000E598               BCC.B   L0000E59C 
 L0000E59A               MOVE.L  #$fffffff0,D5
 L0000E59C               CMP.W   D0,D3
-L0000E59E               BCC.B   L0000E584 
+L0000E59E               BCC.B   L0000E584_loop 
 L0000E5A0               MOVE.W  D2,D4
 L0000E5A2               LSR.W   #$00000005,D4
 L0000E5A4               AND.W   #$00fc,D4
 L0000E5A8               CMP.W   D1,D4
-L0000E5AA               BCC.B   L0000E584 
+L0000E5AA               BCC.B   L0000E584_loop 
 L0000E5AC               MULU.W  D0,D4
 L0000E5AE               ADD.W   D3,D4
 L0000E5B0               MOVE.W  D2,-(A7)
@@ -1434,7 +1549,7 @@ L0000E5DC               MOVE.W  (A7)+,D4
 L0000E5DE               ADD.W   D3,D4
 L0000E5E0               DBF.W   D7,L0000E5B8 
 L0000E5E4               MOVE.W  (A7)+,D2
-L0000E5E6               BRA.B   L0000E584 
+L0000E5E6               BRA.B   L0000E584_loop 
 L0000E5E8               RTS 
 
 
@@ -1529,16 +1644,19 @@ L0000E6E3               dc.b    $45 ; pad byte
                     ; a final terminator ($ff) or another line of text starting with x,y co-ords
                     ; can follow the previous line.
                     ;
+                    ; IN:-
+                    ;   L0000E55E = dest gfx buffer - display_buffer_ptr2
+                    ;
 game_text_typer     ; original address L0000E6E4
 L0000E6E4               MOVE.B  (A0)+,D0
-L0000E6E6               BMI.W   L0000E7BA           ; $ff = exit
-L0000E6EA               AND.W   #$00ff,D0           ; d0 = y co-ord
+L0000E6E6               BMI.W   L0000E7BA               ; $ff = exit
+L0000E6EA               AND.W   #$00ff,D0               ; d0 = y co-ord
 L0000E6EE               MULU.W  #$002c,D0
-L0000E6F2               MOVE.B  (A0)+,D1            ; d1 = x co-ord
+L0000E6F2               MOVE.B  (A0)+,D1                ; d1 = x co-ord
 L0000E6F4               EXT.W   D1
-L0000E6F6               ADD.W   D1,D0               ; d0 = x & y byte offset for display
-L0000E6F8               MOVEA.L L0000E55E,A1        ; destination display ptr
-L0000E6FE               LEA.L   $00(A1,D0.w),A1     ; a1 = dest gfx buffer
+L0000E6F6               ADD.W   D1,D0                   ; d0 = x & y byte offset for display
+L0000E6F8               MOVEA.L display_buffer_ptr2,A1  ; L0000E55E,A1        ; destination display ptr
+L0000E6FE               LEA.L   $00(A1,D0.w),A1         ; a1 = dest gfx buffer
 
                     ; do next character
 L0000E702_loop          MOVE.L  #$00000000,D0
@@ -1783,9 +1901,10 @@ L0000EDEC       dc.w    $0003,$CCFC,$3000,$01FC,$FE02,$0081,$007E,$7E00
                 ; ----------- end of font data -------
 
 
-debug_display_buffer_ptr
+debug_display_buffer_ptr    ; original address L0000EDFC
 L0000EDFC       dc.l    $0007C89A               ; address of panel gfx
 
+display_bitplane_width_bytes    ; original address L0000EE00
 L0000EE00       dc.w    $0000
 
 frame_toggle    ; original address L0000EE02
@@ -1813,10 +1932,16 @@ L0000EEFC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
 L0000EF0C       dc.w    $0000,$0000,$0000,$0000,$0007,$FC92,$0007,$C808
 L0000EF1C       dc.w    $0007,$FC92,$0007,$C808,$0000,$8000,$0000,$FFFF
 L0000EF2C       dc.w    $0055,$FFFF,$0000,$0000,$0000,$7E81,$FFFF,$FFF0
-L0000EF3C       dc.w    $0000,$FFFF,$0000,$FFFF,$0000,$4126,$0006,$7680
+L0000EF3C       dc.w    $0000,$FFFF,$0000,$FFFF,$0000,$4126
+
+                dc.w    $0006,$7680     ; Display Buffer Ptr?
+
 L0000EF4C       dc.w    $0000,$E864,$0000,$D1E4,$0000,$FFFF,$0000,$FFFF
 L0000EF5C       dc.w    $0055,$0000,$0000,$1A20,$0000,$7E81,$FFFF,$FFF0
-L0000EF6C       dc.w    $0000,$FFFF,$0000,$FFFF,$0000,$FC9C,$0006,$7680
+L0000EF6C       dc.w    $0000,$FFFF,$0000,$FFFF,$0000,$FC9C
+
+                dc.w    $0006,$7680     ; Display Buffer Ptr?
+
 L0000EF7C       dc.w    $0000,$E864,$0006,$871D,$0000,$E150,$0000,$00C7
 L0000EF8C       dc.w    $848C,$00C7,$871E,$00C7,$8104,$0000,$0000,$FFFF
 L0000EF9C       dc.w    $FFFF,$FFFF,$FFFF,$FFFF,$FFFF,$FFFF,$FFFF,$FFFF
@@ -2025,20 +2150,26 @@ L0000FBAC       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000
 
             ; ----------------- copper list -----------------
 copper_list ; original address $000fbba
-L0000FBBA   ; original address $000fbba
-                ; game screen display
-                dc.w    $00FF,$FF00
-                dc.w    $0108,$0004
-                dc.w    $010A,$0004
+L0000FBBA       ; game screen display
+                dc.w    $00FF,$FF00     ; This wait looks dodgy will have to decipher it. (masking out horizonal wait)
+                ; set display modulos
+                dc.w    $0108,$0004     ; BPL1MOD (44 byte width?)
+                dc.w    $010A,$0004     ; BPL2MOD (44 byte width?)
+                ; set bitplane ptrs
+copper_game_bpl_ptrs 
+                ; $0005ED02 - bpl0 $1a20 bytes (6688 bytes) (/44 = 152 raster lines high)
                 dc.w    $00E0,$0005
-                dc.w    $00E2,$ED02     ; $5ED02 - bpl0
+                dc.w    $00E2,$ED02
+                ; $00060722 - bpl1 $1a20 bytes (6688 bytes) (/44 = 152 raster lines high)
                 dc.w    $00E4,$0006
-                dc.w    $00E6,$0722     ; $60722 - bpl1
+                dc.w    $00E6,$0722
+                ; $00062142 - bpl2 $1a20 bytes (6688 bytes) (/44 = 152 raster lines high)
                 dc.w    $00E8,$0006
-                dc.w    $00EA,$2142     ; $62142 - bpl2
+                dc.w    $00EA,$2142
+                ; $00063B62 - bpl3 $1a20 bytes (6688 bytes) (/44 = 152 raster lines high)
                 dc.w    $00EC,$0006
-                dc.w    $00EE,$3B62     ; $63B63 - bpl3
-
+                dc.w    $00EE,$3B62     
+                ; $65582 - end of display buffer 1
                 ; game screen palette (4 bitplanes/16 colours)
 copper_screen_palette
 L0000FBE6       dc.w    $0180,$0000
@@ -2059,16 +2190,22 @@ L0000FBE6       dc.w    $0180,$0000
                 dc.w    $019E,$0000
                 ; panel display start
 L0000FC26       dc.w    $C401,$FF00
+copper_panel_bpl_ptrs
+                ; $7C89A - bpl0
                 dc.w    $00E0,$0007
-                dc.w    $00E2,$C89A     ; $7C89A - bpl0
+                dc.w    $00E2,$C89A
+                ; $7D01A - bpl1
                 dc.w    $00E4,$0007
-                dc.w    $00E6,$D01A     ; $7D01A - bpl1
+                dc.w    $00E6,$D01A 
+                ; $7D79A - bpl2
                 dc.w    $00E8,$0007
-                dc.w    $00EA,$D79A     ; $7D79A - bpl2
+                dc.w    $00EA,$D79A
+                ; $7DF1A - bpl3     
                 dc.w    $00EC,$0007
-                dc.w    $00EE,$DF1A     ; $7DF1A - bpl3
-                dc.w    $0108,$0000
-                dc.w    $010A,$0000
+                dc.w    $00EE,$DF1A
+                ; display modulos     
+                dc.w    $0108,$0000     ; BPL1MOD (40 bytes wide)
+                dc.w    $010A,$0000     ; BPL2MOD (40 bytes wide)
                 ; panel palette (4 bitplanes/16 colours)
 copper_panel_palette
 L0000FC52       dc.w    $0180,$0000
@@ -2099,6 +2236,7 @@ L0000FC9E       dc.w    $0000,$0060,$0FFF,$0008,$0A22,$0444,$0862
 L0000FCAC       dc.w    $0666,$0888,$0AAA,$0A40,$0C60,$0E80,$0EA0,$0EC0
 L0000FCBC       dc.w    $0EEE
 
+game_screen_palette_2
 L0000FCBE       dc.w    $0000,$0130,$0111,$0333,$0555,$0777,$0BBB
 L0000FCCC       dc.w    $0008,$0A04,$0703,$0000,$0B50,$0F70,$0250,$0F00
 L0000FCDC       dc.w    $0005,$0F70,$0250,$0F00,$0005,$0000,$0000,$0000
@@ -5244,6 +5382,12 @@ L0001BFFC   dc.w    $0000,$0000,$0000
                 even
             ENDC
 
+            ; If test build - allocate display buffer memory
+            IFD TEST_BUILD_LEVEL
+            even
+display_buffer1     dcb.b   BATCAVE_DISPLAY_BUFFER_SIZE,$0f
+display_buffer2     dcb.b   BATCAVE_DISPLAY_BUFFER_SIZE,$33
+            ENDC
 
                     ;-------------------------------------------------------------------------------------------
                     ; My Debug Routines
