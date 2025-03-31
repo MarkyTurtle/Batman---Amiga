@@ -46,12 +46,1315 @@ start
                 dc.l    $00004000
             ENDC    
 
-L00004000           rts
-L00004004           rts          
-L00004008           rts
-L00004010           rts          
-L00004014           rts
-L00004018           rts
+
+; music do-nothing stubs
+;L00004000           rts
+;L00004004           rts          
+;L00004008           rts
+;L00004010           rts          
+;L00004014           rts
+;L00004018           rts
+
+L00004000           bra.w   do_initialise_music_player          ; L00004180
+L00004004           bra.w   do_silence_all_audio                ; L00004194
+L00004008           bra.w   do_init_sfx_channels                ; L000041e0
+L0000400c           bra.w   do_init_sfx_channels                ; L000041e0
+L00004010           bra.w   do_init_song                        ; L0000423e
+L00004014           bra.w   do_play_sfx                         ; L00004222
+L00004018           bra.w   do_play_sounds                      ; L000042f6
+
+master_audio_volume_mask_1  ;original address L0000401C
+L0000401C           dc.w    $FFFF
+master_audio_volume_mask_2  ;original address L0000401E
+L0000401E           dc.w    $FFFF
+song_ctrl_bits      ;original address L00004020
+L00004020           dc.w    $0000
+
+song_no_1           ;original addfress L00004022
+L00004022           dc.b    $00
+song_no_2
+sfx_no              ; original address L00004023          
+L00004023           dc.b    $00
+
+channel_00_status   ;original address L00004024
+L00004024           dc.w    $0000
+                    dc.l    $00000000
+                    dc.l    $0000CAF6
+                    dc.l    $00000000
+                    dc.l    $0000CB4A
+                    dc.b    $01
+                    dc.b    $00
+                    dc.l    $0000C6A4
+L0000403C           dc.l    $0000C6A8
+                    dc.w    $0101
+                    dc.w    $0013
+                    dc.b    $FF
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+L0000404C           dc.l    $00000000
+                    dc.l    $00000000
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $01
+                    dc.b    $03
+                    dc.b    $0C
+                    dc.b    $0A
+L0000405C           dc.b    $06
+                    dc.b    $03
+                    dc.w    $FFFC
+                    dc.w    $0030
+                    dc.l    $00004DEE
+                    dc.w    $0ED0
+                    dc.l    $00004D32
+L0000406C           dc.w    $0001
+                    dc.w    $0001
+                    dc.w    $0000
+                    dc.b    $00
+                    dc.b    $3C
+                    dc.b    $3C
+                    dc.b    $00
+                    dc.w    $0000
+                    dc.w    $0001
+
+channel_01_status   ;original address L0000407A                 
+L0000407A           dc.w    $0000
+L0000407C           dc.l    $00000000
+                    dc.l    $0000CAF8
+                    dc.l    $00000000
+                    dc.l    $0000CB2A
+L0000408C           dc.b    $01
+                    dc.b    $00
+                    dc.l    $0000C6A4
+                    dc.l    $0000C6A8
+                    dc.w    $0101
+                    dc.w    $001F
+                    dc.b    $FF
+                    dc.b    $00
+L0000409C           dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.l    $0000C623
+                    dc.l    $0000C625
+                    dc.b    $03
+                    dc.b    $01
+L000040AC           dc.b    $01
+                    dc.b    $01
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.w    $0000
+                    dc.w    $001F
+                    dc.l    $0000951A
+L000040BC           dc.w    $08E4
+                    dc.l    $0000A0C2
+                    dc.w    $0310
+                    dc.w    $0001
+                    dc.w    $0000
+                    dc.b    $00
+                    dc.b    $24
+                    dc.b    $24
+                    dc.b    $00
+L000040CC           dc.w    $0000
+                    dc.w    $0002
+
+channel_02_status   ;original address L000040D0                    
+L000040D0           dc.w    $0000
+                    dc.l    $00000000
+                    dc.l    $0000CAFA
+                    dc.l    $00000000
+                    dc.l    $0000$CB88
+                    dc.b    $01
+                    dc.b    $00
+                    dc.l    $0000C6A4
+                    dc.l    $0000C6A8
+L000040EC           dc.w    $0101
+                    dc.w    $001F
+                    dc.b    $FF
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.l    $0000C63C
+L000040FC           dc.l    $0000C63C
+                    dc.b    $03
+                    dc.b    $03
+                    dc.b    $01
+                    dc.b    $01
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.w    $0000
+L0000410C           dc.w    $002D
+                    dc.l    $0000A74A
+                    dc.w    $09B3
+                    dc.l    $0000B4F2
+                    dc.w    $02DF
+                    dc.w    $0001
+L0000411C           dc.w    $0000
+                    dc.b    $00
+                    dc.b    $30
+                    dc.b    $30
+                    dc.b    $06
+                    dc.w    $0000
+                    dc.w    $0004
+
+channel_03_status   ; original address L00004126              
+L00004126           dc.w    $0000
+                    dc.l    $00000000
+L0000412C           dc.l    $0000C70F
+                    dc.l    $00000000
+                    dc.l    $0000C718
+                    dc.b    $01
+                    dc.b    $00
+                    dc.l    $0000C6D9
+                    dc.l    $0000C6DB
+                    dc.w    $0101
+                    dc.w    $0000
+                    dc.b    $3E
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+L0000414C           dc.b    $00
+                    dc.b    $00
+                    dc.l    $00000000
+                    dc.l    $00000000
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+L0000415C           dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.b    $00
+                    dc.w    $0000
+                    dc.w    $0018
+                    dc.l    $0000BB18
+                    dc.w    $02DB
+                    dc.l    $00004D32
+                    dc.w    $0001
+                    dc.w    $0001
+                    dc.w    $0000
+                    dc.b    $00
+                    dc.b    $18
+                    dc.b    $18
+                    dc.b    $00
+                    dc.w    $0000
+                    dc.w    $0008
+
+audio_dma       ; original address L0000417C                
+L0000417C           dc.w    $0000
+
+play_counter    ; original address L0000417E
+L0000417E           dc.w    $00B5 
+
+
+
+                        ; --------------- Initialise Music Player ----------------
+                        ; No Parameters Required
+do_initialise_music_player  ; original address L00004180
+L00004180           lea.l   L00004d4a,a0
+L00004186           lea.l   instrument_data,a1      ; L00004bf2,a1
+L0000418c           bsr.w   init_instruments        ; L000049c4
+L00004190           bra.w   do_silence_all_audio    ; L00004194 
+
+
+
+                        ;---------------------------- do silence all audio ----------------------------------
+                        ; initialises all audio channels and sets song/sfx numbers to $00
+                        ;
+do_silence_all_audio    ; original address L00004194
+L00004194           movem.l d0/a0-a1,-(a7)
+L00004198           move.b  #$00,song_no_1                  ; L00004022
+L0000419e           move.b  #$00,sfx_no                     ; L00004023
+L000041a4           lea.l   channel_00_status,a0            ; L00004024,a0
+L000041a8           lea.l   $00dff0a8,a1
+L000041ae           bsr.b   init_audio_channel              ; L000041c2
+L000041b0           bsr.b   init_audio_channel              ; L000041c2
+L000041b2           bsr.b   init_audio_channel              ; L000041c2
+L000041b4           bsr.b   init_audio_channel              ; L000041c2
+L000041b6           move.w  #$0000,song_ctrl_bits           ; L00004020
+L000041bc           movem.l (a7)+,d0/a0-a1
+L000041c0           rts  
+
+
+                        ;------------ silence channel volume -------------
+                        ; Set Audio Channel Volume to Zero, also init other channel structure values
+                        ; IN: A0 - channel/voice status data
+                        ; IN: A1 - AUDxVOL custom register
+                        ;
+init_audio_channel  ; original address L000041c2
+L000041c2           move.w  #$0000,(a0)
+L000041c6           move.w  #$0001,$004a(a0)
+L000041cc           move.w  #$0000,$004c(a0)
+L000041d2           move.w  #$0000,(a1)
+L000041d6           adda.w  #$0056,a0
+L000041da           adda.w  #$0010,a1
+L000041de           rts
+
+
+
+                        ;----------------------------- do_init_sfx_channels -----------------------------
+                        ; Reset active channels for specified sound. 
+                        ; Maybe used to silence channels before playing sfx over existing sound.
+                        ;
+                        ; If song number (d0) is not in range 0-13 then silence audio and exit.
+                        ; If song number (d0) is in range 0-13 then re-initialise the active channels only.
+                        ;
+                        ; IN: D0.w      - Song Number/SFX Number?
+                        ;
+do_init_sfx_channels    ; original address L000041e0
+L000041e0           movem.l d0/d7/a0-a2,-(a7)
+L000041e4           subq.w  #$01,d0
+L000041e6           bmi.b   L000041ee
+L000041e8           cmp.w   #$0006,d0
+L000041ec           bcs.b   L000041f2
+L000041ee           bsr.b   do_silence_all_audio        ; L00004194
+L000041f0           bra.b   L0000421c
+
+L000041f2           lea.l   sounds_table,a2             ; L0000c6de,a2
+L000041f8           asl.w   #$03,d0
+L000041fa           adda.w  d0,a2
+L000041fc           lea.l   channel_00_status,a0        ; L00004024,a0
+L00004200           lea.l   $00dff0a8,a1
+
+L00004206           moveq   #$03,d7
+L00004208           tst.w   (a2)+
+L0000420a           bne.b   L00004216 
+L0000420c           adda.w  #$0056,a0
+L00004210           adda.w  #$0010,a1
+L00004214           bra.b   L00004218
+
+L00004216           bsr.b   init_audio_channel          ; L000041c2
+L00004218           dbf.w   d7,L00004208
+
+L0000421c           movem.l (a7)+,d0/d7/a0-a2
+L00004220           rts
+
+
+
+                        ;--------------------------- do play sfx ------------------------
+                        ; I think this is used to play a SFX sound on the 4th channel. 
+                        ; Test is channel is active, 
+                        ; IN:  D0.w - song number?
+                        ;
+do_play_sfx   
+L00004222           tst.w   channel_03_status       ;L00004126 
+L00004226           beq.b   L0000422e
+L00004228           cmp.b   sfx_no,d0               ; L00004023,d0
+L0000422c           bcs.b   L0000423c
+
+L0000422e           movem.l d0/d7/a0-a2,-(a7)
+L00004232           move.w  #$4000,d1
+L00004236           move.b  d0,sfx_no               ; L0004023 
+L0000423a           bra.b   init_sound              ;L0000424a
+L0000423c           rts  
+
+
+
+                        ;----------------------- do init song ------------------------
+                        ; set the current song number, and initialise for playing.
+                        ; if sound number is out of range then stop the audio.
+                        ;
+                        ; initialises each audio channel's data ptrs
+                        ; sets cmd param 82/83
+                        ; sets $00004020 
+                        ;
+                        ; IN: D0.l - sound/song to play?
+                        ;               - 0 = play nothing/stop
+                        ;               - >13 = play nothing/stop
+                        ;
+                        ; Init Commands:
+                        ; $80 - Deactivate Audio Channel if unused (i.e. no data).
+                        ; $81 - Set Channel Data ptr $0002(channelstatus)
+                        ; $82 - Store next byte in $0013(channelstatus)
+                        ; $83 - store next byte in $0012(channelstatus) 
+                        ; $0x - +ve command, init channel data and skip to next channel
+                        ;       - Set Channel Data ptr $0006(channelstatus)
+                        ;       - value is index into song_channel_database
+                        ;       - added to current ptr address as offset to pattern data?
+                        ;       - address stored in $000e(channelstatus)
+do_init_song
+L0000423e           movem.l d0/d7/a0-a2,-(a7)
+L00004242           move.w  #$8000,d1
+L00004246           move.b  d0,song_no_1            ;L00004022
+
+L0000424a           clr.w   play_counter            ;L0000417e
+
+L0000424e           subq.w  #$01,d0
+L00004250           bmi.b   L00004258
+L00004252           cmp.w   #$0006,d0
+L00004256           bcs.b   L00004260
+
+L00004258           bsr.w   do_silence_all_audio    ;L00004194
+L0000425c           bra.w   L000042f0
+
+L00004260           lea.l   sounds_table,a0         ; $0000c6de,a0
+L00004266           asl.w   #$03,d0
+L00004268           adda.w  d0,a0
+L0000426a           lea.l   channel_00_status,a1    ; L00004024,a1
+L0000426e           moveq   #$03,d7
+
+L00004270           move.w  (a0)+,d0
+L00004272           beq.b   L000042e4 
+
+L00004274           lea.l   -2(a0,d0.w),a2
+L00004278           moveq   #$00,d0
+L0000427a           move.w  d0,$004c(a1)
+L0000427e           move.l  d0,$0002(a1)
+L00004282           move.l  d0,$000a(a1)
+L00004286           move.b  d0,$0013(a1)
+L0000428a           move.b  #$01,$0012(a1)
+L00004290           move.w  d1,(a1)
+
+L00004292           move.b  (a2)+,d0
+L00004294           bpl.b   L000042c8
+
+L00004296           sub.b   #$80,d0
+L0000429a           bne.b   L000042aa
+
+L0000429c           movea.l $0002(a1),a2
+L000042a0           cmpa.w  #$0000,a2
+L000042a4           bne.b   L00004292
+L000042a6           clr.w   (a1)
+L000042a8           bra.b   L000042e4 
+
+L000042aa           subq.b  #$01,d0
+L000042ac           bne.b   L000042b4
+
+L000042ae           move.l  a2,$0002(a1)
+L000042b2           bra.b   L00004292
+
+L000042b4           subq.b  #$01,d0
+L000042b6           bne.b   L000042be
+
+L000042b8           move.b  (a2)+,$0013(a1)
+L000042bc           bra.b   L00004292
+
+L000042be           subq.b  #$01,d0
+L000042c0           bne.b   L00004292
+
+L000042c2           move.b  (a2)+,$0012(a1)
+L000042c6           bra.b   L00004292
+
+L000042c8           move.l  a2,$0006(a1)
+L000042cc           lea.l   sound_pattern_data_base,a2      ; L0000c720,a2
+L000042d2           ext.w   d0
+L000042d4           add.w   d0,d0
+L000042d6           adda.w  d0,a2
+L000042d8           adda.w  (a2),a2
+L000042da           move.l  a2,$000e(a1)
+L000042de           move.w  #$0001,$0052(a1)
+
+L000042e4           lea.l   $0056(a1),a1
+L000042e8           dbf.w   d7,L00004270
+L000042ec           or.w    d1,song_ctrl_bits           ; L00004020
+
+L000042f0           movem.l (a7)+,d0/d7/a0-a2
+L000042f4           rts 
+
+
+
+                ;--------------------------- do play sounds -----------------------
+                ; Call this routine at regular intervals to play the current
+                ; song/sfx combination. (e.g. during vbl)
+                ; The game calls this at 25 frames per second to play current 
+                ; songs/sfx
+                ;
+                ; IN:- no parameters
+                ;
+do_play_sounds   
+L000042f6               lea.l   $00dff000,a6
+L000042fc               lea.l   note_period_table+48,a5     ; L00004bb2,a5
+L00004302               clr.w   audio_dma                   ; L0000417c
+L00004306               tst.w   song_ctrl_bits              ; L00004020
+L0000430a               beq.b   L00004354
+
+L0000430c               addq.w  #$01,play_counter           ; L0000417e
+L00004310               clr.w   song_ctrl_bits              ; L00004020
+
+L00004314               lea.l   channel_00_status,a4        ; L00004024,a4
+L00004318               move.w  (a4),d7
+L0000431a               beq.b   L00004324
+L0000431c               bsr.b   channel_command_loop        ; L00004360
+L0000431e               move.w  d7,(a4)
+L00004320               or.w    d7,song_ctrl_bits           ; L00004020
+
+L00004324               lea.l   channel_01_status,a4        ; L0000407a,a4
+L00004328               move.w  (a4),d7
+L0000432a               beq.b   L00004334
+L0000432c               bsr.b   channel_command_loop        ; L00004360
+L0000432e               move.w  d7,(a4)
+L00004330               or.w    d7,song_ctrl_bits           ; L00004020
+
+L00004334               lea.l   channel_02_status,a4        ; L000040d0,a4
+L00004338               move.w  (a4),d7
+L0000433a               beq.b   L00004344
+L0000433c               bsr.b   channel_command_loop        ; L00004360
+L0000433e               move.w  d7,(a4)
+L00004340               or.w    d7,song_ctrl_bits           ; L00004020
+
+L00004344               lea.l   channel_03_status,a4        ; L00004126,a4
+L00004348               move.w  (a4),d7
+L0000434a               beq.b   L00004354
+L0000434c               bsr.b   channel_command_loop        ; L00004360
+L0000434e               move.w  d7,(a4)
+L00004350               or.w    d7,song_ctrl_bits           ; L00004020
+
+L00004354               and.w   #$c000,song_ctrl_bits       ; L00004020
+L0000435a               bsr.w   update_audio_custom_registers ; L0000484a
+L0000435e               rts  
+
+
+
+
+                ; ------------------ channel command loop --------------------------
+                ; Process channel audio commands for the current channel/sound/sfx
+                ;
+                ; IN:  a4 = channel status base address
+                ; IN:  d7 = channel status CTRL word
+                ; OUT: d7 = channel status CTRL word
+                ;
+channel_command_loop   
+L00004360               subq.w  #$01,$0052(a4)
+L00004364               bne.w   L000046aa
+
+L00004368               movea.l $000e(a4),a3
+L0000436c               bclr.l  #$0007,d7
+
+channel_cmd_loop    ; original address L00004370
+L00004370               move.b  (a3)+,d0
+L00004372               bpl.w   L00004558
+L00004376               bclr.l  #$0003,d7
+
+L0000437a               cmp.b   #$a0,d0
+L0000437e               bcc.b   L00004370
+
+L00004380               lea.l   cmd_jump_table(pc),a0       ; L00004396(pc),a0
+L00004384               sub.b   #$80,d0
+L00004388               ext.w   d0
+L0000438a               add.w   d0,d0
+L0000438c               adda.w  d0,a0
+L0000438e               move.w  (a0),d0
+L00004390               beq.b   L00004370
+L00004392               jmp     $00(a0,d0.w)
+                        ; some commands exit (rts)
+                        ; others, jmp back to 'cmd_loop'
+
+
+cmd_jump_table  ; original address L00004396
+L00004396   dc.w    music_command_01-(cmd_jump_table+00)    ; L00004396 + $0040 = $000043d6 - CMD 01 - music_command_01
+            dc.w    music_command_02-(cmd_jump_table+02)    ; L00004398 + $00BA = $00004452 - CMD 02 - music_command_02
+            dc.w    music_command_03-(cmd_jump_table+04)    ; L0000439a + $00C0 = $0000445a - CMD 03 = music_command_03
+            dc.w    music_command_04-(cmd_jump_table+06)    ; L0000439c + $00C2 = $0000445e - CMD 04 - music_command_04
+            dc.w    music_command_05-(cmd_jump_table+08)    ; L0000439e + $00C4 = $00004462 - CMD 05 - music_command_05
+            dc.w    music_command_06-(cmd_jump_table+10)    ; L000043a0 + $00CE = $0000446e - CMD 06 - music_command_06
+            dc.w    music_command_07-(cmd_jump_table+12)    ; L000043a2 + $00D4 = $00004476 - CMD 07 - music_command_07
+            dc.w    music_command_08-(cmd_jump_table+14)    ; L000043a4 + $00DC = $00004480 - CMD 08 - music_command_08
+            dc.w    music_command_09-(cmd_jump_table+16)    ; L000043a6 + $00EA = $00004490 - CMD 09 - music_command_09
+            dc.w    music_command_10-(cmd_jump_table+18)    ; L000043a8 + $00F8 = $000044a0 - CMD 10 - music_command_10
+            dc.w    music_command_11-(cmd_jump_table+20)    ; L000043aa + $010A = $000044b4 - CMD 11 - music_command_11
+            dc.w    music_command_12-(cmd_jump_table+22)    ; L000043ac + $0140 = $000044ec - CMD 12 - music_command_12
+            dc.w    music_command_13-(cmd_jump_table+24)    ; L000043ae + $0156 = $00004504 - CMD 13 - music_command_13
+            dc.w    music_command_14-(cmd_jump_table+26)    ; L000043b0 + $010C = $000044bc - CMD 14 - music_command_14
+            dc.w    music_command_15-(cmd_jump_table+28)    ; L000043b2 + $0132 = $000044e4 - CMD 15 - music_command_15
+            dc.w    music_command_16-(cmd_jump_table+30)    ; L000043b4 + $0158 = $0000450c - CMD 16 - music_command_16
+            dc.w    music_command_17-(cmd_jump_table+32)    ; L000043b6 + $016E = $00004524 - CMD 17 - music_command_17
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000 
+            dc.w    $0000 
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000
+            dc.w    $0000 
+
+
+;
+; 000043d6 - CMD 01 - ($80) 
+;       - Next Pattern/Loop current pattern/Loop back to start pattern or finish playing
+;       - no loop if $0002(a4) not set.
+music_command_01
+L000043d6           movea.l $000a(a4),a3
+L000043da           cmpa.w  #$0000,a3
+L000043de           bne.b   channel_cmd_loop            ;L00004370
+
+L000043e0           movea.l $0006(a4),a3
+L000043e4           move.b  -$0001(a3),d0
+
+L000043e8           subq.b  #$01,$0012(a4)
+L000043ec           bne.b   L0000443c
+
+L000043ee           move.b  #$01,$0012(a4)
+L000043f4           move.b  #$00,$0013(a4)
+
+                    ; command loop
+L000043fa           move.b  (a3)+,d0
+L000043fc           bpl.b   L0000443c
+
+L000043fe           sub.b   #$80,d0
+L00004402           bne.b   L0000441e
+                    ; cmd 80
+L00004404           movea.l $0002(a4),a3
+L00004408           cmpa.w  #$0000,a3
+L0000440c           bne.b   L000043fa
+                    ; disable channel and exit
+L0000440e           move.w  #$0001,$004a(a4)
+L00004414           move.w  #$0000,$004c(a4)
+L0000441a           moveq   #$00,d7
+L0000441c           rts  
+
+L0000441e           subq.b  #$01,d0
+L00004420           bne.b   L00004428
+L00004422           move.l  a3,$0002(a4)
+L00004426           bra.b   L000043fa
+
+L00004428           subq.b  #$01,d0
+L0000442a           bne.b   L00004432
+
+L0000442c           move.b  (a3)+,$0013(a4)
+L00004430           bra.b   L000043fa
+
+L00004432           subq.b  #$01,d0
+L00004434           bne.b   L000043fa
+L00004436           move.b  (a3)+,$0012(a4)
+L0000443a           bra.b   L000043fa
+
+L0000443c           move.l  a3,$0006(a4)
+L00004440           lea.l   sound_pattern_data_base,a3      ; L0000c720,a3
+L00004446           ext.w   d0
+L00004448           add.w   d0,d0
+L0000444a           adda.w  d0,a3
+L0000444c           adda.w  (a3),a3
+L0000444e           bra.w   L00004370
+
+
+
+;
+; 00004452 - CMD 02 - ($81)
+;       - store current pattern position ptr (loop back within current pattern)
+music_command_02
+L00004452           move.l  a3,$000a(a4)
+L00004456           bra.w   channel_cmd_loop    ; L00004370
+
+
+;
+; 0000445a - CMD 03 - ($82)
+;       - no operation
+music_command_03
+L0000445a           bra.w   channel_cmd_loop    ; L00004370
+
+
+;
+; 0000445e - CMD 03 - ($82)
+;       - no operation
+music_command_04
+L0000445e           bra.w   channel_cmd_loop    ; L00004370
+
+
+
+;
+; 00004462 - CMD 05 - ($84)
+;               - Set CRTL bit 5 
+;               - Set Param byte $0051(s)
+music_command_05
+L00004462           bset.l  #$0005,d7
+L00004466           move.b  (a3)+,$0051(a4)
+L0000446a           bra.w   channel_cmd_loop    ; L00004370
+
+
+;
+; L000484a0 - CMD 06 - ($85)
+;               - End/Cancel Command 05
+music_command_06
+L0000446e           bclr.l  #$0005,d7
+L00004472           bra.w   channel_cmd_loop    ; L00004370
+
+
+;
+; 00004476 - CMD 07 - ($86)
+;               - increase $0052(s) by $0100 (256)
+music_command_07
+L00004476           add.w   #$0100,$0052(a4)
+L0000447c           bra.w   channel_cmd_loop    ; L00004370
+
+
+;
+; L000484b2 - CMD 08 - $(87)
+;               - clear bit 4 - channel ctrl
+;               - set bit 7 - channel ctrl
+;               - clear $004c(s)
+;               - add $0052(s) with CMD 05 value (if active $0051(s)) or add next pattern byte 
+;
+music_command_08
+L00004480           bclr.l  #$0004,d7
+L00004484           bset.l  #$0007,d7
+L00004488           clr.w   $004c(a4)
+L0000448c           bra.w   L00004694
+
+
+; 00004490 - CMD 09 - ($88)
+;               - set bit 3 - channel ctrl
+;               - set command parameters from pattern data bytes
+;
+music_command_09
+L00004490           bset.l  #$0003,d7
+L00004494           move.b  (a3)+,$0024(a4)
+L00004498           move.b  (a3)+,$0025(a4)
+L0000449c           bra.w   channel_cmd_loop        ; L00004370
+
+
+;
+; L000484d2 - CMD 10 - ($89)
+;               - clear bits 0 - 2 (cmd 14)
+;               - clear bits 4 -7 (cmd 5,8)
+;               - preserve other bits (cmd 9)
+;               - set parameter bytes
+music_command_10
+L000044a0           and.w   #$fff8,d7
+L000044a4           bset.l  #$0000,d7
+L000044a8           move.b  (a3)+,$0021(a4)
+L000044ac           move.b  (a3)+,$0022(a4)
+L000044b0           bra.w   channel_cmd_loop        ; L00004370 
+
+
+;
+; 000044b4 - CMD 11 - ($8a)
+;               - clear ctrl bit 0
+music_command_11
+L000044b4           bclr.l  #$0000,d7
+L000044b8           bra.w   channel_cmd_loop        ; L00004370
+
+
+
+; L000044bc - CMD 14 - ($8d)
+;               - set bit 1
+;               - clear bits 1 - 2
+;               - clear bits 4 - 7
+;               - preserve bit 3 (CMD 9)
+music_command_14
+L000044bc           and.w   #$fff8,d7
+L000044c0           bset.l  #$0001,d7
+L000044c4           lea.l   command_14_data,a0      ; L0000c5d2,a0
+L000044ca           moveq   #$00,d0
+L000044cc           move.b  (a3)+,d0
+L000044ce           add.w   d0,d0
+L000044d0           adda.w  d0,a0
+L000044d2           adda.w  (a0),a0
+L000044d4           move.b  (a0)+,$0032(a4)
+L000044d8           move.b  (a0)+,$0030(a4)
+L000044dc           move.l  a0,$0028(a4)
+L000044e0           bra.w   channel_cmd_loop        ; L00004370
+
+
+; 000044e4 - CMD 15
+music_command_15
+L000044e4           bclr.l  #$0001,d7
+L000044e8           bra.w   channel_cmd_loop        ; L00004370
+
+
+
+; 000044ec - CMD 12
+music_command_12
+L000044ec           and.w   #$fff8,d7
+L000044f0           bset.l  #$0002,d7
+L000044f4           move.b  (a3)+,$0036(a4)
+L000044f8           move.b  (a3)+,$0034(a4)
+L000044fc           move.b  (a3)+,$0035(a4)
+L00004500           bra.w   channel_cmd_loop        ; L00004370
+
+
+; 00004504 - CMD 13
+music_command_13
+L00004504           bclr.l  #$0002,d7
+L00004508           bra.w   channel_cmd_loop        ; L00004370
+
+
+; 0000450c - CMD 16
+music_command_16
+L0000450c           lea.l   command_16_data,a0      ; $0000c68a,a0
+L00004512           moveq   #$00,d0
+L00004514           move.b  (a3)+,d0
+L00004516           add.w   d0,d0
+L00004518           adda.w  d0,a0
+L0000451a           adda.w  (a0),a0
+L0000451c           move.l  a0,$0014(a4)
+L00004520           bra.w   channel_cmd_loop        ; L00004370
+
+
+; 00004524 - CMD 17
+music_command_17
+L00004524           lea.l   command_17_data,a0      ; $00004be2,a0
+L0000452a           moveq   #$00,d0
+L0000452c           move.b  (a3)+,d0
+L0000452e           asl.w   #$04,d0
+L00004530           adda.w  d0,a0
+L00004532           move.w  (a0)+,$003c(a4)
+L00004536           move.l  (a0)+,$003e(a4)
+L0000453a           move.w  (a0)+,$0042(a4)
+L0000453e           move.l  (a0)+,$0044(a4)
+L00004542           move.w  (a0)+,$0048(a4)
+L00004546           bclr.l  #$0006,d7
+L0000454a           tst.w   (a0) [0012]
+L0000454c           beq.w   channel_cmd_loop        ; L00004370
+L00004550           bset.l  #$0006,d7
+L00004554           bra.w   channel_cmd_loop        ; L00004370
+
+
+
+                ; +ve pattern command data (end of pattern command loop)
+                ; IN: A4 = Sound Channel Structure
+                ; IN: A3 = Next Pattern Command Ptr
+                ; IN: D0 = command data
+                ; IN: D7 = Channel Ctrl Bits
+process_sound_commands  ; original address 00004558
+00004558 0807 0006                btst.l #$0006,d7
+0000455c 6604                     bne.b #$04 == $00004562
+0000455e d02c 0013                add.b (a4,$0013) == $00bfe114,d0
+00004562 1940 004f                move.b d0,(a4,$004f) == $00bfe150
+00004566 0807 0000                btst.l #$0000,d7
+0000456a 670a                     beq.b #$0a == $00004576
+0000456c d02c 0021                add.b (a4,$0021) == $00bfe122,d0
+00004570 196c 0022 0023           move.b (a4,$0022) == $00bfe123,(a4,$0023) == $00bfe124
+00004576 1940 0050                move.b d0,(a4,$0050) == $00bfe151
+0000457a 4880                     ext.w d0
+0000457c 906c 003c                sub.w (a4,$003c) == $00bfe13d,d0
+00004580 d040                     add.w d0,d0
+00004582 b07c ffd0                cmp.w #$ffd0,d0
+00004586 6d06                     blt.b #$06 == $0000458e
+00004588 b07c 002c                cmp.w #$002c,d0
+0000458c 6f16                     ble.b #$16 == $000045a4
+0000458e 122c 004f                move.b (a4,$004f) == $00bfe150,d1
+00004592 142c 0050                move.b (a4,$0050) == $00bfe151,d2
+00004596 362c 003c                move.w (a4,$003c) == $00bfe13d,d3
+0000459a 382c 0054                move.w (a4,$0054) == $00bfe155,d4
+0000459e 246c 0006                movea.l (a4,$0006) == $00bfe107,a2
+000045a2 4afc                     illegal
+
+000045a4 3975 0000 004a           move.w (a5,d0.W,$00) == $00bfb090,(a4,$004a) == $00bfe14b
+000045aa 0807 0002                btst.l #$0002,d7
+000045ae 675a                     beq.b #$5a == $0000460a
+000045b0 102c 0050                move.b (a4,$0050) == $00bfe151,d0
+000045b4 d02c 0034                add.b (a4,$0034) == $00bfe135,d0
+000045b8 4880                     ext.w d0
+000045ba 906c 003c                sub.w (a4,$003c) == $00bfe13d,d0
+000045be d040                     add.w d0,d0
+000045c0 b07c ffd0                cmp.w #$ffd0,d0
+000045c4 6d06                     blt.b #$06 == $000045cc
+000045c6 b07c 002c                cmp.w #$002c,d0
+000045ca 6f16                     ble.b #$16 == $000045e2
+000045cc 122c 004f                move.b (a4,$004f) == $00bfe150,d1
+000045d0 142c 0050                move.b (a4,$0050) == $00bfe151,d2
+000045d4 362c 003c                move.w (a4,$003c) == $00bfe13d,d3
+000045d8 382c 0054                move.w (a4,$0054) == $00bfe155,d4
+000045dc 246c 0006                movea.l (a4,$0006) == $00bfe107,a2
+000045e0 4afc                     illegal
+
+000045e2 3035 0000                move.w (a5,d0.W,$00) == $00bfb090,d0
+000045e6 906c 004a                sub.w (a4,$004a) == $00bfe14b,d0
+000045ea e240                     asr.w #$01,d0
+000045ec 48c0                     ext.l d0
+000045ee 122c 0035                move.b (a4,$0035) == $00bfe136,d1
+000045f2 4881                     ext.w d1
+000045f4 81c1                     divs.w d1,d0
+000045f6 3940 003a                move.w d0,(a4,$003a) == $00bfe13b
+000045fa 1941 0039                move.b d1,(a4,$0039) == $00bfe13a
+000045fe d201                     add.b d1,d1
+00004600 1941 0038                move.b d1,(a4,$0038) == $00bfe139
+00004604 196c 0036 0037           move.b (a4,$0036) == $00bfe137,(a4,$0037) == $00bfe138
+0000460a 0807 0003                btst.l #$0003,d7
+0000460e 6750                     beq.b #$50 == $00004660
+00004610 102c 0050                move.b (a4,$0050) == $00bfe151,d0
+00004614 d02c 0024                add.b (a4,$0024) == $00bfe125,d0
+00004618 4880                     ext.w d0
+0000461a 906c 003c                sub.w (a4,$003c) == $00bfe13d,d0
+0000461e d040                     add.w d0,d0
+00004620 b07c ffd0                cmp.w #$ffd0,d0
+00004624 6d06                     blt.b #$06 == $0000462c
+00004626 b07c 002c                cmp.w #$002c,d0
+0000462a 6f16                     ble.b #$16 == $00004642
+0000462c 122c 004f                move.b (a4,$004f) == $00bfe150,d1
+00004630 142c 0050                move.b (a4,$0050) == $00bfe151,d2
+00004634 362c 003c                move.w (a4,$003c) == $00bfe13d,d3
+00004638 382c 0054                move.w (a4,$0054) == $00bfe155,d4
+0000463c 246c 0006                movea.l (a4,$0006) == $00bfe107,a2
+00004640 4afc                     illegal
+
+00004642 3035 0000                move.w (a5,d0.W,$00) == $00bfb090,d0
+00004646 906c 004a                sub.w (a4,$004a) == $00bfe14b,d0
+0000464a 48c0                     ext.l d0
+0000464c 7200                     moveq #$00,d1
+0000464e 122c 0025                move.b (a4,$0025) == $00bfe126,d1
+00004652 81c1                     divs.w d1,d0
+00004654 3940 0026                move.w d0,(a4,$0026) == $00bfe127
+00004658 4440                     neg.w d0
+0000465a c1c1                     muls.w d1,d0
+0000465c 916c 004a                sub.w d0,(a4,$004a) == $00bfe14b
+00004660 0807 0001                btst.l #$0001,d7
+00004664 6712                     beq.b #$12 == $00004678
+00004666 197c 0001 0033           move.b #$01,(a4,$0033) == $00bfe134
+0000466c 296c 0028 002c           move.l (a4,$0028) == $00bfe129,(a4,$002c) == $00bfe12d
+00004672 196c 0030 0031           move.b (a4,$0030) == $00bfe131,(a4,$0031) == $00bfe132
+00004678 08c7 0004                bset.l #$0004,d7
+0000467c 296c 0014 0018           move.l (a4,$0014) == $00bfe115,(a4,$0018) == $00bfe119
+00004682 397c 0001 001e           move.w #$0001,(a4,$001e) == $00bfe11f
+00004688 426c 004c                clr.w (a4,$004c) == $00bfe14d
+0000468c 302c 0054                move.w (a4,$0054) == $00bfe155,d0
+00004690 8178 417c                or.w d0,$417c [0000]
+00004694 7000                     moveq #$00,d0
+00004696 102c 0051                move.b (a4,$0051) == $00bfe152,d0
+0000469a 0807 0005                btst.l #$0005,d7
+0000469e 6602                     bne.b #$02 == $000046a2
+000046a0 101b                     move.b (a3)+ [4e],d0
+000046a2 d16c 0052                add.w d0,(a4,$0052) == $00bfe153
+000046a6 294b 000e                move.l a3,(a4,$000e) == $00bfe10f
+000046aa 0807 0007                btst.l #$0007,d7
+000046ae 6600 0198                bne.w #$0198 == $00004848
+000046b2 302c 004a                move.w (a4,$004a) == $00bfe14b,d0
+000046b6 0807 0003                btst.l #$0003,d7
+000046ba 6712                     beq.b #$12 == $000046ce
+000046bc 532c 0025                subq.b #$01,(a4,$0025) == $00bfe126
+000046c0 6604                     bne.b #$04 == $000046c6
+000046c2 0887 0003                bclr.l #$0003,d7
+000046c6 906c 0026                sub.w (a4,$0026) == $00bfe127,d0
+000046ca 6000 00d4                bra.w #$00d4 == $000047a0
+
+000046ce 0807 0000                btst.l #$0000,d7
+000046d2 6746                     beq.b #$46 == $0000471a
+000046d4 532c 0023                subq.b #$01,(a4,$0023) == $00bfe124
+000046d8 6400 00c6                bcc.w #$00c6 == $000047a0
+000046dc 102c 004f                move.b (a4,$004f) == $00bfe150,d0
+000046e0 122c 0050                move.b (a4,$0050) == $00bfe151,d1
+000046e4 1940 0050                move.b d0,(a4,$0050) == $00bfe151
+000046e8 4880                     ext.w d0
+000046ea 906c 003c                sub.w (a4,$003c) == $00bfe13d,d0
+000046ee d040                     add.w d0,d0
+000046f0 b07c ffd0                cmp.w #$ffd0,d0
+000046f4 6d06                     blt.b #$06 == $000046fc
+000046f6 b07c 002c                cmp.w #$002c,d0
+000046fa 6f16                     ble.b #$16 == $00004712
+000046fc 122c 004f                move.b (a4,$004f) == $00bfe150,d1
+00004700 142c 0050                move.b (a4,$0050) == $00bfe151,d2
+00004704 362c 003c                move.w (a4,$003c) == $00bfe13d,d3
+00004708 382c 0054                move.w (a4,$0054) == $00bfe155,d4
+0000470c 246c 0006                movea.l (a4,$0006) == $00bfe107,a2
+00004710 4afc                     illegal
+
+00004712 3035 0000                move.w (a5,d0.W,$00) == $00bfb090,d0
+00004716 6000 0088                bra.w #$0088 == $000047a0
+
+0000471a 0807 0001                btst.l #$0001,d7
+0000471e 675c                     beq.b #$5c == $0000477c
+00004720 532c 0033                subq.b #$01,(a4,$0033) == $00bfe134
+00004724 667a                     bne.b #$7a == $000047a0
+00004726 206c 002c                movea.l (a4,$002c) == $00bfe12d,a0
+0000472a 1018                     move.b (a0)+ [00],d0
+0000472c 532c 0031                subq.b #$01,(a4,$0031) == $00bfe132
+00004730 660a                     bne.b #$0a == $0000473c
+00004732 206c 0028                movea.l (a4,$0028) == $00bfe129,a0
+00004736 196c 0030 0031           move.b (a4,$0030) == $00bfe131,(a4,$0031) == $00bfe132
+0000473c 2948 002c                move.l a0,(a4,$002c) == $00bfe12d
+00004740 196c 0032 0033           move.b (a4,$0032) == $00bfe133,(a4,$0033) == $00bfe134
+00004746 d02c 0050                add.b (a4,$0050) == $00bfe151,d0
+0000474a 4880                     ext.w d0
+0000474c 906c 003c                sub.w (a4,$003c) == $00bfe13d,d0
+00004750 d040                     add.w d0,d0
+00004752 b07c ffd0                cmp.w #$ffd0,d0
+00004756 6d06                     blt.b #$06 == $0000475e
+00004758 b07c 002c                cmp.w #$002c,d0
+0000475c 6f16                     ble.b #$16 == $00004774
+0000475e 122c 004f                move.b (a4,$004f) == $00bfe150,d1
+00004762 142c 0050                move.b (a4,$0050) == $00bfe151,d2
+00004766 362c 003c                move.w (a4,$003c) == $00bfe13d,d3
+0000476a 382c 0054                move.w (a4,$0054) == $00bfe155,d4
+0000476e 246c 0006                movea.l (a4,$0006) == $00bfe107,a2
+00004772 4afc                     illegal
+
+00004774 3035 0000                move.w (a5,d0.W,$00) == $00bfb090,d0
+00004778 6000 0026                bra.w #$0026 == $000047a0
+
+0000477c 0807 0002                btst.l #$0002,d7
+00004780 671e                     beq.b #$1e == $000047a0
+00004782 532c 0037                subq.b #$01,(a4,$0037) == $00bfe138
+00004786 6418                     bcc.b #$18 == $000047a0
+00004788 522c 0037                addq.b #$01,(a4,$0037) == $00bfe138
+0000478c 532c 0039                subq.b #$01,(a4,$0039) == $00bfe13a
+00004790 660a                     bne.b #$0a == $0000479c
+00004792 446c 003a                neg.w (a4,$003a) == $00bfe13b
+00004796 196c 0038 0039           move.b (a4,$0038) == $00bfe139,(a4,$0039) == $00bfe13a
+0000479c d06c 003a                add.w (a4,$003a) == $00bfe13b,d0
+000047a0 3940 004a                move.w d0,(a4,$004a) == $00bfe14b
+000047a4 0807 0004                btst.l #$0004,d7
+000047a8 6700 009e                beq.w #$009e == $00004848
+000047ac 536c 001e                subq.w #$01,(a4,$001e) == $00bfe11f
+000047b0 6600 0080                bne.w #$0080 == $00004832
+000047b4 206c 0018                movea.l (a4,$0018) == $00bfe119,a0
+000047b8 7000                     moveq #$00,d0
+000047ba 1018                     move.b (a0)+ [00],d0
+000047bc 6742                     beq.b #$42 == $00004800
+000047be 6b1a                     bmi.b #$1a == $000047da
+000047c0 3940 001e                move.w d0,(a4,$001e) == $00bfe11f
+000047c4 197c 0001 001c           move.b #$01,(a4,$001c) == $00bfe11d
+000047ca 197c 0001 001d           move.b #$01,(a4,$001d) == $00bfe11e
+000047d0 1958 0020                move.b (a0)+ [00],(a4,$0020) == $00bfe121
+000047d4 2948 0018                move.l a0,(a4,$0018) == $00bfe119
+000047d8 6058                     bra.b #$58 == $00004832
+
+000047da 4400                     neg.b d0
+000047dc 3940 001e                move.w d0,(a4,$001e) == $00bfe11f
+000047e0 197c 0001 0020           move.b #$01,(a4,$0020) == $00bfe121
+000047e6 1018                     move.b (a0)+ [00],d0
+000047e8 6a06                     bpl.b #$06 == $000047f0
+000047ea 4400                     neg.b d0
+000047ec 442c 0020                neg.b (a4,$0020) == $00bfe121
+000047f0 1940 001c                move.b d0,(a4,$001c) == $00bfe11d
+000047f4 197c 0001 001d           move.b #$01,(a4,$001d) == $00bfe11e
+000047fa 2948 0018                move.l a0,(a4,$0018) == $00bfe119
+000047fe 6032                     bra.b #$32 == $00004832
+
+00004800 1010                     move.b (a0) [00],d0
+00004802 670a                     beq.b #$0a == $0000480e
+00004804 6a02                     bpl.b #$02 == $00004808
+00004806 4400                     neg.b d0
+00004808 906c 0052                sub.w (a4,$0052) == $00bfe153,d0
+0000480c 6b06                     bmi.b #$06 == $00004814
+0000480e 0887 0004                bclr.l #$0004,d7
+00004812 6034                     bra.b #$34 == $00004848
+
+00004814 4440                     neg.w d0
+00004816 3940 001e                move.w d0,(a4,$001e) == $00bfe11f
+0000481a 197c 0000 001c           move.b #$00,(a4,$001c) == $00bfe11d
+00004820 197c 0000 001d           move.b #$00,(a4,$001d) == $00bfe11e
+00004826 197c 0000 0020           move.b #$00,(a4,$0020) == $00bfe121
+0000482c 2948 0018                move.l a0,(a4,$0018) == $00bfe119
+00004830 6016                     bra.b #$16 == $00004848
+00004832 532c 001d                subq.b #$01,(a4,$001d) == $00bfe11e
+00004836 6610                     bne.b #$10 == $00004848
+00004838 196c 001c 001d           move.b (a4,$001c) == $00bfe11d,(a4,$001d) == $00bfe11e
+0000483e 102c 0020                move.b (a4,$0020) == $00bfe121,d0
+00004842 4880                     ext.w d0
+00004844 d16c 004c                add.w d0,(a4,$004c) == $00bfe14d
+00004848 4e75                     rts  == $6000001a
+
+
+
+0000484a 3038 417c                move.w $417c [0000],d0
+0000484e 676e                     beq.b #$6e == $000048be
+00004850 3d40 0096                move.w d0,(a6,$0096) == $00dff096
+00004854 3200                     move.w d0,d1
+00004856 ef49                     lsl.w #$07,d1
+00004858 3d41 009c                move.w d1,(a6,$009c) == $00dff09c
+0000485c 7400                     moveq #$00,d2
+0000485e 7601                     moveq #$01,d3
+00004860 0800 0000                btst.l #$0000,d0
+00004864 6708                     beq.b #$08 == $0000486e
+00004866 3d43 00a6                move.w d3,(a6,$00a6) == $00dff0a6
+0000486a 3d42 00aa                move.w d2,(a6,$00aa) == $00dff0aa
+0000486e 0800 0001                btst.l #$0001,d0
+00004872 6708                     beq.b #$08 == $0000487c
+00004874 3d43 00b6                move.w d3,(a6,$00b6) == $00dff0b6
+00004878 3d42 00ba                move.w d2,(a6,$00ba) == $00dff0ba
+0000487c 0800 0002                btst.l #$0002,d0
+00004880 6708                     beq.b #$08 == $0000488a
+00004882 3d43 00c6                move.w d3,(a6,$00c6) == $00dff0c6
+00004886 3d42 00ca                move.w d2,(a6,$00ca) == $00dff0ca
+0000488a 0800 0003                btst.l #$0003,d0
+0000488e 6708                     beq.b #$08 == $00004898
+00004890 3d43 00d6                move.w d3,(a6,$00d6) == $00dff0d6
+00004894 3d42 00da                move.w d2,(a6,$00da) == $00dff0da
+00004898 342e 001e                move.w (a6,$001e) == $00dff01e,d2
+0000489c c441                     and.w d1,d2
+0000489e b441                     cmp.w d1,d2
+000048a0 66f6                     bne.b #$f6 == $00004898
+000048a2 7402                     moveq #$02,d2
+000048a4 362e 0006                move.w (a6,$0006) == $00dff006,d3
+000048a8 0243 ff00                and.w #$ff00,d3
+000048ac 382e 0006                move.w (a6,$0006) == $00dff006,d4
+000048b0 0244 ff00                and.w #$ff00,d4
+000048b4 b644                     cmp.w d4,d3
+000048b6 67f4                     beq.b #$f4 == $000048ac
+000048b8 3604                     move.w d4,d3
+000048ba 51ca fff0                dbf .w d2,#$fff0 == $000048ac
+000048be 3238 401c                move.w $401c [ffff],d1
+000048c2 3438 401e                move.w $401e [ffff],d2
+000048c6 41f8 4024                lea.l $4024,a0
+000048ca 3601                     move.w d1,d3
+000048cc 0810 0006                btst.b #$0006,(a0)
+000048d0 6702                     beq.b #$02 == $000048d4
+000048d2 3602                     move.w d2,d3
+000048d4 c668 004c                and.w (a0,$004c) == $00000bae [001a],d3
+000048d8 3d43 00a8                move.w d3,(a6,$00a8) == $00dff0a8
+000048dc 3d68 004a 00a6           move.w (a0,$004a) == $00000bac [41fa],(a6,$00a6) == $00dff0a6
+000048e2 0800 0000                btst.l #$0000,d0
+000048e6 670e                     beq.b #$0e == $000048f6
+000048e8 3d68 0042 00a4           move.w (a0,$0042) == $00000ba4 [0000],(a6,$00a4) == $00dff0a4
+000048ee 2d68 003e 00a0           move.l (a0,$003e) == $00000ba0 [0cf423fc],(a6,$00a0) == $00dff0a0
+000048f4 600c                     bra.b #$0c == $00004902
+
+000048f6 3d68 0048 00a4           move.w (a0,$0048) == $00000baa [0cf0],(a6,$00a4) == $00dff0a4
+000048fc 2d68 0044 00a0           move.l (a0,$0044) == $00000ba6 [2ad60000],(a6,$00a0) == $00dff0a0
+00004902 41f8 407a                lea.l $407a,a0
+00004906 3601                     move.w d1,d3
+00004908 0810 0006                btst.b #$0006,(a0)
+0000490c 6702                     beq.b #$02 == $00004910
+0000490e 3602                     move.w d2,d3
+00004910 c668 004c                and.w (a0,$004c) == $00000bae [001a],d3
+00004914 3d43 00b8                move.w d3,(a6,$00b8) == $00dff0b8
+00004918 3d68 004a 00b6           move.w (a0,$004a) == $00000bac [41fa],(a6,$00b6) == $00dff0b6
+0000491e 0800 0001                btst.l #$0001,d0
+00004922 670e                     beq.b #$0e == $00004932
+00004924 3d68 0042 00b4           move.w (a0,$0042) == $00000ba4 [0000],(a6,$00b4) == $00dff0b4
+0000492a 2d68 003e 00b0           move.l (a0,$003e) == $00000ba0 [0cf423fc],(a6,$00b0) == $00dff0b0
+00004930 600c                     bra.b #$0c == $0000493e
+
+00004932 3d68 0048 00b4           move.w (a0,$0048) == $00000baa [0cf0],(a6,$00b4) == $00dff0b4
+00004938 2d68 0044 00b0           move.l (a0,$0044) == $00000ba6 [2ad60000],(a6,$00b0) == $00dff0b0
+0000493e 41f8 40d0                lea.l $40d0,a0
+00004942 3601                     move.w d1,d3
+00004944 0810 0006                btst.b #$0006,(a0)
+00004948 6702                     beq.b #$02 == $0000494c
+0000494a 3602                     move.w d2,d3
+0000494c c668 004c                and.w (a0,$004c) == $00000bae [001a],d3
+00004950 3d43 00c8                move.w d3,(a6,$00c8) == $00dff0c8
+00004954 3d68 004a 00c6           move.w (a0,$004a) == $00000bac [41fa],(a6,$00c6) == $00dff0c6
+0000495a 0800 0002                btst.l #$0002,d0
+0000495e 670e                     beq.b #$0e == $0000496e
+00004960 3d68 0042 00c4           move.w (a0,$0042) == $00000ba4 [0000],(a6,$00c4) == $00dff0c4
+00004966 2d68 003e 00c0           move.l (a0,$003e) == $00000ba0 [0cf423fc],(a6,$00c0) == $00dff0c0
+0000496c 600c                     bra.b #$0c == $0000497a
+0000496e 3d68 0048 00c4           move.w (a0,$0048) == $00000baa [0cf0],(a6,$00c4) == $00dff0c4
+00004974 2d68 0044 00c0           move.l (a0,$0044) == $00000ba6 [2ad60000],(a6,$00c0) == $00dff0c0
+0000497a 41f8 4126                lea.l $4126,a0
+0000497e 3601                     move.w d1,d3
+00004980 0810 0006                btst.b #$0006,(a0)
+00004984 6702                     beq.b #$02 == $00004988
+00004986 3602                     move.w d2,d3
+00004988 c668 004c                and.w (a0,$004c) == $00000bae [001a],d3
+0000498c 3d43 00d8                move.w d3,(a6,$00d8) == $00dff0d8
+00004990 3d68 004a 00d6           move.w (a0,$004a) == $00000bac [41fa],(a6,$00d6) == $00dff0d6
+00004996 0800 0003                btst.l #$0003,d0
+0000499a 670e                     beq.b #$0e == $000049aa
+0000499c 3d68 0042 00d4           move.w (a0,$0042) == $00000ba4 [0000],(a6,$00d4) == $00dff0d4
+000049a2 2d68 003e 00d0           move.l (a0,$003e) == $00000ba0 [0cf423fc],(a6,$00d0) == $00dff0d0
+000049a8 600c                     bra.b #$0c == $000049b6
+000049aa 3d68 0048 00d4           move.w (a0,$0048) == $00000baa [0cf0],(a6,$00d4) == $00dff0d4
+000049b0 2d68 0044 00d0           move.l (a0,$0044) == $00000ba6 [2ad60000],(a6,$00d0) == $00dff0d0
+000049b6 0040 8000                or.w #$8000,d0
+000049ba 3d40 0096                move.w d0,(a6,$0096) == $00dff096
+000049be 4278 417c                clr.w $417c [0000]
+000049c2 4e75                     rts  == $6000001a
+
+
+000049c4 2018                     move.l (a0)+ [00120020],d0
+000049c6 671a                     beq.b #$1a == $000049e2
+000049c8 3298                     move.w (a0)+ [0012],(a1) [0000]
+000049ca 3358 000e                move.w (a0)+ [0012],(a1,$000e) == $0000080e
+000049ce 2f08                     move.l a0,-(a7) [00000b4c]
+000049d0 41f0 08f8                lea.l (a0,d0.L,$f8) == $ffffeaea,a0
+000049d4 2028 0004                move.l (a0,$0004) == $00000b66 [00003ffc],d0
+000049d8 5080                     addq.l #$08,d0
+000049da 6100 0008                bsr.w #$0008 == $000049e4
+000049de 205f                     movea.l (a7)+ [6000001a],a0
+000049e0 60e2                     bra.b #$e2 == $000049c4
+000049e2 4e75                     rts  == $6000001a
+
+
+000049e4 2f09                     move.l a1,-(a7) [00000b4c]
+000049e6 6100 0040                bsr.w #$0040 == $00004a28
+000049ea 225f                     movea.l (a7)+ [6000001a],a1
+000049ec 5489                     addq.l #$02,a1
+000049ee 2079 0000 4b36           movea.l $00004b36 [0000c0e2],a0
+000049f4 2018                     move.l (a0)+ [00120020],d0
+000049f6 0880 0000                bclr.l #$0000,d0
+000049fa 2218                     move.l (a0)+ [00120020],d1
+000049fc 0881 0000                bclr.l #$0000,d1
+00004a00 2079 0000 4b5c           movea.l $00004b5c [0000c136],a0
+00004a06 22c8                     move.l a0,(a1)+ [00000800]
+00004a08 d1c0                     adda.l d0,a0
+00004a0a d081                     add.l d1,d0
+00004a0c e288                     lsr.l #$01,d0
+00004a0e 32c0                     move.w d0,(a1)+ [0000]
+00004a10 4a81                     tst.l d1
+00004a12 6608                     bne.b #$08 == $00004a1c
+00004a14 41f9 0000 4d32           lea.l $00004d32,a0
+00004a1a 7202                     moveq #$02,d1
+00004a1c 22c8                     move.l a0,(a1)+ [00000800]
+00004a1e e289                     lsr.l #$01,d1
+00004a20 32c1                     move.w d1,(a1)+ [0000]
+00004a22 5489                     addq.l #$02,a1
+00004a24 4e75                     rts
+
+
+L00004a26               dc.w    $0000
+
+L00004a28               clr.w   L00004a26
+L00004a2c               movem.l d0/a0,-(a7)
+L00004a30               bra.w   L00004a34
+L00004a34               tst.l   d0
+L00004a36               beq.b   L00004a42
+L00004a38               move.l  (a0)+,d1
+L00004a3a               subq.l  #$04,d0
+L00004a3c               bsr.w   L00004a48
+L00004a40               bra.b   L00004a34
+L00004a42               movem.l (a7)+,d0/a0
+L00004a46               rts 
+
+
+L00004a48               cmp.l   #$464f524d,d1
+L00004a4e               beq.w   L00004aa4
+L00004a52               cmp.l   #$43415420,d1
+L00004a58               beq.w   L00004a66
+L00004a5c               move.w  #$0001,L00004a26
+L00004a62               clr.l   d0
+L00004a64               rts 
+
+
+
+L00004a66               movem.l d0/a0,-(a7)
+L00004a6a               move.l  (a0)+,d0
+L00004a6c               move.l  d0,d1
+L00004a6e               btst.l  #$0000,d1
+L00004a72               beq.b   L00004a76
+L00004a74               addq.l  #$01,d1
+L00004a76               addq.l  #$04,d1
+L00004a78               add.l   d1,$0004(a7)
+L00004a7c               sub.l   d1,(a7)
+L00004a7e               addq.l  #$04,(a0)
+L00004a80               subq.l  #$04,d0
+L00004a82               bra.b   L00004a34
+
+L00004a84               movem.l d0/a0,-(a7)
+L00004a88               move.l  (a0)+,d0
+L00004a8a               move.l  d0,d1
+L00004a8c               btst.l  #$0000,d1
+L00004a90               beq.b   L00004a94
+L00004a92               addq.l  #$01,d1
+L00004a94               addq.l  #$04,d1
+L00004a96               add.l   d1,$0004(a7)
+L00004a9a               sub.l   d1,(a7)
+L00004a9c               nop
+L00004a9e               movem.l (a7)+,d0/a0
+L00004aa2               rts
+
+
+L00004aa4               movem.l d0/a0,-(a7)
+L00004aa8               move.l  (a0)+,d0
+L00004aaa               move.l  d0,d1
+L00004aac               btst.l  #$0000,d1
+L00004ab0               beq.b   L00004ab4
+L00004ab2               addq.l  #$01,d1
+L00004ab4               addq.l  #$04,d1
+L00004ab6               add.l   d1,(a7,$0004)
+L00004aba               sub.l   d1,(a7)
+L00004abc               move.l  (a0)+,d1
+L00004abe               subq.l  #$04,d0
+L00004ac0               cmp.l   #$38535658,d1
+L00004ac6               beq.w   L00004ad6
+L00004aca               move.w  #$0002,L00004a26
+L00004ad0               movem.l (a7)+,d0/a0
+L00004ad4               rts 
+
+
+L00004ad6               tst.l   d0
+L00004ad8               beq.b   L00004ae4
+L00004ada               move.l  (a0)+,d1
+L00004adc               subq.l  #$04,d0
+L00004ade               bsr.w   L00004aea
+L00004ae2               bra.b   L00004ad6
+L00004ae4               movem.l (a7)+,d0/a0
+L00004ae8               rts
+
+
+L00004aea               cmp.l   #$464f524d,d1
+L00004af0               beq.b   L00004aa4
+L00004af2               cmp.l   #$4c495354,d1
+L00004af8               beq.b   L00004a84
+L00004afa               cmp.l   #$43415420,d1
+L00004b00               beq.w   L00004a66
+L00004b04               cmp.l   #$56484452,d1
+L00004b0a               beq.w   L00004b3a
+L00004b0e               cmp.l   #$424f4459,d1
+L00004b14               beq.w   L00004b60
+L00004b18               movem.l d0/a0,-(a7)
+L00004b1c               move.l  (a0)+,d0
+L00004b1e               move.l  d0,d1
+L00004b20               btst.l  #$0000,d1
+L00004b24               beq.b   L00004b28
+L00004b26               addq.l  #$01,d1
+L00004b28               addq.l  #$04,d1
+L00004b2a               add.l   d1,$0004(a7)
+L00004b2e               sub.l   d1,(a7)
+L00004b30               movem.l (a7)+,d0/a0
+L00004b34               rts
+
+
+L00004b36               or.b    #$e2,d0
+L00004b3a               movem.l d0/a0,-(a7)
+L00004b3e               move.l  (a0)+,d0
+L00004b40               move.l  d0,d1
+L00004b42               btst.l  #$0000,d1
+L00004b46               beq.b   L00004b4a
+L00004b48               addq.l  #$01,d1
+L00004b4a               addq.l  #$04,d1
+L00004b4c               add.l   $0004d1,(a7)
+L00004b50               sub.l   d1,(a7)
+L00004b52               move.l  a0,L00004b36
+L00004b56               movem.l (a7)+,d0/a0
+L00004b5a               rts
+
+L00004b5c               or.b    #$36,d0
+L00004b60               movem.l d0/a0,-(a7)
+L00004b64               move.l  (a0)+,d0
+L00004b66               move.l  d0,d1
+L00004b68               btst.l  #$0000,d1
+L00004b6c               beq.b   L00004b70
+L00004b6e               addq.l  #$01,d1
+L00004b70               addq.l  #$04,d1
+L00004b72               add.l   d1,$0004(a7)
+L00004b76               sub.l   d1,(a7)
+L00004b78               move.l  a0,L00004b5c
+L00004b7c               movem.l (a7)+,d0/a0
+L00004b80               rts
+
+;data
+;00004b82 06fe                     illegal
+
+
+
+
+
+
+
+
 
                     dcb.b   4096,$00
 stack_memory        ; original address L0000EF96
