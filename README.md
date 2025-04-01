@@ -7,7 +7,8 @@
  - [Progress to date](#progress-to-date)
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. 
-All Game Levels can be built and played frm the Source Code using VSCode. There are a couple of minor bugs and music to fix for the BatCave and Catherdral Levels.
+**All Game Levels can be built and played from the Source Code using VSCode.**
+There are a couple of minor bugs and music to fix for the Catherdral Level so it plays level 1 music for the moment.
 
 ## Main Code Projects
 The folder names for the projects below reflect the file names of the executables held on the original disks.
@@ -15,7 +16,7 @@ The folder names for the projects below reflect the file names of the executable
 <br/>![Axis Chemicals - Level 1](/images/axischemicals.jpeg)
  - [Level 2 (Batmobile/Batwing) Code Project](./gamesource/code)
 <br/>![Batmobile - Level 2](/images/batmobile.jpeg)
- - [Level 3 (BatCave) Code Project](./gamesource/batcave) **TODO/In Progress**
+ - [Level 3 (BatCave) Code Project](./gamesource/batcave)
 <br/>![Batmobile - Level 3](/images/batcave.jpeg)
  - [Level 4 (Batmobile/Batwing) Code Project](./gamesource/code/)
 <br/>![Batwing - Level 4](/images/batwing.jpeg)
@@ -64,7 +65,7 @@ This exercise is not one of speed, but of learning. The intention is to understa
     - ['data4' Project](./gamesource/data4) - Level 4 specific data file.
     - ['code' Project](./gamesource/code) - Shared code executable for Levels 2 & 4
  - Disassemble the BatCave Level.
-    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music (**TOOD Music**)
+    - ['batcave' Project](./gamesource/batcave) - Code, GFX and Music
 
 ## Resources and Acknowledgements
 The inspiration for this exercise was discovering the following cracking series run by **h0ffman**. Links to those resources shown below.
@@ -89,6 +90,12 @@ Resources and code used in this project is listed below. If there's anything use
 
 
 ## Progress to Date
+
+**2025-04-01 - BATMAN** - The whole game has now been disassembled and reversed so that every level can be built and executed from within VSCode.  There are the following issues to correct.
+  - Title Screen (minor bugs to fix)
+  - Level 5 Cathedral (Music & SFX not fully working in game yet)
+
+**2025-04-01 - Level 3** - The Level now builds and runs from within VSCode with music and SFX.
 
 **2025-03-29 - Level 3** - The GFX Glitches are now fixed and the level is playable.
 
