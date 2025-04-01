@@ -7,7 +7,7 @@
             "name": "WinUAE Debug",
             "stopOnEntry": false,
             "program": "${workspaceFolder}/uae/dh0/code5",
-            "remoteProgram": "titleprg",
+            "remoteProgram": "code5",
             "emulatorType": "winuae",
             "emulatorArgs": [
                 "-s",
@@ -21,7 +21,7 @@
             "name": "WinUAE Launch",
             "noDebug": true,
             "program": "${workspaceFolder}/uae/dh0/code5",
-            "remoteProgram": "titleprg",
+            "remoteProgram": "code5",
             "emulatorType": "winuae",
             "emulatorArgs": [
                 "-s",

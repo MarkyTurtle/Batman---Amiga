@@ -171,7 +171,7 @@ DISPLAY_BUFFER_BPL3_OFFSET  EQU     DISPLAY_BUFFER_BYTES*3
                 ;--------------------- includes and constants ---------------------------
                 INCDIR      "include"
                 INCLUDE     "hw.i"
-                opt         o-
+                ;opt         o-
 
 
 

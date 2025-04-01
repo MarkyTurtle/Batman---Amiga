@@ -8,7 +8,7 @@
 
 This repo contains my progress of the disassembling of the 2 Disk version of Batman The Movie for the Amiga. Parts of the game can be reassembled an executed using VSCode and the Amiga Assembly plugin. 
 **All Game Levels can be built and played from the Source Code using VSCode.**
-There are a couple of minor bugs and music to fix for the Catherdral Level so it plays level 1 music for the moment.
+There are a couple of minor bugs such as the Music & SFX to fix for the Batmobile/Batwing Level.
 
 ## Main Code Projects
 The folder names for the projects below reflect the file names of the executables held on the original disks.
