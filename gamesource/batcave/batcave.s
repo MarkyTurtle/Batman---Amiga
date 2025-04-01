@@ -275,10 +275,10 @@ L0000417e           dc.w    $00B5
                         ; --------------- Initialise Music Player ----------------
                         ; No Parameters Required
 do_initialise_music_player  ; original address L00004180
-L00004180           lea.l   L00004d4a,a0
-L00004186           lea.l   instrument_data,a1      ; L00004bf2,a1
-L0000418c           bsr.w   init_instruments        ; L000049c4
-L00004190           bra.w   do_silence_all_audio    ; L00004194 
+L00004180           lea.l   raw_sample_data_table,a0    ; L00004d4a,a0
+L00004186           lea.l   instrument_data,a1          ; L00004bf2,a1
+L0000418c           bsr.w   init_instruments            ; L000049c4
+L00004190           bra.w   do_silence_all_audio        ; L00004194 
 
 
 
@@ -370,7 +370,7 @@ L0000422c           bcs.b   L0000423c
 L0000422e           movem.l d0/d7/a0-a2,-(a7)
 L00004232           move.w  #$4000,d1
 L00004236           move.b  d0,sfx_no               ; L0004023 
-L0000423a           bra.b   init_sound              ;L0000424a
+L0000423a           bra.b   init_sound              ; L0000424a
 L0000423c           rts  
 
 
@@ -397,11 +397,12 @@ L0000423c           rts
                         ;       - value is index into song_channel_database
                         ;       - added to current ptr address as offset to pattern data?
                         ;       - address stored in $000e(channelstatus)
-do_init_song
+do_init_song    ; original address L0000423e
 L0000423e           movem.l d0/d7/a0-a2,-(a7)
 L00004242           move.w  #$8000,d1
 L00004246           move.b  d0,song_no_1            ;L00004022
 
+init_sound      ; original address L0000424a
 L0000424a           clr.w   play_counter            ;L0000417e
 
 L0000424e           subq.w  #$01,d0
@@ -854,6 +855,7 @@ L00004582           cmp.w   #$ffd0,d0
 L00004586           blt.b   L0000458e
 L00004588           cmp.w   #$002c,d0
 L0000458c           ble.b   L000045a4
+
 L0000458e           move.b  $004f(a4),d1
 L00004592           move.b  $0050(a4),d2
 L00004596           move.w  $003c(a4),d3
@@ -873,6 +875,7 @@ L000045c0           cmp.w   #$ffd0,d0
 L000045c4           blt.b   L000045cc
 L000045c6           cmp.w   #$002c,d0
 L000045ca           ble.b   L000045e2
+
 L000045cc           move.b  $004f(a4),d1
 L000045d0           move.b  $0050(a4),d2
 L000045d4           move.w  $003c(a4),d3
@@ -889,6 +892,7 @@ L000045f2           ext.w   d1
 L000045f4           divs.w  d1,d0
 L000045f6           move.w  d0,$003a(a4)
 L000045fa           move.b  d1,$0039(a4)
+
 L000045fe           add.b   d1,d1
 L00004600           move.b  d1,$0038(a4)
 L00004604           move.b  $0036(a4),$0037(a4)
@@ -903,6 +907,7 @@ L00004620           cmp.w   #$ffd0,d0
 L00004624           blt.b   L0000462c
 L00004626           cmp.w   #$002c,d0
 L0000462a           ble.b   L00004642
+
 L0000462c           move.b  $004f(a4),d1
 L00004630           move.b  $0050(a4),d2
 L00004634           move.w  $003c(a4),d3
@@ -930,7 +935,9 @@ L0000467c           move.l  $0014(a4),$0018(a4)
 L00004682           move.w  #$0001,$001e(a4)
 L00004688           clr.w   $004c(a4)
 L0000468c           move.w  $0054(a4),d0
-L00004690           or.w    d0,L0000417c
+L00004690           or.w    d0,audio_dma            ; L0000417c
+
+; jmp destination from 'pattern command 08 ($87)'
 L00004694           moveq   #$00,d0
 L00004696           move.b  $0051(a4),d0
 L0000469a           btst.l  #$0005,d7
@@ -938,8 +945,13 @@ L0000469e           bne.b   L000046a2
 L000046a0           move.b  (a3)+,d0
 L000046a2           add.w   d0,$0052(a4)
 L000046a6           move.l  a3,$000e(a4)
+
+
+; jmp destination from 'process_command_loop' when $0052(s) is not $0000
 L000046aa           btst.l  #$0007,d7
-L000046ae           bne.w   L00004848
+L000046ae           bne.w   exit_process_sound_commands     ; L00004848
+
+
 L000046b2           move.w  $004a(a4),d0
 L000046b6           btst.l  #$0003,d7
 L000046ba           beq.b   L000046ce
@@ -948,7 +960,6 @@ L000046c0           bne.b   L000046c6
 L000046c2           bclr.l  #$0003,d7
 L000046c6           sub.w   $0026(a4),d0
 L000046ca           bra.w   L000047a0
-
 L000046ce           btst.l  #$0000,d7
 L000046d2           beq.b   L0000471a
 L000046d4           subq.b  #$01,$0023(a4)
@@ -963,6 +974,7 @@ L000046f0           cmp.w   #$ffd0,d0
 L000046f4           blt.b   L000046fc
 L000046f6           cmp.w   #$002c,d0
 L000046fa           ble.b   L00004712
+
 L000046fc           move.b  $004f(a4),d1
 L00004700           move.b  $0050(a4),d2
 L00004704           move.w  $003c(a4),d3
@@ -972,7 +984,6 @@ L00004710           illegal
 
 L00004712           move.w  $00(a5,d0.w),d0
 L00004716           bra.w   L000047a0
-
 L0000471a           btst.l  #$0001,d7
 L0000471e           beq.b   L0000477c
 L00004720           subq.b  #$01,$0033(a4)
@@ -993,6 +1004,7 @@ L00004752           cmp.w   #$ffd0,d0
 L00004756           blt.b   L0000475e
 L00004758           cmp.w   #$002c,d0
 L0000475c           ble.b   L00004774
+
 L0000475e           move.b  $004f(a4),d1
 L00004762           move.b  $0050(a4),d2
 L00004766           move.w  $003c(a4),d3
@@ -1002,7 +1014,6 @@ L00004772           illegal
 
 L00004774           move.w  $00(a5,d0.w),d0
 L00004778           bra.w   L000047a0
-
 L0000477c           btst.l  #$0002,d7
 L00004780           beq.b   L000047a0
 L00004782           subq.b  #$01,$0037(a4)
@@ -1015,7 +1026,7 @@ L00004796           move.b  $0038(a4),$0039(a4)
 L0000479c           add.w   $003a(a4),d0
 L000047a0           move.w  d0,$004a(a4)
 L000047a4           btst.l  #$0004,d7
-L000047a8           beq.w   L00004848
+L000047a8           beq.w   exit_process_sound_commands     ; L00004848
 L000047ac           subq.w  #$01,$001e(a4)
 L000047b0           bne.w   L00004832
 L000047b4           movea.l $0018(a4),a0
@@ -1029,7 +1040,6 @@ L000047ca           move.b  #$01,$001d(a4)
 L000047d0           move.b  (a0)+,$0020(a4)
 L000047d4           move.l  a0,$0018(a4)
 L000047d8           bra.b   L00004832
-
 L000047da           neg.b   d0
 L000047dc           move.w  d0,$001e(a4)
 L000047e0           move.b  #$01,$0020(a4)
@@ -1041,7 +1051,6 @@ L000047f0           move.b  d0,$001c(a4)
 L000047f4           move.b  #$01,$001d(a4)
 L000047fa           move.l  a0,$0018(a4)
 L000047fe           bra.b   L00004832
-
 L00004800           move.b  (a0),d0
 L00004802           beq.b   L0000480e
 L00004804           bpl.b   L00004808
@@ -1049,7 +1058,7 @@ L00004806           neg.b   d0
 L00004808           sub.w   $0052(a4),d0
 L0000480c           bmi.b   L00004814
 L0000480e           bclr.l  #$0004,d7
-L00004812           bra.b   L00004848
+L00004812           bra.b   exit_process_sound_commands     ; L00004848
 
 L00004814           neg.w   d0
 L00004816           move.w  d0,$001e(a4)
@@ -1057,18 +1066,22 @@ L0000481a           move.b  #$00,$001c(a4)
 L00004820           move.b  #$00,$001d(a4)
 L00004826           move.b  #$00,$0020(a4)
 L0000482c           move.l  a0,$0018(a4)
-L00004830           bra.b   L00004848
+L00004830           bra.b   exit_process_sound_commands     ; L00004848
+
 L00004832           subq.b  #$01,$001d(a4)
-L00004836           bne.b   L00004848
+L00004836           bne.b   exit_process_sound_commands     ; L00004848
+
 L00004838           move.b  $001c(a4),$001d(a4)
 L0000483e           move.b  $0020(a4),d0
 L00004842           ext.w   d0
 L00004844           add.w   d0,$004c(a4)
+
+exit_process_sound_commands     ; original address L00004848
 L00004848           rts  
 
 
-
-L0000484a           move.w  L0000417c,d0
+update_audio_custom_registers   ; original address L0000484a
+L0000484a           move.w  audio_dma,d0        ; L0000417c,d0
 L0000484e           beq.b   L000048be
 L00004850           move.w  d0,$0096(a6)
 L00004854           move.w  d0,d1
@@ -1106,9 +1119,9 @@ L000048b6           beq.b   L000048ac
 L000048b8           move.w  d4,d3
 L000048ba           dbf.w   d2,L000048ac
 
-L000048be           move.w  L0000401c,d1
-L000048c2           move.w  L0000401e,d2
-L000048c6           lea.l   L00004024,a0
+L000048be           move.w  master_audio_volume_mask_1,d1       ; L0000401c,d1
+L000048c2           move.w  master_audio_volume_mask_2,d2       ; L0000401e,d2
+L000048c6           lea.l   channel_00_status,a0                ; L00004024,a0
 L000048ca           move.w  d1,d3
 L000048cc           btst.b  #$0006,(a0)
 L000048d0           beq.b   L000048d4
@@ -1121,10 +1134,9 @@ L000048e6           beq.b   L000048f6
 L000048e8           move.w  $0042(a0),$00a4(a6)
 L000048ee           move.l  $003e(a0),$00a0(a6)
 L000048f4           bra.b   L00004902
-
 L000048f6           move.w  $0048(a0),$00a4(a6)
 L000048fc           move.l  $0044(a0),$00a0(a6)
-L00004902           lea.l   L0000407a,a0
+L00004902           lea.l   channel_01_status,a0                ; L0000407a,a0
 L00004906           move.w  d1,d3
 L00004908           btst.b  #$0006,(a0)
 L0000490c           beq.b   L00004910
@@ -1137,10 +1149,9 @@ L00004922           beq.b   L00004932
 L00004924           move.w  $0042(a0),$00b4(a6)
 L0000492a           move.l  $003e(a0),$00b0(a6)
 L00004930           bra.b   L0000493e
-
 L00004932           move.w  $0048(a0),$00b4(a6)
 L00004938           move.l  $0044(a0),$00b0(a6)
-L0000493e           lea.l   L000040d0,a0
+L0000493e           lea.l   channel_02_status,a0                ; L000040d0,a0
 L00004942           move.w  d1,d3
 L00004944           btst.b  #$0006,(a0)
 L00004948           beq.b   L0000494c
@@ -1155,7 +1166,7 @@ L00004966           move.l  $003e(a0),$00c0(a6)
 L0000496c           bra.b   L0000497a
 L0000496e           move.w  $0048(a0),$00c4(a6)
 L00004974           move.l  $0044(a0),$00c0(a6)
-L0000497a           lea.l   L00004126,a0
+L0000497a           lea.l   channel_03_status,a0                ; L00004126,a0
 L0000497e           move.w  d1,d3
 L00004980           btst.b  #$0006,(a0)
 L00004984           beq.b   L00004988
@@ -1172,10 +1183,19 @@ L000049aa           move.w  $0048(a0),$00d4(a6)
 L000049b0           move.l  $0044(a0),$00d0(a6)
 L000049b6           or.w    #$8000,d0
 L000049ba           move.w  d0,$0096(a6)
-L000049be           clr.w   L0000417c
+L000049be           clr.w   audio_dma                           ; L0000417c
 L000049c2           rts 
 
 
+
+                ;------------------- initialise music samples --------------------
+                ; extract sample data ptrs and lengths from the IFF sample
+                ; data.
+                ;
+                ; IN: a0    - music sample table address $4D52 - default_sample_data
+                ; IN: a1    - music/song instrument data $4BFA - instrument_data
+                ;
+init_instruments    ; original address L000049c4
 L000049c4           move.l  (a0)+,d0
 L000049c6           beq.b   L000049e2
 L000049c8           move.w  (a0)+,(a1)
@@ -1184,22 +1204,29 @@ L000049ce           move.l  a0,-(a7)
 L000049d0           lea.l   -$8(a0,d0.l),a0
 L000049d4           move.l  $0004(a0),d0
 L000049d8           addq.l  #$08,d0
-L000049da           bsr.w   L000049e4
+L000049da           bsr.w   process_instrument      ; L000049e4
 L000049de           movea.l (a7)+,a0
-L000049e0           bra.b   L000049c4
+L000049e0           bra.b   init_instruments        ; L000049c4
 L000049e2           rts  
 
 
+
+                ; ------------------ process instrument  ----------------
+                ; IN: A0 = ptr to start of 'FORM' block of sample data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of sample including headers.
+                ;
+process_instrument  ; original address L000049e4
 L000049e4           move.l  a1,-(a7)
-L000049e6           bsr.w   L00004a28
+L000049e6           bsr.w   process_sample_data         ; L00004a28
 L000049ea           movea.l (a7)+,a1
 L000049ec           addq.l  #$02,a1
-L000049ee           movea.l L00004b36,a0
+L000049ee           movea.l sample_vhdr_ptr,a0          ; L00004b36,a0
 L000049f4           move.l  (a0)+,d0
 L000049f6           bclr.l  #$0000,d0
 L000049fa           move.l  (a0)+,d1
 L000049fc           bclr.l  #$0000,d1
-L00004a00           movea.l L00004b5c,a0
+L00004a00           movea.l sample_body_ptr,a0          ; L00004b5c,a0
 L00004a06           move.l  a0,(a1)+
 L00004a08           adda.l  d0,a0
 L00004a0a           add.l   d1,d0
@@ -1207,7 +1234,7 @@ L00004a0c           lsr.l   #$01,d0
 L00004a0e           move.w  d0,(a1)+
 L00004a10           tst.l   d1
 L00004a12           bne.b   L00004a1c
-L00004a14           lea.l   L00004d32,a0
+L00004a14           lea.l   silient_repeat,a0           ; L00004d32,a0
 L00004a1a           moveq   #$02,d1
 L00004a1c           move.l  a0,(a1)+
 L00004a1e           lsr.l   #$01,d1
@@ -1216,31 +1243,68 @@ L00004a22           addq.l  #$02,a1
 L00004a24           rts
 
 
+
+; FUNCTION:
+; process_sample_data
+;
+; IN:
+; A0 = ptr to start of 'FORM' or 'CAT ' block of sample data.
+; A1 = ptr to Instrument Entry in Music Data.
+; D0 = remaining length of sample file including headers.
+;
+; OUT:
+; sample_status         ; 0 = success, 1 = missing FORM/CAT chunk, 2 = missing 8SVX chunk
+; sample_vhdr_ptr       ; address ptr to sample vhdr data
+; sample_body_ptr       ; address ptr to raw sample data
+;
+sample_status   ; original address L00004a26
 L00004a26               dc.w    $0000
 
-L00004a28               clr.w   L00004a26
+
+process_sample_data ; original address L00004a28
+L00004a28               clr.w   sample_status           ; L00004a26
 L00004a2c               movem.l d0/a0,-(a7)
-L00004a30               bra.w   L00004a34
+L00004a30               bra.w   process_inner_chunk     ; L00004a34
+
+process_inner_chunk ; original address L00004a34
 L00004a34               tst.l   d0
 L00004a36               beq.b   L00004a42
 L00004a38               move.l  (a0)+,d1
 L00004a3a               subq.l  #$04,d0
-L00004a3c               bsr.w   L00004a48
-L00004a40               bra.b   L00004a34
+L00004a3c               bsr.w   process_sample_chunk    ; L00004a48
+L00004a40               bra.b   process_inner_chunk     ; L00004a34
 L00004a42               movem.l (a7)+,d0/a0
 L00004a46               rts 
 
 
-L00004a48               cmp.l   #$464f524d,d1
-L00004a4e               beq.w   L00004aa4
-L00004a52               cmp.l   #$43415420,d1
-L00004a58               beq.w   L00004a66
-L00004a5c               move.w  #$0001,L00004a26
+                ;------------------ process sample chunk ------------------
+                ; process IFF sample data, top level of file structure.
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data including length data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_sample_chunk    ; original address L00004a48
+L00004a48               cmp.l   #'FORM',d1              ; #$464f524d,d1
+L00004a4e               beq.w   process_form_chunk      ; L00004aa4
+L00004a52               cmp.l   #'CAT ',d1              ; #$43415420,d1
+L00004a58               beq.w   process_cat_chunk       ; L00004a66
+L00004a5c               move.w  #$0001,sample_status    ; L00004a26
 L00004a62               clr.l   d0
 L00004a64               rts 
 
 
-
+                ;--------------------- process CAT chunk --------------------------
+                ; skips header and continues processing any further chunks 
+                ; that are nested inside the CAT Chunk, data.
+                ;
+                ; IN: A0 = ptr to length of chunk data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data including length data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_cat_chunk   ; original address L00004a66  
 L00004a66               movem.l d0/a0,-(a7)
 L00004a6a               move.l  (a0)+,d0
 L00004a6c               move.l  d0,d1
@@ -1252,8 +1316,19 @@ L00004a78               add.l   d1,$0004(a7)
 L00004a7c               sub.l   d1,(a7)
 L00004a7e               addq.l  #$04,(a0)
 L00004a80               subq.l  #$04,d0
-L00004a82               bra.b   L00004a34
+L00004a82               bra.b   process_inner_chunk         ; L00004a34
 
+
+
+                ;------------------- process LIST chunk -----------------
+                ; skip the list chunk, and continue processing
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_list_chunk      ; original address L00004a84
 L00004a84               movem.l d0/a0,-(a7)
 L00004a88               move.l  (a0)+,d0
 L00004a8a               move.l  d0,d1
@@ -1268,6 +1343,17 @@ L00004a9e               movem.l (a7)+,d0/a0
 L00004aa2               rts
 
 
+
+                ;---------------- process FORM chunk ------------------
+                ; Expects to find an '8SVX' inner chunk of data.
+                ; If not, then sets error/status flag = $0002
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data including length field.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_form_chunk  ; original address L00004aa4
 L00004aa4               movem.l d0/a0,-(a7)
 L00004aa8               move.l  (a0)+,d0
 L00004aaa               move.l  d0,d1
@@ -1279,33 +1365,57 @@ L00004ab6               add.l   d1,$0004(a7)
 L00004aba               sub.l   d1,(a7)
 L00004abc               move.l  (a0)+,d1
 L00004abe               subq.l  #$04,d0
-L00004ac0               cmp.l   #$38535658,d1
-L00004ac6               beq.w   L00004ad6
-L00004aca               move.w  #$0002,L00004a26
+L00004ac0               cmp.l   #'8SVX',d1              ; #$38535658,d1
+L00004ac6               beq.w   process_8svx_chunk      ; L00004ad6
+L00004aca               move.w  #$0002,sample_status    ; L00004a26
 L00004ad0               movem.l (a7)+,d0/a0
 L00004ad4               rts 
 
 
+                ;------------------ process 8SVX chunk ---------------------
+                ; loops through sample data until no bytes remaining.
+                ; processes inner chunks of 8SVX chunk, including:-
+                ;  - VHDL, BODY, NAME, ANNO
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0.l = length of remaining data.
+                ; IN: D1.l = chunk identifier, i.e '8SVX'
+                ;
+process_8svx_chunk  ; original address L00004ad6
 L00004ad6               tst.l   d0
 L00004ad8               beq.b   L00004ae4
 L00004ada               move.l  (a0)+,d1
 L00004adc               subq.l  #$04,d0
-L00004ade               bsr.w   L00004aea
-L00004ae2               bra.b   L00004ad6
+L00004ade               bsr.w   process_inner_8svx_chunk    ; L00004aea
+L00004ae2               bra.b   process_8svx_chunk          ; L00004ad6
 L00004ae4               movem.l (a7)+,d0/a0
 L00004ae8               rts
 
 
-L00004aea               cmp.l   #$464f524d,d1
-L00004af0               beq.b   L00004aa4
-L00004af2               cmp.l   #$4c495354,d1
-L00004af8               beq.b   L00004a84
-L00004afa               cmp.l   #$43415420,d1
-L00004b00               beq.w   L00004a66
-L00004b04               cmp.l   #$56484452,d1
-L00004b0a               beq.w   L00004b3a
-L00004b0e               cmp.l   #$424f4459,d1
-L00004b14               beq.w   L00004b60
+
+
+                ;---------------- process inner 8SVX chunk --------------
+                ; process data held inside the 8SVX chunk, this is only
+                ; concerned with the VHDR and BODY chunks. it skips
+                ; other chunks such as the NAME, ANNO meta data chunks.
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+process_inner_8svx_chunk    ; original address L00004aea
+L00004aea               cmp.l   #'FORM',d1          ; #$464f524d,d1
+L00004af0               beq.b   process_form_chunk  ; L00004aa4
+L00004af2               cmp.l   #'LIST',d1          ; #$4c495354,d1
+L00004af8               beq.b   process_list_chunk  ; L00004a84
+L00004afa               cmp.l   #'CAT ',d1          ; #$43415420,d1
+L00004b00               beq.w   process_cat_chunk   ; L00004a66
+L00004b04               cmp.l   #'VHDR',d1          ; #$56484452,d1
+L00004b0a               beq.w   process_vhdr_chunk  ; L00004b3a
+L00004b0e               cmp.l   #'BODY',d1          ; #$424f4459,d1
+L00004b14               beq.w   process_body_chunk  ; L00004b60
 L00004b18               movem.l d0/a0,-(a7)
 L00004b1c               move.l  (a0)+,d0
 L00004b1e               move.l  d0,d1
@@ -1320,8 +1430,19 @@ L00004b34               rts
 
 
 
+                ;-------------------- process VHDR chunk ----------------------
+                ; stores address of VHDR chunk in variable 'sample_vhdr_ptr'
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+sample_vhdr_ptr     ; original address L00004b36
 L00004b36               dc.l    $0000c0e2
 
+
+process_vhdr_chunk  ; original address L00004b3a
 L00004b3a               movem.l d0/a0,-(a7)
 L00004b3e               move.l  (a0)+,d0
 L00004b40               move.l  d0,d1
@@ -1331,14 +1452,25 @@ L00004b48               addq.l  #$01,d1
 L00004b4a               addq.l  #$04,d1
 L00004b4c               add.l   d1,$0004(a7)
 L00004b50               sub.l   d1,(a7)
-L00004b52               move.l  a0,L00004b36
+L00004b52               move.l  a0,sample_vhdr_ptr          ; L00004b36
 L00004b56               movem.l (a7)+,d0/a0
 L00004b5a               rts
 
 
 
+                ;------------------------- process body chunk ------------------------
+                ; store address of the raw sample data in variable 'sample_body_ptr'
+                ;
+                ; IN: A0 = ptr to length of data.
+                ; IN: A1 = ptr to Instrument Entry in Music Data.
+                ; IN: D0 = length of remaining data.
+                ; IN: D1.l = chunk identifier, e.g. FORM, CAT etc
+                ;
+sample_body_ptr     ; original address L00004b5c
 L00004b5c               dc.l    $0000c136
 
+
+process_body_chunk  ; original address L00004b60
 L00004b60               movem.l d0/a0,-(a7)
 L00004b64               move.l  (a0)+,d0
 L00004b66               move.l  d0,d1
@@ -1348,33 +1480,332 @@ L00004b6e               addq.l  #$01,d1
 L00004b70               addq.l  #$04,d1
 L00004b72               add.l   d1,$0004(a7)
 L00004b76               sub.l   d1,(a7)
-L00004b78               move.l  a0,L00004b5c
+L00004b78               move.l  a0,sample_body_ptr          ; L00004b5c
 L00004b7c               movem.l (a7)+,d0/a0
 L00004b80               rts
 
-;data
-;00004b82 06fe                     illegal
+                ; --------------------- Note Period Table ------------------------
+                ;       - audio channel period values - note frequenies
+                ;       - indexes to $00004bba clamped to -48 bytes or +44 bytes to remain in table range
+                ;       - I've got the table running B to B (may be I'm a semi-tone out C to C - most likely) 
+note_period_table    ; original address 00004B82
+L00004B82       dc.w    $06FE,$0699,$063B,$05E1,$058D,$053D,$04F2,$04AB
+L00004B92       dc.w    $0467,$0428,$03EC,$03B4,$037F,$034D,$031D,$02F1
+L00004BA2       dc.w    $02C6,$029E,$0279,$0255,$0234,$0214,$01F6,$01DA
+                ; + 48 bytes - midpoint
+L00004BB2       dc.w    $01BF,$01A6,$018F,$0178,$0163,$014F,$013C,$012B
+L00004BC2       dc.w    $011A,$010A,$00FB,$00ED,$00E0,$00D3,$00C7,$00BC
+L00004BD2       dc.w    $00B2,$00A8,$009E,$0095,$008D,$0085,$007E,$0077
+
+command_17_data ; original address L00004BE2
+L00004BE2       dc.w    $0021,$0000,$4D34,$000B,$0000,$4D34,$000B,$0000  
+
+instrument_data ; original address L00004BF2
+L00004BF2       dc.w    $0030,$0000,$4DEE,$0ED0,$0000,$4D32,$0001,$0000
+L00004C02       dc.w    $0024,$0000,$6BF6,$0A02,$0000,$4D32,$0001,$FFFF
+L00004C12       dc.w    $0018,$0000,$8062,$0A28,$0000,$4D32,$0001,$FFFF
+L00004C22       dc.w    $001F,$0000,$951A,$08E4,$0000,$A0C2,$0310,$0000
+L00004C32       dc.w    $002D,$0000,$A74A,$09B3,$0000,$B4F2,$02DF,$0000
+L00004C42       dc.w    $0018,$0000,$BB18,$02DB,$0000,$4D32,$0001,$0000
+L00004C52       dc.w    $0018,$0000,$C136,$024E,$0000,$4D32,$0001,$0000
+L00004C62       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004C72       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004C82       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004C92       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004CA2       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004CB2       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004CC2       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004CD2       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004CE2       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004CF2       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004D02       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004D12       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+L00004D22       dc.w    $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+
+silient_repeat ; original address L00004D32
+L00004D32   dc.w    $0000 
+
+L00004d34   dc.w    $0074,$60DC,$82BB,$457E,$24A0,$8C00,$7460
+L00004d42   dc.w    $DC82,$BB45,$7E24,$A08C 
+
+
+                ; ------ music sample data table (12 sample offsets & 2 word params) ------
+                ; 12 sound samples in IFF 8SVX format.
+                ; Table of address offsets below, not sure what the additional two 16 bit 
+                ; parameters that follow the offset represent yet. maybe volume and something else.
+                ;
+raw_sample_data_table   ; original address L00004d4a
+raw_sample_01
+L00004d4a   dc.l    sample_file_01-raw_sample_01    ; $0000003C ; $4d86-$4d4a=$0000003C
+            dc.W    $0030,$0000
+raw_sample_02
+L00004D52   dc.l    sample_file_02-raw_sample_02    ; $00001E3C ; $6b8e-$4d52=$6b8e
+            dc.w    $0024,$FFFF
+raw_sample_03
+L00004d5a   dc.l    sample_file_03-raw_sample_03    ; $000032A0 ; $7ffa-$4d5a=$32a0
+            dc.w    $0018,$FFFF
+raw_sample_04
+L00004D62   dc.l    sample_file_04-raw_sample_04    ; $00004750 ; $94b2-$4d62=$4750
+            dc.w    $001F,$0000
+raw_sample_05
+L00004d6a   dc.l    sample_file_05-raw_sample_05    ; $00005978 ; $a6e2-$4d6a=$5978
+            dc.w    $002D,$0000
+raw_sample_06
+L00004D72   dc.l    sample_file_06-raw_sample_06    ; $00006D3E ; $bab0-$4d72=$6d3e
+            dc.w    $0018,$0000
+raw_sample_07
+L00004d7a   dc.l    sample_file_07-raw_sample_07    ; $00007354 ; $c0ce-$4d7a=$7354
+            dc.w    $0018,$0000                     
+
+            dc.w    $0000,$0000
+
+; Sample 01
+sample_file_01
+                ; --------------------- Sound Sample 1 -------------------
+                ; Start Address: $00004D86
+                ; Name:          MAGIC-C4
+                include "./music/sample_file_01.s"
+
+; Sample 02
+sample_file_02
+                ; --------------------- Sound Sample 2 -------------------
+                ; Start Address: $00006b8e
+                ; Name:          STRINGS-C4
+                include "./music/sample_file_02.s"
+
+
+; Sample 03
+sample_file_03
+                ; --------------------- Sound Sample 3 -------------------
+                ; Start Address: $00007FFA
+                ; Name:          HITSNARE-C2
+                include "./music/sample_file_03.s"
+
+
+; Sample 04
+sample_file_04
+                ; --------------------- Sound Sample 4 -------------------
+                ; Start Address: $000094B2
+                ; Name:          SQ80BASS2-G2
+                include "./music/sample_file_04.s"
+
+
+; Sample 05
+sample_file_05
+                ; --------------------- Sound Sample 5 -------------------
+                ; Start Address: $0000A6E2
+                ; Name:          TIMELESS-A4
+                include "./music/sample_file_05.s"
+
+
+; Sample 06
+sample_file_06
+                ; --------------------- Sound Sample 6 -------------------
+                ; Start Address: $0000A6E2
+                ; Name:          BLIP2
+                include "./music/sample_file_06.s"
+
+
+; Sample 07
+sample_file_07
+                ; --------------------- Sound Sample 7 -------------------
+                ; Start Address: $0000C0ce
+                ; Name:          BLIP
+                include "./music/sample_file_07.s"
 
 
 
+; Music/Pattern Data etc
+command_14_data ; original address L0000C5D2
+L0000C5D2   dc.w  $002E,$002F,$0031,$0034,$0047,$004A,$004E,$004F  
+L0000C5E2   dc.w  $0050,$0051,$0054,$0057,$005A,$005D,$0060,$0073  
+L0000C5F2   dc.w  $0076,$0079,$007C,$007F,$0082,$0084,$0087,$0101  
+L0000C602   dc.w  $0001,$0200,$0C02,$0300,$0307,$0113,$000C,$010B  
+L0000C612   dc.w  $020A,$0309,$0408,$0507,$0605,$0403,$0201,$0001  
+L0000C622   dc.w  $0300,$0307,$0204,$000C,$0307,$0101,$0001,$0100  
+L0000C632   dc.w  $0101,$0001,$0300,$0509,$0103,$0004,$0701,$0300  
+L0000C642   dc.w  $0508,$0103,$0003,$0801,$0300,$0409,$0113,$0018  
+L0000C652   dc.w  $020B,$020A,$0309,$0408,$0507,$0605,$0403,$0201  
+L0000C662   dc.w  $0001,$0300,$0507,$0103,$0003,$0701,$0300,$0107  
+L0000C672   dc.w  $0103,$0005,$0901,$0300,$180C,$0202,$000C,$0103  
+L0000C682   dc.w  $0003,$0701,$0300,$0308
+
+command_16_data
+L0000c68a   dc.w  $0014,$0018,$001D,$001F  
+L0000C692   dc.w  $0024,$0027,$002B,$0031,$0037,$003D,$0128,$0AFC  
+L0000C6A2   dc.w  $0000,$0214,$28FF,$0001,$FE01,$2800,$000A,$040A  
+L0000C6B2   dc.w  $FF00,$0FFF,$011E,$0003,$F601,$280D,$FD00,$0001  
+L0000C6C2   dc.w  $230B,$FD01,$FE00,$0001,$3E14,$FD01,$FE00,$0001  
+L0000C6D2   dc.w  $3E1E,$FE01,$FE00,$0001,$3E00,$0000
+
+sounds_table
+L0000c6de   dc.w  $00FE,$00D7  
+L0000C6E2   dc.w  $00B0,$0000,$040F,$040F,$040F,$0000,$049B,$049B  
+L0000C6F2   dc.w  $049B,$0000,$04C4,$04C0,$04C2,$0000,$0000,$0000  
+L0000C702   dc.w  $0000,$000A,$0000,$0000,$0000,$0004,$3780,$3880  
+L0000C712   dc.w  $8F09,$9006,$1828,$808F,$0990,$070C,$2880
+
+sound_pattern_data_base
+L0000c720   dc.w    $0000  
+L0000C722   dc.w  $FFFE,$FFFC,$FFFA,$FFF8,$FFF6,$FFF4,$FFF2,$FFF0  
+L0000C732   dc.w  $FFEE,$FFEC,$FFEA,$FFE8,$FFE6,$FFE4,$FFE2,$FFE0  
+L0000C742   dc.w  $FFDE,$FFDC,$FFDA,$FFD8,$FFD6,$FFD4,$FFD2,$00B9  
+L0000C752   dc.w  $00D4,$00EB,$0120,$012B,$0133,$013C,$014B,$0177  
+L0000C762   dc.w  $01B3,$0225,$023C,$027C,$0293,$02AF,$02D2,$02EF  
+L0000C772   dc.w  $0310,$031D,$032A,$035D,$0381,$03AF,$03CD,$040F  
+L0000C782   dc.w  $041C,$0429,$043F,$046E,$049E,$04B4,$FF84,$FF89  
+L0000C792   dc.w  $1C83,$0819,$1F83,$0419,$1F22,$2222,$8201,$2282  
+L0000C7A2   dc.w  $0122,$8202,$2282,$0222,$2324,$8201,$2482,$0224  
+L0000C7B2   dc.w  $8203,$2425,$801D,$8308,$1820,$8304,$1820,$1818  
+L0000C7C2   dc.w  $1882,$0118,$8201,$1882,$0218,$8202,$1826,$2782  
+L0000C7D2   dc.w  $0127,$8202,$2782,$0327,$2880,$1B83,$041E,$8304  
+L0000C7E2   dc.w  $1A21,$8304,$1A21,$1A1A,$1A82,$011A,$8201,$1A82  
+L0000C7F2   dc.w  $021A,$8202,$1A83,$0429,$8304,$2A2B,$8201,$2B82  
+L0000C802   dc.w  $022B,$8203,$2B2C,$808D,$0490,$058F,$0137,$0637  
+L0000C812   dc.w  $0637,$0637,$1237,$0637,$0637,$0637,$128D,$0A35  
+L0000C822   dc.w  $0635,$1280,$8E90,$018F,$0184,$0632,$3A3E,$4337  
+L0000C832   dc.w  $3A3E,$4337,$3A3E,$4335,$393C,$4185,$808E,$8590  
+L0000C842   dc.w  $028F,$0224,$0C90,$048F,$011F,$061F,$0690,$038F  
+L0000C852   dc.w  $0218,$0C90,$048F,$011F,$061F,$0690,$028F,$0224  
+L0000C862   dc.w  $0C90,$048F,$011F,$061F,$0690,$038F,$0218,$0618  
+L0000C872   dc.w  $0C18,$0680,$9004,$8F01,$8B30,$0103,$1B30,$1D30  
+L0000C882   dc.w  $8090,$048F,$018E,$2730,$2930,$8090,$058F,$018D  
+L0000C892   dc.w  $0A33,$3035,$3080,$9004,$8F01,$8B0C,$0103,$1F48  
+L0000C8A2   dc.w  $1D0C,$1D06,$1D06,$8090,$018F,$028E,$8406,$3337  
+L0000C8B2   dc.w  $3A3F,$3337,$3A3F,$3033,$373C,$3033,$373C,$3539  
+L0000C8C2   dc.w  $3C41,$3539,$3C41,$3639,$3E42,$8E36,$3984,$033E  
+L0000C8D2   dc.w  $3F3E,$3F85,$8090,$058F,$018D,$0C84,$062B,$2B37  
+L0000C8E2   dc.w  $8412,$3784,$062B,$2B8D,$0B84,$062B,$2B37,$8412  
+L0000C8F2   dc.w  $3784,$062B,$2B8D,$1284,$0624,$2430,$8412,$3084  
+L0000C902   dc.w  $0624,$248D,$0A84,$0626,$2632,$8412,$3284,$0626  
+L0000C912   dc.w  $2685,$808E,$9002,$8F02,$240C,$9004,$8F01,$1B06  
+L0000C922   dc.w  $1B06,$9003,$8F02,$1806,$9004,$8F01,$1B06,$1B06  
+L0000C932   dc.w  $1B06,$9002,$8F02,$240C,$9004,$8F01,$1806,$1806  
+L0000C942   dc.w  $9003,$8F02,$180C,$9004,$8F01,$1806,$1806,$9002  
+L0000C952   dc.w  $8F02,$240C,$9004,$8F01,$1D06,$1D06,$9003,$8F02  
+L0000C962   dc.w  $1806,$9004,$8F01,$1D06,$1D06,$1D06,$9002,$8F02  
+L0000C972   dc.w  $240C,$9004,$8F01,$1A06,$1A06,$9003,$8F02,$1806  
+L0000C982   dc.w  $1806,$1806,$1806,$8090,$018F,$008E,$8406,$3736  
+L0000C992   dc.w  $3637,$3736,$3637,$3736,$3637,$3736,$3637,$8580  
+L0000C9A2   dc.w  $9001,$8F00,$8E84,$0624,$282B,$3034,$3735,$348E  
+L0000C9B2   dc.w  $8403,$3C3D,$3C3D,$3C3D,$3C3D,$3C3D,$3C3D,$3C3D  
+L0000C9C2   dc.w  $3C3D,$8E84,$0620,$2328,$2C2F,$3439,$388E,$8403  
+L0000C9D2   dc.w  $4041,$4041,$4041,$4041,$4041,$4041,$4041,$4041  
+L0000C9E2   dc.w  $8580,$9005,$8F01,$8E84,$0632,$312D,$3231,$2D39  
+L0000C9F2   dc.w  $3432,$312D,$3231,$3939,$3485,$808E,$8F00,$840C  
+L0000CA02   dc.w  $3939,$3985,$3906,$3906,$390C,$3906,$390C,$390C  
+L0000CA12   dc.w  $390C,$390C,$390C,$390C,$808D,$0990,$058F,$012B  
+L0000CA22   dc.w  $182B,$242B,$062B,$062B,$062B,$062B,$0C8D,$0C2C  
+L0000CA32   dc.w  $182C,$242C,$062C,$062C,$062C,$062C,$0C80,$8D0A  
+L0000CA42   dc.w  $9005,$8F01,$390C,$3906,$3906,$390C,$3906,$3906  
+L0000CA52   dc.w  $390C,$3906,$3906,$390C,$3906,$3906,$808D,$0F90  
+L0000CA62   dc.w  $058F,$002D,$0C2D,$0C2D,$0C2D,$068D,$0A2D,$062D  
+L0000CA72   dc.w  $0C2D,$062D,$0C2D,$0C2D,$0C2D,$0C2D,$0C2D,$0C80  
+L0000CA82   dc.w  $8F02,$9002,$240C,$8F01,$9004,$1806,$1806,$808F  
+L0000CA92   dc.w  $0290,$0224,$0C8F,$0190,$041C,$061C,$0680,$8F02  
+L0000CAA2   dc.w  $9002,$240C,$8F01,$9004,$2106,$2106,$8F02,$9003  
+L0000CAB2   dc.w  $180C,$8F01,$9004,$2106,$2106,$8F02,$9002,$240C  
+L0000CAC2   dc.w  $8F01,$9004,$2106,$2106,$8F02,$9003,$1806,$180C  
+L0000CAD2   dc.w  $1806,$808E,$8F00,$9004,$210C,$210C,$210C,$2106  
+L0000CAE2   dc.w  $2106,$210C,$2106,$210C,$210C,$210C,$210C,$210C  
+L0000CAF2   dc.w  $210C,$802E,$802D,$802F,$8085,$9004,$8F01,$2406  
+L0000CB02   dc.w  $2406,$2406,$240C,$2406,$2206,$2406,$2906,$2906  
+L0000CB12   dc.w  $2906,$2912,$290C,$2406,$2406,$2406,$290C,$290C  
+L0000CB22   dc.w  $2906,$240C,$2B0C,$240C,$8085,$8F01,$9001,$870C  
+L0000CB32   dc.w  $300C,$330C,$370C,$3812,$3712,$3518,$300C,$3506  
+L0000CB42   dc.w  $3806,$3A0C,$3B03,$3C18,$8085,$8F01,$9005,$8D05  
+L0000CB52   dc.w  $300C,$3006,$300C,$3006,$3006,$3006,$8D0B,$300C  
+L0000CB62   dc.w  $3006,$300C,$3006,$3006,$3006,$8D05,$300C,$3006  
+L0000CB72   dc.w  $8D0B,$300C,$3006,$3006,$3006,$8D0A,$300C,$8D0C  
+L0000CB82   dc.w  $2F0C,$8D0A,$300C,$8030,$8032,$8031,$808F,$0290  
+L0000CB92   dc.w  $028E,$8406,$1F1F,$1D1F,$8587,$1880,$8F01,$9005  
+L0000CBA2   dc.w  $8E84,$063A,$3938,$3785,$8718,$8084,$0690,$038F  
+L0000CBB2   dc.w  $0218,$1818,$1880,$3380,$3480,$3582,$FE35,$8201  
+L0000CBC2   dc.w  $3536,$8085,$9001,$8F04,$8C8E,$8406,$4645,$3E3F  
+L0000CBD2   dc.w  $4645,$4645,$3E3F,$4645,$4443,$3C3D,$4443,$4443  
+L0000CBE2   dc.w  $3C3D,$4443,$403F,$3738,$403F,$403F,$3738,$403F  
+L0000CBF2   dc.w  $853C,$1880,$8590,$058F,$008D,$0B32,$0C32,$0C32  
+L0000CC02   dc.w  $0C32,$0632,$0C32,$1230,$0C30,$0C30,$0C30,$0630  
+L0000CC12   dc.w  $0C30,$128D,$0C30,$0C30,$0C30,$0C30,$0630,$0C30  
+L0000CC22   dc.w  $128D,$1430,$1880,$8590,$048F,$022B,$062B,$062B  
+L0000CC32   dc.w  $062B,$062B,$0C2B,$0C2B,$062B,$062B,$0C80,$2418  
+L0000CC42   dc.w  $8000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CC52   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CC62   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CC72   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CC82   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CC92   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CCA2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CCB2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CCC2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CCD2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CCE2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CCF2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD02   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD12   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD22   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD32   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD42   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD52   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD62   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD72   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD82   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CD92   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CDA2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CDB2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CDC2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CDD2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CDE2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CDF2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE02   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE12   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE22   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE32   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE42   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE52   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE62   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE72   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE82   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CE92   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CEA2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CEB2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CEC2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CED2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CEE2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CEF2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF02   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF12   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF22   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF32   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF42   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF52   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF62   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF72   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF82   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CF92   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CFA2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CFB2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CFC2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CFD2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CFE2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000  
+L0000CFF2   dc.w  $0000,$0000,$0000,$0000,$0000,$0000,$0000,$4FF9  
 
 
 
-
-
-
-                    dcb.b   4096,$00
-stack_memory        ; original address L0000EF96
-L0000EF96
 
                     ;------------------------- code entry point on load ---------------------------
                     ;
-code_entry_point        JSR     _DEBUG_COLOURS
-L0000D000               LEA.L   L0000EF96,A7                ; stack
-L0000D006               JSR     L00004000                   ; music?
+code_entry_point        ;JSR     _DEBUG_COLOURS
+                        move.w  #$7fff,CUSTOM+DMACON
+                        move.w  #$7fff,CUSTOM+INTENA
+                        move.w  #$7fff,CUSTOM+INTREQ
+                        move.w  #$7fff,CUSTOM+INTREQ
+
+L0000D000               LEA.L   stack_memory,a7             ; L0000EF96,A7                ; stack
+L0000D006               JSR     L00004000                   ; init music
 
                     ; init font - 320 lines of 5 byte struct (4bpl + mask)
-                        JSR     _DEBUG_COLOURS
+                        ;JSR     _DEBUG_COLOURS
 L0000D00C               MOVE.W  #$013f,D7                   ; d7 = 320
 L0000D010               LEA.L   font8x8x5,a0                ; L0000E7BC,A0
 L0000D016_loop          MOVE.B  $0004(A0),D0
@@ -1457,7 +1888,7 @@ L0000D124               BNE.W   level_completed                             ; L0
                         ; music init?
 L0000D128               JSR     L00004008                                   ; music
                         ; set stack ptr
-L0000D12E               LEA.L   L0000EF96,A7
+L0000D12E               LEA.L   stack_memory,a7                             ; L0000EF96,A7
 
 L0000D134               BSR.W   init_display_and_game                       ; L0000D38C
 L0000D138               BSR.W   panel_fade_in                               ; L0000E5EA
@@ -3379,7 +3810,10 @@ L0000EF6C       dc.w    $0000,$FFFF,$0000,$FFFF,$0000,$FC9C
                 dc.w    $0006,$7680     ; Display Buffer Ptr?
 
 L0000EF7C       dc.w    $0000,$E864,$0006,$871D,$0000,$E150,$0000,$00C7
-L0000EF8C       dc.w    $848C,$00C7,$871E,$00C7,$8104,$0000,$0000
+L0000EF8C       dc.w    $848C,$00C7,$871E,$00C7
+
+stack_memory
+L0000ef96       dc.w    $8104,$0000,$0000
 
 L0000EF9A       dc.w    $FFFF
 L0000EF9C       dc.w    $FFFF,$FFFF,$FFFF,$FFFF,$FFFF,$FFFF,$FFFF,$FFFF
