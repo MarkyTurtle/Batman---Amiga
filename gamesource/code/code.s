@@ -179,7 +179,7 @@ L0000303e               move.w  #$4000,CUSTOM+DSKLEN            ; $00dff024
 L00003046               move.l  d0,CUSTOM+BLTCON0               ; $00dff040
 L0000304c               move.w  #$0041,CUSTOM+BLTSIZE           ; $00dff058 *** WHY! ***
 
-L00003054               move.w  #$8340,CUSTOM+DMACON            ; $00dff096 - ENABLE,BITPLANE,DMAEN,BLITTER
+L00003054               move.w  #$834f,CUSTOM+DMACON            ; $00dff096 - ENABLE,BITPLANE,DMAEN,BLITTER,AUDIO
 L0000305c               move.w  #$7fff,CUSTOM+ADKCON            ; $00dff09e
 
                         ; reset sprites
@@ -627,7 +627,7 @@ L000035f0                       tst.w   game_type               ; L00008d1e (bat
 L000035f6                       beq.b   L000035fc
 L000035f8                       move.w  #$0384,d1
 L000035fc                       add.w   d1,d0
-L000035fe                       move.w  d0,AUDIO_OFFSET_L000690f0       ; $000690f0 ; music
+L000035fe                       ;move.w  d0,AUDIO_OFFSET_L000690f0       ; $000690f0 ; music
 
 L00003604
                                 ;;;pea.l   L00003610
@@ -7409,16 +7409,16 @@ _WAIT_FRAME
             ENDC
 
 
-                       
+             ; If Test Build - Include the Music
+            IFD TEST_BUILD_LEVEL
+                incdir      "../music/"
+                include     "music.s" 
+                even
+            ENDC
+
             ; Id Test Build - Define Display buffer
             IFD TEST_BUILD_LEVEL
 display_buffer  dcb.l   $2f80,$00000000
             ENDC
 
 
-             ; If Test Build - Include the Bottom Panel (Score, Energy, Lives, Timer etc)
-            IFD TEST_BUILD_LEVEL
-                incdir      "../music/"
-                include     "musicempty.s" 
-                even
-            ENDC
