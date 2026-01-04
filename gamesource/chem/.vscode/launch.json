@@ -5,7 +5,7 @@
             "type": "amiga-assembly",
             "request": "launch",
             "name": "WinUAE Debug",
-            "stopOnEntry": false,
+            "stopOnEntry": true,
             "program": "${workspaceFolder}/uae/dh0/chem",
             "remoteProgram": "chem",
             "emulatorType": "winuae",

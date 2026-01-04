@@ -4,6 +4,10 @@ This project contains the disassembled code for the Music & SFX player for the L
 
 I have added a test program that will initialise and play the level music/sfx from VSCode.
   - use the left mouse button to cycle through the music/sfx.
+  
+To run the test of the Music and SFX then uncomment the following lines in chem.s and build and execute this file.
+;TEST_MUSIC_BUILD SET 1                 ; run a test build and cycle through music and SFX using left mouse button
+;TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
 
 Just load the project into VSCode and build and run the project to hear the Level 1 music.
 
