@@ -11,8 +11,8 @@
                 INCDIR      "include"
                 INCLUDE     "hw.i"
 
-;TEST_MUSIC_BUILD SET 1                 ; run a test build with imported GFX
-;TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
+TEST_MUSIC_BUILD SET 1                 ; run a test build with imported GFX
+TEST_BUILD_LEVEL SET 1                 ; if enabling TEST_MUSIC_BUILD then also enable this
 
                 section church_iff,code_c
 
@@ -89,7 +89,7 @@ kill_system
                 ;   #$0d = Explosion (grenade)
                 ;--------------------------------------------------
 
-SOUND_TO_PLAY   EQU     $02                                   ; valid range #$01 to #$0d
+SOUND_TO_PLAY   EQU     $01                                   ; valid range #$01 to #$0d
 
 init_test_prg
                 jsr     Init_Player                           ; init music routine/instruments
@@ -1532,7 +1532,7 @@ L00048D90       dc.w    $DC82, $BB45, $7E24, $A08C
 raw_sample_data_table                                   ; original address $00048d98
 L00048d98       
 .data_01        dc.l    sample_file_01-.data_01         ; $00048E0C - $00048d98 = $00000074
-                dc.w    $0030, $0000                            
+                dc.w    $0030, $0000                          
 .data_02        dc.l    sample_file_02-.data_02         ; $0004AA74 - $00048dA0 = $00001CD4
                 dc.w    $0018, $0000
 .data_03        dc.l    sample_file_03-.data_03         ; $0004c5c8 - $00048dA0 = $00003820
@@ -1723,6 +1723,20 @@ L00055D52       dc.w    $010A,$08FF,$01FE,$0000,$010F,$07FE,$01FF,$0000
 L00055d62       dc.w    $010F,$05FE,$05FF,$0000,$013E,$0000
 
 
+modified_pattern_01
+;p19
+L000562DBm          dc.b      $90,$01
+                    dc.b      $8F,$01
+                    dc.b      $84,$30
+                    dc.b      $3a,$3a
+                    dc.b      $3a,$30
+                    dc.b      $3a,$30
+                    dc.b      $85
+                    dc.b      $80
+
+modified_patternList
+L00055ED6m     dc.b    $81,$01,$80          ; Loop Pattern $01
+               even
                 ;------------------------ song table ----------------------
                 ; A table of song/sfx entries
                 ;  - 13 entries (4 songs & 9 SFX?)
@@ -1739,6 +1753,12 @@ L00055d6e       dc.w    sound_01_chan_00-sound_01       ; $0168   ; $00055d6e + 
 L00055d70       dc.w    sound_01_chan_01-(sound_01+2)   ; $011D   ; $00055d70 + $011D = $00055E8D 
 L00055d72       dc.w    sound_01_chan_02-(sound_01+4)   ; $00F0   ; $00055d72 + $00F0 = $00055E62 
 L00055d74       dc.w    $0000   ; unused, reserved for sfx
+
+;; Modified SOund 01
+;L00055d6e       dc.w    modified_patternList-sound_01       ; $0168   ; $00055d6e + $0168 = $00055ED6 
+;L00055d70       dc.w    $0000 
+;L00055d72       dc.w    $0000 
+;L00055d74       dc.w    $0000   ; unused, reserved for sfx
 
 sound_02
 L00055d76       dc.w    sound_02_chan_00-sound_02       ; $05A2   ; $00055d76 + $05A2 = $00056318
@@ -1875,6 +1895,7 @@ L00055E12       dc.b    $0C,$07,$32,$80
 ;
 sound_pattern_data_base
 L00055e16       dc.w    pattern_00-(sound_pattern_data_base+00)         ; $00FC ; $00055e16 + $00FC = $55F12 
+;L00055e18       dc.w    modified_pattern_01-(sound_pattern_data_base+02)         ; $011B ; $00055e18 + $011B = $55F33 
 L00055e18       dc.w    pattern_01-(sound_pattern_data_base+02)         ; $011B ; $00055e18 + $011B = $55F33 
 L00055e1a       dc.w    pattern_02-(sound_pattern_data_base+04)         ; $0176 ; $00055e1a + $0176 = $55F90 
 L00055e1c       dc.w    pattern_03-(sound_pattern_data_base+06)         ; $01D8 ; $00055e1c + $01D8 = $55FF4 
