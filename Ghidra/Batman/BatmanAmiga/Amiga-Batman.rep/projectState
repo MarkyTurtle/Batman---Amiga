@@ -9,7 +9,7 @@
                 <PACKAGE NAME="Utility" />
                 <ROOT_NODE X_POS="847" Y_POS="0" WIDTH="865" HEIGHT="918" EX_STATE="0" FOCUSED_OWNER="FrontEnd Tool" FOCUSED_NAME="FrontEnd" FOCUSED_TITLE="Project Window">
                     <COMPONENT_NODE TOP_INFO="0">
-                        <COMPONENT_INFO NAME="FrontEnd" OWNER="FrontEnd Tool" TITLE="Project Window" ACTIVE="true" GROUP="Default" INSTANCE_ID="3718762863675947587" />
+                        <COMPONENT_INFO NAME="FrontEnd" OWNER="FrontEnd Tool" TITLE="Project Window" ACTIVE="true" GROUP="Default" INSTANCE_ID="3718879271631959843" />
                     </COMPONENT_NODE>
                 </ROOT_NODE>
                 <PREFERENCES>
@@ -93,6 +93,7 @@
         <SAVE_STATE>
             <ARRAY NAME="EXPANDED_PATHS" TYPE="string">
                 <A VALUE="Amiga-Batman:" />
+                <A VALUE="Amiga-Batman:TitleScreen:" />
             </ARRAY>
             <STATE NAME="SHOW_TABLE" TYPE="boolean" VALUE="false" />
         </SAVE_STATE>
