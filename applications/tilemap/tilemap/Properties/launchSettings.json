@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "tilemap": {
+      "commandName": "Project",
+      "commandLineArgs": ".\\TestFiles\\TileMap192x42.raw"
+    }
+  }
+}

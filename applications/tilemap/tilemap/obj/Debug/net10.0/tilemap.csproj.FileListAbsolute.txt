@@ -1,0 +1,16 @@
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\bin\Debug\net10.0\tilemap.exe
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\bin\Debug\net10.0\tilemap.deps.json
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\bin\Debug\net10.0\tilemap.runtimeconfig.json
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\bin\Debug\net10.0\tilemap.dll
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\bin\Debug\net10.0\tilemap.pdb
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.GeneratedMSBuildEditorConfig.editorconfig
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.AssemblyInfoInputs.cache
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.AssemblyInfo.cs
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.csproj.CoreCompileInputs.cache
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.sourcelink.json
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.dll
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\refint\tilemap.dll
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.pdb
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\tilemap.genruntimeconfig.cache
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\obj\Debug\net10.0\ref\tilemap.dll
+C:\SourceCode\Amiga\Batman---Amiga\applications\tilemap\tilemap\bin\Debug\net10.0\TestFiles\TileMap192x42.raw

@@ -25,7 +25,11 @@ start
 
                moveq.l   #0,d0
                moveq.l   #0,d1
-               lea       tilemapend,a0
+               moveq.l   #0,d2
+               moveq.l   #0,d3
+               lea       tilemap,a0
+               move.w    (a0)+,d2                 ; tilemap width
+               move.w    (a0)+,d3                 ; tilemap height
                bsr       display_screen
 
 loop:
@@ -62,15 +66,20 @@ display_all_tiles
                ; IN:
                ;    d0.l = tilemap-x (left)
                ;    d1.l = tillemap-y (top)
+               ;    d2.l = tilemap-width (bytes/tiles)
+               ;    d3.l = tilemap-height (bytes/tiles)
                ;    a0.l = tilemap-data-ptr (end of data ptr)
 
 display_screen
-               lea       -192(a0),a0         ; a0 = start of top line (end of file)
-               neg.l     d1
-               add.l     d1,d0
+               ; calc tilemap top-left start ptr
+               mulu      d2,d1
+               add.l     d0,d1
                lea       (a0,d1.l),a2        ; a2 = start top left of tile map
                
-
+               sub.w     #20,d2              ; tilemap modulo to next data row.
+               move.l    d2,d3
+               
+               ; draw 16 rows of 20 tiles
                move.w    #16-1,d7            ; 16 tiles high (256 pixels high)
                moveq.l   #0,d2               ; display tile-y
 .outer_loop
@@ -86,7 +95,7 @@ display_screen
                dbf       d6,.inner_loop
 
                addq.l    #1,d2               ; increment display tile-y
-               lea       -212(a2),a2         ; set tile map ptr, one line up, start of line (192+20)*-1
+               lea       (a2,d3.w),a2        ; add tilemap modulo to tilemap ptr
                dbf       d7,.outer_loop
 
                rts
@@ -237,6 +246,8 @@ tilegfx
 
 
                ; 192 x 42 bytes grid of tile indexes (upside-down in the y-axis)
+               even
 tilemap
-               incbin    "TileMap192x42.raw"
+               ;incbin    "TileMap192x42.raw"
+               incbin    "TileMap192x42.raw.flipped"
 tilemapend
