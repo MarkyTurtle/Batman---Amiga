@@ -36,6 +36,7 @@ ADKCONR         equ     adkconr         ;  "         "
 POT0DAT         equ     pot0dat         ;  "         "
 POT1DAT         equ     pot1dat         ;  "         "
 POTINP          equ     potinp          ;  "         "
+POTGOR          equ     potinp
 SERDATR         equ     serdatr         ;  "         "
 INTENAR         equ     intenar         ;  "         "
 INTREQR         equ     intreqr         ;  "         "

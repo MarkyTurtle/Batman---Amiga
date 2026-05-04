@@ -5,24 +5,76 @@
 ;---------- Const ----------
 
                section main,code_c 
-
+STACK_PTR
 start
                lea       CUSTOM,a6
                move.w    #$7fff,INTENA(a6)
                move.w    #$7fff,DMACON(a6)
                move.w    #$7fff,INTREQ(a6)
 
+
+            ; enter supervisor mode
+               lea     STACK_PTR,a7
+               lea     supervisor,a0
+               move.l  a0,$80.w
+               trap    #0
+supervisor
+            ; initialise the stack ptr
+               lea     STACK_PTR,a7
+
+            ; set default exception handlers $08.w - $60.w
+               lea     default_exception_handler,a0
+               lea     $08.w,a1
+               move.w  #22,d7                  ; 23 entries
+.set_loop      move.l  a0,(a1)+
+               dbra    d7,.set_loop
+
+
+            ; set interrupt handlers
+               lea     level1_interrupt_handler,a0
+               move.l  a0,$64.w
+               lea     level2_interrupt_handler,a0
+               move.l  a0,$68.w
+               lea     level3_interrupt_handler,a0
+               move.l  a0,$6c.w
+               lea     level4_interrupt_handler,a0
+               move.l  a0,$70.w
+               lea     level5_interrupt_handler,a0
+               move.l  a0,$74.w
+               lea     level6_interrupt_handler,a0
+               move.l  a0,$78.w
+
+            ; set trap vectors
+               lea     default_trap_handler,a0
+               move.l  a0,$80.w
+               move.l  a0,$84.w
+               move.l  a0,$88.w
+               move.l  a0,$8c.w
+               move.l  a0,$90.w
+               move.l  a0,$94.w
+               move.l  a0,$98.w
+               move.l  a0,$9c.w
+               move.l  a0,$a0.w
+               move.l  a0,$a4.w
+               move.l  a0,$a8.w
+               move.l  a0,$ac.w
+               move.l  a0,$b0.w
+               move.l  a0,$b4.w
+               move.l  a0,$b8.w
+               move.l  a0,$bc.w
+
+
                lea       copperlist(pc),a0
                move.l    a0,COP1LC(a6)
 
                jsr       set_bitplane_ptrs
 
+               ; enable DMA
                lea       CUSTOM,a6
                move.w    #$83c0,DMACON(a6)        ; bpl, copper, blitter
 
 
-               ;bsr      display_all_tiles
-
+               ; display 1 screen of tilemap
                moveq.l   #0,d0
                moveq.l   #0,d1
                moveq.l   #0,d2
@@ -32,6 +84,10 @@ start
                move.w    (a0)+,d3                 ; tilemap height
                bsr       display_screen
 
+
+            ; enable interrupts
+               lea       CUSTOM,a6
+               move.w    #$C020,INTENA(a6)       ; enable vertb 
 loop:
                jmp       loop
 
@@ -69,33 +125,34 @@ display_all_tiles
                ;    d2.l = tilemap-width (bytes/tiles)
                ;    d3.l = tilemap-height (bytes/tiles)
                ;    a0.l = tilemap-data-ptr (end of data ptr)
+DISPLAY_TILES_PER_ROW        EQU   21             ; 42 bytes wide display
 
 display_screen
                ; calc tilemap top-left start ptr
                mulu      d2,d1
                add.l     d0,d1
-               lea       (a0,d1.l),a2        ; a2 = start top left of tile map
+               lea       (a0,d1.l),a2                  ; a2 = start top left of tile map
                
-               sub.w     #20,d2              ; tilemap modulo to next data row.
+               sub.w     #DISPLAY_TILES_PER_ROW,d2     ; calc tilemap modulo to next data row.
                move.l    d2,d3
                
                ; draw 16 rows of 20 tiles
-               move.w    #16-1,d7            ; 16 tiles high (256 pixels high)
-               moveq.l   #0,d2               ; display tile-y
+               move.w    #16-1,d7                      ; 16 tiles high (256 pixels high)
+               moveq.l   #0,d2                         ; display tile-y
 .outer_loop
-               moveq.l   #0,d1               ; display tile-x
-               move.w    #20-1,d6            ; display tiles wide (320 pixels wide)
+               moveq.l   #0,d1                         ; display tile-x
+               move.w    #DISPLAY_TILES_PER_ROW-1,d6   ; display tiles wide (320 pixels wide)
 .inner_loop
                moveq.l   #0,d0
-               move.b    (a2)+,d0            ; get tile index
-               lea       bitplanes,a0             ; display buffer
-               lea       tilegfx,a1               ; source gfx
+               move.b    (a2)+,d0                      ; get tile index
+               lea       bitplanes,a0                  ; display buffer
+               lea       tilegfx,a1                    ; source gfx
                jsr       blit_tile
                addq.l    #1,d1
                dbf       d6,.inner_loop
 
-               addq.l    #1,d2               ; increment display tile-y
-               lea       (a2,d3.w),a2        ; add tilemap modulo to tilemap ptr
+               addq.l    #1,d2                         ; increment display tile-y
+               lea       (a2,d3.w),a2                  ; add tilemap modulo to tilemap ptr
                dbf       d7,.outer_loop
 
                rts
@@ -119,11 +176,8 @@ blit_tile
                lsl.w     #1,d1               ; multiply x by 2  (16 pixels wide)
                lsl.w     #4,d2               ; mulitply y by 16 (16 pixels high)
                
-               ; multiply d2 by 160 (interleaved screen display width)
-               move.l    d2,d3
-               lsl.l     #7,d2               ; multiply d2 by 128
-               lsl.l     #5,d3               ; multiply d3 by 32
-               add.l     d3,d2               ; add back together
+               ; multiply d2 by 168 (interleaved screen display width)
+               mulu      #168,d2
                add.l     d1,d2               ; add x offset
 
                lea       (a0,d2.l),a0        ; dest display ptr
@@ -151,7 +205,7 @@ blit_16x16
 
                move.l    a0,BLTDPT(a6)
                move.l    a1,BLTAPT(a6)
-               move.w    #38,BLTDMOD(a6)
+               move.w    #BITPLANE_WIDTH_BYTES-2,BLTDMOD(a6)
                move.w    #0,BLTAMOD(a6)
                move.w    #(64<<6)+1,BLTSIZE(a6)
 
@@ -185,7 +239,7 @@ set_bitplane_ptrs
 copperlist     dc.w      FMODE,$0000
 
                dc.w      $2b01,$fffe
-               dc.w      DDFSTRT,$0038
+               dc.w      DDFSTRT,$0030                      ; DDFSTART (extra word)
                dc.w      DDFSTOP,$00d0
                dc.w      DIWSTRT,$2c81
                dc.w      DIWSTOP,$2cc1
@@ -209,7 +263,7 @@ copper_bpl_ptrs
 
                dc.w      $2c01,$fffe
 
-
+copper_palette
                dc.w      COLOR00,$0000
                dc.w      COLOR01,$0446
                dc.w      COLOR02,$088a                      
@@ -232,12 +286,136 @@ copper_bpl_ptrs
 
 
 
+               incdir    "libs/"
+               ;controller_port1_state.w
+               ;controller_port2_state.w
+               ;controller_ports_read()
+               include   "controller_ports.s"
+
+
+
+                ; default processor exception handler
+default_exception_handler
+                move.w  #$0000,d0
+.loop           move.w  d0,$dff180
+                add.w   #$0001,d0
+                jmp     .loop
+
+
+
+                ; default trap instruction handler
+default_trap_handler
+                rte
+
+
+
+                ; serial transmit buffer empty (intreq bit 00)
+                ; disk block finished (intreq bit 01)
+                ; software interrupt (intreq bit 02)
+level1_interrupt_handler
+                movem.l d0-d7/a0-a6,-(a7)
+                lea     $dff000,a6
+
+                ; clear the interrupt (level 1 only)
+                move.w  INTREQ(a6),d0
+                and.w   #%0000000000000111,d0
+                move.w  d0,INTREQR(a6)
+
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
+
+                ; io ports and timers (intreq bit 03) 
+level2_interrupt_handler
+                movem.l d0-d7/a0-a6,-(a7)
+                lea     $dff000,a6
+
+                ; clear the interrupt (level 2 only)
+                move.w  INTREQ(a6),d0
+                and.w   #%0000000000001000,d0
+                move.w  d0,INTREQR(a6)
+
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
+                ; copper (intreq bit 04)
+                ; vertical blank (intreq bit 05)
+                ; blitter (intreq bit 06)
+level3_interrupt_handler
+               movem.l   d0-d7/a0-a6,-(a7)
+               lea       CUSTOM,a6
+
+               move.w    #$0f0,COLOR00(a6)
+
+               ;add.w     #1,copper_palette+2
+               jsr       controller_ports_read
+
+               move.w    #$000,COLOR00(a6)
+
+               ; clear the interrupt (level 3 only)
+               move.w    INTREQR(a6),d0
+               and.w     #%0000000001110000,d0
+               move.w    d0,INTREQ(a6)
+
+               movem.l   (a7)+,d0-d7/a0-a6
+               rte
+
+
+                ; audio 0-3 (intreq bits 07-10)
+level4_interrupt_handler
+                movem.l d0-d7/a0-a6,-(a7)
+                lea     $dff000,a6
+
+                ; clear the interrupt (level 1 only)
+                move.w  INTREQ(a6),d0
+                and.w   #%0000011110000000,d0
+                move.w  d0,INTREQR(a6)
+
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
+
+                ; serial receive buffer (intreq bit 11)
+                ; disk sync (intreq bit 12)
+level5_interrupt_handler
+                movem.l d0-d7/a0-a6,-(a7)
+                lea     $dff000,a6
+
+                ; clear the interrupt (level 1 only)
+                move.w  INTREQ(a6),d0
+                and.w   #%0001100000000000,d0
+                move.w  d0,INTREQR(a6)
+
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
+
+                ; external ciab B flag (disk index) (intreq bit 13)
+level6_interrupt_handler
+                movem.l d0-d7/a0-a6,-(a7)
+                lea     $dff000,a6
+
+                ; clear the interrupt (level 1 only)
+                move.w  INTREQ(a6),d0
+                and.w   #%0010000000000000,d0
+                move.w  d0,INTREQR(a6)
+
+                movem.l (a7)+,d0-d7/a0-a6
+                rte
+
+
+
+
                ; display buffer is interleaved
                even
-bitplanes      dcb.b     40*256*4,$00            ; 4 bitplanes 320x256
+bitplanes      dcb.b     42*256*4,$00            ; 4 bitplanes 336x256
 
-BITPLANE_WIDTH_BYTES     equ       40
-BITPLANE_SIZE_BYTES      equ       40*256
+BITPLANE_WIDTH_BYTES     equ       42             ; 42 wide (16 pixels offscreen)
+BITPLANE_SIZE_BYTES      equ       42*256
 
 
                incdir    "gfx/"
