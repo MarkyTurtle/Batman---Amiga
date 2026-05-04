@@ -128,34 +128,34 @@ display_all_tiles
                ;    d2.l = tilemap-width (bytes/tiles)
                ;    d3.l = tilemap-height (bytes/tiles)
                ;    a0.l = tilemap-data-ptr (end of data ptr)
-DISPLAY_TILES_PER_ROW        EQU   21             ; 42 bytes wide display
-
+DISPLAY_TILES_PER_ROW         EQU  21                  ; 42 bytes wide display
+DISPLAY_TILES_PER_COLUMN      EQU  17                  ; 272 lines high display
 display_screen
                ; calc tilemap top-left start ptr
                mulu      d2,d1
                add.l     d0,d1
-               lea       (a0,d1.l),a2                  ; a2 = start top left of tile map
+               lea       (a0,d1.l),a2                       ; a2 = start top left of tile map
                
-               sub.w     #DISPLAY_TILES_PER_ROW,d2     ; calc tilemap modulo to next data row.
+               sub.w     #DISPLAY_TILES_PER_ROW,d2          ; calc tilemap modulo to next data row.
                move.l    d2,d3
                
-               ; draw 16 rows of 20 tiles
-               move.w    #16-1,d7                      ; 16 tiles high (256 pixels high)
-               moveq.l   #0,d2                         ; display tile-y
+               ; draw 17 rows of 21 tiles
+               move.w    #DISPLAY_TILES_PER_COLUMN-1,d7     ; 17 tiles high (256 pixels high)
+               moveq.l   #0,d2                              ; display tile-y
 .outer_loop
-               moveq.l   #0,d1                         ; display tile-x
-               move.w    #DISPLAY_TILES_PER_ROW-1,d6   ; display tiles wide (320 pixels wide)
+               moveq.l   #0,d1                              ; display tile-x
+               move.w    #DISPLAY_TILES_PER_ROW-1,d6        ; display tiles wide (320 pixels wide)
 .inner_loop
                moveq.l   #0,d0
-               move.b    (a2)+,d0                      ; get tile index
-               lea       bitplanes,a0                  ; display buffer
-               lea       tilegfx,a1                    ; source gfx
+               move.b    (a2)+,d0                           ; get tile index
+               lea       bitplanes,a0                       ; display buffer
+               lea       tilegfx,a1                         ; source gfx
                jsr       blit_tile
                addq.l    #1,d1
                dbf       d6,.inner_loop
 
-               addq.l    #1,d2                         ; increment display tile-y
-               lea       (a2,d3.w),a2                  ; add tilemap modulo to tilemap ptr
+               addq.l    #1,d2                              ; increment display tile-y
+               lea       (a2,d3.w),a2                       ; add tilemap modulo to tilemap ptr
                dbf       d7,.outer_loop
 
                rts
@@ -249,32 +249,129 @@ world_window_last_y dc.w      $0000
 world_window_x      dc.w      $0000
 world_window_y      dc.w      $0000
 
-soft_scroll_x       dc.w      $0000
-hard_scroll_x       dc.w      $0000
+soft_scroll_x       dc.w      $0000                    ; h/w scroll delay (bplcon1)
+hard_scroll_x       dc.w      $0000                    ; byte offset for display left
 
-scroller_calc_x_scroll
+line_scroll_y       dc.w      $0000                    ; raster line offset top of display buffer
+split_scroll_y      dc.w      $0000                    ; vertical raster for y buffer wrap
+hard_scroll_y       dc.l      $0000                    ; byte offset for display top
+
+                    ; IN
+                    ;    d0.l - world-x delta position change
+                    ;    d1.l - world-y delta position change
+scroll_window
+                    bsr.s     _add_world_window_x
+                    bsr.s     _add_world_window_y
+                    bsr       _set_world_window_x_display_offsets
+                    bsr       _set_world_window_y_display_offsets
+                    bsr       _set_copper_display_values
+                    rts
+
+
+                    ; IN:
+                    ;    d1.l - world-y delta position
+_add_world_window_y 
+                    movem.l   d0-d1,-(a7)
+
+                    move.w    world_window_y,world_window_last_y
+                    add.w     d1,world_window_y
+                    tst.w     world_window_y
+.check_lower_bound
+                    bpl.s     .check_upper_bound
+.clamp_lower
+                    move.w    #0,world_window_y
+
+.check_upper_bound
+                    move.w    tilemap+2,d0
+                    move.w    #DISPLAY_TILES_PER_COLUMN,d1
+                    sub.w     d1,d0
+                    lsl.w     #4,d0
+                    cmp.w     world_window_y,d0
+                    bcc.s     .continue
+.clamp_higher_bound
+                    move.w    d0,world_window_y
+.continue
+                    movem.l   (a7)+,d0-d1
+                    rts
+
+
+                    ; IN:
+                    ;    d0.l - world-x delta position
+_add_world_window_x
+                    movem.l   d0-d1,-(a7)
+
+                    move.w    world_window_x,world_window_last_x
+                    add.w     d0,world_window_x
+                    tst.w     world_window_x
+.check_lower_bound
+                    bpl.s    .check_upper_bound
+.clamp_lower
+                    move.w    #0,world_window_x
+
+.check_upper_bound
+                    move.w    tilemap,d0                    ; tilemap width
+                    move.w    #DISPLAY_TILES_PER_ROW,d1
+                    sub.w     d1,d0
+                    lsl.w     #4,d0                         ; d0  = max world window x
+                    cmp.w     world_window_x,d0
+                    bcc.s     .continue
+.clamp_higher_bound
+                    move.w    d0,world_window_x
+
+.continue
+                    movem.l   (a7)+,d0-d1
+                    rts
+
+
+_set_world_window_x_display_offsets
                     move.w    world_window_x,d0
                     move.w    d0,d1
                     
                     ; calc hard scroll (bpl ptr offset)
                     lsr.w     #3,d0               ; get bytes for hard scroll
-                    add.w     #2,d0
+                    ;add.w     #2,d0
                     move.w    d0,hard_scroll_x    ; store bpl offset for horizontal scroll (x-axis)
 
                     ; calc soft scroll (h/w delay)
                     and.w     #$000f,d1           ; mask off soft scroll value.
                     move.w    #$0f,d0
                     sub.w     d1,d0
+                    ;and.w     #$000f,d0
                     ; combine delay for odd & even bpls
                     move.w    d0,d1
                     lsl.w     #4,d1
                     or.w      d1,d0    
                     move.w    d0,soft_scroll_x    ; store soft scroll value
 
+                    rts
+
+
+_set_world_window_y_display_offsets
+                    move.w    world_window_y,d0
+                    ext.l     d0
+                    move.l    d0,d1
+                    
+                    tst.l     d0
+                    beq       .continue
+
+                    divu      #BITPLANE_HEIGHT_LINES,d0          ; hi = remainder, lo = quotient
+.continue
+                    swap.w    d0
+                    move.w    d0,line_scroll_y
+
+                    mulu      #BITPLANE_WIDTH_BYTES*4,d0         ; get byte offset to top of scroll
+                    move.l    d0,hard_scroll_y
+
+                    rts
+
+
+_set_copper_display_values
                     ; test update display buffer
                     move.l    #bitplanes,d0
                     move.w    hard_scroll_x,d1
                     ext.l     d1 
+                    move.l    hard_scroll_y,d2
+                    add.l     d2,d1
                     bsr       set_bitplane_ptrs
 
                     move.w    soft_scroll_x,d0
@@ -400,10 +497,36 @@ level3_interrupt_handler
 
                move.w    #$0f0,COLOR00(a6)
 
-               add.w     #1,world_window_x
-               jsr       scroller_calc_x_scroll
-               ;add.w     #1,copper_palette+2
                jsr       controller_ports_read
+
+               ; update scroll position based on joystick input
+               moveq.l   #0,d0
+               moveq.l   #0,d1
+               move.w    controller_port2_state,d2
+.chk_left
+               btst.l    #JOYSTICK_LEFT,d2
+               beq       .chk_right
+               moveq.l   #-2,d0
+.chk_right
+               btst.l    #JOYSTICK_RIGHT,d2
+               beq       .chk_up
+               moveq.l   #2,d0
+.chk_up
+               btst.l    #JOYSTICK_UP,d2
+               beq       .chk_down
+               moveq.l   #-2,d1
+.chk_down
+               btst.l    #JOYSTICK_DOWN,d2
+               beq.s     .do_scroll
+               moveq.l   #2,d1
+
+.do_scroll
+               jsr       scroll_window
+               
+               
+               
+               ;add.w     #1,copper_palette+2
+
 
                move.w    #$000,COLOR00(a6)
 
@@ -465,10 +588,11 @@ level6_interrupt_handler
 
                ; display buffer is interleaved
                even
-bitplanes      dcb.b     42*256*4,$00            ; 4 bitplanes 336x256
+bitplanes      dcb.b     BITPLANE_SIZE_BYTES*4,$00               ; 4 bitplanes 336x2272
 
-BITPLANE_WIDTH_BYTES     equ       42             ; 42 wide (16 pixels offscreen)
-BITPLANE_SIZE_BYTES      equ       42*256
+BITPLANE_WIDTH_BYTES     equ       42                            ; 21 tiles wide (16 pixels offscreen)
+BITPLANE_HEIGHT_LINES    equ       272                           ; 17 tiles high (16 pixels offscreen)
+BITPLANE_SIZE_BYTES      equ       BITPLANE_WIDTH_BYTES*BITPLANE_HEIGHT_LINES
 
 
                incdir    "gfx/"
@@ -481,4 +605,3 @@ tilegfx
 tilemap
                ;incbin    "TileMap192x42.raw"
                incbin    "TileMap192x42.raw.flipped"
-tilemapend

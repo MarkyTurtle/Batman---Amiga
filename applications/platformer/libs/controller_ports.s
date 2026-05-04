@@ -39,12 +39,14 @@ controller_port2_state
           ;    a6.l = CUSTOM BASE $dff000
           ; 
 controller_ports_read
-               lea  controller_port1_state,a0
-               bsr.s  _decode_joystick_directions
-               lea  controller_port2_state,a0
-               bsr.s _decode_joystick_directions
-               bsr.s _decode_joystick_port1_buttons
-               bsr.s _decode_joystick_port2_buttons
+               lea       controller_port1_state,a0
+               move.w    JOY0DAT(a6),d0
+               bsr.s     _decode_joystick_directions
+               lea       controller_port2_state,a0
+               move.w    JOY1DAT(a6),d0
+               bsr.s     _decode_joystick_directions
+               bsr.s     _decode_joystick_port1_buttons
+               bsr.s     _decode_joystick_port2_buttons
                rts
 
 
