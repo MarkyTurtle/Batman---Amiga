@@ -67,6 +67,9 @@ supervisor
                lea       copperlist(pc),a0
                move.l    a0,COP1LC(a6)
 
+               ; set display bitplanes
+               move.l    #bitplanes,d0            ; address of display buffer
+               move.l    #0,d1                    ; +- offset in even bytes
                jsr       set_bitplane_ptrs
 
                ; enable DMA
@@ -212,27 +215,75 @@ blit_16x16
                rts
 
 
-               ; set display bitplanes
+               ; set display bitplane pointers
                ; display is interleaved
+               ; IN:
+               ;    d0.l - display buffer
+               ;    d1.l - byte offset (+- even number of bytes)
 set_bitplane_ptrs
+               add.l     d1,d0               ; add bitplane offset to display buffer address
                lea       copper_bpl_ptrs,a0
-               move.l    #bitplanes,d0
                move.w    #BPL1PTH,d1
                move.w    #4,d7
-               bra.s     .next_loop     ; jump to end of loop to decrement loop counter
+               bra.s     .next_loop          ; jump to end of loop to decrement loop counter
 
 .loop          move.w    d1,(a0)+
                swap      d0
-               move.w    d0,(a0)+        ; set bpl(x)pth
+               move.w    d0,(a0)+            ; set bpl(x)pth
                add.w     #2,d1
                move.w    d1,(a0)+
                swap      d0
-               move.w    d0,(a0)+        ; set bpl(x)ptl
+               move.w    d0,(a0)+            ; set bpl(x)ptl
                add.w     #2,d1
                add.l     #BITPLANE_WIDTH_BYTES,d0
 .next_loop
                dbf       d7,.loop
                rts
+
+
+;-----------------------------------------------------------------------------------------
+; LEVEL SCROLLER
+;-----------------------------------------------------------------------------------------
+world_window_last_x dc.w      $0000
+world_window_last_y dc.w      $0000
+world_window_x      dc.w      $0000
+world_window_y      dc.w      $0000
+
+soft_scroll_x       dc.w      $0000
+hard_scroll_x       dc.w      $0000
+
+scroller_calc_x_scroll
+                    move.w    world_window_x,d0
+                    move.w    d0,d1
+                    
+                    ; calc hard scroll (bpl ptr offset)
+                    lsr.w     #3,d0               ; get bytes for hard scroll
+                    add.w     #2,d0
+                    move.w    d0,hard_scroll_x    ; store bpl offset for horizontal scroll (x-axis)
+
+                    ; calc soft scroll (h/w delay)
+                    and.w     #$000f,d1           ; mask off soft scroll value.
+                    move.w    #$0f,d0
+                    sub.w     d1,d0
+                    ; combine delay for odd & even bpls
+                    move.w    d0,d1
+                    lsl.w     #4,d1
+                    or.w      d1,d0    
+                    move.w    d0,soft_scroll_x    ; store soft scroll value
+
+                    ; test update display buffer
+                    move.l    #bitplanes,d0
+                    move.w    hard_scroll_x,d1
+                    ext.l     d1 
+                    bsr       set_bitplane_ptrs
+
+                    move.w    soft_scroll_x,d0
+                    move.w    d0,copper_scroll+2
+                    rts
+
+;-----------------------------------------------------------------------------------------
+; END OF LEVEL SCROLLER
+;-----------------------------------------------------------------------------------------
 
 
                even
@@ -248,7 +299,7 @@ copperlist     dc.w      FMODE,$0000
                dc.w      BPL2MOD,(BITPLANE_WIDTH_BYTES*3)
 
                dc.w      BPLCON0,$4200
-               dc.w      BPLCON1,$0000
+copper_scroll  dc.w      BPLCON1,$0000
                dc.w      BPLCON2,$0000
                dc.w      BPLCON3,$0000
                dc.w      BPLCON4,$0000       
@@ -349,6 +400,8 @@ level3_interrupt_handler
 
                move.w    #$0f0,COLOR00(a6)
 
+               add.w     #1,world_window_x
+               jsr       scroller_calc_x_scroll
                ;add.w     #1,copper_palette+2
                jsr       controller_ports_read
 
