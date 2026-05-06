@@ -2,4 +2,4 @@
 **/bin
 .vscode/settings.json
 **/*.o
-**/uae/dh0/*
+**/uae/dh0/platformer
