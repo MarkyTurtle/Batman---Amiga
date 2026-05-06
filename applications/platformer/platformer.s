@@ -70,6 +70,13 @@ supervisor
                ; set display bitplanes
                move.l    #bitplanes,d0            ; address of display buffer
                move.l    #0,d1                    ; +- offset in even bytes
+               lea       copper_bpl_ptrs,a0
+               jsr       set_bitplane_ptrs
+
+               ; set vertical wrap bitplane ptrs
+               move.l    #bitplanes,d0            ; address of display buffer
+               move.l    #0,d1                    ; +- offset in even bytes
+               lea       copper_bpl_wrap_ptrs,a0
                jsr       set_bitplane_ptrs
 
                ; enable DMA
@@ -220,9 +227,10 @@ blit_16x16
                ; IN:
                ;    d0.l - display buffer
                ;    d1.l - byte offset (+- even number of bytes)
+               ;    a0.l - address of copper list instructions
 set_bitplane_ptrs
                add.l     d1,d0               ; add bitplane offset to display buffer address
-               lea       copper_bpl_ptrs,a0
+               ;lea       copper_bpl_ptrs,a0
                move.w    #BPL1PTH,d1
                move.w    #4,d7
                bra.s     .next_loop          ; jump to end of loop to decrement loop counter
@@ -354,11 +362,21 @@ _set_world_window_y_display_offsets
                     tst.l     d0
                     beq       .continue
 
+                    ; calc y-scroll valuse
                     divu      #BITPLANE_HEIGHT_LINES,d0          ; hi = remainder, lo = quotient
 .continue
+                    ; set y-line count (soft scroll value)
                     swap.w    d0
                     move.w    d0,line_scroll_y
 
+                    ; calc buffer wrap split y-line number to restart top of buffer
+                    move.w    d0,d1
+                    sub.w     #BITPLANE_HEIGHT_LINES,d1
+                    neg.w     d1
+                    add.w     #$2c,d1                            ; add the window vertical start line
+                    move.w    d1,split_scroll_y                  ; the raster wait value for the buffer wrap
+                    
+                    ; calc byte offset to top of display buffer
                     mulu      #BITPLANE_WIDTH_BYTES*4,d0         ; get byte offset to top of scroll
                     move.l    d0,hard_scroll_y
 
@@ -366,16 +384,39 @@ _set_world_window_y_display_offsets
 
 
 _set_copper_display_values
-                    ; test update display buffer
+                    ; set copper display buffer ptrs (top of screen)
                     move.l    #bitplanes,d0
                     move.w    hard_scroll_x,d1
                     ext.l     d1 
                     move.l    hard_scroll_y,d2
                     add.l     d2,d1
+                    lea       copper_bpl_ptrs,a0
                     bsr       set_bitplane_ptrs
 
+                    ; set copper display buffer ptrs (wrap)
+                    move.l    #bitplanes,d0
+                    move.w    hard_scroll_x,d1
+                    ext.l     d1 
+                    lea       copper_bpl_wrap_ptrs,a0
+                    bsr       set_bitplane_ptrs
+
+                    ; set copper vertical wait (wrap)
+                    move.w    split_scroll_y,d0
+                    cmp.w     #255,d0
+                    bcc.s     .palwait
+.notpalwait
+                    move.w    #$01fe,copper_bpl_wrap_wait
+                    move.b    d0,copper_bpl_wrap_wait+4
+                    bra.s     .do_hw_scroll
+.palwait
+                    and.w     #$00ff,d0
+                    move.w    #$ffdf,copper_bpl_wrap_wait
+                    move.b    d0,copper_bpl_wrap_wait+4
+.do_hw_scroll
+                    ; set h/w scroll registers (soft scroll)
                     move.w    soft_scroll_x,d0
                     move.w    d0,copper_scroll+2
+
                     rts
 
 ;-----------------------------------------------------------------------------------------
@@ -409,7 +450,7 @@ copper_bpl_ptrs
                dc.w      $0,$0,$0,$0
                
 
-               dc.w      $2c01,$fffe
+               ;dc.w      $2c01,$fffe
 
 copper_palette
                dc.w      COLOR00,$0000
@@ -429,6 +470,19 @@ copper_palette
                dc.w      COLOR14,$0668
                dc.w      COLOR15,$06ae
 
+copper_bpl_wrap_wait
+               dc.w      $ffdf,$fffe                   ; $01fe - (copper NOP) - (updated by scroller)
+               dc.w      $0001,$fffe                   ; wrap buffer copper wait (updated by scroller)
+               ;dc.w      COLOR00,$f00               ; debug - show buffer wrap split 
+
+
+copper_bpl_wrap_ptrs
+               dc.w      $0,$0,$0,$0
+               dc.w      $0,$0,$0,$0
+               dc.w      $0,$0,$0,$0
+               dc.w      $0,$0,$0,$0
+
+copper_end
                dc.w      $ffff,$fffe
                dc.w      $ffff,$fffe
 
