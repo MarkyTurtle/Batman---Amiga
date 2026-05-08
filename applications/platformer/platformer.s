@@ -83,6 +83,8 @@ supervisor
                lea       CUSTOM,a6
                move.w    #$83c0,DMACON(a6)        ; bpl, copper, blitter
 
+               ; initialise tile scroller
+               jsr       scroll_initialise
 
                ; display 1 screen of tilemap
                moveq.l   #0,d0
@@ -263,6 +265,38 @@ hard_scroll_x       dc.w      $0000                    ; byte offset for display
 line_scroll_y       dc.w      $0000                    ; raster line offset top of display buffer
 split_scroll_y      dc.w      $0000                    ; vertical raster for y buffer wrap
 hard_scroll_y       dc.l      $0000                    ; byte offset for display top
+
+tilemap_ptr         dc.l      $00000000                ; pointer of tile map file
+tilemap_width       dc.w      $0000                    ; tile map width in tiles (bytes)
+tilemap_height      dc.w      $0000                    ; tile map heightin tiles (bytes)
+tilemap_tile_ptr    dc.l      $00000000                ; pointer of tile map data
+tilemap_current_ptr dc.l      $00000000                ; potiner of current top left tile map ptr
+
+
+                    ;-----------------------------------------------
+                    ; Initialise the tile map scroller
+                    ; IN
+                    ;    a0.l - tilemap address
+scroll_initialise
+                    move.l    a0,tilemap_ptr
+                    move.w    (a0)+,tilemap_width
+                    move.w    (a0)+,tilemap_height
+                    move.w    a0,tilemap_tile_ptr
+                    move.w    a0,tilemap_current_ptr
+                    
+                    moveq.l   #0,d0
+                    move.w    d0,world_window_last_x
+                    move.w    d0,world_window_last_y
+                    move.w    d0,world_window_x
+                    move.w    d0,world_window_y
+                    move.w    d0,soft_scroll_x
+                    move.w    d0,hard_scroll_x
+                    move.w    d0,line_scroll_y
+                    move.w    d0,split_scroll_y
+                    move.w    d0,hard_scroll_y
+
+                    rts
+
 
                     ; IN
                     ;    d0.l - world-x delta position change
