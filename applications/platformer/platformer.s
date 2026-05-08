@@ -387,18 +387,19 @@ _set_world_window_x_display_offsets
 
                     ; do hard scroll column blits
                     move.w    hard_scroll_last_x,d0
-                    sub.w     hard_scroll_x,d0
+                    and.w     #$fffe,d0
+                    move.w    hard_scroll_x,d1
+                    and.w     #$fffe,d1
+                    sub.w     d1,d0
                     beq.s     .no_hard_scroll_x
-                    bcs.s     .left_scroll
+                    tst.w     d0
+                    bmi.s     .left_scroll
 .right_scroll
-                    btst.l    #0,d0
-                    bne.s     .no_hard_scroll_x
                     move.w    #$0f0,copper_debug_colour+2
                     bra.s     .do_hard_scroll_x
 .left_scroll
                     move.w    #$00f,copper_debug_colour+2
-                    btst.l    #0,d0
-                    beq.s     .no_hard_scroll_x
+
 .do_hard_scroll_x
                     move.w    hard_scroll_x,hard_scroll_last_x        ; store previous value of hard scroll x
                     bsr       _scroll_blit_column
@@ -407,10 +408,63 @@ _set_world_window_x_display_offsets
                     move.w    #$000,copper_debug_colour+2
                     rts
 
+
                     ; IN:
                     ;    d0.w - x byte offset +-
 _scroll_blit_column
-                    move.w    #$0f0,copper_debug_colour+2
+                    ; calc destination column (left side)
+                    move.l    #bitplanes,a0
+                    move.w    hard_scroll_x,d0
+                    ext.l     d0
+                    lea       (a0,d0.l),a0        
+
+                    ; calc tilemap ptr
+                    move.l    tilemap_current_ptr,a5
+                    tst.w     d0
+                    bmi.s     .left_scroll
+.right_scroll
+                    add.l     #DISPLAY_TILES_PER_ROW,a5
+                    bra.s     .blit_column
+.left_scroll
+                    sub.l     #1,a5
+
+
+.blit_column 
+                    moveq.l   #0,d0
+                    moveq.l   #0,d1
+                    moveq.l   #0,d2
+                    moveq.l   #0,d3
+
+                    move.w    tilemap_width,d3
+                    
+                    move.w    #DISPLAY_TILES_PER_COLUMN-1,d7          ; number of tiles to blit
+.blit_loop
+                    move.b    (a5),d0                                 ; get tile map index
+
+
+                    lea       (a5,d3.w),a1                            ; increment tile map ptr to next line
+                    dbf       d7,.blit_loop
+
+                    rts
+                    
+
+
+                    move.l    #bitplanes,a0
+                    move.w    hard_scroll_x,d0
+                    ext.l     d0
+
+                    move.l    split_scroll_y,d2
+                    sub.w     #$2c,d2
+                    lsr.w     #4,d2               ; divide split scroll by 16 to find tile number where screen is split. eg 32 = 2
+                                                  ; top tile starts at bitplane height -32
+                    add.l     d2,d1
+               ; IN:
+               ;    a0.l = desination address
+               ;    a1.l = tile gfx address
+               ;    d0.l = tile index 
+               ;    d1.l = dest x tile count
+               ;    d2.l = dest y tile count
+                    bsr       blit_tile
                     rts
 
 
@@ -463,7 +517,7 @@ _set_copper_display_values
                     ; set copper vertical wait (wrap)
                     move.w    split_scroll_y,d0
                     cmp.w     #255,d0
-                    bcc.s     .palwait
+                    bgt.s     .palwait
 .notpalwait
                     move.w    #$01fe,copper_bpl_wrap_wait
                     move.b    d0,copper_bpl_wrap_wait+4
@@ -486,7 +540,8 @@ _set_copper_display_values
 
                even
 copperlist     dc.w      FMODE,$0000
-
+copper_debug_colour2
+               dc.w      COLOR00,$0000
                dc.w      $2b01,$fffe
                dc.w      DDFSTRT,$0030                      ; DDFSTART (extra word)
                dc.w      DDFSTOP,$00d0
@@ -621,19 +676,19 @@ level3_interrupt_handler
 .chk_left
                btst.l    #JOYSTICK_LEFT,d2
                beq       .chk_right
-               moveq.l   #-2,d0
+               moveq.l   #-1,d0
 .chk_right
                btst.l    #JOYSTICK_RIGHT,d2
                beq       .chk_up
-               moveq.l   #2,d0
+               moveq.l   #1,d0
 .chk_up
                btst.l    #JOYSTICK_UP,d2
                beq       .chk_down
-               moveq.l   #-2,d1
+               moveq.l   #-1,d1
 .chk_down
                btst.l    #JOYSTICK_DOWN,d2
                beq.s     .do_scroll
-               moveq.l   #2,d1
+               moveq.l   #1,d1
 
 .do_scroll
                jsr       scroll_window
