@@ -229,10 +229,9 @@ blit_16x16
                ; IN:
                ;    d0.l - display buffer
                ;    d1.l - byte offset (+- even number of bytes)
-               ;    a0.l - address of copper list instructions
+               ;    a0.l - address of copper list BPL(X)PT instructions
 set_bitplane_ptrs
                add.l     d1,d0               ; add bitplane offset to display buffer address
-               ;lea       copper_bpl_ptrs,a0
                move.w    #BPL1PTH,d1
                move.w    #4,d7
                bra.s     .next_loop          ; jump to end of loop to decrement loop counter
@@ -261,6 +260,7 @@ world_window_y      dc.w      $0000
 
 soft_scroll_x       dc.w      $0000                    ; h/w scroll delay (bplcon1)
 hard_scroll_x       dc.w      $0000                    ; byte offset for display left
+hard_scroll_last_x  dc.w      $0000                    ; copy of the last hard_scroll_x value
 
 line_scroll_y       dc.w      $0000                    ; raster line offset top of display buffer
 split_scroll_y      dc.w      $0000                    ; vertical raster for y buffer wrap
@@ -291,6 +291,7 @@ scroll_initialise
                     move.w    d0,world_window_y
                     move.w    d0,soft_scroll_x
                     move.w    d0,hard_scroll_x
+                    move.w    d0,hard_scroll_last_x
                     move.w    d0,line_scroll_y
                     move.w    d0,split_scroll_y
                     move.w    d0,hard_scroll_y
@@ -370,21 +371,46 @@ _set_world_window_x_display_offsets
                     move.w    d0,d1
                     
                     ; calc hard scroll (bpl ptr offset)
-                    lsr.w     #3,d0               ; get bytes for hard scroll
-                    ;add.w     #2,d0
-                    move.w    d0,hard_scroll_x    ; store bpl offset for horizontal scroll (x-axis)
+                    lsr.w     #3,d0                                   ; get hard scroll byte offset
+                    move.w    d0,hard_scroll_x                        ; store bpl offset for horizontal scroll (x-axis)
 
                     ; calc soft scroll (h/w delay)
                     and.w     #$000f,d1           ; mask off soft scroll value.
                     move.w    #$0f,d0
                     sub.w     d1,d0
-                    ;and.w     #$000f,d0
+
                     ; combine delay for odd & even bpls
                     move.w    d0,d1
                     lsl.w     #4,d1
                     or.w      d1,d0    
                     move.w    d0,soft_scroll_x    ; store soft scroll value
 
+                    ; do hard scroll column blits
+                    move.w    hard_scroll_last_x,d0
+                    sub.w     hard_scroll_x,d0
+                    beq.s     .no_hard_scroll_x
+                    bcs.s     .left_scroll
+.right_scroll
+                    btst.l    #0,d0
+                    bne.s     .no_hard_scroll_x
+                    move.w    #$0f0,copper_debug_colour+2
+                    bra.s     .do_hard_scroll_x
+.left_scroll
+                    move.w    #$00f,copper_debug_colour+2
+                    btst.l    #0,d0
+                    beq.s     .no_hard_scroll_x
+.do_hard_scroll_x
+                    move.w    hard_scroll_x,hard_scroll_last_x        ; store previous value of hard scroll x
+                    bsr       _scroll_blit_column
+                    rts
+.no_hard_scroll_x
+                    move.w    #$000,copper_debug_colour+2
+                    rts
+
+                    ; IN:
+                    ;    d0.w - x byte offset +-
+_scroll_blit_column
+                    move.w    #$0f0,copper_debug_colour+2
                     rts
 
 
@@ -483,8 +509,7 @@ copper_bpl_ptrs
                dc.w      $0,$0,$0,$0
                dc.w      $0,$0,$0,$0
                
-
-               ;dc.w      $2c01,$fffe
+               dc.w      $2c01,$fffe
 
 copper_palette
                dc.w      COLOR00,$0000
@@ -507,7 +532,9 @@ copper_palette
 copper_bpl_wrap_wait
                dc.w      $ffdf,$fffe                   ; $01fe - (copper NOP) - (updated by scroller)
                dc.w      $0001,$fffe                   ; wrap buffer copper wait (updated by scroller)
-               ;dc.w      COLOR00,$f00               ; debug - show buffer wrap split 
+
+copper_debug_colour
+               dc.w      COLOR00,$000               ; debug - show buffer wrap split 
 
 
 copper_bpl_wrap_ptrs
@@ -611,9 +638,8 @@ level3_interrupt_handler
 .do_scroll
                jsr       scroll_window
                
-               
-               
-               ;add.w     #1,copper_palette+2
+                           
+               ;add.w     #1,copper_debug_colour+2
 
 
                move.w    #$000,COLOR00(a6)
