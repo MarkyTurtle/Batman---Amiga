@@ -386,19 +386,12 @@ _set_world_window_x_display_offsets
                     move.w    d0,soft_scroll_x    ; store soft scroll value
 
                     ; do hard scroll column blits
-                    move.w    hard_scroll_last_x,d0
-                    and.w     #$fffe,d0
-                    move.w    hard_scroll_x,d1
+                    move.w    hard_scroll_last_x,d1
                     and.w     #$fffe,d1
+                    move.w    hard_scroll_x,d0
+                    and.w     #$fffe,d0
                     sub.w     d1,d0
                     beq.s     .no_hard_scroll_x
-                    tst.w     d0
-                    bmi.s     .left_scroll
-.right_scroll
-                    move.w    #$0f0,copper_debug_colour+2
-                    bra.s     .do_hard_scroll_x
-.left_scroll
-                    move.w    #$00f,copper_debug_colour+2
 
 .do_hard_scroll_x
                     move.w    hard_scroll_x,hard_scroll_last_x        ; store previous value of hard scroll x
@@ -413,59 +406,57 @@ _set_world_window_x_display_offsets
                     ;    d0.w - x byte offset +-
 _scroll_blit_column
                     ; calc destination column (left side)
-                    move.l    #bitplanes,a0
-                    move.w    hard_scroll_x,d0
-                    ext.l     d0
-                    lea       (a0,d0.l),a0        
+                    lea       bitplanes,a0
+                    move.w    hard_scroll_x,d1
+                    ext.l     d1
+                    lea       (a0,d1.l),a0        
 
-                    ; calc tilemap ptr
-                    move.l    tilemap_current_ptr,a5
+                    lsr.w     #1,d1
+                    lea       tilemap+4,a5
+                    lea       (a5,d1.l),a5
+
                     tst.w     d0
-                    bmi.s     .left_scroll
-.right_scroll
-                    add.l     #DISPLAY_TILES_PER_ROW,a5
-                    bra.s     .blit_column
-.left_scroll
-                    sub.l     #1,a5
-
-
-.blit_column 
-                    moveq.l   #0,d0
+                    bmi.s     .scroll_left
+.scroll_right
+                    move.w    #$0f0,copper_debug_colour+2
+                    moveq.l   #20,d1
+                    lea       20(a5),a5
+                    bra.s     .do_blit
+.scroll_left
+                    move.w    #$00f,copper_debug_colour+2
                     moveq.l   #0,d1
+.do_blit
+                    lea       tilegfx,a1
+
+
+                    ; calc start y - tile index
                     moveq.l   #0,d2
-                    moveq.l   #0,d3
+                    move.w    line_scroll_y,d2
+                    lsr.w     #4,d2                    ; d2 = tile y index (starting)
 
-                    move.w    tilemap_width,d3
-                    
-                    move.w    #DISPLAY_TILES_PER_COLUMN-1,d7          ; number of tiles to blit
+                    moveq.l   #0,d0
+                    moveq.l   #DISPLAY_TILES_PER_COLUMN-1,d7
 .blit_loop
-                    move.b    (a5),d0                                 ; get tile map index
+                    move.l    d2,d5
+                    mulu      #192,d5
+                    move.b    (a5,d5.l),d0
+                    ;moveq.l   #0,d0
+                    bsr       blit_tile
 
-
-                    lea       (a5,d3.w),a1                            ; increment tile map ptr to next line
+                    add.w     #1,d2
+                    cmp.w     #DISPLAY_TILES_PER_COLUMN,d2
+                    bcs.s     .cont_loop
+.reset_y
+                    moveq.l   #0,d2
+.cont_loop
                     dbf       d7,.blit_loop
 
                     rts
-                    
 
 
-                    move.l    #bitplanes,a0
-                    move.w    hard_scroll_x,d0
-                    ext.l     d0
 
-                    move.l    split_scroll_y,d2
-                    sub.w     #$2c,d2
-                    lsr.w     #4,d2               ; divide split scroll by 16 to find tile number where screen is split. eg 32 = 2
-                                                  ; top tile starts at bitplane height -32
-                    add.l     d2,d1
-               ; IN:
-               ;    a0.l = desination address
-               ;    a1.l = tile gfx address
-               ;    d0.l = tile index 
-               ;    d1.l = dest x tile count
-               ;    d2.l = dest y tile count
-                    bsr       blit_tile
-                    rts
+
+
 
 
 _set_world_window_y_display_offsets
@@ -758,6 +749,8 @@ level6_interrupt_handler
                ; display buffer is interleaved
                even
 bitplanes      dcb.b     BITPLANE_SIZE_BYTES*4,$00               ; 4 bitplanes 336x2272
+               dcb.b     (192*2)*4                               ; extra buffer fo scrolling into (tilemap_width * 2) * number of bitplanes
+
 
 BITPLANE_WIDTH_BYTES     equ       42                            ; 21 tiles wide (16 pixels offscreen)
 BITPLANE_HEIGHT_LINES    equ       272                           ; 17 tiles high (16 pixels offscreen)
