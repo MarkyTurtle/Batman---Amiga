@@ -434,16 +434,21 @@ _scroll_blit_column
                     move.w    line_scroll_y,d2
                     lsr.w     #4,d2                    ; d2 = tile y index (starting)
 
+                    ; calc start y - window offset
+                    moveq.l   #0,d6
+                    move.w    world_window_y,d6
+                    lsr.w     #4,d6
+
                     moveq.l   #0,d0
                     moveq.l   #DISPLAY_TILES_PER_COLUMN-1,d7
 .blit_loop
-                    move.l    d2,d5
+                    move.l    d6,d5
                     mulu      #192,d5
                     move.b    (a5,d5.l),d0
-                    ;moveq.l   #0,d0
                     bsr       blit_tile
 
                     add.w     #1,d2
+                    add.w     #1,d6
                     cmp.w     #DISPLAY_TILES_PER_COLUMN,d2
                     bcs.s     .cont_loop
 .reset_y
