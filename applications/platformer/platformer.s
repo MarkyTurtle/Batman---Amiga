@@ -520,19 +520,34 @@ _scroll_blit_row
                     ext.l     d1
                     lea       (a0,d1.l),a0
 
+                     lsr.w    #1,d1
+                     lea      tilemap+4,a5
+                     lea      (a5,d1.l),a5
+
+                     moveq.l   #0,d2
+                     moveq.l   #0,d6
+                     
+                     tst.w     d0
+                     bmi.s     .scroll_up
+.scroll_down
+                    move.w    #$0f0,copper_debug_colour+2
+                     move.w    line_scroll_y,d2
+                     lsr.w     #4,d2                    ; d2 = tile y index (starting 
+                     tst.w    d2
+                     bne.s   .continue_down
+                     move.w   #DISPLAY_TILES_PER_COLUMN,d2
+.continue_down
+                     sub.w     #1,d2                    ; adjust for scroll direction (down = next tile row) 
+                     bra.s     .do_blit
+.scroll_up
+                    move.w    #$00f,copper_debug_colour+2
+                   
+
 .do_blit
                     lea  tilegfx,a1
                     moveq.l   #10,d0
-                    moveq.l   #0,d1               ; tile x pos
+                    moveq.l   #0,d1              ; tile x pos 
 
-                    ; calc off screen line
-                    moveq.l   #0,d6
-                    move.w    line_scroll_y,d6
-                    lsr.w     #4,d6     
-          
-
-                    moveq.l   #0,d2              ; tile y pos
-                    add.w     d6,d2
 .continue
 
                     moveq.l   #DISPLAY_TILES_PER_ROW-1,d7
