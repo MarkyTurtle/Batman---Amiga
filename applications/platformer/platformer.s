@@ -265,6 +265,7 @@ hard_scroll_last_x  dc.w      $0000                    ; copy of the last hard_s
 line_scroll_y       dc.w      $0000                    ; raster line offset top of display buffer
 split_scroll_y      dc.w      $0000                    ; vertical raster for y buffer wrap
 hard_scroll_y       dc.l      $0000                    ; byte offset for display top
+tile_scroll_y       dc.w      $0000                    ; current tile scroll index (top line)
 
 tilemap_ptr         dc.l      $00000000                ; pointer of tile map file
 tilemap_width       dc.w      $0000                    ; tile map width in tiles (bytes)
@@ -490,7 +491,61 @@ _set_world_window_y_display_offsets
                     mulu      #BITPLANE_WIDTH_BYTES*4,d0         ; get byte offset to top of scroll
                     move.l    d0,hard_scroll_y
 
+                    ; calc tile scroll value
+                    moveq.l   #0,d0
+                    move.w    world_window_y,d0
+                    lsr.w     #4,d0                              ; d0 = tile count y
+                    move.w    d0,tile_scroll_y
+
+                    moveq.l   #0,d1
+                    move.w    world_window_last_y,d1
+                    lsr.w     #4,d1                              ; d1 = last tile count y
+
+                    sub.w     d1,d0
+                    beq.s     .no_hard_scroll_y
+.do_hard_scroll_y
+                    bsr.s     _scroll_blit_row
+                    bra.s     .exit
+.no_hard_scroll_y
+                    move.w    #$000,copper_debug_colour+2
+.exit
                     rts
+
+
+                    ; IN:
+                    ;    d0.w - y tile offset +-
+_scroll_blit_row
+                    lea       bitplanes,a0
+                    move.w    hard_scroll_x,d1
+                    ext.l     d1
+                    lea       (a0,d1.l),a0
+
+.do_blit
+                    lea  tilegfx,a1
+                    moveq.l   #10,d0
+                    moveq.l   #0,d1               ; tile x pos
+
+                    ; calc off screen line
+                    moveq.l   #0,d6
+                    move.w    line_scroll_y,d6
+                    lsr.w     #4,d6     
+          
+
+                    moveq.l   #0,d2              ; tile y pos
+                    add.w     d6,d2
+.continue
+
+                    moveq.l   #DISPLAY_TILES_PER_ROW-1,d7
+.blit_loop
+                    bsr       blit_tile
+                    add.l     #1,d1
+                    dbf       d7,.blit_loop
+
+                    rts
+
+
+
+
 
 
 _set_copper_display_values
