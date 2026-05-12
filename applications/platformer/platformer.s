@@ -250,9 +250,13 @@ set_bitplane_ptrs
                rts
 
 
+
 ;-----------------------------------------------------------------------------------------
 ; LEVEL SCROLLER
 ;-----------------------------------------------------------------------------------------
+; TODO: separate out global and buffer dependent values into a data structure that
+;       can be passed into the scroll routines to allow for double buffering in future.
+;------------------------------------------------------------------------------------------
 world_window_last_x dc.w      $0000
 world_window_last_y dc.w      $0000
 world_window_x      dc.w      $0000
@@ -304,11 +308,15 @@ scroll_initialise
                     ;    d0.l - world-x delta position change
                     ;    d1.l - world-y delta position change
 scroll_window
+                     move.w   #$fff,$dff180
                     bsr.s     _add_world_window_x
                     bsr.s     _add_world_window_y
+                    move.w  #$0ff,$dff180
                     bsr       _set_world_window_x_display_offsets
                     bsr       _set_world_window_y_display_offsets
+                    move.w   #$0f00,$dff180
                     bsr       _set_copper_display_values
+                    move.w   #$000,$dff180
                     rts
 
 
@@ -399,7 +407,7 @@ _set_world_window_x_display_offsets
                     bsr       _scroll_blit_column
                     rts
 .no_hard_scroll_x
-                    move.w    #$000,copper_debug_colour+2
+                    ;move.w    #$000,copper_debug_colour+2
                     rts
 
 
@@ -419,12 +427,12 @@ _scroll_blit_column
                     tst.w     d0
                     bmi.s     .scroll_left
 .scroll_right
-                    move.w    #$0f0,copper_debug_colour+2
+                    ;move.w    #$0f0,copper_debug_colour+2
                     moveq.l   #20,d1
                     lea       20(a5),a5
                     bra.s     .do_blit
 .scroll_left
-                    move.w    #$00f,copper_debug_colour+2
+                    ;move.w    #$00f,copper_debug_colour+2
                     moveq.l   #0,d1
 .do_blit
                     lea       tilegfx,a1
@@ -505,9 +513,9 @@ _set_world_window_y_display_offsets
                     beq.s     .no_hard_scroll_y
 .do_hard_scroll_y
                     bsr.s     _scroll_blit_row
-                    bra.s     .exit
+                    ;bra.s     .exit
 .no_hard_scroll_y
-                    move.w    #$000,copper_debug_colour+2
+                    ;move.w    #$000,copper_debug_colour+2
 .exit
                     rts
 
@@ -522,47 +530,61 @@ _scroll_blit_row
 
                      lsr.w    #1,d1
                      lea      tilemap+4,a5
-                     lea      (a5,d1.l),a5
+                     lea      (a5,d1.l),a5            ; tilemap x offset
+
+                     moveq.l  #0,d1
+                     move.w   world_window_y,d1
+                     lsr.w    #4,d1                    ; tilemap y offset
+                     mulu    #192,d1
+                     lea      (a5,d1.l),a5            ; tilemap y offset
 
                      moveq.l   #0,d2
                      moveq.l   #0,d6
                      
                      tst.w     d0
                      bmi.s     .scroll_up
+
 .scroll_down
-                    move.w    #$0f0,copper_debug_colour+2
+                    ;move.w    #$0f0,copper_debug_colour+2
+                     move.l    #(DISPLAY_TILES_PER_COLUMN-1)*192,d3
+
                      move.w    line_scroll_y,d2
                      lsr.w     #4,d2                    ; d2 = tile y index (starting 
                      tst.w    d2
                      bne.s   .continue_down
                      move.w   #DISPLAY_TILES_PER_COLUMN,d2
+
 .continue_down
                      sub.w     #1,d2                    ; adjust for scroll direction (down = next tile row) 
                      bra.s     .do_blit
-.scroll_up
-                    move.w    #$00f,copper_debug_colour+2
-                   
 
+
+.scroll_up
+                    ;move.w    #$00f,copper_debug_colour+2
+                     move.w   line_scroll_y,d2
+                     lsr.w     #4,d2                    ; d2 = tile y index (starting)
+
+                     moveq.l   #0,d3                     ; tile map offset
 .do_blit
                     lea  tilegfx,a1
                     moveq.l   #10,d0
-                    moveq.l   #0,d1              ; tile x pos 
+                    moveq.l   #0,d1                      ; tile x pos 
 
 .continue
 
                     moveq.l   #DISPLAY_TILES_PER_ROW-1,d7
 .blit_loop
+                  move.b   (a5,d3.l),d0
                     bsr       blit_tile
                     add.l     #1,d1
+                    add.l     #1,d3
                     dbf       d7,.blit_loop
 
                     rts
 
 
-
-
-
-
+                     ; TODO: store these values in a data structure to be used by
+                     ;       double buffering routin in future.
 _set_copper_display_values
                     ; set copper display buffer ptrs (top of screen)
                     move.l    #bitplanes,d0
@@ -742,19 +764,19 @@ level3_interrupt_handler
 .chk_left
                btst.l    #JOYSTICK_LEFT,d2
                beq       .chk_right
-               moveq.l   #-1,d0
+               moveq.l   #-2,d0
 .chk_right
                btst.l    #JOYSTICK_RIGHT,d2
                beq       .chk_up
-               moveq.l   #1,d0
+               moveq.l   #2,d0
 .chk_up
                btst.l    #JOYSTICK_UP,d2
                beq       .chk_down
-               moveq.l   #-1,d1
+               moveq.l   #-2,d1
 .chk_down
                btst.l    #JOYSTICK_DOWN,d2
                beq.s     .do_scroll
-               moveq.l   #1,d1
+               moveq.l   #2,d1
 
 .do_scroll
                jsr       scroll_window
