@@ -278,10 +278,109 @@ tilemap_tile_ptr    dc.l      $00000000                ; pointer of tile map dat
 tilemap_current_ptr dc.l      $00000000                ; potiner of current top left tile map ptr
 
 
+
+                  rsreset
+SCRBUF_PTR              rs.l     1                 ; base pointer to scroll display buffer
+; horizontal scroll deals with byte offsets and hardware scroll delay values, 
+; these are stored in the following variables for use by the scroller and copper list setup routines.
+SCRBUF_SOFTSCR_X        rs.w     1                 ; soft scroll x value - h/w delay for scroll (bplcon1)
+SCRBUF_HARDSCR_X        rs.w     1                 ; hard scroll x value - horizontal byte offset into display buffer 
+SCRBUF_HARDSCR_LAST_X   rs.w     1                 ; previous hard scroll x value - used to detect scroll direction (left/right)
+SCRBUF_HARDSCR_DIR_X    rs.w     1                 ; hard scroll direction x value - 0 = no scroll, 1 = scroll right, -1 = scroll left
+SCRBUF_TILESCR_X        rs.w     1                 ; tile scroll x value - tile index offset for tilemap (left of window)
+
+; vertical scroll is more complex.
+; it records the vertical line scroll value which is used to set where the first vertical raster line of the display.
+; it records the split line for when the display buffer wraps (resets to the top of the buffer) 
+;  - which is used to set the copper wait for the buffer wrap.
+; the vertical byte offset to the display buffer is stored for use in setting the copper list bitplane pointers.
+SCRBUF_LINESCROLL_Y     rs.w     1                 ; line scroll y value - raster line offset for top of display buffer
+SCRBUF_SPLITSCROLL_Y    rs.w     1                 ; split scroll y value - raster line for buffer wrap
+SCRBUF_HARDSCR_Y        rs.l     1                 ; hard scroll y value - vertical byte offset into display buffer
+SCRBUF_HARDSCR_LAST_Y   rs.l     1                 ; previous hard scroll y value - used to detect scroll direction (up/down)
+SCRBUF_HARDSCR_DIR_Y    rs.w     1                 ; hard scroll direction y value - 0 = no scroll, 1 = scroll down, -1 = scroll up
+SCRBUF_TILESCR_Y        rs.w     1                 ; tile scroll y value - tile index offset for tilemap (top of window)
+
+
+scrollerStructure
+.tilemapfile_ptr        dc.l    $00000000                   ; pointer of tile map file
+.tilemapdata_ptr        dc.l    $00000000                   ; pointer of tile map data
+.tilemapwidth           dc.w    $0000                       ; tile map width in tiles (bytes)  
+.tilemapheight          dc.w    $0000                       ; tile map height in tiles (bytes)
+.tilemapgfx_ptr         dc.l    $00000000                   ; pointer of tile gfx data
+.scrollbackbufferptr    dc.l    scrollBuffer1               ; pointer to scroll back buffer structure (see scrollBuffer1 structure)
+.scrolldisplaybufferptr dc.l    scrollBuffer2               ; pointer to scroll display buffer structure (see scrollBuffer2 structure)
+
+scrollBuffer1
+.bitplane_ptr           dc.l     $00000000                ; base bitplane ptr for current scroll buffer
+.softscr_x              dc.w     $0000                    ; soft scroll x value - h/w delay for scroll (bplcon1)
+.hardscr_x              dc.w     $0000                    ; hard scroll x value - horizontal byte offset into display buffer
+.hardscr_last_x         dc.w     $0000                    ; previous hard scroll x value - used to detect scroll direction (left/right)
+.hardscr_dir_x          dc.w     $0000                    ; hard scroll direction x value - 0 = no scroll, 1 = scroll right, -1 = scroll left
+.tilescr_x              dc.w     $0000                    ; tile scroll x value - tile index offset for tilemap (left of window)
+.linescroll_y           dc.w     $0000                    ; line scroll y value - raster line offset for top of display buffer
+.splitscroll_y          dc.w     $0000                    ; split scroll y value - raster line for buffer wrap
+.hardscr_y              dc.l     $0000                    ; hard scroll y value - vertical byte offset into display buffer
+.hardscr_last_y         dc.l     $0000                    ; previous hard scroll y value - used to detect scroll direction (up/down)
+.hardscr_dir_y          dc.w     $0000                    ; hard scroll direction y value - 0 = no scroll, 1 = scroll down, -1 = scroll up
+.tilescr_y              dc.w     $0000                    ; tile scroll y value - tile index offset for tilemap (top of window)
+
+scrollBuffer2
+.bitplane_ptr           dc.l     $00000000                ; base bitplane ptr for current scroll buffer
+.softscr_x              dc.w     $0000                    ; soft scroll x value - h/w delay for scroll (bplcon1)
+.hardscr_x              dc.w     $0000                    ; hard scroll x value - horizontal byte offset into display buffer
+.hardscr_last_x         dc.w     $0000                    ; previous hard scroll x value - used to detect scroll direction (left/right)
+.hardscr_dir_x          dc.w     $0000                    ; hard scroll direction x value - 0 = no scroll, 1 = scroll right, -1 = scroll left
+.tilescr_x              dc.w     $0000                    ; tile scroll x value - tile index offset for tilemap (left of window)
+.linescroll_y           dc.w     $0000                    ; line scroll y value - raster line offset for top of display buffer
+.splitscroll_y          dc.w     $0000                    ; split scroll y value - raster line for buffer wrap
+.hardscr_y              dc.l     $0000                    ; hard scroll y value - vertical byte offset into display buffer
+.hardscr_last_y         dc.l     $0000                    ; previous hard scroll y value - used to detect scroll direction (up/down)
+.hardscr_dir_y          dc.w     $0000                    ; hard scroll direction y value - 0 = no scroll, 1 = scroll down, -1 = scroll up
+.tilescr_y              dc.w     $0000                    ; tile scroll y value - tile index offset for tilemap (top of window)
+
+
+
+                        ; IN:
+                        ;   a0.l - empty scrollbuffer structure ptr
+                        ;   a1.l - display buffer ptr (must be large enough for 4 bitplane 336x272 interleaved display, plus horizontal scroll)
+                        ;   d0.l - initial world window x value
+                        ;   d1.l - initial world window y value
+initialise_scroll_buffer
+            ; store bitplane ptr
+                        move.l    a1,SCRBUF_PTR(a0)             ; bitplane ptr
+
+            ; calculate and store horizontal scroll values
+                        move.w    d0,d7
+                        lsr.w     #3,d0                         ; convert world x to byte offset for hard scroll
+                        move.w    d0,SCRBUF_HARDSCR_X(a0)       ; hard scroll x value - byte offset for horizontal scroll
+                        move.w    d0,SCRBUF_HARDSCR_LAST_X(a0)  ; previous hard scroll x value - used to detect scroll direction (left/right)
+
+                ; calculate delay value for horizontal scroll (bplcon1)
+                        and.w     #$000f,d7                     ; mask off pixel scroll 0-15
+                        move.w    #$0f,d0                       ; calculate pixel delay
+                        sub.w     d7,d0
+
+                ; combine horizontal delay for odd & even bpls
+                        move.w    d0,d7
+                        lsl.w     #4,d7
+                        or.w      d7,d0  
+                        move.w    d0,SCRBUF_SOFTSCR_X(a0)       ; soft scroll x value - h/w delay for scroll (bplcon1)
+
+            ; calculate and store vertical scroll values
+
+
+                        rts
+
+
                     ;-----------------------------------------------
                     ; Initialise the tile map scroller
                     ; IN
                     ;    a0.l - tilemap address
+                    ;    a1.l - display buffer1 addres ptr
+                    ;    a2.l - display buffer2 address ptr
+                    ;    a3.l - scroll buffer structure address ptr (see scrollBuffer1 structure)
+                    ;
 scroll_initialise
                     move.l    a0,tilemap_ptr
                     move.w    (a0)+,tilemap_width
@@ -308,7 +407,7 @@ scroll_initialise
                     ;    d0.l - world-x delta position change
                     ;    d1.l - world-y delta position change
 scroll_window
-                     move.w   #$fff,$dff180
+                    move.w   #$fff,$dff180
                     bsr.s     _add_world_window_x
                     bsr.s     _add_world_window_y
                     move.w  #$0ff,$dff180
@@ -503,7 +602,7 @@ _set_world_window_y_display_offsets
                     moveq.l   #0,d0
                     move.w    world_window_y,d0
                     lsr.w     #4,d0                              ; d0 = tile count y
-                    move.w    d0,tile_scroll_y
+                    move.w    d0,tile_scroll_y                  ; tilemap y offset (top of window) 
 
                     moveq.l   #0,d1
                     move.w    world_window_last_y,d1
