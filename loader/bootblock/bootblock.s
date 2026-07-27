@@ -91,11 +91,18 @@ bootcode:       bra.b initboot
 
 
                 ;----------------------- copy memory routine ------------------------------
-                ; relocate the boot loader and continue execution from 'relocatedboot:' 
+                ; relocate the boot loader and continue execution from 'relocatedboot:'
+                ; NOTE: size-critical — this routine is itself relocated to $40E (see below)
+                ; and 'initboot' is assumed to land immediately after it at $418, i.e. this
+                ; routine must assemble to exactly 5 words (10 bytes). That only holds because
+                ; 'sub.l #$00000001,D0' assembles as SUBQ.L (1 word) and 'jmp $000004ba'
+                ; assembles as absolute-short (2 words) despite neither being written with an
+                ; explicit size suffix. If either is ever forced to a longer encoding, the
+                ; relocation math below (and the $418 landing address) will break.
 copymemory:     move.w  (A0)+,(A1)+
                 sub.l   #$00000001,D0
                 bne.b   copymemory
-                jmp     $000004ba                       ; Execute relocated code @relocatedboot:  
+                jmp     $000004ba                       ; Execute relocated code @relocatedboot:
 
 
 
@@ -359,7 +366,12 @@ readtrack:
                 MOVE.W #$9500,ADKCON(A6)                ; Set MFM Settings, MFMPREC, WORDSYNC, FAST         
                 MOVE.W #$4489,DSKSYNC(A6)               ; Set standard DOS SYNC Mark $4489          
                 MOVEA.L $0004(A7),A0                    ; Raw MFM Buffer from A0 stored on stack
-                MOVE.W #$4489,(A0)+                     ; Insert Sync Mark into raw MFM Buffer (strange, maybe bug fix hack for decode routine?)
+                MOVE.W #$4489,(A0)+                     ; Pre-seed a sync mark at the start of the buffer. The disk
+                                                        ; controller's hardware sync-detect consumes the first sync
+                                                        ; word pair without writing it to memory, so the first sector's
+                                                        ; leading sync mark would otherwise be missing from the captured
+                                                        ; buffer while every other sector's is present. This gives the
+                                                        ; decode loop's sync-scan a uniform marker for sector 1 too.
                 MOVE.L A0,DSKPT(A6)                     ; Set MFM BUffer for DMA
                 MOVE.W #$0002,INTREQ(A6)                ; Clear DSKBLK (Disk Block Finished) Interrupt Flag 
                 MOVE.W #$99ff,D0                        ; Disk DMA read settings (DMAEN, 13 bit read length)
@@ -428,8 +440,10 @@ decodemfmbuffer:
                 BEQ.B .endofbuffer                              ; have we reached end of buffer?
 
                 SUBA.L #$00000002,A0                            ; Correct MFM Buffer PTR (start of admin block)
-                SUB.W #$00000001,D2                             ; Should this be Add.w #$1 to the loop counter
-                                                                ; looks like a small bug to me which never/rarely manifests.
+                SUB.W #$00000001,D2                             ; NOTE: double-decrements the safety-bound loop counter
+                                                                ; (D2 was already decremented by the DBNE above). Harmless
+                                                                ; in practice given the buffer's size margin, but is
+                                                                ; technically an off-by-one; ADD.W #$1,D2 would correct it.
 .decodesector 
                 MOVEM.L A0-A1,-(A7)
                 LEA.L $0008(A7),A1                              ; Admin Block decode buffer held on the stack

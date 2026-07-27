@@ -734,7 +734,8 @@ cp_toggle_tvd                                                       ; original r
                 LEA.L   cp_end(PC),A0                               ; A0 = Address of copy protection end routine 'cp_end' $0000139C 
                 MOVE.L  A0,$00000020                                ; Set 'cp_end' in Privilege Violation Exception Vector, maybe a protection mechanism to prevent tampering.
                 ADD.L   #$00000002,$000e(A7)                        ; Increment the return address on stack 2 bytes
-                OR.B    #$07,$000c(A7)                              ; Enable Interrupts
+                OR.B    #$07,$000c(A7)                              ; Disable Interrupts (set IPL mask to 7 in the pending SR
+                                                                     ; on the stack) so nothing interrupts mid-trace
                 BCHG.B  #$07,$000c(A7)                              ; Toggle the 68000 trace bit on/off
                 LEA.L   cp_decode_instructions(PC),A1               ; unused (locatopn previously used for encode/decode)
                 MOVEM.L (A7)+,D0/A0-A1                              ; restore registers from the stack
@@ -998,10 +999,13 @@ exit_do_protection_check                                            ; original a
 
                 ;------------------------ check bytes read --------------------------
                 ; checks the number of bytes read in by successive calls to
-                ; cp_load_data2, best I can work out is that the values readd in
-                ; are checked to see if the difference between the number of bytes
-                ; read in by successive calls to 'cp_load_data2' fall within
-                ; the allowed tolerance.  Will revisit this after having a think...
+                ; cp_load_data2. The difference between the two counts, expressed as a
+                ; percentage of the earlier count (100*(D0-D1)/D1), must be at least 3%.
+                ; This is very likely validating rotational/timing consistency between two
+                ; consecutive sync-mark reads off the spinning disk - a check that's
+                ; naturally satisfied by genuine flux-level disk duplication but easy to
+                ; break with a naive track-image copy (still an inference, not confirmed
+                ; against original source/docs).
                 ;
                 ; IN: D0.l - Count of previous bytes read
                 ; IN: D1.l - COunt of previous bytes read
@@ -1239,15 +1243,20 @@ cp_read_disk                                                        ; original r
                 ; NB: The D2 counter value is then ignored and reused for read loops below.
                 ;
                 ;
+                ; Both read loops use the standard manual-disk-read idiom: DSKBYTR is polled as
+                ; a WORD, and BPL tests bit 15 of that word (the DSKBYT ready-strobe bit), not
+                ; bit 7 of the data byte. The CPU spins reading DSKBYTR until the ready-strobe
+                ; goes high (word becomes negative), at which point the low byte holds a freshly
+                ; clocked-in disk byte; every such byte is stored unconditionally, none are
+                ; filtered by value.
+                ;
                 ; In read loop 1:
-                ; It only seems interested in reading -ve bytes (i.e. bytes with Bit 7 = 1)
-                ; into the memory buffer (50 bytes in total) 
-                ; skips all +ve bytes, but counts all bytes read in D1 (including skipped bytes)
+                ; Polls for the ready-strobe and stores each byte as it arrives, filling the
+                ; memory buffer (50 bytes in total), counting all bytes read in D1.
                 ;
                 ; In read loop 2:
-                ; Wants to read a further 974 bytes from the disk but doesn't store these.
-                ; It only seems interested in reading -ve bytes (i.e. bytes with Bit 7 = 1)
-                ; It continues to count the number of bytes read in D1 (including the skipped bytes)
+                ; Polls for a further 974 ready-strobed bytes from the disk but doesn't store
+                ; these, only counting the number of bytes read in D1.
                 ;
                 ; Finally:
                 ; It only returns with success if the DSKBLK interrupt has been signalled in INTREQ
@@ -1288,7 +1297,7 @@ read_protected_track                                                ; original r
 .manual_read_loop_1
                 ADD.L   #$00000001,D1                               ; D1 = increment bytes read count
                 MOVE.W  DSKBYTR(A0),D0                              ; manually read from the disk
-                BPL.B   .manual_read_loop_1                         ; MSB of Disk Data = 0, jmp $000011B2
+                BPL.B   .manual_read_loop_1                         ; DSKBYT ready-strobe (bit 15) = 0, keep polling, jmp $000011B2
 .store_read_byte
                 MOVE.B  D0,(A1)+                                    ; store disk byte into LoadBuffer
                 DBF.W   D2,.manual_read_loop_1                      ; while main loop counter >= 0, jmp $000011B2         
@@ -1301,8 +1310,8 @@ read_protected_track                                                ; original r
 .manual_read_loop_2
                 ADD.L   #$00000001,D1                               ; D1 = increment bytes read counter
                 MOVE.W  DSKBYTR(A0),D0
-                BPL.B   .manual_read_loop_2                         ; MSB of Disk Data = 0, jmp $000011C4
-                DBF.W   D2,.manual_read_loop_2                      ; read 974 bytes where MSB = 1, jmp $000011C4
+                BPL.B   .manual_read_loop_2                         ; DSKBYT ready-strobe (bit 15) = 0, keep polling, jmp $000011C4
+                DBF.W   D2,.manual_read_loop_2                      ; read 974 ready-strobed bytes, jmp $000011C4
 
 .exit_main_loop
                 MOVE.W  INTREQR(A0),D0                              ; D0 = Interrupt Request Bits
@@ -1666,6 +1675,14 @@ cp_end_protection_check                                             ; original r
                 ; - A6 = 00DFF000   
                 ; - A7 = 00000818 
 cp_end                                                              ; original routine start address $0000139C
+                                                                    ; *** THIS IS THE CRACK: the original code compared the
+                                                                    ; protection checksum with 'cmp.l #$FF7EEFAB,D0' and set
+                                                                    ; Z accordingly. That compare has been replaced below with
+                                                                    ; an unconditional zero and a forced success status, so the
+                                                                    ; checksum result is discarded and the protection check
+                                                                    ; always passes regardless of what was actually read from
+                                                                    ; the disk. This is the single point where the copy
+                                                                    ; protection is neutralised.
                                                                     ; original code cmp.l #$FF7EEFAB,D0
                 MOVE.L  #$00000000,D0                               ; Hack Value into D0.l
                 MOVE.W  #$0001,ld_load_status                       ; Hack Value #$0001 into status value - $00001b08 ; set load status
@@ -2143,12 +2160,22 @@ load_file_entries                                                   ; original r
                 ; off into other routines. Obviously it must work, but could be massively refactored.
                 ; maybe done in a rush?? who knows... 
                 ;----------------------------------------------------------------------------------------------------
-                ; Code files processed in - iff_inner_huff_chunk 
-                ;                         - Best Guess, Huffman Endoded Chunk, (Googled, can't find any info) contains...
+                ; Code files processed in - iff_inner_huff_chunk
+                ;                         - Confirmed: a standard canonical Huffman-coded chunk (see full analysis
+                ;                         - in iff_process_code below). Not a Rob Northen Compression (RNC) format -
+                ;                         - RNC's real ProPack compressor postdates this game (1991 vs 1989 release),
+                ;                         - real RNC files carry an "RNC" signature (none present here), and RNC uses
+                ;                         - LZ77 + three Huffman trees, whereas this is a single flat tree with no LZ.
+                ;                         - (Rob Northen's genuine work in this codebase is the separate Copylock
+                ;                         - disk protection, unrelated to this HUFF chunk format.)
                 ;                         - ID = 'HUFF', sub chunks/blocks
-                ;                                        - ID = 'SIZE'
-                ;                                        - ID = 'CODE'
-                ;                                        - ID = 'TREE'
+                ;                                        - ID = 'SIZE' - decoded (decompressed) size in bytes
+                ;                                        - ID = 'CODE' - Huffman-coded bitstream, MSB-first, 16 bits/word
+                ;                                        - ID = 'TREE' - flattened binary Huffman tree, 2 words/node:
+                ;                                                        word+0 = bit-0 child, word+2 = bit-1 child;
+                ;                                                        negative word = leaf (low byte = output byte),
+                ;                                                        non-negative word = forward relative offset
+                ;                                                        to the next node.
                 ; Images processed in - iff_ilbm_chunk
                 ;                           - Colours are stored at adress $000014B8 (copper_colours) registers of loader copper list.
                 ;                           - Bitmap Header Address is stored in location: $00001A08 (bitmap_header_address)
@@ -2405,15 +2432,10 @@ iff_body                                                            ; original r
 
 
                 ;------------------------- iff huff chunk -----------------------------
-                ;-- Can't fins any information regarding a 'HUFF' chunk id for IFF
-                ;-- files, after having a think about it.
-                ;--
-                ;-- My best guess would be that it's a Huffman Encoded chunk that
-                ;-- Consists of a SIZE, TREE, and CODE block.
-                ;--
-                ;-- May come back to this at some point in the future to decode
-                ;-- but i'll probably just use the existing code to decode the 
-                ;-- data and then forget about this.
+                ;-- Confirmed: a custom 'HUFF' IFF chunk (not a standard/documented IFF
+                ;-- type, and not Rob Northen Compression - see header note above) holding
+                ;-- a canonical Huffman-encoded block, made up of a SIZE, CODE, and TREE
+                ;-- sub-chunk. See iff_process_code below for the full decode algorithm.
                 ;--
                 ;-- IN: A0 = start of data chunk (chunk len)
                 ;-- IN: D0 = file length/bytes remaining
@@ -2421,10 +2443,15 @@ iff_body                                                            ; original r
                 ;-- IN: ld_relocate_addr = dest addr
                 ;--
 iff_huff_chunk
-                ; create 3 long words storage on the stack                             
-                CLR.L   -(A7)                                       ; SIZE Long Word 
-                CLR.L   -(A7)                                       ; CODE source address ptr
-                CLR.L   -(A7)                                       ; TREE source address ptr
+                ; create 3 long words storage on the stack. The stack grows downward and
+                ; A6 is set below to point just above these 3 slots (see MOVEA.L A7,A6
+                ; below), so the LAST slot pushed ends up at the LOWEST offset from A6.
+                ; That means these 3 slots end up as $0004(A6)=SIZE, $0008(A6)=CODE,
+                ; $000c(A6)=TREE (confirmed by what iff_size/iff_code/iff_tree actually
+                ; write to below) - the reverse of the push order read top-to-bottom here.
+                CLR.L   -(A7)                                       ; ends up as TREE source address ptr @ $000c(A6)
+                CLR.L   -(A7)                                       ; ends up as CODE source address ptr @ $0008(A6)
+                CLR.L   -(A7)                                       ; ends up as SIZE Long Word @ $0004(A6)
 
                 MOVE.L  A6,-(A7)                                    ; store A6 on stack
                 MOVEA.L A7,A6                                       ; A6 = stack base ptr
@@ -2444,7 +2471,7 @@ iff_huff_chunk
                 BEQ.B   .huff_block_exit                            ; jmp $0000184A
                 TST.L   $000c(A6)
                 BEQ.B   .huff_block_exit                            ; jmp $0000184A
-                MOVEM.L $0004(A6),D0/A0-A1                          ; D0 = Code Size, A1 = Code Address, A2 = Tree Address
+                MOVEM.L $0004(A6),D0/A0-A1                          ; D0 = SIZE, A0 = CODE address, A1 = TREE address
                 BSR.W   iff_process_code                            ; call $0000190C
 
 .huff_block_exit
@@ -2585,12 +2612,18 @@ iff_tree                                                            ; original r
 
 
                 ;------------------------- iff process code -------------------------------
-                ;-- process iff code block, this is unfamiliar to me, unsure what data
-                ;-- structures and values are held in the CODE & TREE blocks.
-                ;-- research required.
+                ;-- Canonical Huffman decoder. CODE holds the encoded bitstream, consumed
+                ;-- MSB-first 16 bits/word via the ADD.W D2,D2 + BCC shift-and-test-carry
+                ;-- trick below (D2 = current code word, shifted left each iteration; carry
+                ;-- out is the next bit). TREE is a flattened binary tree, 2 words per node:
+                ;-- a negative word is a leaf (low byte = decoded output byte); a
+                ;-- non-negative word is a forward relative offset to the next node. The
+                ;-- tree pointer A3 walks from the root (A1) on each symbol; a 1-bit (carry
+                ;-- set) steps to the offset child, a 0-bit takes the adjacent word. The
+                ;-- bit-buffer (D1/D2) persists across symbol boundaries, as required for
+                ;-- variable-length codes.
                 ;--
-                ;-- what data exists in the CODE & TREE sections
-                ;-- IN: D0 = SIZE
+                ;-- IN: D0 = SIZE (decoded output byte count)
                 ;-- IN: A0 = CODE address ptr
                 ;-- IN: A1 = TREE address ptr
 iff_process_code
