@@ -858,19 +858,19 @@ _do_init_player_score
                 move.b  PANEL_HighScore_BCD+1,d0                             ; d0.b = byte value, $0007c879
                 ; plot 2 digits at x=8, y=14
                 move.w  #$080e,d1                                   ; d1.w = X,Y (08,0e)
-                bsr.w   plot_digits                                 ; calls $0007fd66 (d0 = chars, d1 = x,y)
+                bsr.w   _plot_score_digits                                 ; calls $0007fd66 (d0 = chars, d1 = x,y)
                 
                 ; plot hi-score mid 2 digits
                 move.b  PANEL_HighScore_BCD+2,d0
                 ; plot 2 digits at x=10, y=14
                 move.w  #$0a0e,d1
-                bsr.w   plot_digits                                 ; calls $0007fd66
+                bsr.w   _plot_score_digits                                 ; calls $0007fd66
                 
                 ; plot hi-score low 2 digits
                 move.b  PANEL_HighScore_BCD+3,d0
                 ; plot 2 digits at x=12, y=14
                 move.w  #$0c0e,d1
-                bsr.w   plot_digits                                 ; cllas $0007fd66
+                bsr.w   _plot_score_digits                                 ; cllas $0007fd66
                 
                ; set initial score update parameter value to 0 
                moveq   #$00,d0
@@ -928,7 +928,7 @@ _do_update_player_score
                 move.b  d0,PANEL_player_score_display_value_BCD+3             ; d0 = 2 digits for display
                 ; plot 2 digits, x=12, y=30
                 move.w  #$0c1e,d1                                   ; d1 = x,y
-                bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
+                bsr.w   _plot_score_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
 
 .display_score_mid_digits ; update display digits only if changed
                 move.b  PANEL_PlayerScore_BCD+2,d0
@@ -937,7 +937,7 @@ _do_update_player_score
                 move.b  d0,PANEL_player_score_display_value_BCD+2
                 ; plot 2 digits, x=10, y=30
                 move.w  #$0a1e,d1
-                bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
+                bsr.w   _plot_score_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
 
 .display_score_hi_digits ; update display digits only if changed
                 move.b  PANEL_PlayerScore_BCD+1,d0
@@ -946,7 +946,7 @@ _do_update_player_score
                 move.b  d0,PANEL_player_score_display_value_BCD+1
                 ; plot 2 digits, x=8, y=30
                 move.w  #$081e,d1
-                bsr.w   plot_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
+                bsr.w   _plot_score_digits                                 ; calls $0007fd66, d1=x,y, d0 = chars
 
 .chk_high_score ; check if player score is high score
                 move.l  PANEL_HighScore_BCD,d0
@@ -961,7 +961,7 @@ _do_update_player_score
                 beq.b   .plot_hiscore_mid_digits
                 ; plot 2 digits, x=12, y=14
                 move.w  #$0c0e,d1       
-                bsr.w   plot_digits 
+                bsr.w   _plot_score_digits 
 
 .plot_hiscore_mid_digits ; update display digits only if player score > hi-score
                 move.b  PANEL_PlayerScore_BCD+2,d0
@@ -969,7 +969,7 @@ _do_update_player_score
                 beq.b   .plot_hiscore_hi_digits 
                 ; plot 2 digits, x=10, y=14
                 move.w  #$0a0e,d1
-                bsr.w   plot_digits 
+                bsr.w   _plot_score_digits 
 
 .plot_hiscore_hi_digits ; update display digits only if player score > hi-score
                 move.b  PANEL_PlayerScore_BCD+1,d0
@@ -977,7 +977,7 @@ _do_update_player_score
                 beq.b   .store_high_score
                 ; plot 2 digits, x=8, y=14
                 move.w  #$080e,d1
-                bsr.w   plot_digits  
+                bsr.w   _plot_score_digits  
 
 .store_high_score  ; copy player score to hi-score
                 move.l PANEL_PlayerScore_BCD,PANEL_HighScore_BCD
@@ -1063,192 +1063,276 @@ _do_panel_update
 
                ; if minutes decremented then seconds must be set to 59, not 99
 .check_minutes_decremented
-                move.b  PANEL_clock_timer_seconds_BCD,d0    
-                and.b   #$f0,d0                             
-                cmp.b   #$90,d0                                     ; if seconds value starts with '9' then minutes were decremented
-                bne.b   .display_clock_timer_value                  ; else continue to display clock_timer value $0007fcf2
+               move.b  PANEL_clock_timer_seconds_BCD,d0    
+               and.b   #$f0,d0                             
+               cmp.b   #$90,d0                                     ; if seconds value starts with '9' then minutes were decremented
+               bne.b   .display_clock_timer_value                  ; else continue to display clock_timer value $0007fcf2
 .minutes_decremented
-                move.b  #$59,PANEL_clock_timer_seconds_BCD           ; set seconds from '99' to '59' for correct seconds value as BCD $7c885
+               move.b  #$59,PANEL_clock_timer_seconds_BCD           ; set seconds from '99' to '59' for correct seconds value as BCD $7c885
 
 .display_clock_timer_value
-                bsr.w   _display_level_timer       
+               bsr.w   _display_level_timer       
 
 
                ; animate clock minutes/seconds separator ':' character
                ; every half second, alternate between character #$000a and #$000b
 .animate_clock_timer_separator
-                move.w  #$000a,d0
-                cmp.w   #TICKS_PER_HALF_SECOND,PANEL_frame_tick_counter  
-                beq.b   .display_timer_seperator          
+               move.w  #$000a,d0
+               cmp.w   #TICKS_PER_HALF_SECOND,PANEL_frame_tick_counter  
+               beq.b   .display_timer_seperator          
                 
-                cmp.w   #TICKS_PER_SECOND,PANEL_frame_tick_counter     
-                bne.b   .exit_do_panel_update       
-                move.w  #$000b,d0                   
+               cmp.w   #TICKS_PER_SECOND,PANEL_frame_tick_counter     
+               bne.b   .exit_do_panel_update       
+               move.w  #$000b,d0                   
                                                      
 .display_timer_seperator
                ; plot character, x=29, y=25
-                move.w  #$1d19,d1               
-                bsr.w   display_timer_digit   
+               move.w  #$1d19,d1               
+               bsr.w   _display_timer_digit   
 
 .exit_do_panel_update
-                rts                     
+               rts                     
 
 .clock_timer_expired                         
-                bset.b  #PANEL_SB01_TIMER_EXPIRED,PANEL_StatusByte_01   
-                bra.w   .animate_clock_timer_separator    
+               bset.b  #PANEL_SB01_TIMER_EXPIRED,PANEL_StatusByte_01   
+               bra.w   .animate_clock_timer_separator    
+               ; rts in above routine returns to caller
 
 
 
 
 
-
-                ;-------------------------- Display Level Timer --------------------------
-                ; Displays 'minutes:seconds' (00:00) timer digits on the panel display.     
-                ; uses:
-                ; - d0  - lower 4 bts = BCD digit to display (0 - 9)
-                ;
-                ; - d1  - X,Y co-oord
-                ;       - x = (8-15) byte, offset from the left
-                ;       - y = (0-7)  byte, lines from top of display (320 wide assumed))
-                ;
-                ; - calls display_timer_digit - $0007c885
-                ;       - display each timer digit in-turn
-                ;
-                
-                ;
-_display_level_timer                                                 ; original routine address $0007fd28
-                moveq   #$00,d0                                     ; d0.l = 0 - holds BCD digit to disply
-.disply_1st     move.b  PANEL_clock_timer_seconds_BCD,d0                      ; d0.b = clock timer seconds in BCD from location $0007c885
-                move.w  #$1f19,d1                                   ; d1.w = #$1f19 (x = 31, y = 25 - display co-ords)
-                bsr.w   display_timer_digit                         ; Display the digit in lower 4 bits of d0, calls $0007fde2
-.display_2nd    move.b  PANEL_clock_timer_seconds_BCD,d0                      ; d0.b = clock timer seconds in BCD from location $0007c885
-                lsr.b   #$04,d0                                     ; shift 2nd digit into low 4 bits for display
-                move.w  #$1e19,d1                                   ; d1.w = #$1e19 (x = 30, y = 25 - display co-ords)
-                bsr.w   display_timer_digit                         ; Display the digit in lower 4 bits of d0, calls $0007fde2
-.display_3rd    move.b  PANEL_clock_timer_minutes_BCD,d0                      ; d0.b = clock timer minutes in BCD from location $0007c885
-                move.w  #$1c19,d1                                   ; d1.w = #$1c19 (x = 28, y = 25 - display co-ords)
-                bsr.w   display_timer_digit                         ; Display the digit in lower 4 bits of d0, calls $0007fde2
-.display_4th    move.b  PANEL_clock_timer_minutes_BCD,d0                      ; d0.b = clock timer minutes in BCD from location $0007c885
-                lsr.b   #$04,d0                                     ; shift 2nd digit into low 4 bits for display
-                move.w  #$1b19,d1                                   ; d1.w = #$1b19 (x = 27, y = 25 - display co-ords)
-                bra.w   display_timer_digit                         ; Display the digit in lower 4 bits of d0, calls $0007fde2
+               ;-------------------------- Display Level Timer --------------------------
+               ; Displays 'minutes:seconds' (00:00) timer digits on the panel display.     
+               ; NB: it doesn't draw/animate the ':' separator, that's done during the
+               ;     PANEL_Update() rouine, called every frame
+               ;
+               ;    Original Address $0007fd28
+               ;
+               ;    PRIVATE void _display_level_timer(void)
+               ;
+               ; Notes:
+               ; - d0  - used to hold lower 4 bts = BCD digit to display (0 - 9)
+               ;
+               ; - d1  - X,Y co-oord
+               ;       - x = (8-15) byte, offset from the left
+               ;       - y = (0-7)  byte, lines from top of display (320 wide assumed))
+               ;
+_display_level_timer              
+               ; clear digit display byte
+               moveq   #$00,d0                                     
+               ; display low seconds digit (mm:sS)
+               ; x = 31 ($1f), y = 25 ($19)
+.disply_1st    move.b  PANEL_clock_timer_seconds_BCD,d0   
+               move.w  #$1f19,d1                          
+               bsr.w   _display_timer_digit                
+               ; display high seconds digit (mm:Ss) 
+               ; x = 30 ($1e), y = 25 ($19)
+.display_2nd   move.b  PANEL_clock_timer_seconds_BCD,d0   
+               lsr.b   #$04,d0                            
+               move.w  #$1e19,d1                          
+               bsr.w   _display_timer_digit                
+               ; display low minutes digit (mM:ss)
+               ; x = 28 ($1c), y = 25 ($19)
+.display_3rd   move.b  PANEL_clock_timer_minutes_BCD,d0   
+               move.w  #$1c19,d1                          
+               bsr.w   _display_timer_digit                
+               ; display high minutes digit (Mm:ss)
+               ; x = 27 ($1b), y= 25 ($19)
+.display_4th   move.b  PANEL_clock_timer_minutes_BCD,d0   
+               lsr.b   #$04,d0                            
+               move.w  #$1b19,d1                          
+               bra.w   _display_timer_digit                
                 ; uses rts in last call to return
 
 
 
 
 
-                ;------------------------ plot digits -----------------------
-                ; Plots score digits (2 digits at a time). Digits are passed
-                ; in as BCD encoded digits in d0.w.
-                ;
-                ; plots a 8x7 pixel character into 4 bitplanes into a 
-                ; location inside the PANEL_background_gfx
-                ;
-                ; IN: d0.w  - 2 BCD Characters to write
-                ; IN: d1.w  - x,y characters as high/low bytes in word.
-                ; 
-plot_digits                                                         ; original routine address 0007fd66
-                bsr.w   draw_digit                                  ; display first character, call $0007fd70
+               ;------------------------ plot digits -----------------------
+               ; Plots score digits (2 digits at a time). Digits are passed
+               ; in as BCD encoded digits in d0.w.
+               ;
+               ; plots a 8x7 pixel character into 4 bitplanes into a 
+               ; location inside the PANEL_background_gfx
+               ;
+               ;   Original Address $0007fd66
+               ;
+               ;   PRIVATE void _plot_score_digits(
+               ;                  d0.b - twoDigitsBCD,
+               ;                  d1.w - xyPosition)
+               ;
+               ; IN: d0.b = twoDigitsBCD - 2 BCD Characters to write (1 nibble each)
+               ; IN: d1.w = xyPosition   - x,y position to draw as high/low bytes in word.
+               ;                         - x = x byte position
+               ;                         - y = y line position
+_plot_score_digits        
+.display_1st_digit
+               ; display low digit stored in low nibble d0.b
+               ; at position d1.w (x,y)
+               bsr.w   _draw_score_digit
 .display_2nd_digit
-                lsr.b   #$04,d0                                     ; d0 = second bcd digit.
-                sub.w   #$0100,d1                                   ; d1 = updated x co-ordinate
-                ; fall through to display the second character
+               ; rotate high digit into low nibble d0.b
+               ; subtract 1 from x position d1.w (x,y)
+               lsr.b   #$04,d0             
+               sub.w   #$0100,d1 
+               ; fall through to _draw_score_digit and display the second character
 
 
+               ;------------------------ draw char -------------------------
+               ; use processor to display a single score digit on the panel
+               ; at the specified x,y position into the panel gfx display.
+               ; score character set = 8x7 - 4 bitplanes
+               ;
+               ;   Original Address $0007fd70
+               ;
+               ;   PRIVATE void _draw_score_digit(
+               ;                  d0.b = digitBCD,
+               ;                  d1.w = xyPosition)
+               ;
+               ; IN: d0.b = digitBCD   - low 4 bits = BCD Characters to write (digits)
+               ; IN: d1.w = xyPosition - X,Y plot co-ords (x = bytes offset, y = line count)
+               ;
+SCORE_DIGIT_BYTES_PER_LINE    EQU  $2
+SCORE_DIGIT_PLANE_BYTES       EQU  $7*SCORE_DIGIT_BYTES_PER_LINE      ; 14 bytes per bitplane per character (each line stored as 1 word)
+SCORE_DIGIT_BYTE_SIZE         EQU  $4*SCORE_DIGIT_PLANE_BYTES         ; 4 bitplanes char = 56 bytes
 
+_draw_score_digit    
+               ; save d0.b - BCD Digit(s)
+               ; save d1.w - x,y Poiition     
+               movem.l d0-d1,-(a7)
 
-                ;------------------------ draw char -------------------------
-                ; IN: d0.b  - low 4 bits = BCD Characters to write (digits)
-                ; IN: d1.w  - X,Y plot co-ords (x = bytes offset, y = line count)
-                ;
-                ; NB: Source GFX address doesnot make sense, which is why this
-                ;       is probably a debug routine, not in use by the game (TBD)
-                ;
-draw_digit                                                          ; original routine address $0007fd70
-                movem.l d0-d1,-(a7)
-                moveq   #$00,d2                                     ; d2.l = $0
-                move.b  d1,d2                                       ; d2 = y (scan line offset)
-                lsr.w   #$08,d1                                     ; d1 = x (byte offset)
-                mulu.w  #$0028,d2                                   ; multiply y * 40 (320 pixels), d2 = scan line value
-                add.l   #PANEL_background_gfx,d2                               ; d2 = start scan line into PANEL_background_gfx,         PANEL_background_gfx = $0007c89a
-                add.b   d1,d2                                       ; d2 = add byte offset into scan line
-                movea.l d2,a0                                       ; a0 = destination address.
+               ; calculate destination byte offset
+               ; into Panel gfx display
+               moveq   #$00,d2                        
+               move.b  d1,d2                          
+               lsr.w   #$08,d1                        
+               mulu.w  #PANEL_DISPLAY_BYTEWIDTH,d2    
+               add.l   #PANEL_background_gfx,d2    
+               add.b   d1,d2                       
+               movea.l d2,a0 
 
-                and.b   #$0f,d0                                     ; d0 = low 4 bits bcd character
-                bne.b   .not_zero
+               ; mask low nibble of BCD digit for display
+               and.b   #$0f,d0                                     ; d0 = low 4 bits bcd character
+ 
+               ; 0 stored at end of gfx instead of start
+               bne.b   .not_zero
 .is_zero
-                movea.l #PANEL_score_digits_gfx+(56*9),a1                     ; address of '0' character (at end of 1-9)
-                bra.w   .do_plot 
+               ; if BCD digit is 0 then set source ptr to '0' char
+               movea.l #PANEL_score_digits_gfx+(56*9),a1                     ; address of '0' character (at end of 1-9)
+               bra.w   .do_draw_char 
 .not_zero
-                mulu.w  #$0038,d0                                   ; d0 = d0 * 56 (56 bytes, 28 words) ,28/4 = 7 pixels high
-                add.l   #PANEL_score_digits_gfx-56,d0                         ; start of digit gfx - 56 bytes, original address $0007f0a2, gfx starts at '1' instead of '0'
-                movea.l d0,a1                                       ; a1 = source gfx ptr of require digit
-.do_plot
-                moveq   #$03,d2                                     ; 3 + 1 - counter (4 lines of gfx, 4 bitplanes)
-.plot_loop
-                move.b  (a1),(a0)                                   ; copy src gfx -> dest line 1.
-                move.b  $0002(a1),$0028(a0)                         ; copy src gfx -> dest line 2.
-                move.b  $0004(a1),$0050(a0)                         ; copy src gfx -> dest line 3.
-                move.b  $0006(a1),$0078(a0)                         ; copy src gfx -> dest line 4.
-                move.b  $0008(a1),$00a0(a0)                         ; copy src gfx -> dest line 5.
-                move.b  $000a(a1),$00c8(a0)                         ; copy src gfx -> dest line 6.
-                move.b  $000c(a1),$00f0(a0)                         ; copy src gfx -> dest line 7.
-                adda.l  #$00000780,a0                               ; dest next bitplane
-                adda.l  #$0000000e,a1                               ; src next bitplane
-                dbf.w   d2,.plot_loop                               ; plot loop,
-                movem.l (a7)+,d0-d1
-                rts
+.calc_source_gfx
+               ; calc source gfx ptr (NB not 0 based due to order of character gfx,
+               ; i.e. 1,2,3,4,5,6,7,8,9,0 - hence -56 bytes below)
+               mulu.w  #SCORE_DIGIT_BYTE_SIZE,d0   
+               add.l   #PANEL_score_digits_gfx-56,d0                         ; start of digit gfx - 56 bytes, original address $0007f0a2, gfx starts at '1' instead of '0'
+               movea.l d0,a1                                       ; a1 = source gfx ptr of require digit
+.do_draw_char
+               moveq   #PANEL_DISPLAY_BITPLANEDEPTH-1,d2                                     ; 3 + 1 - counter (4 lines of gfx, 4 bitplanes)
+.bitplane_loop
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*0(a1),PANEL_DISPLAY_BYTEWIDTH*0(a0)
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*1(a1),PANEL_DISPLAY_BYTEWIDTH*1(a0) 
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*2(a1),PANEL_DISPLAY_BYTEWIDTH*2(a0) 
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*3(a1),PANEL_DISPLAY_BYTEWIDTH*3(a0) 
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*4(a1),PANEL_DISPLAY_BYTEWIDTH*4(a0) 
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*5(a1),PANEL_DISPLAY_BYTEWIDTH*5(a0) 
+                    move.b  SCORE_DIGIT_BYTES_PER_LINE*6(a1),PANEL_DISPLAY_BYTEWIDTH*6(a0)  
+                    ; update next bitplane ptrs
+                    adda.l  #PANEL_DISPLAY_BITPLANEBYTES,a0                               ; dest next bitplane
+                    adda.l  #SCORE_DIGIT_PLANE_BYTES,a1                 ; src next bitplane
+               dbf.w   d2,.bitplane_loop                               ; plot loop,
+               
+               ; restore BCD digit (d0.b)
+               ; restore xy Position (d1.w)
+               movem.l (a7)+,d0-d1
+               rts
 
 
 
 
-                ;--------------------- display timer digit  --------------------------
-                ; The BCD digit to displayis passed in in the lower 4 bits of d0
-                ; The co-ords passed in d1
-                ;
-                ; IN: d0.b = BCD value to display (byte)
-                ;            - values 10 & 11 are animation for timer separator ':'
-                ;
-                ; IN: d1.w = x,y location to display the digits (x = horizontal bytes offest, y = scanline offset)
-                ;
-                ; called by:
-                ;   - display_level_timer   - (display digits 'xx xx')
-                ;   - do_panel_update       - (display separator ':')
-                ;
-display_timer_digit                                                 ; original routine address $0007fde2
-                and.l   #$0000ffff,d0                               ; clamp d0.l to a 16bit word
-                movem.l d0-d2,-(a7)                                 ; save registers
-                moveq   #$00,d2                                     ; d2.l = 0
-                move.b  d1,d2                                       ; d2.b = Y offset in bytes
-                lsr.w   #$08,d1                                     ; d1.b = X offset in pixels
-                mulu.w  #$0028,d2                                   ; d2 = Y offset in bytes (#$28 = 40 bytes per digit)
-                add.l   #PANEL_background_gfx,d2                               ; PANEL_background_gfx address = $0007c89a
-                add.w   d1,d2                                       ; d2 = start address in panel to draw the digit
-                movea.l d2,a0                                       ; a0 = start address in panel to draw the digit
-                and.w   #$000f,d0                                   ; d0 = first digit to draw
-                add.w   d0,d0                                       ; d0 = word index to digit gfx
-                lea.l   digit_gfx_offset_table,a2                   ; a2 = digit gfx offset lookup tablle
-                move.w  (a2,d0),d0                                  ; d0 = digit byte offset into gfx data
-                add.l   #PANEL_timer_digit_gfx,d0                         ; d0 = address of digit to draw
-                movea.l d0,a1                                       ; a1 = address of digit to draw
-                moveq   #$03,d2                                     ; d2 = 3 + 1 = 4 bitplanes
-.bitplane_loop  move.b  (a1),(a0)                                   ; copy gfx data - src to dest - line 0
-                move.b  $0002(a1),$0028(a0)                           ; copy gfx data - src to dest - line 1
-                move.b  $0004(a1),$0050(a0)                         ; copy gfx data - src to dest - line 2
-                move.b  $0006(a1),$0078(a0)                         ; copy gfx data - src to dest - line 3
-                move.b  $0008(a1),$00a0(a0)                         ; copy gfx data - src to dest - line 4
-                move.b  $000a(a1),$00c8(a0)                         ; copy gfx data - src to dest - line 5
-                move.b  $000c(a1),$00f0(a0)                         ; copy gfx data - src to dest - line 6
-                move.b  $000e(a1),$0118(a0)                         ; copy gfx data - src to dest - line 7
-                move.b  $0010(a1),$0140(a0)                         ; copy gfx data - src to dest - line 8
-                move.b  $0012(a1),$0168(a0)                         ; copy gfx data - src to dest - line 9
-                move.b  $0014(a1),$0190(a0)                         ; copy gfx data - src to dest - line 10
-                adda.l  #$00000780,a0                               ; increment to next bitplane #$780 = 1920 bytes (height = 48 scanlines)
-                adda.l  #$00000016,a1                               ; next digit bitplane (16 x 16 pixels )
-                dbf.w   d2,.bitplane_loop                           ; do next bitplane, loop to $0007fe1a
-                movem.l (a7)+,d0-d2                                 ; restore saved registers
-                rts                                                 ; return
+               ;--------------------- display timer digit  --------------------------
+               ; Display a single Timer Digit on the Panel Display.
+               ;
+               ;    Original Address $0007fde2
+               ;
+               ;    PRIVATE void _display_timer_digit (
+               ;                        d0.b = digitBCD,
+               ;                        d1.w = xyPosition)
+               ;
+               ; IN: d0.b = digitBCD - low nibble is the BCD value to display (byte)
+               ;                     - or, values of 10 & 11 are animation for timer separator ':'
+               ;
+               ; IN: d1.w = xyPosition  - x,y location to display the digits 
+               ;                        - x = horizontal bytes offset 
+               ;                        - y = line/row offset
+               ;
+               ; Notes
+               ; Uses digit value (d0.b) as an index into digit_gfx_offset_table
+               ; which holds the character gfx offset into the graphics.
+               ;
+               ; The characters are 16 bits wide, but the image is stored in the
+               ; low byte of the 16 bit word (top byte is wasted)
+               ; 
+               ; characters are 8x11 - 4 bitplane gfx
+               ;
+TIMER_DIGIT_BYTES_PER_LINE    EQU  $2
+TIMER_DIGIT_PLANE_BYTES       EQU  $b*SCORE_DIGIT_BYTES_PER_LINE      ; 22 bytes per bitplane per character (each line stored as 1 word)
+TIMER_DIGIT_BYTE_SIZE         EQU  $4*SCORE_DIGIT_PLANE_BYTES         ; 4 bitplanes char = 56 bytes
+
+_display_timer_digit 
+               ; clamp d0 to 16 bit word (why?)
+               and.l   #$0000ffff,d0
+               ; save timer BCD value
+               ; save x, y position
+               movem.l d0-d2,-(a7)    
+               
+               ; calculate destination panel gfx
+               ; position from x,y position
+               moveq   #$00,d2                                     ; d2.l = 0
+               move.b  d1,d2                                       ; d2.b = Y offset in bytes
+               lsr.w   #$08,d1                                     ; d1.b = X offset in pixels
+               mulu.w  #PANEL_DISPLAY_BYTEWIDTH,d2                 ; d2 = Y offset in bytes (#$28 = 40 bytes per digit)
+               add.l   #PANEL_background_gfx,d2                    ; PANEL_background_gfx address = $0007c89a
+               add.w   d1,d2                                       ; d2 = start address in panel to draw the digit
+               movea.l d2,a0                                       ; a0 = start address in panel to draw the digit
+               
+               ; mask BCD value - low nibble
+               and.w   #$000f,d0                                   ; d0 = first digit to draw
+               
+               ; use it as an index into offset table
+               add.w   d0,d0                                       ; d0 = word index to digit gfx
+               lea.l   digit_gfx_offset_table,a2                   ; a2 = digit gfx offset lookup tablle
+               
+               ; calc source digit gfx pointer
+               move.w  (a2,d0),d0                                  ; d0 = digit byte offset into gfx data
+               add.l   #PANEL_timer_digit_gfx,d0                         ; d0 = address of digit to draw
+               movea.l d0,a1                                       ; a1 = address of digit to draw
+ 
+               ; draw 4 bitplanes
+               moveq   #PANEL_DISPLAY_BITPLANEDEPTH-1,d2                                     ; d2 = 3 + 1 = 4 bitplanes
+.bitplane_loop 
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*0(a1),PANEL_DISPLAY_BYTEWIDTH*0(a0)                                   ; copy gfx data - src to dest - line 0
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*1(a1),PANEL_DISPLAY_BYTEWIDTH*1(a0)                           ; copy gfx data - src to dest - line 1
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*2(a1),PANEL_DISPLAY_BYTEWIDTH*2(a0)                         ; copy gfx data - src to dest - line 2
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*3(a1),PANEL_DISPLAY_BYTEWIDTH*3(a0)                         ; copy gfx data - src to dest - line 3
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*4(a1),PANEL_DISPLAY_BYTEWIDTH*4(a0)                         ; copy gfx data - src to dest - line 4
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*5(a1),PANEL_DISPLAY_BYTEWIDTH*5(a0)                         ; copy gfx data - src to dest - line 5
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*6(a1),PANEL_DISPLAY_BYTEWIDTH*6(a0)                         ; copy gfx data - src to dest - line 6
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*7(a1),PANEL_DISPLAY_BYTEWIDTH*7(a0)                         ; copy gfx data - src to dest - line 7
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*8(a1),PANEL_DISPLAY_BYTEWIDTH*8(a0)                         ; copy gfx data - src to dest - line 8
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*9(a1),PANEL_DISPLAY_BYTEWIDTH*9(a0)                         ; copy gfx data - src to dest - line 9
+                    move.b  TIMER_DIGIT_BYTES_PER_LINE*10(a1),PANEL_DISPLAY_BYTEWIDTH*10(a0)                         ; copy gfx data - src to dest - line 10
+
+                    ; update next bitplane pointers
+                    adda.l  #PANEL_DISPLAY_BITPLANEBYTES,a0                               ; increment to next bitplane #$780 = 1920 bytes (height = 48 scanlines)
+                    adda.l  #TIMER_DIGIT_PLANE_BYTES,a1                 ; next digit bitplane (16 x 16 pixels )
+               dbf.w   d2,.bitplane_loop                           ; do next bitplane, loop to $0007fe1a
+               
+               ; restore timer digit value
+               ; restore x,y position value
+               movem.l (a7)+,d0-d2                                 ; restore saved registers
+               rts                                                 ; return
 
 
 
