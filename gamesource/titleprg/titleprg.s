@@ -7,10 +7,10 @@
                 ;
                 ; Music Player
                 ; ------------
-                ; Initialise_Music_Player       - $00004000
-                ; Silence_All_Audio             - $00004004
-                ; Init_Song                     - $00004010 - D0.l = Song Number to play (0-3, 0 = stop playing)
-                ; Play_Song                     - $00004018 - Call every frame/cycle to play song
+                ; SoundDriver_Initialise        - $00004000
+                ; SoundDriver_Stop_All          - $00004004
+                ; SoundDriver_Init_Song         - $00004010 - D0.l = Song Number to play (0-3, 0 = stop playing)
+                ; SoundDriver_VBlankUpdate      - $00004018 - Call every frame/cycle to play song
                 ;
                 ;
                 ; VSCode Plugins
@@ -39,6 +39,9 @@
                 section titleprg_iff,code_c
                 ;opt     o-
 
+SOUND_TITLE_TUNE    EQU  $1
+SOUND_JOKER_LAUGH   EQU  $2
+SOUND_BATMAN_SPEACH EQU  $3
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR  "include"
@@ -266,10 +269,24 @@ titleprg_start
                 ;****************************************************************************************************************
                 ;
                 ;
-                ;
                 ;               MUSIC/SOUND Player Routines
                 ;
                 ;
+                ;  GENERAL-INFO
+                ;   - Songs/Tunes - Sounds that use the 3 Audio Channels 00,01,02
+                ;   - Sound Numbers 1,2,3
+                ;   - ID 01 = Title Music
+                ;   - ID 02 = Joker Laugh
+                ;   - ID 03 = Batman Game Completion
+                ;
+                ;  PATTERN-LIST-COMMANDS:
+                ;   - 0x80 = End or Loop Current Pattern List (per audio channel) 	
+                ;   - 0x81 = Set Pattrtern List Loop Back Location (to current position)
+                ;   - 0x82 = Transpose the next pattern by the following signed byte value.
+                ;   - 0x83 = Repeat the next pattern by the count in the following byte value.
+                ;
+                ;  IN-PATTERN-COMMANDS:
+                ;   - TODO
                 ;
                 ;****************************************************************************************************************
                 ;****************************************************************************************************************
@@ -278,36 +295,131 @@ titleprg_start
 
 
 
-                ;----------------------------- Music Player Jump Table ------------------------------
-Initialise_Music_Player                                         ; original routine address $00004000
-                bra.w   do_initialise_music_player              ; jmp $00004180
-Silence_All_Audio                                               ; original routine address $00004004
-                bra.w   do_silence_all_audio                    ; calls $00004194
-Stop_Audio                                                      ; original address $00004008
-                bra.w   do_stop_audio                           ; $000041e0
-Stop_Audio_2                                                    ; original address $0000400c
-                bra.w   do_stop_audio                           ; $000041e0
-Init_Song                                                       ; original routine address $00004010
-                bra.w   do_init_song                            ; calls $0000423e, ; IN: D0.l (song/sound to play)
-L00004014       
-                bra.w   L00004222
-Play_Song                                                       ; original routine address $00004018
-                bra.w   do_play_song                            ; $000042f6
+               ;----------------------------- Music Player Jump Table ------------------------------
+               ; Public interface into the Sound Driver system.
+               ; Here follows a table of jumps for usding the sound driver code. 
+               
+
+               ;----------------------------------------------------------------
+               ;    PUBLIC void SoundDriver_Initialise(void)
+               ; 
+               ;    Original Address $00004000
+               ;
+               ;  - Set up the Sound Player for use with the Sound Data.
+               ; 
+SoundDriver_Initialise              
+               bra.w   _do_sounddriver_initialise
 
 
-                even
-master_audio_volume_mask_1                                      ; original address L0000401c
-                dc.w    $ffff                                   ; master channel volume mask 1
-master_audio_volume_mask_2                                      ; original address L0000401e
-                dc.w    $ffff                                   ; master channel volume mask 2
+               ;----------------------------------------------------------------
+               ;    PUBLIC void SoundDriver_Stop_All(void)
+               ;
+               ;    Original Address $00004004
+               ;
+               ;     - Initialise All Audio Channels
+               ;     - Set Audio Volume to 0
+               ;
+SoundDriver_Stop_All                
+               bra.w   _do_sounddriver_stop_all
 
 
-L00004020       dc.w    $8000                                   ; cleared when audio is silenced
+               ;----------------------------------------------------------------
+               ; Sound Driver - Stop a Sound from playing
+               ;
+               ;    PUBLIC void SoundDriver_StopSound(d0.w = soundId)
+               ;
+               ;         IN: D0.w = soundId - Sound ID Number (1 - 3)
+               ;
+               ;    Original Address $00004008
+               ;
+               ; Stop Playing a Tune or SFX
+               ;  - Silences Audio Channels used by the Sound ID Number
+               ; 
+SoundDriver_StopSound            
+               bra.w   _do_sounddriver_stopsound
+               ; duplicate of above (unused)
+               ; original address $0000400c
+SoundDriver_StopSound_2                         
+               bra.w   _do_sounddriver_stopsound 
 
 
-song_number                                                     ; original address $00004022
-                dc.b    $01                                     ; sound/song to play - initialised to $00
-L00004023       dc.b    $00                                     ; initialised to $00
+               ;-----------------------------------------------------------------
+               ; Sound Driver - Initialise SONG/TUNE (a sound using 3 channels)
+               ;
+               ;    PUBLIC void SoundDriver_InitSong(d0.w = soundId)
+               ;         IN:- D0.b - soundId = The SONG/TUNE id to initialise for playing.
+               ;  
+               ;    Original Address $00004010
+               ; Initialises a SONG/TUNE for playing diring the VBlank Update
+               ; 
+SoundDriver_InitSong            
+               bra.w   _do_sounddriver_initsong   
+
+
+               ;-----------------------------------------------------------------
+               ; Sound Driver - Initialise SFX (a sound using 1 channel 03)
+               ;
+               ;    PUBLIC void SoundDriver_PlaySFX(d0.w = soundId)
+               ;         IN: D0.b = soundId - SFX ID Number
+               ; 
+               ;    Original Address $00004014
+               ;
+               ; Initialise a SFX identified by the SFX ID number for playing.
+               ;  - If another SFX is already playing and is a higher ID number 
+               ;    then the current SFX is not interrupted.
+               ; 
+SoundDriver_PlaySFX       
+               bra.w   _do_sounddriver_play_sfx
+
+
+               ;-----------------------------------------------------------------
+               ; Sound Driver - Vertical Blank Update
+               ;
+               ;    PUBLIC void SoundDriver_VBlankUpdate(void)
+               ;
+               ;    Original Address $00004018
+               ;
+               ; Call at regular time interval e.g during Vertical Blank to Play 
+               ; the current SFX/Music
+               ; 
+SoundDriver_VBlankUpdate   
+               bra.w   _do_sounddriver_vblank_update 
+
+
+               even
+
+               ; Global Music Volume Mask - Allows external progam to mute the music
+               ; Original Address $0000401c
+master_music_volume_mask_1   
+               dc.w    $ffff 
+
+               ; Global SFX Volume Mask - Allows external program tomute the SFX
+               ; Original Address $0000401e
+master_sfx_volume_mask_2   
+               dc.w    $ffff 
+
+               ; Global Sound Control Bits
+               ; Original Address $00004020
+               ; Accumulated Audio Channel Control Bits/Flags
+               ;    BIT 15 - 1 = Music is Playing
+               ;    BIT 14 - 1 = SFX is PLaying
+               ;    BIT 03 - 1 = Channel 03 is Active (SFX Channel)
+               ;    BIT 02 - 1 = Channel 02 is Active (Music Channel)
+               ;    BIT 01 - 1 = Channel 01 is Active (Music Channel)
+               ;    BIT 00 - 1 = Channel 00 is Active (Music Channel)
+sounddriver_ctrl_bits 
+               dc.w    $8000                                   ; cleared when audio is silenced
+
+
+               ; The currently playing song/tune id number
+               ; Original Address $00004022
+sounddriver_song_number         
+               dc.b    $00
+
+               ; The currently playing SFX id number
+               ; Original Address $00004023
+sounddriver_sfx_number
+               dc.b    $00    
 
 
 
@@ -549,11 +661,11 @@ L0000417e       dc.w    $0d69                           ; referenced as a word
 
                 even
                 ;----------------------------- intitialise music player ------------------------------
-do_initialise_music_player                                      ; original routine address $00004180                                                        
+_do_sounddriver_initialise                                      ; original routine address $00004180                                                        
                 lea.l   default_sample_data,a0                  ; L00004d52,a0
                 lea.l   instrument_data,a1                      ; L00004bfa,a1
                 bsr.w   init_instruments                        ; calls L000049cc
-                bra.w   do_silence_all_audio                    ; jmp $00004194
+                bra.w   _do_sounddriver_stop_all                 ; jmp $00004194
 
 
 
@@ -561,11 +673,11 @@ do_initialise_music_player                                      ; original routi
                 ; sets all audio channels to 0 volume, probably also stops any playing tracks
                 ; by setting values in channel structure and/or values in 4022, 4023
                 ;
-do_silence_all_audio                                            ; original routine address $00004194
+_do_sounddriver_stop_all                                            ; original routine address $00004194
                 movem.l d0/a0-a1,-(a7)
 
-                move.b  #$00,song_number                        ; $00004022 - initialising unknown
-                move.b  #$00,L00004023                          ; initialising unknown
+                move.b  #$00,sounddriver_song_number                        ; $00004022 - initialising unknown
+                move.b  #$00,sounddriver_sfx_number                          ; initialising unknown
 
                 lea.l   channel_1_status,a0                     ; $4024,a0
                 lea.l   $00dff0a8,a1                            ; a1 = audio volume
@@ -573,7 +685,7 @@ do_silence_all_audio                                            ; original routi
                 bsr.b   silence_channel_volume                  ; calls $000041c2
                 bsr.b   silence_channel_volume                  ; calls $000041c2
                 bsr.b   silence_channel_volume                  ; calls $000041c2
-                move.w  #$0000,L00004020                        ; enabled DMA channels?
+                move.w  #$0000,sounddriver_ctrl_bits                        ; enabled DMA channels?
                 movem.l (a7)+,d0/a0-a1
                 rts                                             ; Where does this go? whats on the stack?
 
@@ -606,14 +718,14 @@ silence_channel_volume
                 ;
                 ; IN: D0.w      - Song Number
                 ;
-do_stop_audio                                                   ; original routine address $000041e0
+_do_sounddriver_stopsound                                                   ; original routine address $000041e0
                 movem.l d0/d7/a0-a2,-(a7)
                 subq.w  #$01,d0
                 bmi.b   .silence_audio                          ; jmp $000041ee
                 cmp.w   #$0003,d0
                 bcs.b   .silence_channels                       ; jmp $000041f2 - Never Called as Song number is always in range.
 .silence_audio
-                bsr.b   do_silence_all_audio                    ; calls $00004194
+                bsr.b   _do_sounddriver_stop_all                    ; calls $00004194
                 bra.b   .exit                                   ; jmp $0000421c
 
 .silence_channels
@@ -648,17 +760,17 @@ do_stop_audio                                                   ; original routi
                 ;
                 ; IN:  D0.w - song number?
                 ;
-                                                        ; original routine address $00004222
-L00004222       tst.w   channel_4_status                ; L00004126 ; test a flag - unknown
+_do_sounddriver_play_sfx                                                        ; original routine address $00004222
+               tst.w   channel_4_status                ; L00004126 ; test a flag - unknown
                 beq.b   .continue_execution             ; if flag == 0 then continue execution, jmp $0000422e
 
-                cmp.b   L00004023,d0                    ; compare $4023 with song number? (4023 > d0?)
+                cmp.b   sounddriver_sfx_number,d0                    ; compare $4023 with song number? (4023 > d0?)
                 bcs.b   .exit                           ; if $4023 > d0
 
 .continue_execution                                     ; original address $0000422e
                 movem.l d0/d7/a0-a2,-(a7)
                 move.w  #$4000,d1                       ; d1 = unknown (flags?)
-                move.b  d0,L00004023                    ; store song number? in $4023?
+                move.b  d0,sounddriver_sfx_number                    ; store song number? in $4023?
                 bra.b  do_init_current_song             ; calls $0000424a
 .exit                                                   ; original address $0000423c
                 rts
@@ -679,10 +791,10 @@ L00004222       tst.w   channel_4_status                ; L00004126 ; test a fla
                 ;               - 0 = play nothing/stop
                 ;               - >3 = play nothing/stop
                 ;
-do_init_song                                                    ; original routine address $0000423e
+_do_sounddriver_initsong                                                    ; original routine address $0000423e
                 movem.l d0/d7/a0-a2,-(a7)
                 move.w  #$8000,d1                               ; d1 = unknown(flags?)
-                move.b  d0,song_number                          ; $00004022
+                move.b  d0,sounddriver_song_number                          ; $00004022
 do_init_current_song
                 clr.w   L0000417e                               ; clear timer/counter?
 .validate_song_number
@@ -692,7 +804,7 @@ do_init_current_song
                 bcs.b   .init_song
 
 .stop_playing                                                   ; addr $4258
-                bsr.w   do_silence_all_audio                    ; calls $00004194
+                bsr.w   _do_sounddriver_stop_all                    ; calls $00004194
                 bra.w   .exit
 
 .init_song                                                      ; original address $00004260
@@ -800,7 +912,7 @@ do_init_current_song
 .skip_to_next_channel                                           ; addr $000042e4
                 lea.l   CHANNEL_STATUS_SIZE(a1),a1              ; $0056(a1),a1
                 dbf.w   d7,.channel_loop                        ; loop, jmp $00004270
-                or.w    d1,L00004020                            ; (d1 = 8000/d1 = 4000)
+                or.w    d1,sounddriver_ctrl_bits                            ; (d1 = 8000/d1 = 4000)
 .exit                                                           ; addr $000042f0
                 movem.l (a7)+,d0/d7/a0-a2
                 rts
@@ -811,16 +923,16 @@ do_init_current_song
 
                 ;--------------------------- do play song -----------------------
                 ;
-do_play_song                                                    ; original routine address $000042f6
+_do_sounddriver_vblank_update                                                    ; original routine address $000042f6
                 lea.l   $00dff000,a6                            ; a6 = custom base
                 lea.l   note_period_table+48,a5                 ; L00004bba ; a5 = mid note frequency table (-48 to + 44)
                 clr.w   audio_dma                               ; L0000417c ; clear flag (audio dma)
 
-                tst.w   L00004020                               ; test $4020 (status flags?)
+                tst.w   sounddriver_ctrl_bits                               ; test $4020 (status flags?)
                 beq.b   .L00004354                               ; if $4020 == 0 then jmp $00004354
 
                 addq.w  #$01,L0000417e
-                clr.w   L00004020                               ; clear $4020 (status flags)
+                clr.w   sounddriver_ctrl_bits                               ; clear $4020 (status flags)
 
                 ; -------- channel 1 ---------
 .L00004314                                                      ; original address L00004314            
@@ -830,7 +942,7 @@ do_play_song                                                    ; original routi
 .do_commands                                                    ; original address L0000431c
                 bsr.b   do_channel_command_loop                 ; L00004360 ; command loop
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,L00004020
+                or.w    d7,sounddriver_ctrl_bits
 
                 ; ------- channel 2 ---------
 .no_active_commands                                             ; original address L00004324
@@ -839,7 +951,7 @@ do_play_song                                                    ; original routi
                 beq.b   .L00004334
                 bsr.b   do_channel_command_loop                 ; L00004360
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,L00004020
+                or.w    d7,sounddriver_ctrl_bits
 
                 ; ------ channel 3 ----------
 .L00004334                                                      ; original address .L00004334                
@@ -848,7 +960,7 @@ do_play_song                                                    ; original routi
                 beq.b   .L00004344
                 bsr.b   do_channel_command_loop                 ; L00004360
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,L00004020
+                or.w    d7,sounddriver_ctrl_bits
 
                 ; ------ channel 4 ---------
 .L00004344                                                      ; original address .L00004344
@@ -857,10 +969,10 @@ do_play_song                                                    ; original routi
                 beq.b   .L00004354
                 bsr.b   do_channel_command_loop                 ; L00004360
                 move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,L00004020
+                or.w    d7,sounddriver_ctrl_bits
 
 .L00004354                                                      ; original address .L00004354 
-                and.w   #$c000,L00004020                        ; %1100 = $c (12) mask all apart from top 2 MSBs
+                and.w   #$c000,sounddriver_ctrl_bits                        ; %1100 = $c (12) mask all apart from top 2 MSBs
                 bsr.w   update_audio_custom_registers           ; L00004852
                 rts
 
@@ -1545,8 +1657,8 @@ set_channel_dma                                                 ; original asddr
 
 
 set_channel_volume                                              ; original address L000048c6
-                move.w  master_audio_volume_mask_1,d1           ; L0000401c - master audio volume mask 1 (#$ffff = on)
-                move.w  master_audio_volume_mask_2,d2           ; L0000401e - master audio volume mask 2 (#$ffff = on)
+                move.w  master_music_volume_mask_1,d1           ; L0000401c - master audio volume mask 1 (#$ffff = on)
+                move.w  master_sfx_volume_mask_2,d2             ; L0000401e - master audio volume mask 2 (#$ffff = on)
  
 
 
@@ -2839,7 +2951,7 @@ start_game                                                      ; original addre
                 move.l  highscore_table,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
                 jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
                 jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
-                jsr     Stop_Audio                              ; calls $00004008
+                jsr     SoundDriver_StopSound                              ; calls $00004008
 .load_level_1
                 jmp     LOADER_LOAD_LEVEL_1                     ; jmp $00000824 - Loader.Load_Level_1
 
@@ -2914,7 +3026,7 @@ initialise_title_screen                                         ; original routi
                 move.w  d0,$00dff088
                 move.b  #$7f,$00bfed01
                 move.b  #$7f,$00bfed01
-                jsr     Initialise_Music_Player                 ; calls $00004000
+                jsr     SoundDriver_Initialise                 ; calls $00004000
                 move.l  #$00001f40,d0                           ; d0 = bitplane size in bytes (8000)
                 bra.w   reset_title_screen_display              ; calls $0001d2de
 
@@ -2953,10 +3065,10 @@ do_title_screen_menu_options                                            ; origin
 init_title_music                                                        ; original routine address $0001c1a0
                 btst.b  #PANEL_STATUS_2_MUSIC_SFX,PANEL_STATUS_2        ; music or sfx bit of panel_status_2 
                 beq.b   .init_song_01 
-                jmp     Silence_All_Audio                               ; calls $00004004 - end music
+                jmp     SoundDriver_Stop_All                            ; calls $00004004 - end music
 .init_song_01
-                moveq   #$01,d0                                         ; set tune to play? 
-                jmp     Init_Song                                       ; jmp $00004010
+                moveq   #SOUND_TITLE_TUNE,d0                                         ; set tune to play? 
+                jmp     SoundDriver_InitSong                                       ; jmp $00004010
                 ; uses rts in Init_Song to return to caller.
 
 
@@ -3189,7 +3301,7 @@ level_2_interrupt_handler                                                       
                 ;
 level_3_interrupt_handler
                 movem.l d0-d7/a0-a6,-(a7)
-                jsr     Play_Song                               ; $00004018 ; play song
+                jsr     SoundDriver_VBlankUpdate                ; $00004018 ; play song
                 bsr.w   do_window_scroll                        ; calls $0001c09e
                 move.b  $00bfed01,$00bfed01                     ; ICR -> ICR (why?) CIAA nothing to do with level 3 interrupts, also just looks like nonsence
                 move.b  #$08,$00bfee01                          ; CIAA - CRA - one shot timer A, stop timer A, SPMODE = input (keyboard)
@@ -4461,8 +4573,8 @@ display_completion_screen                                                       
                 move.b  #$f4,copper_diwstop                                     ; $0001d6ec 
                 move.w  #$0064,d0                                               ; d0 = 100
                 bsr.w   raster_wait_161                                         ; wait for 100 frames (2 seconds) - calls $0001c2f8
-                moveq   #$03,d0                                                 ; d0 = song 3
-                jsr     Init_Song                                               ; init play song 4 - calls $00004010
+                moveq   #SOUND_BATMAN_SPEACH,d0                                                 ; d0 = song 3
+                jsr     SoundDriver_InitSong                                               ; init play song 4 - calls $00004010
                 move.w  #$0600,d0                                               ; d0 = 1536 
                 bsr.w   raster_wait_161                                         ; wait for 1536 frames (15 seconds) - calls $0001c2f8
                 bra.w   return_to_title_screen                                  ; jmp $0001c018
@@ -4501,8 +4613,8 @@ display_endgame_joker                                                   ; origin
                 move.b  #$2b,copper_diwstop                             ; $0001d6ec
                 move.w  #$0014,d0
                 bsr.w   raster_wait_161                                 ; calls $0001c2f8
-                moveq   #$02,d0
-                jsr     Init_Song                                       ; calls $00004010
+                moveq   #SOUND_JOKER_LAUGH,d0
+                jsr     SoundDriver_InitSong                                       ; calls $00004010
                 move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
                 bsr.w   raster_wait_161                                 ; calls $0001c2f8
                 bra.w   return_to_title_screen                          ; jmp $0001c018
