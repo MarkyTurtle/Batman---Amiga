@@ -42,6 +42,8 @@
 SOUND_TITLE_TUNE    EQU  $1
 SOUND_JOKER_LAUGH   EQU  $2
 SOUND_BATMAN_SPEACH EQU  $3
+SOUND_MIN_SOUND_ID  EQU  SOUND_TITLE_TUNE
+SOUND_MAX_SOUND_ID  EQU  SOUND_BATMAN_SPEACH
 
                 ;--------------------- includes and constants ---------------------------
                 INCDIR  "include"
@@ -1428,106 +1430,211 @@ channel_03_status                                        ; original address L000
                 dc.w    $0008      ; The only value not initialised by the Driver                          
 
 
-.other_data
-audio_dma                                               ; original address $0000417c
-                dc.w    $0000                           ; Changes to DMACON (Active DMA Channels)
-                                                        ; flag cleared on start of frame play routine
-                                                        ; also it's or'ed with #$54 of channel status 
 
-L0000417e       dc.w    $0d69                           ; referenced as a word
-                                                        ; cleared when playing new song/sound
-                                                        ; incremented duting frame play routine every time 4020 is cleared
+               ; Audio DMA Value - Original Address $0000417c
+               ;    - Changes to DMACON (Active DMA Channels)
+               ;    - flag cleared on start of frame play routine
+               ;    - Accumulation of Channel_xx_Status offset 0x54 (channel DMA bit)
+               ;
+audio_dma      dc.w    $0000                           
 
 
-                even
-                ;----------------------------- intitialise music player ------------------------------
-_do_sounddriver_initialise                                      ; original routine address $00004180                                                        
-                lea.l   default_sample_data,a0                  ; L00004d52,a0
-                lea.l   instrument_data,a1                      ; L00004bfa,a1
-                bsr.w   init_instruments                        ; calls L000049cc
-                bra.w   _do_sounddriver_stop_all                 ; jmp $00004194
-
-
-
-                ;---------------------------- do silence all audio ----------------------------------
-                ; sets all audio channels to 0 volume, probably also stops any playing tracks
-                ; by setting values in channel structure and/or values in 4022, 4023
-                ;
-_do_sounddriver_stop_all                                            ; original routine address $00004194
-                movem.l d0/a0-a1,-(a7)
-
-                move.b  #$00,sounddriver_song_number                        ; $00004022 - initialising unknown
-                move.b  #$00,sounddriver_sfx_number                          ; initialising unknown
-
-                lea.l   channel_00_status,a0                     ; $4024,a0
-                lea.l   $00dff0a8,a1                            ; a1 = audio volume
-                bsr.b   silence_channel_volume                  ; calls $000041c2
-                bsr.b   silence_channel_volume                  ; calls $000041c2
-                bsr.b   silence_channel_volume                  ; calls $000041c2
-                bsr.b   silence_channel_volume                  ; calls $000041c2
-                move.w  #$0000,sounddriver_ctrl_bits                        ; enabled DMA channels?
-                movem.l (a7)+,d0/a0-a1
-                rts                                             ; Where does this go? whats on the stack?
+               ; Current Sound Play/Tick Counter - Original Address $0000417e
+               ; Is Cleared when a Song or SFX is started,
+               ; Measures the number of ticks played for the latest started sound
+               ; No good fo measuring a background tune when SFX played over the top.
+               ; beacise shared value for songs and SFX.
+play_tick_counter   
+               dc.w    $0000
+               even
 
 
 
-                ;------------ silence channel volume -------------
-                ; IN: A0 - channel/voice status data
-                ; IN: A1 - AUDxVOL custom register
-                ;
-silence_channel_volume
-                move.w  #$0000,(a0)                             ; set volume in struct
-                move.w  #$0001,$004a(a0)                        ; set unknown in struct
-                move.w  #$0000,$004c(a0)                        ; set unknown in struct
-                move.w  #$0000,(a1)                             ; Volume custom reg = 0
-                adda.w  #$0056,a0                               ; update ptr to next channel struct (86 bytes)
-                adda.w  #$0010,a1                               ; update to next channel volume register
-                rts
+               ;----------------------------- intitialise music player ------------------------------
+               ; Initialise Sound Driver
+               ;
+               ;    PRIVATE void _do_sounddriver_initialise(void)
+               ;
+               ;  - Original Address $00004180
+               ;  - No Parameters Required
+               ;  - Processes IFF Samples and populates the Instrument Table with 
+               ;    Sample Addresses, Repeat Addresses and associated lengths
+               ;  - Also sets the Instrument Volumes.
+
+_do_sounddriver_initialise                                                                            
+                lea.l   iff_sample_data_table,a0             
+                lea.l   instrument_data_table,a1             
+                bsr.w   _initialise_instrument_data_table    
+                bra.w   _do_sounddriver_stop_all             
 
 
 
+               ;---------------------------- stop all audio ----------------------------------
+               ; Sound Driver - Stop All
+               ;
+               ;    PRIVATE void _do_sounddriver_stop_all(void)
+               ;
+               ;    - Original Address $00004194 
+               ;    - No Parameters or return values.
+               ;    - Resets the TUNE and SFX ID numbers to 0.
+               ;    - Initialised all 4 Audio Channels
+               ;    - Sets the Volume of all 4 Audio Channels to 0.
+               ;
+_do_sounddriver_stop_all          
+               ; save registers used                  
+               movem.l d0/a0-a1,-(a7)
 
-                ;----------------------------- do stop audio -----------------------------
-                ; Stop Playing Audio, this appears to be another routine that
-                ; silences the audio. 
-                ;
-                ; If song number (d0) is not in range 1-3 then silence audio and exit.
-                ;
-                ; Called from:
-                ;        - do_title_screen_start
-                ;
-                ; IN: D0.w      - Song Number
-                ;
-_do_sounddriver_stopsound                                                   ; original routine address $000041e0
-                movem.l d0/d7/a0-a2,-(a7)
-                subq.w  #$01,d0
-                bmi.b   .silence_audio                          ; jmp $000041ee
-                cmp.w   #$0003,d0
-                bcs.b   .silence_channels                       ; jmp $000041f2 - Never Called as Song number is always in range.
-.silence_audio
-                bsr.b   _do_sounddriver_stop_all                    ; calls $00004194
-                bra.b   .exit                                   ; jmp $0000421c
+               ; Clear soundIds
+               move.b  #$00,sounddriver_song_number  
+               move.b  #$00,sounddriver_sfx_number   
 
-.silence_channels
-                lea.l   song_table,a2                           ; L0001b9dc,a2
-                asl.w   #$03,d0
-                adda.w  d0,a2
-                lea.l   channel_00_status,a0                     ; L00004024,a0
-                lea.l   $00dff0a8,a1                            ; a1 = AUD0VOL
-                moveq   #$03,d7                                 ; d7 = 3 + 1 ; 4 sound channels
+               ; reset volume and control bits
+               lea.l   channel_00_status,a0      
+               lea.l   CUSTOM+AUD0VOL,a1         
+               bsr.b   _silence_channel_volume    
+               bsr.b   _silence_channel_volume    
+               bsr.b   _silence_channel_volume    
+               bsr.b   _silence_channel_volume    
+               move.w  #$0000,sounddriver_ctrl_bits
+
+               ; restore used registers
+               movem.l (a7)+,d0/a0-a1
+               rts    
+
+
+          rsreset
+chan_ActiveCommandBits                  rs.w      1         ; 0x00
+chan_ptrPatternSequenceLoopStart        rs.l      1         ; 0x02
+chan_ptrNextPatternSequencePosition     rs.l      1         ; 0x06
+chan_ptrPatternDataLoop                 rs.l      1         ; 0x0a
+chan_ptrNextPatternDataPosition         rs.l      1         ; 0x0e
+chan_patternLoopCount                   rs.b      1         ; 0x12
+chan_patternTransposeValue              rs.b      1         ; 0x13
+chan_ptrADSREnvelope                    rs.l      1         ; 0x14
+chan_ptrCurrentADSREnvelope             rs.l      1         ; 0x18
+chan_adsrRateOfChangeTicks              rs.b      1         ; 0x1c
+chan_adsrCurrentRateOfChangeTicks       rs.b      1         ; 0x1d
+chan_adsrEnvelopeDelayTicks             rs.w      1         ; 0x1e
+chan_adsrVolumeRateOfChange             rs.b      1         ; 0x20
+chan_paramLeadInNoteOfffset             rs.b      1         ; 0x21
+chan_paramLeadInNoteDurationTicks       rs.b      1         ; 0x22
+chan_leadInNoteCurrentTicks             rs.b      1         ; 0x23
+chan_paramPortomentoStartOffset         rs.b      1         ; 0x24
+chan_paramPortomentoLengthTicks         rs.b      1         ; 0x25
+chan_portomentoAmountPerTick            rs.b      1         ; 0x26
+chan_unreferenced_01                    rs.b      1         ; 0x27    unused pad byte
+chan_ptrArpeggioTable                   rs.l      1         ; 0x28
+chan_ptrArpeggioCurrentTable            rs.l      1         ; 0x2c
+chan_paramArpeggioTableLength           rs.b      1         ; 0x30
+chan_arpeggioTableLenCount              rs.b      1         ; 0x31
+chan_paramArpeggioSpeedTicks            rs.b      1         ; 0x32
+chan_arpeggioRateTicks                  rs.b      1         ; 0x33
+chan_paramModulationLevel               rs.b      1         ; 0x34
+chan_paramModulationSpeed               rs.b      1         ; 0x35
+chan_paramModulationDelayStart          rs.b      1         ; 0x36
+chan_modulationDelayStartTicks          rs.b      1         ; 0x37
+chan_modulationSpeedTicks_x2            rs.b      1         ; 0x38
+chan_modulationSpeedTicks               rs.b      1         ; 0x39
+chan_modulationAmountPerTick            rs.w      1         ; 0x3a
+chan_instrumentTuningAmount             rs.w      1         ; 0x3c
+chan_ptrInstrumentSampleStart           rs.l      1         ; 0x3e
+chan_instrumentSampleLength             rs.w      1         ; 0x42
+chan_ptrInstrumentSampleRepeat          rs.l      1         ; 0x44
+chan_instrumentRepeatLength             rs.w      1         ; 0x48
+chan_notePeriodValue                    rs.w      1         ; 0x4a
+chan_noteVolume                         rs.w      1         ; 0x4c
+chan_unreferenced_02                    rs.b      1         ; 0x4e    unused pad bye
+chan_transposedNoteIndex                rs.b      1         ; 0x4f
+chan_transposedLeadInNoteIndex          rs.b      1         ; 0x50
+chan_paramPairedNoteDurationTicks       rs.b      1         ; 0x51
+chan_currentNoteTicks                   rs.w      1         ; 0x52
+chan_ChannelDMA                         rs.w      1         ; 0x54
+
+CHANNEL_XX_STATUS_SIZE        EQU  $56       ; 86 bytes
+
+
+               ;------------------------ silence channel volume --------------------
+               ; Silence Audio Channel and update Channel_xx_Status
+               ;
+               ;    PRIVATE void _silence_channel_volume(
+               ;              a0.l = channelStatusPtr,
+               ;              a1.l = hwRegAudioXVol)
+               ;
+               ;    IN: A0 = channelStatusPtr - Address of 'Channel_xx_Status' data structure.
+               ;    IN: A1 = hwRegAudioXVol   - Address of AUDxVOL custom register
+               ;
+_silence_channel_volume
+               move.w  #$0000,chan_ActiveCommandBits(a0)  
+               move.w  #$0001,chan_notePeriodValue(a0)    
+               move.w  #$0000,chan_noteVolume(a0)         
+               move.w  #$0000,(a1)                          ; Volume hardware custom reg = 0
+               
+               ; update ptrs for next audio channel
+               adda.w  #CHANNEL_XX_STATUS_SIZE,a0
+               adda.w  #$0010,a1                            ; next aud channel hardware reg
+               rts
+
+
+HW_AUDIO_CHANNELS  EQU  $4             ; the number of hardware autio channels
+
+
+               ;----------------------------- do stop audio -----------------------------
+               ; Stop a TUNE or SFX from Playing
+               ;  
+               ;    PRIVATE void _do_sounddriver_stopsound(d0.w = soundId)
+               ;
+               ;    - IN: D0.w = soundId - Requested Sound number 
+               ;
+               ;    - Original Address $000041e0
+               ;    - Check the requested Sound in the range 1 - 3
+               ;    - The routine initialises any in-use audio channels used by the 
+               ;         Sound by switching them off.
+               ;
+_do_sounddriver_stopsound               
+               ; Save used processor registers
+               movem.l d0/d7/a0-a2,-(a7)
+
+               ; Check soundId in allowed range,
+               ; If out of range then silence all audio chanels
+               ; If in range then only silence channels used by the soundId
+               subq.w  #SOUND_MIN_SOUND_ID,d0
+               bmi.b   .silence_all_audio     
+               cmp.w   #SOUND_MIN_SOUND_ID,d0
+               bcs.b   .silence_inuse_channels
+.silence_all_audio
+               bsr.b   _do_sounddriver_stop_all
+               bra.b   .exit                   
+
+               ; silence only channels in use by the
+               ; sound identified by soundId
+.silence_inuse_channels
+               ; get sound_table by soundId in a0
+               lea.l   song_table,a2             
+               asl.w   #$03,d0
+               adda.w  d0,a2
+               lea.l   channel_00_status,a0  
+
+               ; store audio channel 00 hardware volume register in a1
+               lea.l   CUSTOM+AUD0VOL,a1 
+
+               ; loop an reset channels in use
+               moveq   #HW_AUDIO_CHANNELS-1,d7
 .audio_channel_loop
-                tst.w   (a2)+                                   ; Test Song Structure Volume - $00004208
-                bne.b   .silence_audio_channel                  ; if volume !=0 then silence the channel
-                adda.w  #$0056,a0                               ; offset into channel status
-                adda.w  #$0010,a1                               ; increment to next AUDxVOL register
-                bra.b   .continue                               ; continue loop processing - $00004218
+                    ; test if sound channel in use
+                    tst.w   (a2)+                         
+                    bne.b   .silence_audio_channel        
+                    ; update ptrs for next audio channel
+                    adda.w  #CHANNEL_XX_STATUS_SIZE,a0
+                    adda.w  #$0010,a1                        ; increment to next AUDxVOL register
+                    bra.b   .continue              
 .silence_audio_channel
-                bsr.b   silence_channel_volume                  ; calls $000041c2       - L00004216
+                    bsr.b   _silence_channel_volume
 .continue
-                dbf.w   d7,.audio_channel_loop                  ; jmp $00004208         - L00004218
-.exit                                                           ; original address $0000421c
-                movem.l (a7)+,d0/d7/a0-a2
-                rts
+               dbf.w   d7,.audio_channel_loop    
+.exit          
+               ; restore used processor registers
+               movem.l (a7)+,d0/d7/a0-a2
+               rts
 
 
 
@@ -1576,7 +1683,7 @@ _do_sounddriver_initsong                                                    ; or
                 move.w  #$8000,d1                               ; d1 = unknown(flags?)
                 move.b  d0,sounddriver_song_number                          ; $00004022
 do_init_current_song
-                clr.w   L0000417e                               ; clear timer/counter?
+                clr.w   play_tick_counter                               ; clear timer/counter?
 .validate_song_number
                 subq.w  #$01,d0
                 bmi.b   .stop_playing                           ; L00004258
@@ -1711,7 +1818,7 @@ _do_sounddriver_vblank_update                                                   
                 tst.w   sounddriver_ctrl_bits                               ; test $4020 (status flags?)
                 beq.b   .L00004354                               ; if $4020 == 0 then jmp $00004354
 
-                addq.w  #$01,L0000417e
+                addq.w  #$01,play_tick_counter
                 clr.w   sounddriver_ctrl_bits                               ; clear $4020 (status flags)
 
                 ; -------- channel 1 ---------
@@ -2574,10 +2681,10 @@ do_enable_dma
                 ; extract sample data ptrs and lengths from the IFF sample
                 ; data.
                 ;
-                ; IN: a0    - music sample table address $4D52 - default_sample_data
-                ; IN: a1    - music/song instrument data $4BFA - instrument_data
+                ; IN: a0    - music sample table address $4D52 - iff_sample_data_table
+                ; IN: a1    - music/song instrument data $4BFA - instrument_data_table
                 ;
-init_instruments                                        ; original routine address L000049cc
+_initialise_instrument_data_table                                        ; original routine address L000049cc
                 move.l  (a0)+,d0                        ; d0 = sound sample byte offset
                 beq.b   .exit                           ; if d0 == 0 then exit
                 move.w  (a0)+,INSTR_VOLUME(a1)          ; copy sample volume
@@ -2589,7 +2696,7 @@ init_instruments                                        ; original routine addre
                 addq.l  #$08,d0                         ; d0 = alter length to include 'FORM' and length header value, d0 = total file len from A0.
                 bsr.w   process_instrument              ; calls L000049ec
                 movea.l (a7)+,a0                        ; a0 = next sample table entry
-                bra.b   init_instruments                ; jmp L000049cc ; loop for next sample data.
+                bra.b   _initialise_instrument_data_table                ; jmp L000049cc ; loop for next sample data.
 .exit
                 rts     
 
@@ -2954,7 +3061,7 @@ L00004BEA       dc.w $0021
                 ; I think each 16 bytes represents data describing a sound/instrument.
                 ; There are 12 samples in the Sample Data and 12 entries below.
                 ; THe table below could have room for 20 or 21 entries (only 12 in use)
-                ; the parameters from the SampleTable below @ $00004D52 'default_sample_data' 
+                ; the parameters from the SampleTable below @ $00004D52 'iff_sample_data_table' 
                 ; are copied into this table.
                 ;
                 ;       - The 16bit value offset 4 of each sample is copied to offset 0 of this table.
@@ -2987,7 +3094,7 @@ INSTR_SAMPLE_REPEAT_PTR EQU     $8
 INSTR_SAMPLE_REPEAT_LEN EQU     $C
 INSTR_SAMPLE_UNKNOWN    EQU     $E
 
-instrument_data                         ; original address L00004BFA
+instrument_data_table                         ; original address L00004BFA
 instrument_01                           ; original address L00004BFA
 .volume         dc.w  $0018
 .samplestart    dc.l  $00004E1E
@@ -3129,7 +3236,7 @@ instrument_20                           ; original address L00004D2A
 .repeatlen      dc.w  $0000
 .unknown        dc.w  $0000    
 
-;instrument_data                                                                 ; original address L00004BFA
+;instrument_data_table                                                                 ; original address L00004BFA
 ;.instrument_01  dc.w  $0018, $0000, $4E1E, $1C5C, $0000, $4D3A, $0001, $0000    ; original address L00004BFA
 ;.instrument_02  dc.w  $0018, $0000, $873E, $1703, $0000, $4D3A, $0001, $0000    ; original address L00004C0A
 ;.instrument_03  dc.w  $000C, $0000, $B5AC, $0A02, $0000, $4D3A, $0001, $FFFF    ; original address L00004C1A
@@ -3170,7 +3277,7 @@ L00004D4A       dc.w  $DC82, $BB45, $7E24, $A08C
                 ; parameters that follow the offset represent yet. maybe volume and something else.
                 ;
                 ; addr $00004D52                                  ; Offset Calc   | Start       | Name           | End
-default_sample_data                                               ;---------------+-------------+----------------+----------
+iff_sample_data_table                                               ;---------------+-------------+----------------+----------
 .data_01        dc.l  sample_01-.data_01 
                 dc.w  $0018, $0000                                ; $4D52 + $0064 = $00004DB6   - WHATRU         - $000086D6
 .data_02        dc.l  sample_02-.data_02
