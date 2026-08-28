@@ -39,6 +39,10 @@
                 section titleprg_iff,code_c
                 ;opt     o-
 
+                incdir  "include"
+                include "sounddriver.s"
+
+
 SOUND_TITLE_TUNE    EQU  $1
 SOUND_JOKER_LAUGH   EQU  $2
 SOUND_BATMAN_SPEACH EQU  $3
@@ -72,7 +76,7 @@ JOKER_GFX                       EQU     test_bitplanes+$AA06
 BATMAN_GFX                      EQU     test_bitplanes+$1722A
         ENDC
 
-                                         ; Comment this to remove 'test'
+
 
         IFD TEST_TITLEPRG  
 
@@ -82,156 +86,13 @@ kill_system
                 move.w  #$7fff,DMACON(a6)
                 move.w  #$7fff,INTREQ(a6)   
                 lea     kill_system,a7                              ; initialise stack 
-                lea     .mouse_loop,a1
                 bsr     init_system
-
-.mouse_loop
-                ;subq    #1,d0
-                ;move.w  d0,$dff180
-                ;btst    #$6,$bfe001
-                ;bne.s   .mouse_loop
 
 .start_title_screen
                 ;jmp     title_screen_start                      ; Entry point $0001c000
                 jmp     end_game_start
 
-
-                ;------------------ init system -------------------------
-                ; kill system taken from the original loader with a
-                ; few modifications (i.e. no CIA timers set up and a
-                ; generic interrupt handler installed)
-init_system                                                         ; original routine address $00001F26
-                lea     $00dff000,A6                                ; A6 = custom chip base address
-                lea     $00bfd100,A5                                ; A5 = CIAB PRB - used as base address to CIAB
-                lea     $00bfe101,A4                                ; A4 = CIAA PRB - used as base address to CIAA
-
-                moveq.l #$00,D0
-
-                move.w  #$7fff,INTENA(A6)                           ; disable interrupts
-                move.w  #$1fff,DMACON(A6)                           ; disable DMA
-                move.w  #$7fff,INTENA(A6)                           ; disable interrupts again?
-
-
-                ; enter supervisor mode
-                lea.l   .supervisor_trap(PC),A0                     ; A0 = address of supervisor trap $00001F58
-                move.l  A0,$00000080                                ; Set TRAP 0 vector
-                movea.l A7,A0                                       ; store stack pointer
-                trap    #$00                                        ; do the trap (jmp to next instruction in supervisor mode)
-                                                                    ; this trap never returns.
-
-                ; enter supervisor mode
-                ; D0.l = $00000000
-.supervisor_trap                                                    ; original address $00001F58
-                movea.l A0,A7                                       ; restore the stack (i.e. rts return address etc)
-                move.w  #$0200,BPLCON0(A6)                          ; 0 bitplanes, COLOR_ON=1, low res
-                move.w  D0,BPLCON1(A6)                              ; clear delay/scroll registers
-                move.w  D0,BPLCON2(A6)                              ; reset sprite/bitplane priorities, genlock etc.
-                move.w  D0,COLOR00(A6)                              ; background colour = black
-                move.w  #$4000,DSKLEN(A6)                           ; disable disk DMA (as per h/w ref)
-                move.l  D0,BLTCON0(A6)                              ; clear BLTCON0 & BLTCON1
-                move.w  #$0041,BLTSIZE(A6)                          ; Perform 1 x 1 word blit (DMA off) bit odd.
-
-                move.w  #$8340,DMACON(A6)                           ; enable MASTER,BITPLANE,BLITTER DMA
-                move.w  #$7fff,ADKCON(A6)                           ; clear disk controller bits
-
-                ; reset sprites positions
-.reset_sprites
-                moveq.l #$07,D1                                     ; D1 = counter 7 + 1 (8 sprites)
-                lea.l   SPR0POS(A6),A0                              ; A0 = first sprite position
-.reset_sprite_loop
-                move.w  D0,(A0)
-                addq.l #$08,A0                                      ; next sprite pointer
-                dbf.w  D1,.reset_sprite_loop                       ; reset next sprite position, $00001F8E
-
-                ; silence audio
-.reset_audio
-                moveq.l  #$03,D1                                    ; D1 = counter 3 + 1 (4 audio channels)
-                lea.l    AUD0VOL(A6),A0                              ; A0 = channel 1 audio volume register.
-.reset_audio_loop
-                move.w  D0,(A0)                                     ; set audio channel volume to 0
-                lea.l   $0010(A0),A0                                ; A0 = next channel audio volume address
-                dbf.w   D1,.reset_audio_loop                        ; reset next audio channel volume, $00001F9C
-
-                ; reset CIAA
-                ; A4 = CIAA PRB - used as base address to CIAA
-.reset_ciaa
-                move.b  #$7f,$0c00(A4)                              ; ICR = clear interrupts
-                move.b  D0,$0d00(A4)                                ; CRA = clear timer A control bits
-                move.b  D0,$0e00(A4)                                ; CRB = clear timer B control bits
-                move.b  D0,-$0100(A4)                               ; PRA = clear /LED /OVL (/OVL shouldn't be played with - ROM overlay in memory flag)
-                move.b  #$03,$0100(A4)                              ; DDRA = set /LED /OVL as output, set disk status as inputs (as the system intends)
-                move.b  D0,(A4)                                     ; PRB = set parallel data lines to 0
-                move.b  #$ff,$0200(A4)                              ; DDRB = set direction line to output
-
-                ; reset CIAB
-                ; A5 = CIAB PRB - used as base address to CIAB
-.reset_ciab
-                move.b  #$7f,$0c00(A5)                              ; ICR = clear interrupts
-                move.b  D0,$0d00(A5)                                ; CRA = clear Timer A control bits
-                move.b  D0,$0e00(A5)                                ; CRB = clear Timer B control bits
-                move.b  #$c0,-$0100(A5)                             ; PRA = set keyboard serial /DTR /RTS lines
-                move.b  #$c0,$0100(A5)                              ; DDRA = set /DTR /RTS lines to output
-                move.b  #$ff,(A5)                                   ; PRB = deselect all drives & motor, /SIDE = Bottom, /DIR = outwards, 
-                move.b  #$ff,$0200(A5)                              ; DDRB = set drive control bits to output
-.set_exceptions
-                lea     interrupt_handler(pc),a0
-                move.l  a0,$64
-                move.l  a0,$68
-                move.l  a0,$6C
-                move.l  a0,$70
-                move.l  a0,$74
-                move.l  a0,$78
- 
-.joy_test
-                move.w  #$ff00,POTGO(A6)                            ; Enable output for Paula Pins on Port 2 (9,5), Port 1 (9,5), set pins high
-                move.w  D0,JOYTEST(A6)                             ; D0.W = $DF90 (maybe a bug? D0.l is set above) write to all 4 joystick-mouse counters at once. (JOY0DAT, JOY1DAT)
-
-.reset_drive_motors                
-                ; switch drives off
-                ; A5 = CIAB PRB - used as base address to CIAB
-                or.b    #$ff,(A5)                                   ; deselect disk drives 
-                and.b   #$87,(A5)                                   ; latch motors off on drives 0-3
-                and.b   #$87,(A5)                                   ; latch motors off on drivee 0-3
-                or.b    #$ff,(A5)                                   ; deselect disk drived
-
-.reset_ciaa_timer_b
-                ; A4 = CIAA PRB - used as base address to CIAA
-                MOVE.B  #$f0,$0500(A4)                              ; Timer B Low Byte
-                MOVE.B  #$37,$0600(A4)                              ; Timer B High Byte - 14320 clock ticks = approx 20ms 
-                MOVE.B  #$11,$0e00(A4)                              ; Load, Start Timer B continuous mode.
-
-.reset_ciab_timer_b
-                ; A5 = CIAB PRB - used as base address to CIAB
-                MOVE.B  #$91,$0500(A5)                              ; Timer B Low Byte
-                MOVE.B  #$00,$0600(A5)                              ; Timer B High Byte - 145 clock ticks = approx 200us
-                MOVE.B  #$00,$0e00(A5)                              ; CRB - clear control reg (Timer B) - not started. (think it's used to trigger a keyboard ack)
-
-.enable_interrupts
-                move.w  #$7fff,INTREQ(A6)                           ; Clear Interrupt Request bits
-.enable_ciaa_interrupts
-                tst.b   $0c00(A4)                                   ; CIAA ICR - clear interrupt flags
-                ;MOVE.B  #$8a,$0c00(A4)                              ; CIAA ICR - Enable SP (Keyboard), ALRM (TOD)
-
-.enable_ciab_interrupts
-                tst.b   $0c00(A5)                                   ; CIAB ICR - clear interrupt flags
-                ;MOVE.B  #$93,$0c00(A5)                              ; CIAB ICR - Enable FLG (DSKINDEX), TB (TimerA), TA (TimerB)
-              
-.exit_init_system
-                ;move.w  #$e078,INTENA(a6)
-                move.w  #$2000,sr
-                rts
-
-
-                ;------------- interrupt handler ------------------
-                ; just clear any raised interrupt flags and exit
-interrupt_handler
-                movem.l d0-d7/a0-a6,-(a7)
-                lea     $dff000,a6
-                move.w  #$7fff,INTREQ(a6)
-                movem.l (a7)+,d0-d7/a0-a6
-                rte
-
-
+                include "killsystem.s"
 
         ENDC
 
@@ -315,22 +176,33 @@ titleprg_start
                ;
                ; INSTRUMENT DATA STRUCTURES
                ;
-               ; GENERAL SOUND/SONG DATA STRUCURE INFO
+               ; --------------------------------
+               ;  SOUND/SONG DATA STRUCURE INFO
+               ; --------------------------------
                ;    Each Sound/Song is defined using a number of data tables.
                ;    The data tables contain lots of relative byte offsets to refer to further data structures.
                ;    The relative byte offsets can be signed byte offests:
                ;         I.E. the related table can exist before of after the current table in memory.
                ;
+               ;    sound_master_table
+               ;    ------------------
+               ;    This table contains a record of 4 words for each sound/song. 
+               ;    Each word is a signed byte offset to the initialisation data for each of the 4 audio channels.
+               ;    A Value $0000 indicates that the audio channel is not used by the sound/song.
                ;
-               ; SONG/SFX STRUCTURE
-               ;    Each Sound/Song contains a list of patterns for each channel used.
-               ;    The pattern list is referenced by a signed byte offset.
-               ;    e.g.
+               ;    sound_master_table
                ;         Sound01:
                ;              dc.w $0000     ; channel 01 pattern list byte offset from the address Sound01
                ;              dc.w $0000     ; channel 02 pattern list byte offset from the address Sound01+2
                ;              dc.w $0000     ; channel 03 pattern list byte offset from the address Sound01+4
                ;              dc.w $0000     ; channel 04 parrern list byte offset from the address Sound01+6
+               ;         Sound02:
+               ;              dc.w $0000     ; channel 01 pattern list byte offset from the address Sound02
+               ;              dc.w $0000     ; channel 02 pattern list byte offset from the address Sound02+2
+               ;              dc.w $0000     ; channel 03 pattern list byte offset from the address Sound02+4
+               ;              dc.w $0000     ; channel 04 parrern list byte offset from the address Sound02+6
+               ;
+               ;
                ;
                ;****************************************************************************************************************
                ;****************************************************************************************************************
@@ -380,11 +252,11 @@ SoundDriver_Stop_All
                ;  - Silences Audio Channels used by the Sound ID Number
                ; 
 SoundDriver_StopSound            
-               bra.w   _do_sounddriver_stopsound
+               bra.w   _do_sounddriver_stop_sound
                ; duplicate of above (unused)
                ; original address $0000400c
 SoundDriver_StopSound_2                         
-               bra.w   _do_sounddriver_stopsound 
+               bra.w   _do_sounddriver_stop_sound 
 
 
                ;-----------------------------------------------------------------
@@ -497,937 +369,15 @@ CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialise
 
 CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in bytes
 
-                even
- 
-               ; ----------------------- CHANEL 00 - STATUS -----------------------
-               ; This data structure manages the Audio Channel 00 status values.
-               ; - It tracks the current sound/song position,
-               ; - It holds repeat and looping pointers of the sound/song
-               ; - It holds repeat and looping details of the current track/pattern
-               ; - It holds transposition values of the current track/pattern
-               ; - It holds status of the current sample ADSR volume envelope
-               ; - It holes status of the current sample Effect parameters and working values.
-               ;    - Lead In Notes (needs more investigation)
-               ;    - Portomento Effect (Pitch Slide)
-               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
-               ;    - Vibrato Effect (Pitch Modulation)
-               ; - It holds the status of the current sample.
-               ;    - Repeat/Loop positions
-               ;    - Fine pitch tuning (retuning of sample)
-               ; - It holds the status of the current note played
-               ;    - Note Length
-               ;    - DMA Channel Active bits
-               ;
-channel_00_status                        ; original address L00004024
-               ; Channel Control Word 
-               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
-               ; Low Byte contains Active Effects 
-                dc.w    $0000    
-                
-                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
-                ; Pattern Sequences/song restart loop pattern ptr              
-                dc.l    $00000000                      
-                
-                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
-                ; Next Pattern to play after the current one
-                dc.l    $00000000                       
-                
-                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
-                ; Loop within the current Pattern
-                dc.l    $00000000 
-                
-                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
-                ; Playing Pattern/Track data position
-                dc.l    $00000000   
-                
-                ; Name: patternLoopCount               - Offset 0x12  - byte value
-                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
-                dc.b    $00
-                
-                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
-                ; Signed byte for key change value (+- index into the note period table)
-                dc.b    $00 
-                
-                ; ------------------ 'ADSR' Parameter Values -------------------
-                ; values to keep track of the ADSR sound envelope values.
-                ;---------------------------------------------------------------
-                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
-                ; Pointer to the current sound's ADSR Envelope data
-                dc.l    $00000000
-                
-                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
-                ; Working Value: Current Pointer into the sound's ADSR Envelope
-                dc.l    $00000000
-                
-                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
-                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
-                dc.b    $00
-                
-                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
-                ; Working Value - Rate of change for the current ADSR 'phase'
-                dc.b    $00
-                
-                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
-                ; Ticks to Delay ADSR Envelope Processing
-                dc.w    $0000
-                
-                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
-                ; The amount the Volume Changes per Rate of Change
-                dc.b    $00
-                ; -------- END OF SOUND ADSR VALUES --------
-
-                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
-                ; This effect doubles the current note played, 
-                ; not happy with my description of this - need to review further
-                ; ---------------------------------------------------------------
-                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
-                ; Parameter - Signed Byte for lead-in note Pitch Offest
-                dc.b    $00
-                
-                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
-                ; Parameter - Duration of the lead-in note in Ticks
-                dc.b    $00
-                
-                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
-                ; Working Value: Leadin Note Ticks Value
-                dc.b    $00           
-                ; -------- End of 'LEAD-IN' Effect Values
-
-                ; ---------------- 'PORTOMENTO' Effect Values -----------------
-                ; This effect enables a note's pitch to slide into the next
-                ;--------------------------------------------------------------
-                ; Name: paramPortomentoStartOffset     - Offset 0x24
-                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
-                dc.b    $00                             
-                ; Name: paramPortomentoLengthTicks     - Offest 0x25
-                ; Parameter - The length of the Portomento Slide in Ticks
-                dc.b    $00                             
-                ; Name: portomentoAmountPerTick        - Offset 0x26
-                ; The rate of portomento per tick
-                dc.b    $00                             
-                ; --------- End of 'PORTOMENTO' Effect Values ---------
-
-                ; Unreferenced byte value (maybe a pad byte for next ptr)
-                dc.b    $00                            ; Offset 0x27
-                
-                ; ------------------'ARPEGGIO' Effect Values ---------------------
-                ; This effect is used to give a single channel the warbly chords
-                ; effect, or when slowed down, plays the individual notes of
-                ; a chord at fixed intervals repeated in sequence.
-                ;-----------------------------------------------------------------
-                ; Name: ptrArpeggioTable               Offset 0x28
-                ; Data Start - Pointer into Arpeggio Table
-                dc.l    $00000000 
-                
-                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
-                ; Working ptr into Arpeggio Table
-                dc.l    $00000000                    
-                
-                ; Name: paramArpeggioTableLength       Offset 0x30
-                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
-                dc.b    $00                         
-                
-                ; Name: arpeggioTableLenCount          Offset 0x31
-                ; The size of the Arpeggio Table in Bytes/Entries
-                dc.b    $00                         
-                
-                ; Name: paramArpeggioSpeedTicks        Offset 0x32
-                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
-                dc.b    $00                         
-                
-                ; Name: arpeggioRateTicks              Offset 0x33
-                ; Woring Value: Arpeggio Rate in Ticks
-                dc.b    $00                         
-                
-
-               ;-------------------------- 'VIBRATO' Effect Values -----------------------
-               ; The vibrato is a pitch modulation effect.
-               ;--------------------------------------------------------------------------
-                ; Name: paramModulationLevel           Offset 0x34
-                ; Parameter - The amount of modulation applied by the effect
-                dc.b    $00                     
-                
-                ; Name: paramModulationSpeed           Offset 0x35
-                ; Parameter - The speed/rate of the modulation effect
-                dc.b    $00                        
-                
-                ; Name: paramModulationDelayStart      Offset 0x36
-                ; Parameter - Delay the start of the modulation effect in ticks
-                dc.b    $00                     
-                
-                ; Name: modulationDelayStartTicks      Offset 0x37
-                ; Working Value: initialised as a copy of modulatioDelayStart
-                dc.b    $00                     
-                
-                ; Name: modulationSpeedTicks_x2        Offset 0x38
-                ; Working Value: initialised as modulationSpeed x 2 
-                dc.b    $00                          
-                
-                ; Name: modulationSpeedTicks           Offset 0x39
-                ; Working Value: Initialised as modulationSpeed
-                dc.b    $00                          
-                
-                ; Name: modulationAmountPerTick        Offset 0x3a
-                ; Working Value: Initialised as modulationLevel / modulationSpeed
-                dc.w    $0000                        
-                
-
-               ;------------------------ 'INSTRUMENT' Values ------------------------
-               ; Details of the current Instrument/Sample being played
-               ;---------------------------------------------------------------------
-                ; Name: instrumentTuningAmount         Offset 0x3c
-                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
-                dc.w    $0000                                
-                
-                ; Name: ptrInstrumentSampleStart       Offset 0x3e
-                ; Pointer to the start of the Instrument's Sample Data
-                dc.l    $00000000                    
-                
-                ; Name: instrumentSampleLength         Offset 0x42
-                ; Length of the Sample to play (before repeat if any)
-                dc.w    $0000                                    
-                
-                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
-                ; Pointer to the instrument's Repeat Sample Data
-                dc.l    $00000000                       
-                
-                ; Name: instrumentRepeatLength         Offset 0x48
-                ; Length of the Instrument's Repeat Sample Data
-                dc.w    $0000                                    
-                
-               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
-               ; Here are the working values for the currently playing note.
-               ;---------------------------------------------------------------------
-                ; Name: notePeriodValue                Offset 0x42
-                ; Actual Current Note Period Value
-                dc.w    $0000                              
-
-                ; Name: noteVolume                     Offset 0x4c
-                ; Current Note Volume
-                dc.w    $0000                         
-                
-                ; Name: unreferenced_02                Offset 0x4e
-                ; Unused Unreferenced Value
-                dc.b    $00                          
-                
-                ; Name: transposedNoteIndex            Offset 0x4f
-                ; Transposed Note Value as an index into the note period table.
-                dc.b    $00                                      
-                
-                ; Name: transposedLeadInNoteIndex      Offset 0x50
-                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
-                dc.b    $00                                        
-                
-                ; Name: paramPairedNoteDurationTicks   Offset 0x51
-                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
-                dc.b    $00                                         
-                
-                ; Name: currentNoteTicks               Offset 0x52
-                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
-                dc.w    $0000                                    
-                
-                ; Name: ChannelDMA
-                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
-                dc.w    $0001      ; The only value not initialised by the Driver                          
 
 
-
-               ; ----------------------- CHANEL 01 - STATUS -----------------------
-               ; This data structure manages the Audio Channel 01 status values.
-               ; - It tracks the current sound/song position,
-               ; - It holds repeat and looping pointers of the sound/song
-               ; - It holds repeat and looping details of the current track/pattern
-               ; - It holds transposition values of the current track/pattern
-               ; - It holds status of the current sample ADSR volume envelope
-               ; - It holes status of the current sample Effect parameters and working values.
-               ;    - Lead In Notes (needs more investigation)
-               ;    - Portomento Effect (Pitch Slide)
-               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
-               ;    - Vibrato Effect (Pitch Modulation)
-               ; - It holds the status of the current sample.
-               ;    - Repeat/Loop positions
-               ;    - Fine pitch tuning (retuning of sample)
-               ; - It holds the status of the current note played
-               ;    - Note Length
-               ;    - DMA Channel Active bits
-               ;
-channel_01_status                                        ; original address L0000407a
-               ; Channel Control Word 
-               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
-               ; Low Byte contains Active Effects 
-                dc.w    $0000    
-                
-                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
-                ; Pattern Sequences/song restart loop pattern ptr              
-                dc.l    $00000000                      
-                
-                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
-                ; Next Pattern to play after the current one
-                dc.l    $00000000                       
-                
-                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
-                ; Loop within the current Pattern
-                dc.l    $00000000 
-                
-                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
-                ; Playing Pattern/Track data position
-                dc.l    $00000000   
-                
-                ; Name: patternLoopCount               - Offset 0x12  - byte value
-                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
-                dc.b    $00
-                
-                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
-                ; Signed byte for key change value (+- index into the note period table)
-                dc.b    $00 
-                
-                ; ------------------ 'ADSR' Parameter Values -------------------
-                ; values to keep track of the ADSR sound envelope values.
-                ;---------------------------------------------------------------
-                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
-                ; Pointer to the current sound's ADSR Envelope data
-                dc.l    $00000000
-                
-                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
-                ; Working Value: Current Pointer into the sound's ADSR Envelope
-                dc.l    $00000000
-                
-                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
-                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
-                dc.b    $00
-                
-                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
-                ; Working Value - Rate of change for the current ADSR 'phase'
-                dc.b    $00
-                
-                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
-                ; Ticks to Delay ADSR Envelope Processing
-                dc.w    $0000
-                
-                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
-                ; The amount the Volume Changes per Rate of Change
-                dc.b    $00
-                ; -------- END OF SOUND ADSR VALUES --------
-
-                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
-                ; This effect doubles the current note played, 
-                ; not happy with my description of this - need to review further
-                ; ---------------------------------------------------------------
-                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
-                ; Parameter - Signed Byte for lead-in note Pitch Offest
-                dc.b    $00
-                
-                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
-                ; Parameter - Duration of the lead-in note in Ticks
-                dc.b    $00
-                
-                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
-                ; Working Value: Leadin Note Ticks Value
-                dc.b    $00           
-                ; -------- End of 'LEAD-IN' Effect Values
-
-                ; ---------------- 'PORTOMENTO' Effect Values -----------------
-                ; This effect enables a note's pitch to slide into the next
-                ;--------------------------------------------------------------
-                ; Name: paramPortomentoStartOffset     - Offset 0x24
-                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
-                dc.b    $00                             
-                ; Name: paramPortomentoLengthTicks     - Offest 0x25
-                ; Parameter - The length of the Portomento Slide in Ticks
-                dc.b    $00                             
-                ; Name: portomentoAmountPerTick        - Offset 0x26
-                ; The rate of portomento per tick
-                dc.b    $00                             
-                ; --------- End of 'PORTOMENTO' Effect Values ---------
-
-                ; Unreferenced byte value (maybe a pad byte for next ptr)
-                dc.b    $00                            ; Offset 0x27
-                
-                ; ------------------'ARPEGGIO' Effect Values ---------------------
-                ; This effect is used to give a single channel the warbly chords
-                ; effect, or when slowed down, plays the individual notes of
-                ; a chord at fixed intervals repeated in sequence.
-                ;-----------------------------------------------------------------
-                ; Name: ptrArpeggioTable               Offset 0x28
-                ; Data Start - Pointer into Arpeggio Table
-                dc.l    $00000000 
-                
-                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
-                ; Working ptr into Arpeggio Table
-                dc.l    $00000000                    
-                
-                ; Name: paramArpeggioTableLength       Offset 0x30
-                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
-                dc.b    $00                         
-                
-                ; Name: arpeggioTableLenCount          Offset 0x31
-                ; The size of the Arpeggio Table in Bytes/Entries
-                dc.b    $00                         
-                
-                ; Name: paramArpeggioSpeedTicks        Offset 0x32
-                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
-                dc.b    $00                         
-                
-                ; Name: arpeggioRateTicks              Offset 0x33
-                ; Woring Value: Arpeggio Rate in Ticks
-                dc.b    $00                         
-                
-
-               ;-------------------------- 'VIBRATO' Effect Values -----------------------
-               ; The vibrato is a pitch modulation effect.
-               ;--------------------------------------------------------------------------
-                ; Name: paramModulationLevel           Offset 0x34
-                ; Parameter - The amount of modulation applied by the effect
-                dc.b    $00                     
-                
-                ; Name: paramModulationSpeed           Offset 0x35
-                ; Parameter - The speed/rate of the modulation effect
-                dc.b    $00                        
-                
-                ; Name: paramModulationDelayStart      Offset 0x36
-                ; Parameter - Delay the start of the modulation effect in ticks
-                dc.b    $00                     
-                
-                ; Name: modulationDelayStartTicks      Offset 0x37
-                ; Working Value: initialised as a copy of modulatioDelayStart
-                dc.b    $00                     
-                
-                ; Name: modulationSpeedTicks_x2        Offset 0x38
-                ; Working Value: initialised as modulationSpeed x 2 
-                dc.b    $00                          
-                
-                ; Name: modulationSpeedTicks           Offset 0x39
-                ; Working Value: Initialised as modulationSpeed
-                dc.b    $00                          
-                
-                ; Name: modulationAmountPerTick        Offset 0x3a
-                ; Working Value: Initialised as modulationLevel / modulationSpeed
-                dc.w    $0000                        
-                
-
-               ;------------------------ 'INSTRUMENT' Values ------------------------
-               ; Details of the current Instrument/Sample being played
-               ;---------------------------------------------------------------------
-                ; Name: instrumentTuningAmount         Offset 0x3c
-                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
-                dc.w    $0000                                
-                
-                ; Name: ptrInstrumentSampleStart       Offset 0x3e
-                ; Pointer to the start of the Instrument's Sample Data
-                dc.l    $00000000                    
-                
-                ; Name: instrumentSampleLength         Offset 0x42
-                ; Length of the Sample to play (before repeat if any)
-                dc.w    $0000                                    
-                
-                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
-                ; Pointer to the instrument's Repeat Sample Data
-                dc.l    $00000000                       
-                
-                ; Name: instrumentRepeatLength         Offset 0x48
-                ; Length of the Instrument's Repeat Sample Data
-                dc.w    $0000                                    
-                
-               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
-               ; Here are the working values for the currently playing note.
-               ;---------------------------------------------------------------------
-                ; Name: notePeriodValue                Offset 0x42
-                ; Actual Current Note Period Value
-                dc.w    $0000                              
-
-                ; Name: noteVolume                     Offset 0x4c
-                ; Current Note Volume
-                dc.w    $0000                         
-                
-                ; Name: unreferenced_02                Offset 0x4e
-                ; Unused Unreferenced Value
-                dc.b    $00                          
-                
-                ; Name: transposedNoteIndex            Offset 0x4f
-                ; Transposed Note Value as an index into the note period table.
-                dc.b    $00                                      
-                
-                ; Name: transposedLeadInNoteIndex      Offset 0x50
-                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
-                dc.b    $00                                        
-                
-                ; Name: paramPairedNoteDurationTicks   Offset 0x51
-                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
-                dc.b    $00                                         
-                
-                ; Name: currentNoteTicks               Offset 0x52
-                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
-                dc.w    $0000                                    
-                
-                ; Name: ChannelDMA
-                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
-                dc.w    $0002      ; The only value not initialised by the Driver                          
-
-
-               ; ----------------------- CHANEL 02 - STATUS -----------------------
-               ; This data structure manages the Audio Channel 02 status values.
-               ; - It tracks the current sound/song position,
-               ; - It holds repeat and looping pointers of the sound/song
-               ; - It holds repeat and looping details of the current track/pattern
-               ; - It holds transposition values of the current track/pattern
-               ; - It holds status of the current sample ADSR volume envelope
-               ; - It holes status of the current sample Effect parameters and working values.
-               ;    - Lead In Notes (needs more investigation)
-               ;    - Portomento Effect (Pitch Slide)
-               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
-               ;    - Vibrato Effect (Pitch Modulation)
-               ; - It holds the status of the current sample.
-               ;    - Repeat/Loop positions
-               ;    - Fine pitch tuning (retuning of sample)
-               ; - It holds the status of the current note played
-               ;    - Note Length
-               ;    - DMA Channel Active bits
-               ;
-channel_02_status                                        ; original address L000040d0
-               ; Channel Control Word 
-               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
-               ; Low Byte contains Active Effects 
-                dc.w    $0000    
-                
-                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
-                ; Pattern Sequences/song restart loop pattern ptr              
-                dc.l    $00000000                      
-                
-                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
-                ; Next Pattern to play after the current one
-                dc.l    $00000000                       
-                
-                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
-                ; Loop within the current Pattern
-                dc.l    $00000000 
-                
-                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
-                ; Playing Pattern/Track data position
-                dc.l    $00000000   
-                
-                ; Name: patternLoopCount               - Offset 0x12  - byte value
-                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
-                dc.b    $00
-                
-                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
-                ; Signed byte for key change value (+- index into the note period table)
-                dc.b    $00 
-                
-                ; ------------------ 'ADSR' Parameter Values -------------------
-                ; values to keep track of the ADSR sound envelope values.
-                ;---------------------------------------------------------------
-                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
-                ; Pointer to the current sound's ADSR Envelope data
-                dc.l    $00000000
-                
-                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
-                ; Working Value: Current Pointer into the sound's ADSR Envelope
-                dc.l    $00000000
-                
-                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
-                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
-                dc.b    $00
-                
-                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
-                ; Working Value - Rate of change for the current ADSR 'phase'
-                dc.b    $00
-                
-                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
-                ; Ticks to Delay ADSR Envelope Processing
-                dc.w    $0000
-                
-                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
-                ; The amount the Volume Changes per Rate of Change
-                dc.b    $00
-                ; -------- END OF SOUND ADSR VALUES --------
-
-                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
-                ; This effect doubles the current note played, 
-                ; not happy with my description of this - need to review further
-                ; ---------------------------------------------------------------
-                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
-                ; Parameter - Signed Byte for lead-in note Pitch Offest
-                dc.b    $00
-                
-                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
-                ; Parameter - Duration of the lead-in note in Ticks
-                dc.b    $00
-                
-                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
-                ; Working Value: Leadin Note Ticks Value
-                dc.b    $00           
-                ; -------- End of 'LEAD-IN' Effect Values
-
-                ; ---------------- 'PORTOMENTO' Effect Values -----------------
-                ; This effect enables a note's pitch to slide into the next
-                ;--------------------------------------------------------------
-                ; Name: paramPortomentoStartOffset     - Offset 0x24
-                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
-                dc.b    $00                             
-                ; Name: paramPortomentoLengthTicks     - Offest 0x25
-                ; Parameter - The length of the Portomento Slide in Ticks
-                dc.b    $00                             
-                ; Name: portomentoAmountPerTick        - Offset 0x26
-                ; The rate of portomento per tick
-                dc.b    $00                             
-                ; --------- End of 'PORTOMENTO' Effect Values ---------
-
-                ; Unreferenced byte value (maybe a pad byte for next ptr)
-                dc.b    $00                            ; Offset 0x27
-                
-                ; ------------------'ARPEGGIO' Effect Values ---------------------
-                ; This effect is used to give a single channel the warbly chords
-                ; effect, or when slowed down, plays the individual notes of
-                ; a chord at fixed intervals repeated in sequence.
-                ;-----------------------------------------------------------------
-                ; Name: ptrArpeggioTable               Offset 0x28
-                ; Data Start - Pointer into Arpeggio Table
-                dc.l    $00000000 
-                
-                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
-                ; Working ptr into Arpeggio Table
-                dc.l    $00000000                    
-                
-                ; Name: paramArpeggioTableLength       Offset 0x30
-                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
-                dc.b    $00                         
-                
-                ; Name: arpeggioTableLenCount          Offset 0x31
-                ; The size of the Arpeggio Table in Bytes/Entries
-                dc.b    $00                         
-                
-                ; Name: paramArpeggioSpeedTicks        Offset 0x32
-                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
-                dc.b    $00                         
-                
-                ; Name: arpeggioRateTicks              Offset 0x33
-                ; Woring Value: Arpeggio Rate in Ticks
-                dc.b    $00                         
-                
-
-               ;-------------------------- 'VIBRATO' Effect Values -----------------------
-               ; The vibrato is a pitch modulation effect.
-               ;--------------------------------------------------------------------------
-                ; Name: paramModulationLevel           Offset 0x34
-                ; Parameter - The amount of modulation applied by the effect
-                dc.b    $00                     
-                
-                ; Name: paramModulationSpeed           Offset 0x35
-                ; Parameter - The speed/rate of the modulation effect
-                dc.b    $00                        
-                
-                ; Name: paramModulationDelayStart      Offset 0x36
-                ; Parameter - Delay the start of the modulation effect in ticks
-                dc.b    $00                     
-                
-                ; Name: modulationDelayStartTicks      Offset 0x37
-                ; Working Value: initialised as a copy of modulatioDelayStart
-                dc.b    $00                     
-                
-                ; Name: modulationSpeedTicks_x2        Offset 0x38
-                ; Working Value: initialised as modulationSpeed x 2 
-                dc.b    $00                          
-                
-                ; Name: modulationSpeedTicks           Offset 0x39
-                ; Working Value: Initialised as modulationSpeed
-                dc.b    $00                          
-                
-                ; Name: modulationAmountPerTick        Offset 0x3a
-                ; Working Value: Initialised as modulationLevel / modulationSpeed
-                dc.w    $0000                        
-                
-
-               ;------------------------ 'INSTRUMENT' Values ------------------------
-               ; Details of the current Instrument/Sample being played
-               ;---------------------------------------------------------------------
-                ; Name: instrumentTuningAmount         Offset 0x3c
-                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
-                dc.w    $0000                                
-                
-                ; Name: ptrInstrumentSampleStart       Offset 0x3e
-                ; Pointer to the start of the Instrument's Sample Data
-                dc.l    $00000000                    
-                
-                ; Name: instrumentSampleLength         Offset 0x42
-                ; Length of the Sample to play (before repeat if any)
-                dc.w    $0000                                    
-                
-                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
-                ; Pointer to the instrument's Repeat Sample Data
-                dc.l    $00000000                       
-                
-                ; Name: instrumentRepeatLength         Offset 0x48
-                ; Length of the Instrument's Repeat Sample Data
-                dc.w    $0000                                    
-                
-               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
-               ; Here are the working values for the currently playing note.
-               ;---------------------------------------------------------------------
-                ; Name: notePeriodValue                Offset 0x42
-                ; Actual Current Note Period Value
-                dc.w    $0000                              
-
-                ; Name: noteVolume                     Offset 0x4c
-                ; Current Note Volume
-                dc.w    $0000                         
-                
-                ; Name: unreferenced_02                Offset 0x4e
-                ; Unused Unreferenced Value
-                dc.b    $00                          
-                
-                ; Name: transposedNoteIndex            Offset 0x4f
-                ; Transposed Note Value as an index into the note period table.
-                dc.b    $00                                      
-                
-                ; Name: transposedLeadInNoteIndex      Offset 0x50
-                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
-                dc.b    $00                                        
-                
-                ; Name: paramPairedNoteDurationTicks   Offset 0x51
-                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
-                dc.b    $00                                         
-                
-                ; Name: currentNoteTicks               Offset 0x52
-                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
-                dc.w    $0000                                    
-                
-                ; Name: ChannelDMA
-                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
-                dc.w    $0004      ; The only value not initialised by the Driver                          
-
-
-
-               ; ----------------------- CHANEL 03 - STATUS -----------------------
-               ; This data structure manages the Audio Channel 03 status values.
-               ; - It tracks the current sound/song position,
-               ; - It holds repeat and looping pointers of the sound/song
-               ; - It holds repeat and looping details of the current track/pattern
-               ; - It holds transposition values of the current track/pattern
-               ; - It holds status of the current sample ADSR volume envelope
-               ; - It holes status of the current sample Effect parameters and working values.
-               ;    - Lead In Notes (needs more investigation)
-               ;    - Portomento Effect (Pitch Slide)
-               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
-               ;    - Vibrato Effect (Pitch Modulation)
-               ; - It holds the status of the current sample.
-               ;    - Repeat/Loop positions
-               ;    - Fine pitch tuning (retuning of sample)
-               ; - It holds the status of the current note played
-               ;    - Note Length
-               ;    - DMA Channel Active bits
-               ;
-channel_03_status                                        ; original address L00004126
-                ;dc.w    $8084
-               ; Channel Control Word 
-               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
-               ; Low Byte contains Active Effects 
-                dc.w    $0000    
-                
-                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
-                ; Pattern Sequences/song restart loop pattern ptr              
-                dc.l    $00000000                      
-                
-                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
-                ; Next Pattern to play after the current one
-                dc.l    $00000000                       
-                
-                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
-                ; Loop within the current Pattern
-                dc.l    $00000000 
-                
-                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
-                ; Playing Pattern/Track data position
-                dc.l    $00000000   
-                
-                ; Name: patternLoopCount               - Offset 0x12  - byte value
-                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
-                dc.b    $00
-                
-                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
-                ; Signed byte for key change value (+- index into the note period table)
-                dc.b    $00 
-                
-                ; ------------------ 'ADSR' Parameter Values -------------------
-                ; values to keep track of the ADSR sound envelope values.
-                ;---------------------------------------------------------------
-                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
-                ; Pointer to the current sound's ADSR Envelope data
-                dc.l    $00000000
-                
-                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
-                ; Working Value: Current Pointer into the sound's ADSR Envelope
-                dc.l    $00000000
-                
-                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
-                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
-                dc.b    $00
-                
-                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
-                ; Working Value - Rate of change for the current ADSR 'phase'
-                dc.b    $00
-                
-                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
-                ; Ticks to Delay ADSR Envelope Processing
-                dc.w    $0000
-                
-                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
-                ; The amount the Volume Changes per Rate of Change
-                dc.b    $00
-                ; -------- END OF SOUND ADSR VALUES --------
-
-                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
-                ; This effect doubles the current note played, 
-                ; not happy with my description of this - need to review further
-                ; ---------------------------------------------------------------
-                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
-                ; Parameter - Signed Byte for lead-in note Pitch Offest
-                dc.b    $00
-                
-                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
-                ; Parameter - Duration of the lead-in note in Ticks
-                dc.b    $00
-                
-                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
-                ; Working Value: Leadin Note Ticks Value
-                dc.b    $00           
-                ; -------- End of 'LEAD-IN' Effect Values
-
-                ; ---------------- 'PORTOMENTO' Effect Values -----------------
-                ; This effect enables a note's pitch to slide into the next
-                ;--------------------------------------------------------------
-                ; Name: paramPortomentoStartOffset     - Offset 0x24
-                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
-                dc.b    $00                             
-                ; Name: paramPortomentoLengthTicks     - Offest 0x25
-                ; Parameter - The length of the Portomento Slide in Ticks
-                dc.b    $00                             
-                ; Name: portomentoAmountPerTick        - Offset 0x26
-                ; The rate of portomento per tick
-                dc.b    $00                             
-                ; --------- End of 'PORTOMENTO' Effect Values ---------
-
-                ; Unreferenced byte value (maybe a pad byte for next ptr)
-                dc.b    $00                            ; Offset 0x27
-                
-                ; ------------------'ARPEGGIO' Effect Values ---------------------
-                ; This effect is used to give a single channel the warbly chords
-                ; effect, or when slowed down, plays the individual notes of
-                ; a chord at fixed intervals repeated in sequence.
-                ;-----------------------------------------------------------------
-                ; Name: ptrArpeggioTable               Offset 0x28
-                ; Data Start - Pointer into Arpeggio Table
-                dc.l    $00000000 
-                
-                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
-                ; Working ptr into Arpeggio Table
-                dc.l    $00000000                    
-                
-                ; Name: paramArpeggioTableLength       Offset 0x30
-                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
-                dc.b    $00                         
-                
-                ; Name: arpeggioTableLenCount          Offset 0x31
-                ; The size of the Arpeggio Table in Bytes/Entries
-                dc.b    $00                         
-                
-                ; Name: paramArpeggioSpeedTicks        Offset 0x32
-                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
-                dc.b    $00                         
-                
-                ; Name: arpeggioRateTicks              Offset 0x33
-                ; Woring Value: Arpeggio Rate in Ticks
-                dc.b    $00                         
-                
-
-               ;-------------------------- 'VIBRATO' Effect Values -----------------------
-               ; The vibrato is a pitch modulation effect.
-               ;--------------------------------------------------------------------------
-                ; Name: paramModulationLevel           Offset 0x34
-                ; Parameter - The amount of modulation applied by the effect
-                dc.b    $00                     
-                
-                ; Name: paramModulationSpeed           Offset 0x35
-                ; Parameter - The speed/rate of the modulation effect
-                dc.b    $00                        
-                
-                ; Name: paramModulationDelayStart      Offset 0x36
-                ; Parameter - Delay the start of the modulation effect in ticks
-                dc.b    $00                     
-                
-                ; Name: modulationDelayStartTicks      Offset 0x37
-                ; Working Value: initialised as a copy of modulatioDelayStart
-                dc.b    $00                     
-                
-                ; Name: modulationSpeedTicks_x2        Offset 0x38
-                ; Working Value: initialised as modulationSpeed x 2 
-                dc.b    $00                          
-                
-                ; Name: modulationSpeedTicks           Offset 0x39
-                ; Working Value: Initialised as modulationSpeed
-                dc.b    $00                          
-                
-                ; Name: modulationAmountPerTick        Offset 0x3a
-                ; Working Value: Initialised as modulationLevel / modulationSpeed
-                dc.w    $0000                        
-                
-
-               ;------------------------ 'INSTRUMENT' Values ------------------------
-               ; Details of the current Instrument/Sample being played
-               ;---------------------------------------------------------------------
-                ; Name: instrumentTuningAmount         Offset 0x3c
-                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
-                dc.w    $0000                                
-                
-                ; Name: ptrInstrumentSampleStart       Offset 0x3e
-                ; Pointer to the start of the Instrument's Sample Data
-                dc.l    $00000000                    
-                
-                ; Name: instrumentSampleLength         Offset 0x42
-                ; Length of the Sample to play (before repeat if any)
-                dc.w    $0000                                    
-                
-                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
-                ; Pointer to the instrument's Repeat Sample Data
-                dc.l    $00000000                       
-                
-                ; Name: instrumentRepeatLength         Offset 0x48
-                ; Length of the Instrument's Repeat Sample Data
-                dc.w    $0000                                    
-                
-               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
-               ; Here are the working values for the currently playing note.
-               ;---------------------------------------------------------------------
-                ; Name: notePeriodValue                Offset 0x42
-                ; Actual Current Note Period Value
-                dc.w    $0000                              
-
-                ; Name: noteVolume                     Offset 0x4c
-                ; Current Note Volume
-                dc.w    $0000                         
-                
-                ; Name: unreferenced_02                Offset 0x4e
-                ; Unused Unreferenced Value
-                dc.b    $00                          
-                
-                ; Name: transposedNoteIndex            Offset 0x4f
-                ; Transposed Note Value as an index into the note period table.
-                dc.b    $00                                      
-                
-                ; Name: transposedLeadInNoteIndex      Offset 0x50
-                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
-                dc.b    $00                                        
-                
-                ; Name: paramPairedNoteDurationTicks   Offset 0x51
-                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
-                dc.b    $00                                         
-                
-                ; Name: currentNoteTicks               Offset 0x52
-                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
-                dc.w    $0000                                    
-                
-                ; Name: ChannelDMA
-                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
-                dc.w    $0008      ; The only value not initialised by the Driver                          
+                ; ---------------------------- include sound driver data structures -----------------------------
+                ; Runtime Audio Channel Data Structures for the Sound Driver.
+                ;   - Channel_00_Status - Audio Channel 00 Status Data Structure
+                ;   - Channel_01_Status - Audio Channel 01 Status Data Structure
+                ;   - Channel_02_Status - Audio Channel 02 Status Data Structure
+                ;   - Channel_03_Status - Audio Channel 03 Status Data Structure
+                include     sounddriver_datastructures.s
 
 
 
@@ -1491,10 +441,10 @@ _do_sounddriver_stop_all
                ; reset volume and control bits
                lea.l   channel_00_status,a0      
                lea.l   CUSTOM+AUD0VOL,a1         
-               bsr.b   _silence_channel_volume    
-               bsr.b   _silence_channel_volume    
-               bsr.b   _silence_channel_volume    
-               bsr.b   _silence_channel_volume    
+               bsr.b   _initialise_audio_channel    
+               bsr.b   _initialise_audio_channel    
+               bsr.b   _initialise_audio_channel    
+               bsr.b   _initialise_audio_channel    
                move.w  #$0000,sounddriver_ctrl_bits
 
                ; restore used registers
@@ -1502,68 +452,18 @@ _do_sounddriver_stop_all
                rts    
 
 
-          rsreset
-chan_ActiveCommandBits                  rs.w      1         ; 0x00
-chan_ptrPatternSequenceLoopStart        rs.l      1         ; 0x02
-chan_ptrNextPatternSequencePosition     rs.l      1         ; 0x06
-chan_ptrPatternDataLoop                 rs.l      1         ; 0x0a
-chan_ptrNextPatternDataPosition         rs.l      1         ; 0x0e
-chan_patternLoopCount                   rs.b      1         ; 0x12
-chan_patternTransposeValue              rs.b      1         ; 0x13
-chan_ptrADSREnvelope                    rs.l      1         ; 0x14
-chan_ptrCurrentADSREnvelope             rs.l      1         ; 0x18
-chan_adsrRateOfChangeTicks              rs.b      1         ; 0x1c
-chan_adsrCurrentRateOfChangeTicks       rs.b      1         ; 0x1d
-chan_adsrEnvelopeDelayTicks             rs.w      1         ; 0x1e
-chan_adsrVolumeRateOfChange             rs.b      1         ; 0x20
-chan_paramLeadInNoteOfffset             rs.b      1         ; 0x21
-chan_paramLeadInNoteDurationTicks       rs.b      1         ; 0x22
-chan_leadInNoteCurrentTicks             rs.b      1         ; 0x23
-chan_paramPortomentoStartOffset         rs.b      1         ; 0x24
-chan_paramPortomentoLengthTicks         rs.b      1         ; 0x25
-chan_portomentoAmountPerTick            rs.b      1         ; 0x26
-chan_unreferenced_01                    rs.b      1         ; 0x27    unused pad byte
-chan_ptrArpeggioTable                   rs.l      1         ; 0x28
-chan_ptrArpeggioCurrentTable            rs.l      1         ; 0x2c
-chan_paramArpeggioTableLength           rs.b      1         ; 0x30
-chan_arpeggioTableLenCount              rs.b      1         ; 0x31
-chan_paramArpeggioSpeedTicks            rs.b      1         ; 0x32
-chan_arpeggioRateTicks                  rs.b      1         ; 0x33
-chan_paramModulationLevel               rs.b      1         ; 0x34
-chan_paramModulationSpeed               rs.b      1         ; 0x35
-chan_paramModulationDelayStart          rs.b      1         ; 0x36
-chan_modulationDelayStartTicks          rs.b      1         ; 0x37
-chan_modulationSpeedTicks_x2            rs.b      1         ; 0x38
-chan_modulationSpeedTicks               rs.b      1         ; 0x39
-chan_modulationAmountPerTick            rs.w      1         ; 0x3a
-chan_instrumentTuningAmount             rs.w      1         ; 0x3c
-chan_ptrInstrumentSampleStart           rs.l      1         ; 0x3e
-chan_instrumentSampleLength             rs.w      1         ; 0x42
-chan_ptrInstrumentSampleRepeat          rs.l      1         ; 0x44
-chan_instrumentRepeatLength             rs.w      1         ; 0x48
-chan_notePeriodValue                    rs.w      1         ; 0x4a
-chan_noteVolume                         rs.w      1         ; 0x4c
-chan_unreferenced_02                    rs.b      1         ; 0x4e    unused pad bye
-chan_transposedNoteIndex                rs.b      1         ; 0x4f
-chan_transposedLeadInNoteIndex          rs.b      1         ; 0x50
-chan_paramPairedNoteDurationTicks       rs.b      1         ; 0x51
-chan_currentNoteTicks                   rs.w      1         ; 0x52
-chan_ChannelDMA                         rs.w      1         ; 0x54
 
-CHANNEL_XX_STATUS_SIZE        EQU  $56       ; 86 bytes
-
-
-               ;------------------------ silence channel volume --------------------
+               ;------------------------ initialise audio channel --------------------
                ; Silence Audio Channel and update Channel_xx_Status
                ;
-               ;    PRIVATE void _silence_channel_volume(
+               ;    PRIVATE void _initialise_audio_channel(
                ;              a0.l = channelStatusPtr,
                ;              a1.l = hwRegAudioXVol)
                ;
                ;    IN: A0 = channelStatusPtr - Address of 'Channel_xx_Status' data structure.
                ;    IN: A1 = hwRegAudioXVol   - Address of AUDxVOL custom register
                ;
-_silence_channel_volume
+_initialise_audio_channel
                move.w  #$0000,chan_ActiveCommandBits(a0)  
                move.w  #$0001,chan_notePeriodValue(a0)    
                move.w  #$0000,chan_noteVolume(a0)         
@@ -1575,13 +475,12 @@ _silence_channel_volume
                rts
 
 
-HW_AUDIO_CHANNELS  EQU  $4             ; the number of hardware autio channels
 
 
                ;----------------------------- do stop audio -----------------------------
                ; Stop a TUNE or SFX from Playing
                ;  
-               ;    PRIVATE void _do_sounddriver_stopsound(d0.w = soundId)
+               ;    PRIVATE void _do_sounddriver_stop_sound(d0.w = soundId)
                ;
                ;    - IN: D0.w = soundId - Requested Sound number 
                ;
@@ -1590,7 +489,7 @@ HW_AUDIO_CHANNELS  EQU  $4             ; the number of hardware autio channels
                ;    - The routine initialises any in-use audio channels used by the 
                ;         Sound by switching them off.
                ;
-_do_sounddriver_stopsound               
+_do_sounddriver_stop_sound               
                ; Save used processor registers
                movem.l d0/d7/a0-a2,-(a7)
 
@@ -1608,8 +507,8 @@ _do_sounddriver_stopsound
                ; silence only channels in use by the
                ; sound identified by soundId
 .silence_inuse_channels
-               ; get sound_table by soundId in a0
-               lea.l   song_table,a2             
+               ; get sound by soundId in a0
+               lea.l   sound_master_table,a2          
                asl.w   #$03,d0
                adda.w  d0,a2
                lea.l   channel_00_status,a0  
@@ -1628,7 +527,7 @@ _do_sounddriver_stopsound
                     adda.w  #$0010,a1                        ; increment to next AUDxVOL register
                     bra.b   .continue              
 .silence_audio_channel
-                    bsr.b   _silence_channel_volume
+                    bsr.b   _initialise_audio_channel
 .continue
                dbf.w   d7,.audio_channel_loop    
 .exit          
@@ -1695,7 +594,7 @@ do_init_current_song
                 bra.w   .exit
 
 .init_song                                                      ; original address $00004260
-                lea.l   song_table,a0                           ; $0001b9dc - a0 = base ptr
+                lea.l   sound_master_table,a0                           ; $0001b9dc - a0 = base ptr
                 asl.w   #$03,d0                                 ; d0 = song no x 8
                 adda.w  d0,a0                                   ; a0 = updated base ptr to song table entry
 
@@ -1788,7 +687,7 @@ do_init_current_song
                 ;
 .is_code_0x                                                     ; original address 000042C8
                 move.l  a2,CHANNEL_CURRENT_DATA_PTR(a1)         ; $0006(a1) ; store song channel data ptr
-                lea.l   song_channel_data_base,a2               ; L0001BA06,a2
+                lea.l   sound_pattern_master_table,a2               ; L0001BA06,a2
                 ext.w   d0
                 add.w   d0,d0                                   ; d0 = d0 * 2 (another table index)
                 adda.w  d0,a2                                   ; add index offset to L0001BA06
@@ -1976,7 +875,7 @@ music_command_01                                        ; original addrss L00004
                 bra.b   .L00004402
 
 .L00004444      move.l  a3,$0006(a4)
-                lea.l   song_channel_data_base,a3        ; $0001ba06,a3
+                lea.l   sound_pattern_master_table,a3        ; $0001ba06,a3
                 ext.w   d0
                 add.w   d0,d0
                 adda.w  d0,a3
@@ -3428,312 +2327,491 @@ L0001B9DA dc.w $0000
 
 
 
-                ; ---------------------- song table ----------------------
-                ; 4 values per song entry (channel settings)
-                ; each 2byte value is an offset to the channel data for the song
-                ; song1:
-                ;       channel1: 3e + 1b9dc = 1ba1a
-                ;       channel2: 48 + 1b9de = 1ba26
-                ;       channel3: 49 + 1b9e0 = 1ba29
-                ;       channel4: 51 + 1b9e2 = 1ba33
-                ; song2:
-                ;       channel1: off
-                ;       channel2: off
-                ;       channel3: off
-                ;       channel4: 0a + 1b9ea = 1b9f4
-                ;
-                ; song3:
-                ;       channel1: off
-                ;       channel2: off
-                ;       channel3: off
-                ;       channel4: 04 + 1b9f2 = 
-song_table                                              ; original address $0001b9dc
+               ; -------------------------- Sound Master Table ----------------------------
+               ; 4 values per song entry (channel settings)
+               ;   - Each 2 byte value is an offset to the channel data for the song
+               ;
+                    even
+sound_master_table  ; original address $0001b9dc
 
-                ;--------------------- Song 00 - Title Screen - Music --------------
-                ; offsets to channel initialisation data
-song_00                                                 ; original address $0001b9dc
-.channel_init_data_offset_00 dc.w song_00_channel_00_init_data-song_00     ; arpeggios             ; original address $0001b9dc + $3e = $1ba1a
-.channel_init_data_offset_01 dc.w song_00_channel_01_init_data-(song_00+2) ; drums            ; original address $0001b9de + $48 = $1ba26
-.channel_init_data_offset_02 dc.w song_00_channel_02_init_data-(song_00+4) ; bass           ; original address $0001b9e0 + $49 = $1ba29
-.channel_init_data_offset_03 dc.w song_00_channel_03_init_data-(song_00+6) ; voice and guitar          ; original address $0001b9e2 + $51 = $1ba33
-;.channel_init_data_offset_00 dc.w $003E                 ; original address $0001b9dc + $3e = $1ba1a
-;.channel_init_data_offset_01 dc.w $0048                 ; original address $0001b9de + $48 = $1ba26
-;.channel_init_data_offset_02 dc.w $0049                 ; original address $0001b9e0 + $49 = $1ba29
-;.channel_init_data_offset_03 dc.w $0051                 ; original address $0001b9e2 + $51 = $1ba33
+                    ; Sound ID 01 - Title Screen - Music 
+soundId_01          ; original address $0001b9dc
+.track_00_offset    dc.w sound_01_track_00_data-.track_00_offset      ; sound 01 - byte offset to audio channel 0 pattern data
+.track_01_offset    dc.w sound_01_track_01_data-.track_01_offset      ; sound 01 - byte offset to audio channel 1 pattern data   
+.track_02_offset    dc.w sound_01_track_02_data-.track_02_offset      ; sound 01 - byte offset to audio channel 2 pattern data     
+.track_03_offset    dc.w sound_01_track_03_data-.track_03_offset      ; sound 01 - byte offset to audio channel 3 pattern data
+
+                    ; Sound ID 02 - Game Over - Joker Laugh 
+soundId_02          ; original address $0001b9e4
+.track_00_offset    dc.w $0000                                        ; sound 02 - channel not used
+.track_01_offset    dc.w $0000                                        ; sound 02 - channel not used
+.track_02_offset    dc.w $0000                                        ; sound 02 - channel not used
+.track_03_offset    dc.w sound_02_track_03_data-.track_03_offset      ; sound 02 - byte offset to audio channel 3 pattern data
+
+                    ; Sound ID 03 - Game Complete - Batman IWanna 
+soundId_03          ; original address $0001b9ec
+.track_00_offset    dc.w $0000                                        ; sound 03 - channel not used
+.track_01_offset    dc.w $0000                                        ; sound 03 - channel not used
+.track_02_offset    dc.w $0000                                        ; sound 03 - channel not used
+.track_03_offset    dc.w sound_03_track_03_data-.track_03_offset      ; sound 03 - byte offset to audio channel 3 pattern data
 
 
 
-
-                ;-------------------- Song 01 - Game Over - Joker Laugh ----------------------
-                ; offsets to channel initialisation data
-song_01                                                 ; original address $0001b9e4
-.channel_init_data_offset_00 dc.w $0000                                                 ; original address $0001b9e4 - n/a - channel not used
-.channel_init_data_offset_01 dc.w $0000                                                 ; original address $0001b9e6 - n/a - channel not used
-.channel_init_data_offset_02 dc.w $0000                                                 ; original address $0001b9e8 - n/a - channel not used
-.channel_init_data_offset_03 dc.w song_01_channel_03_init_data-(song_01+6)              ; original address $0001b9ea + $0A = $1b9f4 - song_01_channel_03_init_data
-;.channel_init_data_offset_00 dc.w $0000                 ; original address $0001b9e4 - n/a - channel not used
-;.channel_init_data_offset_01 dc.w $0000                 ; original address $0001b9e6 - n/a - channel not used
-;.channel_init_data_offset_02 dc.w $0000                 ; original address $0001b9e8 - n/a - channel not used
-;.channel_init_data_offset_03 dc.w $000A                 ; original address $0001b9ea + $0A = $1b9f4 - song_01_channel_03_init_data
-
-
-
-
-
-                ;-------------------- Song 02 - Game Complete - Batman IWanna ----------------------
-                ; offsets to channel initialisation data
-song_02                                                 ; original address $0001b9ec
-.channel_init_data_offset_00 dc.w $0000                                                 ; original address $0001b9ec - n/a - channel not used            
-.channel_init_data_offset_01 dc.W $0000                                                 ; original address $0001b9ee - n/a - channel not used 
-.channel_init_data_offset_02 dc.w $0000                                                 ; original address $0001b9f0 - n/a - channel not used 
-.channel_init_data_offset_03 dc.w song_02_channel_03_init_data-(song_02+6)              ; original address $0001b9f2 + $04 = $0001B9F6 - song_02_channel_03_init_data
-;.channel_init_data_offset_00 dc.w $0000                 ; original address $0001b9ec - n/a - channel not used            
-;.channel_init_data_offset_01 dc.W $0000                 ; original address $0001b9ee - n/a - channel not used 
-;.channel_init_data_offset_02 dc.w $0000                 ; original address $0001b9f0 - n/a - channel not used 
-;.channel_init_data_offset_03 dc.w $0004                 ; original address $0001b9f2 + $04 = $0001B9F6 - song_01_channel_03_init_data
+               ;------------------------------- sound pattern master table ---------------------------------
+               ; This is a table of offsets to the sound pattern data for each pattern used in the game.
+               ; Each entry is a 2 byte offset to the pattern data for that pattern.
+               ; The table is indexed by the pattern ID's used in the track data for each channel.sound_pattern_master_table
+               ;
+               ; original address $0001BA06
+                  even
+sound_pattern_master_table
+.pattern_00_offset  dc.w (sound_pattern_00-.pattern_00_offset)        ; Pattern 00 - Sound ID 00 - Title Music
+.pattern_01_offset  dc.w (sound_pattern_01-.pattern_01_offset)        ; Pattern 01 - Sound ID 00 - Title Music
+.pattern_02_offset  dc.w (sound_pattern_02-.pattern_02_offset)        ; Pattern 02 - Sound ID 00 - Title Music
+.pattern_03_offset  dc.w (sound_pattern_03-.pattern_03_offset)        ; Pattern 03 - Sound ID 00 - Title Music 
+.pattern_04_offset  dc.w (sound_pattern_04-.pattern_04_offset)        ; Pattern 04 - Sound ID 00 - Title Music
+.pattern_05_offset  dc.w (sound_pattern_05-.pattern_05_offset)        ; Pattern 05 - Sound ID 00 - Title Music             
+.pattern_06_offset  dc.w (sound_pattern_06-.pattern_06_offset)        ; Pattern 06 - Sound ID 00 - Title Music              
+.pattern_07_offset  dc.w (sound_pattern_07-.pattern_07_offset)        ; Pattern 07 - Sound ID 02 - Joker Laugh    
+.pattern_08_offset  dc.w (sound_pattern_08-.pattern_08_offset)        ; Pattern 08 - Sound ID 03 - Batman IWanna
+.pattern_09_offset  dc.w (sound_pattern_09-.pattern_09_offset)        ; Pattern 09 - Unused Pattern Data                    
 
 
 
 
+               ; ------------------------------------ Sound Track Data -------------------------------------
+               ; Each sound has track data for each channel addressed via the byte offset
+               ; stored in the sound_master_table above. 
+               ;
+               ; Each track contains a mixture of commands and pattern Id's that are used
+               ; to describe the music for that channel. 
+               ;
+               ;    - Commands are 1 byte values that are greater than $80, 
+               ;    - Pattern Id's are 1 byte values less than $80.
+               ;
+               ; The Pattern Id's are an index into the 'sound_pattern_master_table'
+               ;
+               ; The Pattern Commands are:
+               ;
+               ;   - TRKCMD_SET_LOOP_START    - Set the loop back position for the track
+               ;   - TRKCMD_LOOP_OR_END       - Loop back to the start of the track or end the track
+               ;   - TRKCMD_PATTERN_TRANSPOSE - Transpose the pitch of the next pattern by a value (signed byte)
+               ;   - TRKCMD_PATTERN_REPEAT    - Repeat the next pattern ID bya specified number of times
+               ;
+TRKCMD_LOOP_OR_END       EQU $80
+TRKCMD_SET_LOOP_START    EQU $81
+TRKCMD_PATTERN_TRANSPOSE EQU $82
+TRKCMD_PATTERN_REPEAT    EQU $83
 
 
 
-                ;----------- Song 01 - Game Over - Joker Laugh - Channel 3 Init Data  ------------
-song_01_channel_03_init_data                            ; original address $0001B9F4
-                dc.b $07                                ; offset #$0e (14) - music data song_01_channel_3_data
-                dc.b $80                                
+               ; Sound ID 01 - Title Music - Channel 0 Track Data
+               ;    - Original address $0001BA1A
+sound_01_track_00_data                                 
+               dc.b TRKCMD_SET_LOOP_START                   ; Set Track Loop Back Position                               
+               dc.b TRKCMD_PATTERN_REPEAT,$08,$00           ; Repeat Pattern 0 (8 times)                               
+               dc.b TRKCMD_PATTERN_REPEAT,$04,$01           ; Repeat Pattern 1 (4 times)
+               dc.b TRKCMD_PATTERN_REPEAT,$08,$00           ; Repeat Pattern 0 (8 times)
+               dc.b TRKCMD_LOOP_OR_END                      ; Loop back to start   
 
 
- 
-                ;----------- Song 02 - Game Complete - Batman IWanna - Channel 3 Init Data  ------------
-song_02_channel_03_init_data                            ; original address $0001B9F6
-                dc.b $08
-                dc.b $80 
+               ; Sound ID 01 - Title Music - Channel 1 Track Data 
+               ;    - Original address $0001BA26
+sound_01_track_01_data                                 
+               dc.b TRKCMD_SET_LOOP_START                   ; Set Track Loop Back Position                                
+               dc.b $02                                     ; Play pattern index $02
+               dc.b TRKCMD_LOOP_OR_END                      ; Loop back to start                                 
 
 
+               ; Sound ID 01 - Title Music - Channel 2 Track Data
+               ;    - Original address $0001BA29
+sound_01_track_02_data                            
+               dc.b TRKCMD_SET_LOOP_START                   ; Set Track Loop Back Position                               
+               dc.b TRKCMD_PATTERN_REPEAT,$06,$03           ; Repeat Pattern 3 (6 times)                     
+               dc.b $06                                     ; Play pattern index $06
+               dc.b $06                                     ; Play pattern index $06
+               dc.b TRKCMD_LOOP_OR_END                      ; Loop back to start  
 
 
-song_01_channel_3_data                                  ; original address $0001B9F8 - Joker Laugh Channel Data
-L0001B9F8       dc.b $90,$0B,$8F,$03,$18,$96,$80        ; Pattern/Command Data? 
+               ; Sound ID 01 - Title Music - Channel 3 Track Data
+               ;    - Original address $0001BA33
+sound_01_track_03_data
+               dc.b TRKCMD_SET_LOOP_START                   ; Set Track Loop Back Position                                
+               dc.b TRKCMD_PATTERN_REPEAT,$08,$00           ; Repeat Pattern 0 (8 times)                                           
+               dc.b $04                                     ; Play pattern index $04
+               dc.b $05                                     ; Play pattern index $05
+               dc.b $05                                     ; Play pattern index $05
+               dc.b TRKCMD_PATTERN_REPEAT,$08,$00           ; Repeat Pattern 0 (8 times)
+               dc.b TRKCMD_LOOP_OR_END                      ; Loop back to start        
 
 
-song_02_channel_3_data                                  ; original address $0001B9FF - Batman Iwanna Channel Data
-L0001B9FF       dc.b $90,$0C,$8F,$03,$18,$96,$80        ; Pattern/Command Data? 
+               ; Sound ID 02 - Game Over - Joker Laugh - Channel 3 Track Data 
+               ;    - Original address $0001B9F4
+sound_02_track_03_data                            
+                dc.b $07                                    ; Play pattern index $07                            
+                dc.b TRKCMD_LOOP_OR_END                     ; End the track (no loop)   
 
 
-
-
-
-                ;------------ songs channel data base address -------------
-                ; base address in init_song 
-song_channel_data_base                  ; original address $0001BA06
-L0001BA06       dc.w (song_00_channel_0_data-L0001BA06)         ; offset value - #$1ba3e = song 00 channel 0 & 3 data
-L0001BA08       dc.w (L0001BA42-L0001BA08)                      ; $1ba42
-L0001BA0A       dc.w (song_00_channel_1_data-L0001BA0A)         ; offset value - #$1ba8b = song 00 channel 1 data
-L0001BA0C       dc.w (song_00_channel_2_data-L0001BA0C)         ; offset value - #$1bb62 = song 00 channel 2 data
-L0001BA0E       dc.w (song_00_channel_3_data-L0001BA0E)         ; offset value - #$1bbb1 = song 00 channel 3 data
-L0001BA10       dc.w (L0001BBCC-L0001BA10)                      ; $1bbcc
-L0001BA12       dc.w (L0001BBE1-L0001BA12)                      ; $1bbe1
-L0001BA14       dc.w (song_01_channel_3_data-L0001BA14)         ; offset value -#$1c (-28) = song 01 channel 3 data
-L0001BA16       dc.w (song_02_channel_3_data-L0001BA16)         ; offset value -#$17 (-23) = song 02 channel 3 data
-L0001BA18       dc.w (L0001BC3A-L0001BA18)                      ; $1bc3a
-;L0001BA06       dc.w $0038              ; offset value - #$1ba3e = song 00 channel 0 & 3 data
-;L0001BA08       dc.w $003A              ; unknown offset
-;L0001BA0A       dc.w $0081              ; offset value - #$1ba8b = song 00 channel 1 data
-;L0001BA0C       dc.w $0156              ; offset value - #$1bb62 = song 00 channel 2 data
-;L0001BA0E       dc.w $01A3              ; offset value - #$1bbb1 = song 00 channel 3 data
-;L0001BA10       dc.w $01BC              ; unknown offset
-;L0001BA12       dc.w $01CF              ; unknown offset
-;L0001BA14       dc.w $FFE4              ; offset value -#$1c (-28) = song 01 channel 3 data
-;L0001BA16       dc.w $FFE9              ; offset value -#$17 (-23) = song 02 channel 3 data
-;L0001BA18       dc.w $0222
-
-
-
-
-                ;-------- Song 00 Channel 0 Init Data - Title Music -------
-song_00_channel_00_init_data                            ; original address $0001BA1A (offset song_table + #$00 + #$0000)
-L0001BA1A       dc.b $81                                ; store ptr in channel data #$0002
-L0001BA1B       dc.b $83, $08                           ; store next byte in channel data #$0012
-                dc.b $00                                ; offset 0 - music data song_00_channel_0_data
-L0001BA1E       dc.b $01,$01,$01,$01,$83,$08,$00,$80    ; Pattern/Command Data? 
-
-
-
-                ;-------- Song 00 Channel 1 Init Data - Title Music -------
-song_00_channel_01_init_data                            ; original address $0001ba26 (offset song_table + #$02 + #$0048)
-L0001BA26       dc.b $81                                ; store ptr in channel data #$0002
-L0001BA27       dc.b $02                                ; offset 4 - music data - song_00_channel_1_data
-L0001BA28       dc.b $80                                ; Pattern/Command Data? 
-
-
-
-                ;-------- Song 00 Channel 2 Init Data - Title Music -------
-song_00_channel_02_init_data                            ; original address $0001BA29 (offset song_table + #$04 + #$0049)
-L0001BA29       dc.b $81                                ; store ptr in channel data #$0002
-L0001BA2A       dc.b $03                                ; offset 6 - music data - song_00_channel_2_data
-L0001BA2B       dc.b $03,$03,$03,$03,$03,$06,$06,$80    ; Pattern/Command Data? 
-
-
-
-                ;-------- Song 00 Channel 3 Init Data - Title Music -------
-song_00_channel_03_init_data
-L0001BA33       dc.b $81                                ; store ptr in channel data #$0002
-L0001BA34       dc.b $83, $08                           ; store next byte in channel data #$0012
-                dc.b $00                                ; offset 8 - music data - song_00_channel_3_data
-L0001BA37       dc.b $04,$05,$05,$83,$08,$00,$80        ; Pattern/Command Data? 
-
-
-
-
-                ;------------- data used by channel 0 (arpeggios) -------------------
-song_00_channel_0_data                                  ; original address $0001BA3E - song_data_base + (#$0000)
-L0001BA3E       dc.b $85,$87,$60
-L0001BA41       dc.b $80
-
-
-                ;------------- unknown channel data  -------------------
-L0001BA42       dc.b $8F,$01,$90,$08,$8E,$8C,$84,$06
-L0001BA4A       dc.b $38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38
-L0001BA5A       dc.b $3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A
-L0001BA6A       dc.b $3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F
-L0001BA7A       dc.b $38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$38,$3A,$3F,$3A
-L0001BA8A       dc.b $80
-
-
-                ;------------- data used by channel 1 (Drums) --------------------
-song_00_channel_1_data                                     ; original address $0001BA8B - song_data_base + (#$0004) 
-L0001BA8B       dc.b $8F,$02,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05 
-L0001BA9B       dc.b $40,$06,$90,$04,$18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90,$05
-L0001BAAB       dc.b $40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06
-L0001BABB       dc.b $41,$06,$90,$05,$40,$06,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06
-L0001BACB       dc.b $41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06,$41,$0C,$90,$03
-L0001BADB       dc.b $0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04
-L0001BAEB       dc.b $18,$0C,$90,$06,$41,$06,$90,$04,$18,$06,$90,$03,$0C,$06,$90,$05
-L0001BAFB       dc.b $40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04,$18,$0C,$90,$06
-L0001BB0B       dc.b $41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05
-L0001BB1B       dc.b $40,$06,$90,$04,$18,$0C,$90,$06,$41,$06,$90,$05,$40,$06,$90,$03
-L0001BB2B       dc.b $0C,$06,$90,$05,$40,$06,$90,$06,$41,$06,$90,$05,$40,$06,$90,$04
-L0001BB3B       dc.b $18,$0C,$90,$06,$41,$0C,$90,$03,$0C,$06,$90,$05,$40,$06,$90,$06
-L0001BB4B       dc.b $41,$06,$90,$05,$40
-L0001BB50       dc.b $06,$90,$04,$18,$06
-L0001BB55       dc.b $90,$04,$18,$06,$90,$04
-L0001BB5B       dc.b $18,$06,$90,$04,$18,$06,$80
-
-                ;-------------- data used by channel 2 (bass) -----------------------
-song_00_channel_2_data                                  ; original address $0001BB62 - song_data_base + (#0006)
-L0001BB62       dc.b $90,$07,$8F,$02,$8E,$8C,$14,$0C
-L0001BB6A       dc.b $20,$0C,$20,$0C,$14,$06,$1E,$0C,$14,$06,$20,$0C,$1E,$0C,$20,$0C
-L0001BB7A       dc.b $0F,$0C,$1B,$0C,$1B,$0C,$0F,$06,$19,$0C,$0F,$06,$1B,$0C,$19,$0C
-L0001BB8A       dc.b $1B,$0C,$12,$0C,$1E,$0C,$1E,$0C,$12,$06,$1E,$0C,$12,$06,$1E,$0C
-L0001BB9A       dc.b $20,$0C,$22,$0C,$0D,$0C,$19,$0C,$19,$0C,$0D,$06,$19,$0C,$0D,$06
-L0001BBAA       dc.b $19,$0C,$1E,$0C
-L0001BBAE       dc.b $20,$0C,$80
+                ;Sound ID 03 - Game Complete - Batman IWanna - Channel 3 Track Data  
+                ;   - Original address $0001B9F6
+sound_03_track_03_data                                 
+                dc.b $08                                    ; Play pattern index $08
+                dc.b TRKCMD_LOOP_OR_END                     ; End the track (no loop)
 
 
 
 
 
-                ;-----------------------Channel  3 ( Voice & Guitar ) -------------------------
-song_00_channel_3_data
-L0001BBB1       dc.b $8F,$03,$90,$01,$87,$54,$23,$90,$90
-L0001BBBA       dc.b $02,$23,$06,$23,$96,$90,$01,$87,$54,$23,$06,$23,$8A,$90,$02,$23
-L0001BBCA       dc.b $9C,$80
+               ; --------------------------------- Sound Pattern Data -------------------------------------
+               ;
+               ;
+PTNCMD_END_OR_LOOP            EQU $80        ; (1 byte command) - no parameters
+PTNCMD_LOOP_START             EQU $81        ; (1 byte command) - no parameters
 
-L0001BBCC       dc.b $90,$0A,$8F,$04,$8B,$14,$01,$03,$3D,$48,$3F,$18,$3A,$60
-L0001BBDA       dc.b $3A,$48,$3D,$18,$38,$60,$80
+PTNCMD_NOP                    EQU $82        ; (1 byte command) - no parameters
+PTNCMD_NOP2                   EQU $83        ; (1 byte command) - no parameters
 
-L0001BBE1       dc.b $90,$09,$8F,$02,$14,$0C,$20,$0C,$20
-L0001BBEA       dc.b $0C,$14,$06,$1E,$0C,$14,$06,$20,$0C,$1E,$0C,$20,$0C,$14,$0C,$20
-L0001BBFA       dc.b $0C,$20,$0C,$14,$06,$1E,$0C,$14,$06,$20,$06,$14,$06,$1E,$06,$14
-L0001BC0A       dc.b $06,$20,$06,$14,$06,$0F,$0C,$1B,$0C,$1B,$0C,$0F,$06,$19,$0C,$0F
-L0001BC1A       dc.b $06,$1B,$0C,$19,$0C,$1B,$0C,$0F,$0C,$1B,$0C,$1B,$0C,$0F,$06,$19
-L0001BC2A       dc.b $0C,$0F,$06,$1B,$06,$0F,$06,$19,$06,$0F,$06,$1B,$06,$0F,$06,$80
+PTNCMD_PAIRED_NOTES_START     EQU $84        ; (2 byte command) - 1 parameter, duration of following pair of notes, followed by a list of 2 notes (pairs)
+PTNCMD_PAIRED_NOTES_END       EQU $85        ; (1 byte command) - no parameters
+
+PTNCMD_EXTEND_NOTE_DURATION   EQU $86        ; (1 byte command) - extend note duration by 256 ticks
+PTNCMD_PAUSE_TRACK            EQU $87        ; (2 byte command) - 1 parameter, pause duration in ticks
+PTNCMD_PORTOMENTO             EQU $88        ; (3 byte command) - 2 parameters, +- Interval, Slide Speed.
+
+PTNCMD_LEADIN_NOTE_START      EQU $89        ; (3 byte command) - 2 parameters, +- Interval, Length Ticks
+PTNCMD_LEADIN_NOTE_STOP       EQU $8A        ; (1 byte command) - no parameters
+
+PTNCMD_MODULATION_START       EQU $8B        ; (4 byte command) - 3 parameters, Delay Ticks, Amount of Modulation, Rate of Modulation
+PTNCMD_MODULATION_STOP        EQU $8C        ; (1 byte command) - no parameters
+
+PTNCMD_ARPEGGIO_START         EQU $8D        ; (1 byte command) - 1 parameter, index into Arpeggio table
+PTNCMD_ARPEGGIO_STOP          EQU $8E        ; (1 byte command) - no parameters
+
+PTNCMD_ADSR_ENVELOPE          EQU $8F        ; (2 byte command) - 1 parameter, index into ADSR envelope table
+PTNCMD_SELECT_INSTRUMENT      EQU $90        ; (2 byte command) - 1 parameter, index into instrument table
 
 
+               ; Pattern 00 - used by channel 0 & 3 (wait/rest pattern) 
+               ; Original address $0001BA3E 
+sound_pattern_00                                  
+               dc.b PTNCMD_PAIRED_NOTES_END            ;$85
+               dc.b PTNCMD_PAUSE_TRACK,$60             ;$87,$60
+               dc.b PTNCMD_END_OR_LOOP                 ;$80
 
+
+               ; Pattern 01 - used by channel 0 (arpeggios) 
+               ; Original address $0001BA42
+sound_pattern_01                                  
+               dc.b $8F,$01
+               dc.b $90,$08
+               dc.b $8E
+               dc.b $8C
+               dc.b $84,$06
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$38
+               dc.b $3A,$3F
+               dc.b $38,$3A
+               dc.b $3F,$3A
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 02 - used by channel 1 (Drums) 
+               ; Original address $0001BA8B 
+sound_pattern_02                                  
+               dc.b $8F,$02
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05 
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$0C
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$0C
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$04
+               dc.b $18,$06
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$0C
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$0C
+               dc.b $90,$06
+               dc.b $41,$0C
+               dc.b $90,$03
+               dc.b $0C,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$06
+               dc.b $41,$06
+               dc.b $90,$05
+               dc.b $40,$06
+               dc.b $90,$04
+               dc.b $18,$06
+               dc.b $90,$04
+               dc.b $18,$06
+               dc.b $90,$04
+               dc.b $18,$06
+               dc.b $90,$04
+               dc.b $18,$06
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 03 - used by channel 2 (bass)
+               ; Original address $0001BB62  
+sound_pattern_03                                      
+               dc.b $90,$07
+               dc.b $8F,$02
+               dc.b $8E
+               dc.b $8C
+               dc.b $14,$0C
+               dc.b $20,$0C
+               dc.b $20,$0C
+               dc.b $14,$06
+               dc.b $1E,$0C
+               dc.b $14,$06
+               dc.b $20,$0C
+               dc.b $1E,$0C
+               dc.b $20,$0C
+               dc.b $0F,$0C
+               dc.b $1B,$0C
+               dc.b $1B,$0C
+               dc.b $0F,$06
+               dc.b $19,$0C
+               dc.b $0F,$06
+               dc.b $1B,$0C
+               dc.b $19,$0C
+               dc.b $1B,$0C
+               dc.b $12,$0C
+               dc.b $1E,$0C
+               dc.b $1E,$0C
+               dc.b $12,$06
+               dc.b $1E,$0C
+               dc.b $12,$06
+               dc.b $1E,$0C
+               dc.b $20,$0C
+               dc.b $22,$0C
+               dc.b $0D,$0C
+               dc.b $19,$0C
+               dc.b $19,$0C
+               dc.b $0D,$06
+               dc.b $19,$0C
+               dc.b $0D,$06
+               dc.b $19,$0C
+               dc.b $1E,$0C
+               dc.b $20,$0C
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 04 - used by channel  3 ( Voice & Guitar ) 
+               ; Original address $0001BBB1
+sound_pattern_04                                      
+               dc.b $8F,$03
+               dc.b $90,$01
+               dc.b $87,$54
+               dc.b $23,$90
+               dc.b $90,$02
+               dc.b $23,$06
+               dc.b $23,$96
+               dc.b $90,$01
+               dc.b $87,$54
+               dc.b $23,$06
+               dc.b $23,$8A
+               dc.b $90,$02
+               dc.b $23,$9C
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 05 - used by channel 3 ( Voice & Guitar )
+               ; Original address $0001BBCC
+sound_pattern_05   
+               dc.b $90,$0A
+               dc.b $8F,$04
+               dc.b $8B,$14,$01,$03
+               dc.b $3D,$48
+               dc.b $3F,$18
+               dc.b $3A,$60
+               dc.b $3A,$48
+               dc.b $3D,$18
+               dc.b $38,$60
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 06 - used by channel 2 (bass) 
+               ; Original address $0001BBE1
+sound_pattern_06 
+               dc.b $90,$09
+               dc.b $8F,$02
+               dc.b $14,$0C
+               dc.b $20,$0C
+               dc.b $20,$0C
+               dc.b $14,$06
+               dc.b $1E,$0C
+               dc.b $14,$06
+               dc.b $20,$0C
+               dc.b $1E,$0C
+               dc.b $20,$0C
+               dc.b $14,$0C
+               dc.b $20,$0C
+               dc.b $20,$0C
+               dc.b $14,$06
+               dc.b $1E,$0C
+               dc.b $14,$06
+               dc.b $20,$06
+               dc.b $14,$06
+               dc.b $1E,$06
+               dc.b $14,$06
+               dc.b $20,$06
+               dc.b $14,$06
+               dc.b $0F,$0C
+               dc.b $1B,$0C
+               dc.b $1B,$0C
+               dc.b $0F,$06
+               dc.b $19,$0C
+               dc.b $0F,$06
+               dc.b $1B,$0C
+               dc.b $19,$0C
+               dc.b $1B,$0C
+               dc.b $0F,$0C
+               dc.b $1B,$0C
+               dc.b $1B,$0C
+               dc.b $0F,$06
+               dc.b $19,$0C
+               dc.b $0F,$06
+               dc.b $1B,$06
+               dc.b $0F,$06
+               dc.b $19,$06
+               dc.b $0F,$06
+               dc.b $1B,$06
+               dc.b $0F,$06
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 07 - used by channel 3 ( Joker Laugh )
+               ; Original address $0001B9F8
+sound_pattern_07
+               dc.b $90,$0B
+               dc.b $8F,$03
+               dc.b $18,$96
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 08 - used by channel 3 ( Batman IWanna )
+               ; Original address $0001B9FF
+sound_pattern_08                                 
+               dc.b $90,$0C
+               dc.b $8F,$03
+               dc.b $18,$96
+               dc.b PTNCMD_END_OR_LOOP       ; $80
+
+
+               ; Pattern 09 - unused pattern data
+               ; Original address $0001BC3A
+sound_pattern_09 
 L0001BC3A       dc.b $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 
 
 
-                ; ----------------------- unused memory -----------------------------
-                even
-L0001BC4A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BC5A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BC6A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BC7A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BC8A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BC9A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BCAA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BCBA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BCCA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BCDA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BCEA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BCFA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD0A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD1A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD2A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD3A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD4A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD5A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD6A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD7A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD8A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BD9A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BDAA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BDBA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BDCA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BDDA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BDEA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BDFA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE0A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE1A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE2A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE3A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE4A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE5A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE6A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE7A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE8A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BE9A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BEAA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BEBA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BECA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BEDA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BEEA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BEFA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF0A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF1A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF2A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF3A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF4A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF5A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF6A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF7A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF8A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BF9A dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BFAA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BFBA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BFCA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BFDA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BFEA dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000
-L0001BFFA dc.w $0000, $0000, $0000
-                ; --------------------------- unused memory -----------------------------
 
-
-
-
-
-
-
-
-                ;----------------------------------------------------------------------------------------------------------------
-                ; Pad bytes force the 'title_screen_start' to the address $1c000 or offset $18004 in the absolute assembled file
-                ;--------------------------- Pad Bytes --------------------------------------------------------------------------
-                dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000                        ; pad bytes to make code start @ $1c000
-                ;--------------------------- Pad Bytes ----------------------------------
-;
-
+  
                 ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
                 ; original address hardcoded to $1c000, 
                 ; I may change this so that the jump table is placed at $4000-$0c
