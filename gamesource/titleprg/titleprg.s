@@ -264,33 +264,75 @@ titleprg_start
 
 
 
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;
-                ;
-                ;               MUSIC/SOUND Player Routines
-                ;
-                ;
-                ;  GENERAL-INFO
-                ;   - Songs/Tunes - Sounds that use the 3 Audio Channels 00,01,02
-                ;   - Sound Numbers 1,2,3
-                ;   - ID 01 = Title Music
-                ;   - ID 02 = Joker Laugh
-                ;   - ID 03 = Batman Game Completion
-                ;
-                ;  PATTERN-LIST-COMMANDS:
-                ;   - 0x80 = End or Loop Current Pattern List (per audio channel) 	
-                ;   - 0x81 = Set Pattrtern List Loop Back Location (to current position)
-                ;   - 0x82 = Transpose the next pattern by the following signed byte value.
-                ;   - 0x83 = Repeat the next pattern by the count in the following byte value.
-                ;
-                ;  IN-PATTERN-COMMANDS:
-                ;   - TODO
-                ;
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
+               ;****************************************************************************************************************
+               ;****************************************************************************************************************
+               ;****************************************************************************************************************
+               ;
+               ;
+               ;               MUSIC/SOUND Player Routines
+               ;
+               ;
+               ;  GENERAL-INFO
+               ;   - Songs/Tunes - Sounds that use the 3 Audio Channels 00,01,02
+               ;   - Sound Numbers 1,2,3
+               ;   - ID 01 = Title Music
+               ;   - ID 02 = Joker Laugh
+               ;   - ID 03 = Batman Game Completion
+               ;
+               ;  PATTERN-LIST-COMMANDS:
+               ;   - 0x80 = End or Loop Current Pattern List (per audio channel) 	
+               ;   - 0x81 = Set Pattrtern List Loop Back Location (to current position)
+               ;   - 0x82 = Transpose the next pattern by the following signed byte value.
+               ;   - 0x83 = Repeat the next pattern by the count in the following byte value.
+               ;
+               ;  IN-PATTERN-COMMANDS:
+               ;   - TODO
+               ;
+               ; SOUND/SONG TYPES
+               ;   There are two main distinctions made between the types of sounds played by
+               ;   this driver:
+               ;         1) Songs/Tunes
+               ;         2) Sound Effects/SFX
+               ;
+               ;    1) Songs/Tunes
+               ;         These are typcially restricted to the use of the first 3 audio channels,
+               ;         Audio Channels 00, 01 and 02
+               ;
+               ;    2) Sound Effects/SFX
+               ;         These are typically assigned to the 4th Audio Channel (Channel 03)     
+               ;         SFX have priority, so high soundIds have a higher sound playing priority.
+               ;              i.e. a higher sound id will interrupt a currently playing lower sound id.
+               ;
+               ; SOUND DRIVER SOUND/SONG STATUS DATA STRUCTURES
+               ;    Each sound channel's current status is held in it's own comprehensive data structure
+               ;         1) channel_00_status - Audio Channel 00 Song status
+               ;         2) channel_01_status - Audio Channel 01 Song Status
+               ;         3) channel_02_status - Audio Channel 02 Song Status
+               ;         4) channel_03_status - Audio Chhanel 03 SFX Status
+               ;    
+               ;
+               ; INSTRUMENT DATA STRUCTURES
+               ;
+               ; GENERAL SOUND/SONG DATA STRUCURE INFO
+               ;    Each Sound/Song is defined using a number of data tables.
+               ;    The data tables contain lots of relative byte offsets to refer to further data structures.
+               ;    The relative byte offsets can be signed byte offests:
+               ;         I.E. the related table can exist before of after the current table in memory.
+               ;
+               ;
+               ; SONG/SFX STRUCTURE
+               ;    Each Sound/Song contains a list of patterns for each channel used.
+               ;    The pattern list is referenced by a signed byte offset.
+               ;    e.g.
+               ;         Sound01:
+               ;              dc.w $0000     ; channel 01 pattern list byte offset from the address Sound01
+               ;              dc.w $0000     ; channel 02 pattern list byte offset from the address Sound01+2
+               ;              dc.w $0000     ; channel 03 pattern list byte offset from the address Sound01+4
+               ;              dc.w $0000     ; channel 04 parrern list byte offset from the address Sound01+6
+               ;
+               ;****************************************************************************************************************
+               ;****************************************************************************************************************
+               ;****************************************************************************************************************
 
 
 
@@ -408,7 +450,7 @@ master_sfx_volume_mask_2
                ;    BIT 01 - 1 = Channel 01 is Active (Music Channel)
                ;    BIT 00 - 1 = Channel 00 is Active (Music Channel)
 sounddriver_ctrl_bits 
-               dc.w    $8000                                   ; cleared when audio is silenced
+               dc.w    $0000                                   ; cleared when audio is silenced
 
 
                ; The currently playing song/tune id number
@@ -438,7 +480,8 @@ sounddriver_sfx_number
                 ;
                 ;
 
-CHANNEL_CTRL_WORD       EQU     $0
+CHANNEL_CTRL_WORD       EQU     $0 ; Channel Control - Active FX Command Bits (0x8000 = music channel, 0x4000 = SFX channel) low byte contains Active Effects BITS
+
 CHANNEL_INIT_DATA_PTR   EQU     $2                      ; 32bit address of channel init data (e.g. song_00_chanel_00_init_data)
 CHANNEL_CURRENT_DATA_PTR EQU    $6
 CHANNEL_MUSIC_DATA_PTR  EQU     $e
@@ -454,198 +497,935 @@ CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in b
 
                 even
  
-channel_1_status                        ; original address L00004024
-                dc.w    $8080                           ; 00 - $00 - Control Bits (executing CMD bits etc)
-                dc.l    song_00_channel_00_init_data+1  ; 02 - $02 - PTR - Channel Initialisation/CTRL Data ($0001ba1b)
-                dc.l    L0001BA1E                       ; 06 - $06 - Current Data PTR32 - Pattern Data - ($0001ba1e)
-                dc.l    $00000000                       ; 10 - $0a - 
-                dc.l    L0001BA41                       ; 14 - $0e - End of Channel 0 Data - ($0001ba41)
-                dc.b    $05                             ; 18 - $12
-                dc.b    $00                             ; 19 - $13
-                dc.l    L0001B9A6                       ; 20 - $14
-                dc.l    L0001B9AA                       ; 24 - $18
-                dc.w    $0101                           ; 28 - $1c
-                dc.w    $0004                           ; 30 - $1e
-                dc.b    $fd                             ; 32 - $20
-                dc.b    $00                             ; 33 - $21 - CMD 10 - Param8
-                dc.b    $00                             ; 34 - $22 - CMD 10 - Param8
-                dc.b    $00                             ; 35 - $23 - CMD 10 - Param8
-                dc.b    $00                             ; 36 - $24 - CMD 09 - Param8
-                dc.b    $00                             ; 37 - $25 - CMD 09 - Param8
-                dc.b    $00                             ; 38 - $26 - CMD 09 - Copy Param8 - $25
-                dc.b    $00                             ; 39 - $27 - 
-                dc.l    $00000000                       ; 40 - $28 - CMD 14 - PTR32
-                dc.l    $00000000                       ; 44 - $2c - CMD 14 - Copy PTR32 
-                dc.b    $00                             ; 48 - $30 - CMD 14 - Param8
-                dc.b    $00                             ; 49 - $31 - CMD 14 - Copy Param8 $30
-                dc.b    $00                             ; 50 - $32 - CMD 14 - Param8
-                dc.b    $00                             ; 51 - $33 - CMD 14 - Copy Param8 $32
-                dc.b    $00                             ; 52 - $34 - CMD 12 - Param8
-                dc.b    $00                             ; 53 - $35 - CMD 12 - Param8
-                dc.b    $00                             ; 54 - $36 - CMD 12 - Param8
-                dc.b    $00                             ; 55 - $37 - CMD 12 - Copy Param8 $36
-                dc.b    $00                             ; 56 - $38 - CMD 12 - Copy Param8 $35
-                dc.b    $00                             ; 57 - $39 - CMD 12 - Copy Param8 $35
-                dc.w    $0000                           ; 58 - $3a - CMD 12 - Division Result (16 bits)
-                dc.w    $0038                           ; 60 - $3c - CMD 17 - Param16   (Volume?)
-                dc.l    sample_08+104                   ; 62 - $3e - CMD 17 - PTR32     (sample start - $0000fb6c)
-                dc.w    $0666                           ; 66 - $42 - CMD 17 - Param16   (sample len)
-                dc.l    silient_repeat                  ; 68 - $44 - CMD 17 - PTR32     (repeat data - $00004d3a)
-                dc.w    $0001                           ; 72 - $48 - CMD 17 - Param     (repeat len)
-                dc.w    $018f                           ; 74 - $4a -
-                dc.w    $0000                           ; 76 - $4c - 
-                dc.b    $00                             ; 78 - $4e -
-                dc.b    $3a                             ; 79 - $4f - CMD 17 - Working Copy
-                dc.b    $3a                             ; 80 - $50 - CMD 10/17 - Working Copy
-                dc.b    $06                             ; 81 - $51 - CMD 05 - Param
-                dc.w    $0018                           ; 82 - $52 - 16 bits tempo?
-                dc.w    $0001                           ; 84 - $54 - Audio DMA?
-
-
-channel_2_status                                        ; original address L0000407a
-                dc.w    $8050
-                dc.l    L0001BA27
-                dc.l    L0001BA28
+               ; ----------------------- CHANEL 00 - STATUS -----------------------
+               ; This data structure manages the Audio Channel 00 status values.
+               ; - It tracks the current sound/song position,
+               ; - It holds repeat and looping pointers of the sound/song
+               ; - It holds repeat and looping details of the current track/pattern
+               ; - It holds transposition values of the current track/pattern
+               ; - It holds status of the current sample ADSR volume envelope
+               ; - It holes status of the current sample Effect parameters and working values.
+               ;    - Lead In Notes (needs more investigation)
+               ;    - Portomento Effect (Pitch Slide)
+               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
+               ;    - Vibrato Effect (Pitch Modulation)
+               ; - It holds the status of the current sample.
+               ;    - Repeat/Loop positions
+               ;    - Fine pitch tuning (retuning of sample)
+               ; - It holds the status of the current note played
+               ;    - Note Length
+               ;    - DMA Channel Active bits
+               ;
+channel_00_status                        ; original address L00004024
+               ; Channel Control Word 
+               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
+               ; Low Byte contains Active Effects 
+                dc.w    $0000    
+                
+                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
+                ; Pattern Sequences/song restart loop pattern ptr              
+                dc.l    $00000000                      
+                
+                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
+                ; Next Pattern to play after the current one
+                dc.l    $00000000                       
+                
+                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
+                ; Loop within the current Pattern
+                dc.l    $00000000 
+                
+                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
+                ; Playing Pattern/Track data position
+                dc.l    $00000000   
+                
+                ; Name: patternLoopCount               - Offset 0x12  - byte value
+                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
+                dc.b    $00
+                
+                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
+                ; Signed byte for key change value (+- index into the note period table)
+                dc.b    $00 
+                
+                ; ------------------ 'ADSR' Parameter Values -------------------
+                ; values to keep track of the ADSR sound envelope values.
+                ;---------------------------------------------------------------
+                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
+                ; Pointer to the current sound's ADSR Envelope data
                 dc.l    $00000000
-                dc.l    L0001BB55
-                dc.b    $01
-                dc.b    $00
-                dc.l    L0001B9AC
-                dc.l    L0001B9AE
-                dc.w    $0101
-                dc.w    $0001
-                dc.b    $1e
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
+                
+                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
+                ; Working Value: Current Pointer into the sound's ADSR Envelope
                 dc.l    $00000000
-                dc.l    $00000000
+                
+                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
+                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
                 dc.b    $00
+                
+                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
+                ; Working Value - Rate of change for the current ADSR 'phase'
                 dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
+                
+                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
+                ; Ticks to Delay ADSR Envelope Processing
                 dc.w    $0000
-                dc.w    $0018
-                dc.l    sample_04+104                   ; ($0000ca18)
-                dc.w    $0a28
-                dc.l    silient_repeat                  ; ($00004d3a)
-                dc.w    $0001
-                dc.w    $01bf
-                dc.w    $001e
+                
+                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
+                ; The amount the Volume Changes per Rate of Change
                 dc.b    $00
-                dc.b    $18
-                dc.b    $18
+                ; -------- END OF SOUND ADSR VALUES --------
+
+                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
+                ; This effect doubles the current note played, 
+                ; not happy with my description of this - need to review further
+                ; ---------------------------------------------------------------
+                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
+                ; Parameter - Signed Byte for lead-in note Pitch Offest
                 dc.b    $00
-                dc.w    $0006
-                dc.w    $0002
+                
+                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
+                ; Parameter - Duration of the lead-in note in Ticks
+                dc.b    $00
+                
+                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
+                ; Working Value: Leadin Note Ticks Value
+                dc.b    $00           
+                ; -------- End of 'LEAD-IN' Effect Values
+
+                ; ---------------- 'PORTOMENTO' Effect Values -----------------
+                ; This effect enables a note's pitch to slide into the next
+                ;--------------------------------------------------------------
+                ; Name: paramPortomentoStartOffset     - Offset 0x24
+                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
+                dc.b    $00                             
+                ; Name: paramPortomentoLengthTicks     - Offest 0x25
+                ; Parameter - The length of the Portomento Slide in Ticks
+                dc.b    $00                             
+                ; Name: portomentoAmountPerTick        - Offset 0x26
+                ; The rate of portomento per tick
+                dc.b    $00                             
+                ; --------- End of 'PORTOMENTO' Effect Values ---------
+
+                ; Unreferenced byte value (maybe a pad byte for next ptr)
+                dc.b    $00                            ; Offset 0x27
+                
+                ; ------------------'ARPEGGIO' Effect Values ---------------------
+                ; This effect is used to give a single channel the warbly chords
+                ; effect, or when slowed down, plays the individual notes of
+                ; a chord at fixed intervals repeated in sequence.
+                ;-----------------------------------------------------------------
+                ; Name: ptrArpeggioTable               Offset 0x28
+                ; Data Start - Pointer into Arpeggio Table
+                dc.l    $00000000 
+                
+                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
+                ; Working ptr into Arpeggio Table
+                dc.l    $00000000                    
+                
+                ; Name: paramArpeggioTableLength       Offset 0x30
+                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
+                dc.b    $00                         
+                
+                ; Name: arpeggioTableLenCount          Offset 0x31
+                ; The size of the Arpeggio Table in Bytes/Entries
+                dc.b    $00                         
+                
+                ; Name: paramArpeggioSpeedTicks        Offset 0x32
+                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
+                dc.b    $00                         
+                
+                ; Name: arpeggioRateTicks              Offset 0x33
+                ; Woring Value: Arpeggio Rate in Ticks
+                dc.b    $00                         
+                
+
+               ;-------------------------- 'VIBRATO' Effect Values -----------------------
+               ; The vibrato is a pitch modulation effect.
+               ;--------------------------------------------------------------------------
+                ; Name: paramModulationLevel           Offset 0x34
+                ; Parameter - The amount of modulation applied by the effect
+                dc.b    $00                     
+                
+                ; Name: paramModulationSpeed           Offset 0x35
+                ; Parameter - The speed/rate of the modulation effect
+                dc.b    $00                        
+                
+                ; Name: paramModulationDelayStart      Offset 0x36
+                ; Parameter - Delay the start of the modulation effect in ticks
+                dc.b    $00                     
+                
+                ; Name: modulationDelayStartTicks      Offset 0x37
+                ; Working Value: initialised as a copy of modulatioDelayStart
+                dc.b    $00                     
+                
+                ; Name: modulationSpeedTicks_x2        Offset 0x38
+                ; Working Value: initialised as modulationSpeed x 2 
+                dc.b    $00                          
+                
+                ; Name: modulationSpeedTicks           Offset 0x39
+                ; Working Value: Initialised as modulationSpeed
+                dc.b    $00                          
+                
+                ; Name: modulationAmountPerTick        Offset 0x3a
+                ; Working Value: Initialised as modulationLevel / modulationSpeed
+                dc.w    $0000                        
+                
+
+               ;------------------------ 'INSTRUMENT' Values ------------------------
+               ; Details of the current Instrument/Sample being played
+               ;---------------------------------------------------------------------
+                ; Name: instrumentTuningAmount         Offset 0x3c
+                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
+                dc.w    $0000                                
+                
+                ; Name: ptrInstrumentSampleStart       Offset 0x3e
+                ; Pointer to the start of the Instrument's Sample Data
+                dc.l    $00000000                    
+                
+                ; Name: instrumentSampleLength         Offset 0x42
+                ; Length of the Sample to play (before repeat if any)
+                dc.w    $0000                                    
+                
+                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
+                ; Pointer to the instrument's Repeat Sample Data
+                dc.l    $00000000                       
+                
+                ; Name: instrumentRepeatLength         Offset 0x48
+                ; Length of the Instrument's Repeat Sample Data
+                dc.w    $0000                                    
+                
+               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
+               ; Here are the working values for the currently playing note.
+               ;---------------------------------------------------------------------
+                ; Name: notePeriodValue                Offset 0x42
+                ; Actual Current Note Period Value
+                dc.w    $0000                              
+
+                ; Name: noteVolume                     Offset 0x4c
+                ; Current Note Volume
+                dc.w    $0000                         
+                
+                ; Name: unreferenced_02                Offset 0x4e
+                ; Unused Unreferenced Value
+                dc.b    $00                          
+                
+                ; Name: transposedNoteIndex            Offset 0x4f
+                ; Transposed Note Value as an index into the note period table.
+                dc.b    $00                                      
+                
+                ; Name: transposedLeadInNoteIndex      Offset 0x50
+                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
+                dc.b    $00                                        
+                
+                ; Name: paramPairedNoteDurationTicks   Offset 0x51
+                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
+                dc.b    $00                                         
+                
+                ; Name: currentNoteTicks               Offset 0x52
+                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
+                dc.w    $0000                                    
+                
+                ; Name: ChannelDMA
+                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
+                dc.w    $0001      ; The only value not initialised by the Driver                          
 
 
 
-channel_3_status                                        ; original address L000040d0
-                dc.w    $8010
-                dc.l    L0001BA2A                       ; ($0001ba2a)
-                dc.l    L0001BA2B                       ; ($0001ba2b)
+               ; ----------------------- CHANEL 01 - STATUS -----------------------
+               ; This data structure manages the Audio Channel 01 status values.
+               ; - It tracks the current sound/song position,
+               ; - It holds repeat and looping pointers of the sound/song
+               ; - It holds repeat and looping details of the current track/pattern
+               ; - It holds transposition values of the current track/pattern
+               ; - It holds status of the current sample ADSR volume envelope
+               ; - It holes status of the current sample Effect parameters and working values.
+               ;    - Lead In Notes (needs more investigation)
+               ;    - Portomento Effect (Pitch Slide)
+               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
+               ;    - Vibrato Effect (Pitch Modulation)
+               ; - It holds the status of the current sample.
+               ;    - Repeat/Loop positions
+               ;    - Fine pitch tuning (retuning of sample)
+               ; - It holds the status of the current note played
+               ;    - Note Length
+               ;    - DMA Channel Active bits
+               ;
+channel_01_status                                        ; original address L0000407a
+               ; Channel Control Word 
+               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
+               ; Low Byte contains Active Effects 
+                dc.w    $0000    
+                
+                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
+                ; Pattern Sequences/song restart loop pattern ptr              
+                dc.l    $00000000                      
+                
+                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
+                ; Next Pattern to play after the current one
+                dc.l    $00000000                       
+                
+                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
+                ; Loop within the current Pattern
+                dc.l    $00000000 
+                
+                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
+                ; Playing Pattern/Track data position
+                dc.l    $00000000   
+                
+                ; Name: patternLoopCount               - Offset 0x12  - byte value
+                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
+                dc.b    $00
+                
+                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
+                ; Signed byte for key change value (+- index into the note period table)
+                dc.b    $00 
+                
+                ; ------------------ 'ADSR' Parameter Values -------------------
+                ; values to keep track of the ADSR sound envelope values.
+                ;---------------------------------------------------------------
+                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
+                ; Pointer to the current sound's ADSR Envelope data
                 dc.l    $00000000
-                dc.l    L0001BBAE                       ; ($0001bbae)
-                dc.b    $01
-                dc.b    $00
-                dc.l    L0001B9AC                       ; ($0001B9AC)
-                dc.l    L0001B9AE                       ; ($0001B9AE)
-                dc.w    $0101
-                dc.w    $0001
-                dc.b    $1e
-                dc.b    $00
-                dc.b    $00
-                dc.B    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
+                
+                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
+                ; Working Value: Current Pointer into the sound's ADSR Envelope
                 dc.l    $00000000
-                dc.l    $00000000
+                
+                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
+                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
                 dc.b    $00
+                
+                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
+                ; Working Value - Rate of change for the current ADSR 'phase'
                 dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
+                
+                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
+                ; Ticks to Delay ADSR Envelope Processing
                 dc.w    $0000
-                dc.w    $0011
-                dc.l    sample_07+104                   ; ($0000ed94)
-                dc.w    $06b8
-                dc.l    silient_repeat                  ; ($00004d3a)
-                dc.w    $0001
-                dc.w    $00d3
-                dc.w    $001e
+                
+                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
+                ; The amount the Volume Changes per Rate of Change
                 dc.b    $00
-                dc.b    $1e
-                dc.b    $1e
+                ; -------- END OF SOUND ADSR VALUES --------
+
+                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
+                ; This effect doubles the current note played, 
+                ; not happy with my description of this - need to review further
+                ; ---------------------------------------------------------------
+                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
+                ; Parameter - Signed Byte for lead-in note Pitch Offest
                 dc.b    $00
-                dc.w    $000c
-                dc.w    $0004
+                
+                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
+                ; Parameter - Duration of the lead-in note in Ticks
+                dc.b    $00
+                
+                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
+                ; Working Value: Leadin Note Ticks Value
+                dc.b    $00           
+                ; -------- End of 'LEAD-IN' Effect Values
+
+                ; ---------------- 'PORTOMENTO' Effect Values -----------------
+                ; This effect enables a note's pitch to slide into the next
+                ;--------------------------------------------------------------
+                ; Name: paramPortomentoStartOffset     - Offset 0x24
+                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
+                dc.b    $00                             
+                ; Name: paramPortomentoLengthTicks     - Offest 0x25
+                ; Parameter - The length of the Portomento Slide in Ticks
+                dc.b    $00                             
+                ; Name: portomentoAmountPerTick        - Offset 0x26
+                ; The rate of portomento per tick
+                dc.b    $00                             
+                ; --------- End of 'PORTOMENTO' Effect Values ---------
+
+                ; Unreferenced byte value (maybe a pad byte for next ptr)
+                dc.b    $00                            ; Offset 0x27
+                
+                ; ------------------'ARPEGGIO' Effect Values ---------------------
+                ; This effect is used to give a single channel the warbly chords
+                ; effect, or when slowed down, plays the individual notes of
+                ; a chord at fixed intervals repeated in sequence.
+                ;-----------------------------------------------------------------
+                ; Name: ptrArpeggioTable               Offset 0x28
+                ; Data Start - Pointer into Arpeggio Table
+                dc.l    $00000000 
+                
+                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
+                ; Working ptr into Arpeggio Table
+                dc.l    $00000000                    
+                
+                ; Name: paramArpeggioTableLength       Offset 0x30
+                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
+                dc.b    $00                         
+                
+                ; Name: arpeggioTableLenCount          Offset 0x31
+                ; The size of the Arpeggio Table in Bytes/Entries
+                dc.b    $00                         
+                
+                ; Name: paramArpeggioSpeedTicks        Offset 0x32
+                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
+                dc.b    $00                         
+                
+                ; Name: arpeggioRateTicks              Offset 0x33
+                ; Woring Value: Arpeggio Rate in Ticks
+                dc.b    $00                         
+                
+
+               ;-------------------------- 'VIBRATO' Effect Values -----------------------
+               ; The vibrato is a pitch modulation effect.
+               ;--------------------------------------------------------------------------
+                ; Name: paramModulationLevel           Offset 0x34
+                ; Parameter - The amount of modulation applied by the effect
+                dc.b    $00                     
+                
+                ; Name: paramModulationSpeed           Offset 0x35
+                ; Parameter - The speed/rate of the modulation effect
+                dc.b    $00                        
+                
+                ; Name: paramModulationDelayStart      Offset 0x36
+                ; Parameter - Delay the start of the modulation effect in ticks
+                dc.b    $00                     
+                
+                ; Name: modulationDelayStartTicks      Offset 0x37
+                ; Working Value: initialised as a copy of modulatioDelayStart
+                dc.b    $00                     
+                
+                ; Name: modulationSpeedTicks_x2        Offset 0x38
+                ; Working Value: initialised as modulationSpeed x 2 
+                dc.b    $00                          
+                
+                ; Name: modulationSpeedTicks           Offset 0x39
+                ; Working Value: Initialised as modulationSpeed
+                dc.b    $00                          
+                
+                ; Name: modulationAmountPerTick        Offset 0x3a
+                ; Working Value: Initialised as modulationLevel / modulationSpeed
+                dc.w    $0000                        
+                
+
+               ;------------------------ 'INSTRUMENT' Values ------------------------
+               ; Details of the current Instrument/Sample being played
+               ;---------------------------------------------------------------------
+                ; Name: instrumentTuningAmount         Offset 0x3c
+                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
+                dc.w    $0000                                
+                
+                ; Name: ptrInstrumentSampleStart       Offset 0x3e
+                ; Pointer to the start of the Instrument's Sample Data
+                dc.l    $00000000                    
+                
+                ; Name: instrumentSampleLength         Offset 0x42
+                ; Length of the Sample to play (before repeat if any)
+                dc.w    $0000                                    
+                
+                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
+                ; Pointer to the instrument's Repeat Sample Data
+                dc.l    $00000000                       
+                
+                ; Name: instrumentRepeatLength         Offset 0x48
+                ; Length of the Instrument's Repeat Sample Data
+                dc.w    $0000                                    
+                
+               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
+               ; Here are the working values for the currently playing note.
+               ;---------------------------------------------------------------------
+                ; Name: notePeriodValue                Offset 0x42
+                ; Actual Current Note Period Value
+                dc.w    $0000                              
+
+                ; Name: noteVolume                     Offset 0x4c
+                ; Current Note Volume
+                dc.w    $0000                         
+                
+                ; Name: unreferenced_02                Offset 0x4e
+                ; Unused Unreferenced Value
+                dc.b    $00                          
+                
+                ; Name: transposedNoteIndex            Offset 0x4f
+                ; Transposed Note Value as an index into the note period table.
+                dc.b    $00                                      
+                
+                ; Name: transposedLeadInNoteIndex      Offset 0x50
+                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
+                dc.b    $00                                        
+                
+                ; Name: paramPairedNoteDurationTicks   Offset 0x51
+                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
+                dc.b    $00                                         
+                
+                ; Name: currentNoteTicks               Offset 0x52
+                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
+                dc.w    $0000                                    
+                
+                ; Name: ChannelDMA
+                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
+                dc.w    $0002      ; The only value not initialised by the Driver                          
 
 
-
-channel_4_status                                        ; original address L00004126
-                dc.w    $8084
-                dc.l    L0001BA34                       ; ($0001ba34)
-                dc.l    L0001BA37                       ; ($0001ba37)
+               ; ----------------------- CHANEL 02 - STATUS -----------------------
+               ; This data structure manages the Audio Channel 02 status values.
+               ; - It tracks the current sound/song position,
+               ; - It holds repeat and looping pointers of the sound/song
+               ; - It holds repeat and looping details of the current track/pattern
+               ; - It holds transposition values of the current track/pattern
+               ; - It holds status of the current sample ADSR volume envelope
+               ; - It holes status of the current sample Effect parameters and working values.
+               ;    - Lead In Notes (needs more investigation)
+               ;    - Portomento Effect (Pitch Slide)
+               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
+               ;    - Vibrato Effect (Pitch Modulation)
+               ; - It holds the status of the current sample.
+               ;    - Repeat/Loop positions
+               ;    - Fine pitch tuning (retuning of sample)
+               ; - It holds the status of the current note played
+               ;    - Note Length
+               ;    - DMA Channel Active bits
+               ;
+channel_02_status                                        ; original address L000040d0
+               ; Channel Control Word 
+               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
+               ; Low Byte contains Active Effects 
+                dc.w    $0000    
+                
+                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
+                ; Pattern Sequences/song restart loop pattern ptr              
+                dc.l    $00000000                      
+                
+                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
+                ; Next Pattern to play after the current one
+                dc.l    $00000000                       
+                
+                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
+                ; Loop within the current Pattern
+                dc.l    $00000000 
+                
+                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
+                ; Playing Pattern/Track data position
+                dc.l    $00000000   
+                
+                ; Name: patternLoopCount               - Offset 0x12  - byte value
+                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
+                dc.b    $00
+                
+                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
+                ; Signed byte for key change value (+- index into the note period table)
+                dc.b    $00 
+                
+                ; ------------------ 'ADSR' Parameter Values -------------------
+                ; values to keep track of the ADSR sound envelope values.
+                ;---------------------------------------------------------------
+                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
+                ; Pointer to the current sound's ADSR Envelope data
                 dc.l    $00000000
-                dc.l    L0001BA41                       ; ($0001ba41)
-                dc.b    $05
-                dc.b    $00
-                dc.l    L0001B9B4                       ; ($0001b9b4)
-                dc.l    L0001B9BA+1                     ; ($0001b9bb)
-                dc.w    $0101
-                dc.w    $0001
-                dc.b    $ff
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $00
+                
+                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
+                ; Working Value: Current Pointer into the sound's ADSR Envelope
                 dc.l    $00000000
-                dc.l    $00000000
+                
+                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
+                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
                 dc.b    $00
+                
+                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
+                ; Working Value - Rate of change for the current ADSR 'phase'
                 dc.b    $00
-                dc.b    $00
-                dc.b    $00
-                dc.b    $01
-                dc.b    $03
-                dc.b    $14
-                dc.b    $00
-                dc.b    $06
-                dc.b    $05
-                dc.w    $0006
-                dc.w    $003e
-                dc.l    sample_10+104                   ; ($000114ca)
-                dc.w    $11d6
-                dc.l    sample_10+6422                  ; ($00012de0)
-                dc.w    $054b
-                dc.w    $0279
+                
+                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
+                ; Ticks to Delay ADSR Envelope Processing
                 dc.w    $0000
+                
+                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
+                ; The amount the Volume Changes per Rate of Change
                 dc.b    $00
-                dc.b    $38
-                dc.b    $38
+                ; -------- END OF SOUND ADSR VALUES --------
+
+                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
+                ; This effect doubles the current note played, 
+                ; not happy with my description of this - need to review further
+                ; ---------------------------------------------------------------
+                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
+                ; Parameter - Signed Byte for lead-in note Pitch Offest
                 dc.b    $00
-                dc.w    $0018
-                dc.w    $0008
+                
+                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
+                ; Parameter - Duration of the lead-in note in Ticks
+                dc.b    $00
+                
+                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
+                ; Working Value: Leadin Note Ticks Value
+                dc.b    $00           
+                ; -------- End of 'LEAD-IN' Effect Values
+
+                ; ---------------- 'PORTOMENTO' Effect Values -----------------
+                ; This effect enables a note's pitch to slide into the next
+                ;--------------------------------------------------------------
+                ; Name: paramPortomentoStartOffset     - Offset 0x24
+                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
+                dc.b    $00                             
+                ; Name: paramPortomentoLengthTicks     - Offest 0x25
+                ; Parameter - The length of the Portomento Slide in Ticks
+                dc.b    $00                             
+                ; Name: portomentoAmountPerTick        - Offset 0x26
+                ; The rate of portomento per tick
+                dc.b    $00                             
+                ; --------- End of 'PORTOMENTO' Effect Values ---------
+
+                ; Unreferenced byte value (maybe a pad byte for next ptr)
+                dc.b    $00                            ; Offset 0x27
+                
+                ; ------------------'ARPEGGIO' Effect Values ---------------------
+                ; This effect is used to give a single channel the warbly chords
+                ; effect, or when slowed down, plays the individual notes of
+                ; a chord at fixed intervals repeated in sequence.
+                ;-----------------------------------------------------------------
+                ; Name: ptrArpeggioTable               Offset 0x28
+                ; Data Start - Pointer into Arpeggio Table
+                dc.l    $00000000 
+                
+                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
+                ; Working ptr into Arpeggio Table
+                dc.l    $00000000                    
+                
+                ; Name: paramArpeggioTableLength       Offset 0x30
+                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
+                dc.b    $00                         
+                
+                ; Name: arpeggioTableLenCount          Offset 0x31
+                ; The size of the Arpeggio Table in Bytes/Entries
+                dc.b    $00                         
+                
+                ; Name: paramArpeggioSpeedTicks        Offset 0x32
+                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
+                dc.b    $00                         
+                
+                ; Name: arpeggioRateTicks              Offset 0x33
+                ; Woring Value: Arpeggio Rate in Ticks
+                dc.b    $00                         
+                
+
+               ;-------------------------- 'VIBRATO' Effect Values -----------------------
+               ; The vibrato is a pitch modulation effect.
+               ;--------------------------------------------------------------------------
+                ; Name: paramModulationLevel           Offset 0x34
+                ; Parameter - The amount of modulation applied by the effect
+                dc.b    $00                     
+                
+                ; Name: paramModulationSpeed           Offset 0x35
+                ; Parameter - The speed/rate of the modulation effect
+                dc.b    $00                        
+                
+                ; Name: paramModulationDelayStart      Offset 0x36
+                ; Parameter - Delay the start of the modulation effect in ticks
+                dc.b    $00                     
+                
+                ; Name: modulationDelayStartTicks      Offset 0x37
+                ; Working Value: initialised as a copy of modulatioDelayStart
+                dc.b    $00                     
+                
+                ; Name: modulationSpeedTicks_x2        Offset 0x38
+                ; Working Value: initialised as modulationSpeed x 2 
+                dc.b    $00                          
+                
+                ; Name: modulationSpeedTicks           Offset 0x39
+                ; Working Value: Initialised as modulationSpeed
+                dc.b    $00                          
+                
+                ; Name: modulationAmountPerTick        Offset 0x3a
+                ; Working Value: Initialised as modulationLevel / modulationSpeed
+                dc.w    $0000                        
+                
+
+               ;------------------------ 'INSTRUMENT' Values ------------------------
+               ; Details of the current Instrument/Sample being played
+               ;---------------------------------------------------------------------
+                ; Name: instrumentTuningAmount         Offset 0x3c
+                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
+                dc.w    $0000                                
+                
+                ; Name: ptrInstrumentSampleStart       Offset 0x3e
+                ; Pointer to the start of the Instrument's Sample Data
+                dc.l    $00000000                    
+                
+                ; Name: instrumentSampleLength         Offset 0x42
+                ; Length of the Sample to play (before repeat if any)
+                dc.w    $0000                                    
+                
+                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
+                ; Pointer to the instrument's Repeat Sample Data
+                dc.l    $00000000                       
+                
+                ; Name: instrumentRepeatLength         Offset 0x48
+                ; Length of the Instrument's Repeat Sample Data
+                dc.w    $0000                                    
+                
+               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
+               ; Here are the working values for the currently playing note.
+               ;---------------------------------------------------------------------
+                ; Name: notePeriodValue                Offset 0x42
+                ; Actual Current Note Period Value
+                dc.w    $0000                              
+
+                ; Name: noteVolume                     Offset 0x4c
+                ; Current Note Volume
+                dc.w    $0000                         
+                
+                ; Name: unreferenced_02                Offset 0x4e
+                ; Unused Unreferenced Value
+                dc.b    $00                          
+                
+                ; Name: transposedNoteIndex            Offset 0x4f
+                ; Transposed Note Value as an index into the note period table.
+                dc.b    $00                                      
+                
+                ; Name: transposedLeadInNoteIndex      Offset 0x50
+                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
+                dc.b    $00                                        
+                
+                ; Name: paramPairedNoteDurationTicks   Offset 0x51
+                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
+                dc.b    $00                                         
+                
+                ; Name: currentNoteTicks               Offset 0x52
+                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
+                dc.w    $0000                                    
+                
+                ; Name: ChannelDMA
+                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
+                dc.w    $0004      ; The only value not initialised by the Driver                          
+
+
+
+               ; ----------------------- CHANEL 03 - STATUS -----------------------
+               ; This data structure manages the Audio Channel 03 status values.
+               ; - It tracks the current sound/song position,
+               ; - It holds repeat and looping pointers of the sound/song
+               ; - It holds repeat and looping details of the current track/pattern
+               ; - It holds transposition values of the current track/pattern
+               ; - It holds status of the current sample ADSR volume envelope
+               ; - It holes status of the current sample Effect parameters and working values.
+               ;    - Lead In Notes (needs more investigation)
+               ;    - Portomento Effect (Pitch Slide)
+               ;    - Arpeggio Effect (Warbly Chords, Pitch Step Effect)
+               ;    - Vibrato Effect (Pitch Modulation)
+               ; - It holds the status of the current sample.
+               ;    - Repeat/Loop positions
+               ;    - Fine pitch tuning (retuning of sample)
+               ; - It holds the status of the current note played
+               ;    - Note Length
+               ;    - DMA Channel Active bits
+               ;
+channel_03_status                                        ; original address L00004126
+                ;dc.w    $8084
+               ; Channel Control Word 
+               ; High Byte (0x8000 = music channel, 0x4000 = SFX channel) 
+               ; Low Byte contains Active Effects 
+                dc.w    $0000    
+                
+                ; Name: ptrPatternSequenceLoopStart    - Offset 0x02 - Address Pointer
+                ; Pattern Sequences/song restart loop pattern ptr              
+                dc.l    $00000000                      
+                
+                ; Name: ptrNextPatternSequencePosition - Offset 0x06 - Address Pointer
+                ; Next Pattern to play after the current one
+                dc.l    $00000000                       
+                
+                ; Name: ptrPatternDataLoop             - Offset 0x0a  - Address Pointer
+                ; Loop within the current Pattern
+                dc.l    $00000000 
+                
+                ; Name: ptrNextPatternDataPosition     - Offset 0xe   - Address Pointer
+                ; Playing Pattern/Track data position
+                dc.l    $00000000   
+                
+                ; Name: patternLoopCount               - Offset 0x12  - byte value
+                ; Number of times to loop the current Pattern - 1 = Play Once (default)           
+                dc.b    $00
+                
+                ; Name: patternTransposeValue          - Offset 0x13  - signed byte value
+                ; Signed byte for key change value (+- index into the note period table)
+                dc.b    $00 
+                
+                ; ------------------ 'ADSR' Parameter Values -------------------
+                ; values to keep track of the ADSR sound envelope values.
+                ;---------------------------------------------------------------
+                ; Name: ptrADSREnvelope                - Offset 0x14  - Address Pointer
+                ; Pointer to the current sound's ADSR Envelope data
+                dc.l    $00000000
+                
+                ; Name: ptrCurrentADSREnvelope         - Offset 0x18  - Address Pointer
+                ; Working Value: Current Pointer into the sound's ADSR Envelope
+                dc.l    $00000000
+                
+                ; Name: adsrRateOfChangeTicks          - Offset 0x1c  - byte value
+                ; Parameter - Rate of Change Ticks for the current 'ADSR' phase
+                dc.b    $00
+                
+                ; Name: adsrCurrentRateOfChangeTicks   - Offset 0x1d  - byte value
+                ; Working Value - Rate of change for the current ADSR 'phase'
+                dc.b    $00
+                
+                ; Name: adsrEnvelopeDelayTicks         - Offset 0x1e  -  word value
+                ; Ticks to Delay ADSR Envelope Processing
+                dc.w    $0000
+                
+                ; Name: adsrVolumeRateOfChange         - Offset 0x20  - signed byte value
+                ; The amount the Volume Changes per Rate of Change
+                dc.b    $00
+                ; -------- END OF SOUND ADSR VALUES --------
+
+                ; --------------- SOUND 'LEAD-IN' Effect Values -----------------
+                ; This effect doubles the current note played, 
+                ; not happy with my description of this - need to review further
+                ; ---------------------------------------------------------------
+                ; Name: paramLeadInNoteOfffset         - Offset 0x21  - signed byte
+                ; Parameter - Signed Byte for lead-in note Pitch Offest
+                dc.b    $00
+                
+                ; Name: paramLeadInNoteDurationTicks   - Offset 0x22  - byte value
+                ; Parameter - Duration of the lead-in note in Ticks
+                dc.b    $00
+                
+                ; Name: leadInNoteCurrentTicks         - Offset 0x23  - byte value
+                ; Working Value: Leadin Note Ticks Value
+                dc.b    $00           
+                ; -------- End of 'LEAD-IN' Effect Values
+
+                ; ---------------- 'PORTOMENTO' Effect Values -----------------
+                ; This effect enables a note's pitch to slide into the next
+                ;--------------------------------------------------------------
+                ; Name: paramPortomentoStartOffset     - Offset 0x24
+                ; Parameter - Signed Pitch Offset of the Next Pattern Note. (Start pitch of the Portomento)
+                dc.b    $00                             
+                ; Name: paramPortomentoLengthTicks     - Offest 0x25
+                ; Parameter - The length of the Portomento Slide in Ticks
+                dc.b    $00                             
+                ; Name: portomentoAmountPerTick        - Offset 0x26
+                ; The rate of portomento per tick
+                dc.b    $00                             
+                ; --------- End of 'PORTOMENTO' Effect Values ---------
+
+                ; Unreferenced byte value (maybe a pad byte for next ptr)
+                dc.b    $00                            ; Offset 0x27
+                
+                ; ------------------'ARPEGGIO' Effect Values ---------------------
+                ; This effect is used to give a single channel the warbly chords
+                ; effect, or when slowed down, plays the individual notes of
+                ; a chord at fixed intervals repeated in sequence.
+                ;-----------------------------------------------------------------
+                ; Name: ptrArpeggioTable               Offset 0x28
+                ; Data Start - Pointer into Arpeggio Table
+                dc.l    $00000000 
+                
+                ; Name: ptrArpeggioCurrentTable        Offset 0x2c
+                ; Working ptr into Arpeggio Table
+                dc.l    $00000000                    
+                
+                ; Name: paramArpeggioTableLength       Offset 0x30
+                ; Byte[1] of Arpeggio Table - Size of data in the Table (after initial 2 bytes)
+                dc.b    $00                         
+                
+                ; Name: arpeggioTableLenCount          Offset 0x31
+                ; The size of the Arpeggio Table in Bytes/Entries
+                dc.b    $00                         
+                
+                ; Name: paramArpeggioSpeedTicks        Offset 0x32
+                ; Byte[0] of Arpeggio Table - Arpeggion Speed/Rate in Ticks
+                dc.b    $00                         
+                
+                ; Name: arpeggioRateTicks              Offset 0x33
+                ; Woring Value: Arpeggio Rate in Ticks
+                dc.b    $00                         
+                
+
+               ;-------------------------- 'VIBRATO' Effect Values -----------------------
+               ; The vibrato is a pitch modulation effect.
+               ;--------------------------------------------------------------------------
+                ; Name: paramModulationLevel           Offset 0x34
+                ; Parameter - The amount of modulation applied by the effect
+                dc.b    $00                     
+                
+                ; Name: paramModulationSpeed           Offset 0x35
+                ; Parameter - The speed/rate of the modulation effect
+                dc.b    $00                        
+                
+                ; Name: paramModulationDelayStart      Offset 0x36
+                ; Parameter - Delay the start of the modulation effect in ticks
+                dc.b    $00                     
+                
+                ; Name: modulationDelayStartTicks      Offset 0x37
+                ; Working Value: initialised as a copy of modulatioDelayStart
+                dc.b    $00                     
+                
+                ; Name: modulationSpeedTicks_x2        Offset 0x38
+                ; Working Value: initialised as modulationSpeed x 2 
+                dc.b    $00                          
+                
+                ; Name: modulationSpeedTicks           Offset 0x39
+                ; Working Value: Initialised as modulationSpeed
+                dc.b    $00                          
+                
+                ; Name: modulationAmountPerTick        Offset 0x3a
+                ; Working Value: Initialised as modulationLevel / modulationSpeed
+                dc.w    $0000                        
+                
+
+               ;------------------------ 'INSTRUMENT' Values ------------------------
+               ; Details of the current Instrument/Sample being played
+               ;---------------------------------------------------------------------
+                ; Name: instrumentTuningAmount         Offset 0x3c
+                ; Current Sample's signed tuning value. Number if Intervals to retune the sample by.
+                dc.w    $0000                                
+                
+                ; Name: ptrInstrumentSampleStart       Offset 0x3e
+                ; Pointer to the start of the Instrument's Sample Data
+                dc.l    $00000000                    
+                
+                ; Name: instrumentSampleLength         Offset 0x42
+                ; Length of the Sample to play (before repeat if any)
+                dc.w    $0000                                    
+                
+                ; Name: ptrInstrumentSampleRepeat      Offset 0x44
+                ; Pointer to the instrument's Repeat Sample Data
+                dc.l    $00000000                       
+                
+                ; Name: instrumentRepeatLength         Offset 0x48
+                ; Length of the Instrument's Repeat Sample Data
+                dc.w    $0000                                    
+                
+               ;------------------ CURRENT PLAYING NOTE VALUES ----------------------
+               ; Here are the working values for the currently playing note.
+               ;---------------------------------------------------------------------
+                ; Name: notePeriodValue                Offset 0x42
+                ; Actual Current Note Period Value
+                dc.w    $0000                              
+
+                ; Name: noteVolume                     Offset 0x4c
+                ; Current Note Volume
+                dc.w    $0000                         
+                
+                ; Name: unreferenced_02                Offset 0x4e
+                ; Unused Unreferenced Value
+                dc.b    $00                          
+                
+                ; Name: transposedNoteIndex            Offset 0x4f
+                ; Transposed Note Value as an index into the note period table.
+                dc.b    $00                                      
+                
+                ; Name: transposedLeadInNoteIndex      Offset 0x50
+                ; Transposed Note Value as an index into the note period table. (with Leadin modification if any)
+                dc.b    $00                                        
+                
+                ; Name: paramPairedNoteDurationTicks   Offset 0x51
+                ; Parameter - Paired Notes Effect 0x84 - Additional Note Duration
+                dc.b    $00                                         
+                
+                ; Name: currentNoteTicks               Offset 0x52
+                ; The current 'tick' count (VBlank Count) of the Current Playing Note.
+                dc.w    $0000                                    
+                
+                ; Name: ChannelDMA
+                ; Channel DMA bit - Power of 2 Value (1,2,4,8 for each channel)
+                dc.w    $0008      ; The only value not initialised by the Driver                          
 
 
 .other_data
@@ -679,7 +1459,7 @@ _do_sounddriver_stop_all                                            ; original r
                 move.b  #$00,sounddriver_song_number                        ; $00004022 - initialising unknown
                 move.b  #$00,sounddriver_sfx_number                          ; initialising unknown
 
-                lea.l   channel_1_status,a0                     ; $4024,a0
+                lea.l   channel_00_status,a0                     ; $4024,a0
                 lea.l   $00dff0a8,a1                            ; a1 = audio volume
                 bsr.b   silence_channel_volume                  ; calls $000041c2
                 bsr.b   silence_channel_volume                  ; calls $000041c2
@@ -732,7 +1512,7 @@ _do_sounddriver_stopsound                                                   ; or
                 lea.l   song_table,a2                           ; L0001b9dc,a2
                 asl.w   #$03,d0
                 adda.w  d0,a2
-                lea.l   channel_1_status,a0                     ; L00004024,a0
+                lea.l   channel_00_status,a0                     ; L00004024,a0
                 lea.l   $00dff0a8,a1                            ; a1 = AUD0VOL
                 moveq   #$03,d7                                 ; d7 = 3 + 1 ; 4 sound channels
 .audio_channel_loop
@@ -761,7 +1541,7 @@ _do_sounddriver_stopsound                                                   ; or
                 ; IN:  D0.w - song number?
                 ;
 _do_sounddriver_play_sfx                                                        ; original routine address $00004222
-               tst.w   channel_4_status                ; L00004126 ; test a flag - unknown
+               tst.w   channel_03_status                ; L00004126 ; test a flag - unknown
                 beq.b   .continue_execution             ; if flag == 0 then continue execution, jmp $0000422e
 
                 cmp.b   sounddriver_sfx_number,d0                    ; compare $4023 with song number? (4023 > d0?)
@@ -814,7 +1594,7 @@ do_init_current_song
 
                 ;------- init each audio channel -----
 .init_channels
-                lea.l   channel_1_status,a1                     ; L00004024,a1
+                lea.l   channel_00_status,a1                     ; L00004024,a1
                 moveq   #$03,d7                                 ; d7 = channel count + 1
 
                 ;------- loop each audio channel ------
@@ -936,7 +1716,7 @@ _do_sounddriver_vblank_update                                                   
 
                 ; -------- channel 1 ---------
 .L00004314                                                      ; original address L00004314            
-                lea.l   channel_1_status,a4                     ; a4 = channel 1 status - L00004024,a4
+                lea.l   channel_00_status,a4                     ; a4 = channel 1 status - L00004024,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7                ; d7 = channel current active command bits
                 beq.b   .L00004324
 .do_commands                                                    ; original address L0000431c
@@ -946,7 +1726,7 @@ _do_sounddriver_vblank_update                                                   
 
                 ; ------- channel 2 ---------
 .no_active_commands                                             ; original address L00004324
-.L00004324      lea.l   channel_2_status,a4                     ;L0000407a,a4
+.L00004324      lea.l   channel_01_status,a4                     ;L0000407a,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7
                 beq.b   .L00004334
                 bsr.b   do_channel_command_loop                 ; L00004360
@@ -955,7 +1735,7 @@ _do_sounddriver_vblank_update                                                   
 
                 ; ------ channel 3 ----------
 .L00004334                                                      ; original address .L00004334                
-                lea.l   channel_3_status,a4                     ; L000040d0,a4
+                lea.l   channel_02_status,a4                     ; L000040d0,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7
                 beq.b   .L00004344
                 bsr.b   do_channel_command_loop                 ; L00004360
@@ -964,7 +1744,7 @@ _do_sounddriver_vblank_update                                                   
 
                 ; ------ channel 4 ---------
 .L00004344                                                      ; original address .L00004344
-                lea.l   channel_4_status,a4                     ;L00004126,a4
+                lea.l   channel_03_status,a4                     ;L00004126,a4
                 move.w  CHANNEL_CTRL_WORD(a4),d7
                 beq.b   .L00004354
                 bsr.b   do_channel_command_loop                 ; L00004360
@@ -1665,7 +2445,7 @@ set_channel_volume                                              ; original addre
                 ; IN: D0 = DMA/interrupt bits (channel enabled)
                 ; IN: D1 = master volume mask 1
 do_channel_1
-                lea.l   channel_1_status,a0                     ; $4024,a0
+                lea.l   channel_00_status,a0                     ; $4024,a0
                 move.w  d1,d3
 .chk_volume_mask
                 btst.b  #$0006,(a0)                             ; test which volume mask to use (allows volume off/reduced volume by setting a channel bit) 
@@ -1696,7 +2476,7 @@ do_channel_1
                 ; IN: D0 = DMA/interrupt bits (channel enabled)
                 ; IN: D1 = master volume mask 1
 do_channel_2                                                    ; original address L0000490a
-                lea.l   channel_2_status,a0                     ; L0000407a,a0
+                lea.l   channel_01_status,a0                     ; L0000407a,a0
                 move.w  d1,d3
 .chk_volume_mask
                 btst.b  #$0006,(a0)                             ; original address L00004910
@@ -1725,7 +2505,7 @@ do_channel_2                                                    ; original addre
                 ; IN: D0 = DMA/interrupt bits (channel enabled)
                 ; IN: D1 = master volume mask 1
 do_channel_3                                                    ; original address  L00004946
-                lea.l   channel_3_status,a0                     ;$40d0,a0
+                lea.l   channel_02_status,a0                     ;$40d0,a0
                 move.w  d1,d3
 .chk_volume_mask                                                ; original address  L0000494c
                 btst.b  #$0006,(a0)
@@ -1754,7 +2534,7 @@ do_channel_3                                                    ; original addre
                 ; IN: D0 = DMA/interrupt bits (channel enabled)
                 ; IN: D1 = master volume mask 1
 do_channel_4
-                lea.l   channel_4_status,a0                     ;$4126,a0
+                lea.l   channel_03_status,a0                     ;$4126,a0
                 move.w  d1,d3
 .chk_volume_mask 
                 btst.b  #$0006,(a0)
