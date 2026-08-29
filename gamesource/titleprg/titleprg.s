@@ -1956,7 +1956,7 @@ L00004BEA       dc.w $0021
 
 
 
-                ;---------------- music data, maybe instrument data ------------------
+                ;---------------------------- instrument data table -----------------------------
                 ; I think each 16 bytes represents data describing a sound/instrument.
                 ; There are 12 samples in the Sample Data and 12 entries below.
                 ; THe table below could have room for 20 or 21 entries (only 12 in use)
@@ -2162,6 +2162,42 @@ silient_repeat                                                                  
                 dc.w  $0000                                                     ; repeat data for end of non-repeating samples (2 bytes)
 
 
+
+
+          ; ********************************************************************************************************************************************
+          ; ********************************************************************************************************************************************
+          ; **                                                                                                                                        **
+          ; **                                                   LEVEL MUSIC DATA                                                                     **
+          ; **                                                                                                                                        **          
+          ; ********************************************************************************************************************************************
+          ; ********************************************************************************************************************************************
+          ; This is the closest block of data that could be called a music module, containing the:-
+          ;    - Sample Table
+          ;    - Raw Instrument Samples
+          ;    - Sound Data Definitions
+          ;         - Audio Track Data (pattern sequences and pattern data)
+          ;    - Effect Data Tables
+          ;         - ADSR Table (can be applied to any instrument)
+          ;         - Arpeggio Table (can be applied to any instrument)
+          ;         - Vibrato Table (can be applied to any instrument)
+          ;
+          ; Notes
+          ; The data structure is not quite self contained and portable, in order to do this the data would have to be fronted with a table of
+          ; offests into the data block, something like:-
+          ;
+          ;    +-------------------+
+          ;    | Table Offsets     |
+          ;    +-------------------+
+          ;    | SampleTableOffset |
+          ;    | SoundTableOffset  |
+          ;    | ADSRTableOffset   |
+          ;    | ArpTableOffset    |
+          ;    | ModTableOffset    |
+          ;    +-------------------+
+          ;
+          ; Would also require a little code and some data pointers to populate with the addresses of these tables when initialisng the 
+          ; Sound Driver.
+          ;
 
                 ; -- unknown data values (11 words/22 bytes)
 L00004D3C       dc.w  $0074, $60DC, $82BB, $457E, $24A0, $8C00, $7460
@@ -2494,20 +2530,20 @@ PTNCMD_SELECT_INSTRUMENT      EQU $90        ; (2 byte command) - 1 parameter, i
                ; Pattern 00 - used by channel 0 & 3 (wait/rest pattern) 
                ; Original address $0001BA3E 
 sound_pattern_00                                  
-               dc.b PTNCMD_PAIRED_NOTES_END            ;$85
-               dc.b PTNCMD_PAUSE_TRACK,$60             ;$87,$60
-               dc.b PTNCMD_END_OR_LOOP                 ;$80
+               dc.b PTNCMD_PAIRED_NOTES_END                 ; Switch off Paired notes effect
+               dc.b PTNCMD_PAUSE_TRACK,$60                  ; Pause Track, Duration = $60
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
-               ; Pattern 01 - used by channel 0 (arpeggios) 
+               ; Pattern 01 - soundId 01 - track 0
                ; Original address $0001BA42
 sound_pattern_01                                  
-               dc.b $8F,$01
-               dc.b $90,$08
-               dc.b $8E
-               dc.b $8C
-               dc.b $84,$06
-               dc.b $38,$3A
+               dc.b PTNCMD_ADSR_ENVELOPE,$01                ; ADSR Envelope $01
+               dc.b PTNCMD_SELECT_INSTRUMENT,$08            ; Insrtument $06
+               dc.b PTNCMD_ARPEGGIO_STOP                    ; Stop Arpeggio
+               dc.b PTNCMD_MODULATION_STOP                  ; Stop Vibrato
+               dc.b PTNCMD_PAIRED_NOTES_START,$06           ; Paired Notes, Duration 
+               dc.b $38,$3A                                 ; list of paired notes - whole pattern
                dc.b $3F,$38
                dc.b $3A,$3F
                dc.b $38,$3A
@@ -2539,131 +2575,131 @@ sound_pattern_01
                dc.b $3A,$3F
                dc.b $38,$3A
                dc.b $3F,$3A
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 02 - used by channel 1 (Drums) 
                ; Original address $0001BA8B 
 sound_pattern_02                                  
-               dc.b $8F,$02
-               dc.b $90,$03
+               dc.b PTNCMD_ADSR_ENVELOPE,$02                ; ADSR Envelope $02
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05 
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$0C
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$0C
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$06
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$0C
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$0C
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$0C
-               dc.b $90,$03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
                dc.b $0C,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
                dc.b $41,$06
-               dc.b $90,$05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
                dc.b $40,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$06
-               dc.b $90,$04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
                dc.b $18,$06
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_END_OR_LOOP 
 
 
                ; Pattern 03 - used by channel 2 (bass)
                ; Original address $0001BB62  
 sound_pattern_03                                      
-               dc.b $90,$07
-               dc.b $8F,$02
-               dc.b $8E
-               dc.b $8C
-               dc.b $14,$0C
-               dc.b $20,$0C
+               dc.b PTNCMD_SELECT_INSTRUMENT,$07            ; Select Instrument $07
+               dc.b PTNCMD_ADSR_ENVELOPE,$02                ; ADSR Envelope $02
+               dc.b PTNCMD_ARPEGGIO_STOP                    ; Arpeggio Stop 
+               dc.b PTNCMD_MODULATION_STOP                  ; Vibrato Stop
+               dc.b $14,$0C                                 ; list of note, dutation
+               dc.b $20,$0C                                 ; ...
                dc.b $20,$0C
                dc.b $14,$06
                dc.b $1E,$0C
@@ -2698,50 +2734,50 @@ sound_pattern_03
                dc.b $19,$0C
                dc.b $1E,$0C
                dc.b $20,$0C
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 04 - used by channel  3 ( Voice & Guitar ) 
                ; Original address $0001BBB1
 sound_pattern_04                                      
-               dc.b $8F,$03
-               dc.b $90,$01
-               dc.b $87,$54
+               dc.b PTNCMD_ADSR_ENVELOPE,$03                ; ADSR Envelope $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$01            ; Select Instrument $01
+               dc.b PTNCMD_PAUSE_TRACK,$54                  ; Pause Track Duration = $54
                dc.b $23,$90
-               dc.b $90,$02
+               dc.b PTNCMD_SELECT_INSTRUMENT,$02            ; Select Instrument $02
                dc.b $23,$06
                dc.b $23,$96
-               dc.b $90,$01
-               dc.b $87,$54
+               dc.b PTNCMD_SELECT_INSTRUMENT,$01            ; Select Instrument $01
+               dc.b PTNCMD_PAUSE_TRACK,$54                  ; Pause Track Duration = $54
                dc.b $23,$06
                dc.b $23,$8A
-               dc.b $90,$02
+               dc.b PTNCMD_SELECT_INSTRUMENT,$02            ; Select Instrument $02
                dc.b $23,$9C
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 05 - used by channel 3 ( Voice & Guitar )
                ; Original address $0001BBCC
 sound_pattern_05   
-               dc.b $90,$0A
-               dc.b $8F,$04
-               dc.b $8B,$14,$01,$03
-               dc.b $3D,$48
-               dc.b $3F,$18
+               dc.b PTNCMD_SELECT_INSTRUMENT,$0a            ; Select Instrument $0A
+               dc.b PTNCMD_ADSR_ENVELOPE,$04                ; ADSR Envelope $04
+               dc.b PTNCMD_MODULATION_START,$14,$01,$03     ; Start Vibrato $14,$01,$03
+               dc.b $3D,$48                                 ; list of note, duration
+               dc.b $3F,$18                                 ; ...
                dc.b $3A,$60
                dc.b $3A,$48
                dc.b $3D,$18
                dc.b $38,$60
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 06 - used by channel 2 (bass) 
                ; Original address $0001BBE1
 sound_pattern_06 
-               dc.b $90,$09
-               dc.b $8F,$02
-               dc.b $14,$0C
-               dc.b $20,$0C
+               dc.b PTNCMD_SELECT_INSTRUMENT,$09            ; Select Instrument $09
+               dc.b PTNCMD_ADSR_ENVELOPE,$04                ; ADSR Envelope $02
+               dc.b $14,$0C                                 ; List of Note, Duration
+               dc.b $20,$0C                                 ; ...
                dc.b $20,$0C
                dc.b $14,$06
                dc.b $1E,$0C
@@ -2782,25 +2818,25 @@ sound_pattern_06
                dc.b $0F,$06
                dc.b $1B,$06
                dc.b $0F,$06
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 07 - used by channel 3 ( Joker Laugh )
                ; Original address $0001B9F8
 sound_pattern_07
-               dc.b $90,$0B
-               dc.b $8F,$03
-               dc.b $18,$96
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_SELECT_INSTRUMENT,$0b            ; Select Instrument $0B
+               dc.b PTNCMD_ADSR_ENVELOPE,$03                ; ADSR Envelope $03
+               dc.b $18,$96                                 ; note, duration
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 08 - used by channel 3 ( Batman IWanna )
                ; Original address $0001B9FF
 sound_pattern_08                                 
-               dc.b $90,$0C
-               dc.b $8F,$03
-               dc.b $18,$96
-               dc.b PTNCMD_END_OR_LOOP       ; $80
+               dc.b PTNCMD_SELECT_INSTRUMENT,$0c            ; Select Instrument $0C
+               dc.b PTNCMD_ADSR_ENVELOPE,$03                ; ADSR Envelope $03
+               dc.b $18,$96                                 ; note, duration
+               dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
 
                ; Pattern 09 - unused pattern data
