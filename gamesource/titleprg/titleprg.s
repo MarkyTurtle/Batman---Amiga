@@ -142,15 +142,6 @@ titleprg_start
                ;   - ID 02 = Joker Laugh
                ;   - ID 03 = Batman Game Completion
                ;
-               ;  PATTERN-LIST-COMMANDS:
-               ;   - 0x80 = End or Loop Current Pattern List (per audio channel) 	
-               ;   - 0x81 = Set Pattrtern List Loop Back Location (to current position)
-               ;   - 0x82 = Transpose the next pattern by the following signed byte value.
-               ;   - 0x83 = Repeat the next pattern by the count in the following byte value.
-               ;
-               ;  IN-PATTERN-COMMANDS:
-               ;   - TODO
-               ;
                ; SOUND/SONG TYPES
                ;   There are two main distinctions made between the types of sounds played by
                ;   this driver:
@@ -192,16 +183,52 @@ titleprg_start
                ;
                ;    sound_master_table
                ;         Sound01:
-               ;              dc.w $0000     ; channel 01 pattern list byte offset from the address Sound01
-               ;              dc.w $0000     ; channel 02 pattern list byte offset from the address Sound01+2
-               ;              dc.w $0000     ; channel 03 pattern list byte offset from the address Sound01+4
-               ;              dc.w $0000     ; channel 04 parrern list byte offset from the address Sound01+6
+               ;              dc.w $0000     ; h/w audio channel 00, byte offset to track pattern list 
+               ;              dc.w $0000     ; h/w audio channel 01, byte offset to track pattern list
+               ;              dc.w $0000     ; h/w audio channel 02, byte offset to track pattern list
+               ;              dc.w $0000     ; h/w audio channel 03, byte offset to track parrern list
                ;         Sound02:
-               ;              dc.w $0000     ; channel 01 pattern list byte offset from the address Sound02
-               ;              dc.w $0000     ; channel 02 pattern list byte offset from the address Sound02+2
-               ;              dc.w $0000     ; channel 03 pattern list byte offset from the address Sound02+4
-               ;              dc.w $0000     ; channel 04 parrern list byte offset from the address Sound02+6
+               ;              dc.w $0000     ; h/w audio channel 00, byte offset to track pattern list
+               ;              dc.w $0000     ; h/w audio channel 01, byte offset to track pattern list
+               ;              dc.w $0000     ; h/w audio channel 02, byte offset to track pattern list
+               ;              dc.w $0000     ; h/w audio channel 03, byte offset to track pattern list
                ;
+               ;    track pattern list
+               ;    ------------------
+               ;    The byte offsets in the sound_master_table point to the start of a track pattern list.
+               ;    The track pattern list is a list of 'pattern index bytes' to play in sequence for the audio track.
+               ;    It can also contain command bytes ($80+) as follows:
+               ;         - track commands:
+               ;              - 0x80 = End or Loop Current Pattern List (per audio channel) 	
+               ;              - 0x81 = Set Pattrtern List Loop Back Location (to current position)
+               ;              - 0x82 = Transpose the next pattern by the following signed byte value.
+               ;              - 0x83 = Repeat the next pattern by the count in the following byte value.
+               ;
+               ;    Every track sequence of bytes ends with $80 to 'end or loop the track'
+               ;    If there is no loop then the track ends in silence.
+               ;
+               ;
+               ;    pattern data
+               ;    ------------
+               ;    Pattern data typically consists of a list of note and duration bytes.
+               ;    They also conatin command bytes which are bytes in the range ($80-$90)
+               ;    Command Bytes take between 0 and 3 parameters.
+               ;    So, Pattern commands can range in lenght between 0 and 4 bytes.
+               ;
+               ;    The 'sound_pattern_master_table' contains a list of byte offsets to the start of each pattern.
+               ;    The pattern indexes from the audio track are used with this table to find the offset for the
+               ;    pattern data to play.
+               ;
+               ;
+               ;    sound_pattern_master_table
+               ;    --------------------------
+               ;    The table contains a 16bit byte offset to each pattern sequence.
+               ;    An example of how the entry offset values are calculated are shown below:
+               ;
+               ;    sound_pattern_master_table
+               ;    .pattern_00_offset  dc.w (sound_pattern_00-.pattern_00_offset)        ; Pattern 00 - Sound ID 00 - Title Music
+               ;    .pattern_01_offset  dc.w (sound_pattern_01-.pattern_01_offset)        ; Pattern 01 - Sound ID 00 - Title Music
+               ;    .pattern_02_offset  dc.w (sound_pattern_02-.pattern_02_offset)        ; Pattern 02 - Sound ID 00 - Title Music
                ;
                ;
                ;****************************************************************************************************************
@@ -262,14 +289,14 @@ SoundDriver_StopSound_2
                ;-----------------------------------------------------------------
                ; Sound Driver - Initialise SONG/TUNE (a sound using 3 channels)
                ;
-               ;    PUBLIC void SoundDriver_InitSong(d0.w = soundId)
+               ;    PUBLIC void SoundDriver_Play_Song(d0.w = soundId)
                ;         IN:- D0.b - soundId = The SONG/TUNE id to initialise for playing.
                ;  
                ;    Original Address $00004010
                ; Initialises a SONG/TUNE for playing diring the VBlank Update
                ; 
-SoundDriver_InitSong            
-               bra.w   _do_sounddriver_initsong   
+SoundDriver_Play_Song            
+               bra.w   _do_sounddriver_play_song   
 
 
                ;-----------------------------------------------------------------
@@ -302,105 +329,9 @@ SoundDriver_VBlankUpdate
                bra.w   _do_sounddriver_vblank_update 
 
 
-               even
-
-               ; Global Music Volume Mask - Allows external progam to mute the music
-               ; Original Address $0000401c
-master_music_volume_mask_1   
-               dc.w    $ffff 
-
-               ; Global SFX Volume Mask - Allows external program tomute the SFX
-               ; Original Address $0000401e
-master_sfx_volume_mask_2   
-               dc.w    $ffff 
-
-               ; Global Sound Control Bits
-               ; Original Address $00004020
-               ; Accumulated Audio Channel Control Bits/Flags
-               ;    BIT 15 - 1 = Music is Playing
-               ;    BIT 14 - 1 = SFX is PLaying
-               ;    BIT 03 - 1 = Channel 03 is Active (SFX Channel)
-               ;    BIT 02 - 1 = Channel 02 is Active (Music Channel)
-               ;    BIT 01 - 1 = Channel 01 is Active (Music Channel)
-               ;    BIT 00 - 1 = Channel 00 is Active (Music Channel)
-sounddriver_ctrl_bits 
-               dc.w    $0000                                   ; cleared when audio is silenced
 
 
-               ; The currently playing song/tune id number
-               ; Original Address $00004022
-sounddriver_song_number         
-               dc.b    $00
-
-               ; The currently playing SFX id number
-               ; Original Address $00004023
-sounddriver_sfx_number
-               dc.b    $00    
-
-
-
-
-                ; ------ channel/voice data structs --------
-                ; offset | desc
-                ; 0x0000 | bit 15 - init new song ( 1 = init new song)
-                ;        | bit 14 - init same song ( 1 = init same song)
-                ;        | bit 06 - choose master_volume_mask 1 or 2 (0 = use mask 1, 1 = use mask 2)
-                ; 0x003e | 32bit Audio Sample Data Ptr        - AUDxLC
-                ; 0x0042 | 16bit Audio Sample Len             - AUDxLEN (sample?/repeat?)
-                ; 0x0044 | 32bit Audio Sample Data Ptr        - AUDxLC
-                ; 0x0048 | 16bit Audio Sample Len             - AUDxLEN (sample?/repeat?) 
-                ; 0x004a | 16bit Audio Frequency Period       - AUDxPER
-                ; 0x004c | 16bit channel volume               - AUDxVOL
-                ;
-                ;
-
-CHANNEL_CTRL_WORD       EQU     $0 ; Channel Control - Active FX Command Bits (0x8000 = music channel, 0x4000 = SFX channel) low byte contains Active Effects BITS
-
-CHANNEL_INIT_DATA_PTR   EQU     $2                      ; 32bit address of channel init data (e.g. song_00_chanel_00_init_data)
-CHANNEL_CURRENT_DATA_PTR EQU    $6
-CHANNEL_MUSIC_DATA_PTR  EQU     $e
-CHANNEL_SAMPLE_PTR_A    EQU     $3e
-CHANNEL_SAMPLE_LEN_A    EQU     $42
-CHANNEL_SAMPLE_PTR_B    EQU     $44
-CHANNEL_SAMPLE_LEN_B    EQU     $48
-CHANNEL_SAMPLE_PERIOD   EQU     $4a
-CHANNEL_VOLUME          EQU     $4c
-CHANNEL_CMD_POS         EQU     $52                     ; 16bit value initialised to #$0001
-
-CHANNEL_STATUS_SIZE     EQU     $56                     ; size of structure in bytes
-
-
-
-                ; ---------------------------- include sound driver data structures -----------------------------
-                ; Runtime Audio Channel Data Structures for the Sound Driver.
-                ;   - Channel_00_Status - Audio Channel 00 Status Data Structure
-                ;   - Channel_01_Status - Audio Channel 01 Status Data Structure
-                ;   - Channel_02_Status - Audio Channel 02 Status Data Structure
-                ;   - Channel_03_Status - Audio Channel 03 Status Data Structure
-                include     sounddriver_datastructures.s
-
-
-
-               ; Audio DMA Value - Original Address $0000417c
-               ;    - Changes to DMACON (Active DMA Channels)
-               ;    - flag cleared on start of frame play routine
-               ;    - Accumulation of Channel_xx_Status offset 0x54 (channel DMA bit)
-               ;
-audio_dma      dc.w    $0000                           
-
-
-               ; Current Sound Play/Tick Counter - Original Address $0000417e
-               ; Is Cleared when a Song or SFX is started,
-               ; Measures the number of ticks played for the latest started sound
-               ; No good fo measuring a background tune when SFX played over the top.
-               ; beacise shared value for songs and SFX.
-play_tick_counter   
-               dc.w    $0000
-               even
-
-
-
-               ;----------------------------- intitialise music player ------------------------------
+               ;---------------------------------------------------------------------
                ; Initialise Sound Driver
                ;
                ;    PRIVATE void _do_sounddriver_initialise(void)
@@ -410,7 +341,10 @@ play_tick_counter
                ;  - Processes IFF Samples and populates the Instrument Table with 
                ;    Sample Addresses, Repeat Addresses and associated lengths
                ;  - Also sets the Instrument Volumes.
-
+               ;
+               ; Notes
+               ; Can be modified to remove hardcoded reference to 'iff_sample_data_table'
+               ;
 _do_sounddriver_initialise                                                                            
                 lea.l   iff_sample_data_table,a0             
                 lea.l   instrument_data_table,a1             
@@ -418,8 +352,7 @@ _do_sounddriver_initialise
                 bra.w   _do_sounddriver_stop_all             
 
 
-
-               ;---------------------------- stop all audio ----------------------------------
+               ;---------------------------------------------------------------------
                ; Sound Driver - Stop All
                ;
                ;    PRIVATE void _do_sounddriver_stop_all(void)
@@ -452,7 +385,6 @@ _do_sounddriver_stop_all
                rts    
 
 
-
                ;------------------------ initialise audio channel --------------------
                ; Silence Audio Channel and update Channel_xx_Status
                ;
@@ -475,8 +407,6 @@ _initialise_audio_channel
                rts
 
 
-
-
                ;----------------------------- do stop audio -----------------------------
                ; Stop a TUNE or SFX from Playing
                ;  
@@ -488,6 +418,9 @@ _initialise_audio_channel
                ;    - Check the requested Sound in the range 1 - 3
                ;    - The routine initialises any in-use audio channels used by the 
                ;         Sound by switching them off.
+               ;
+               ; Notes:
+               ; Can be modified to remove hardcoded reference to 'sound_master_table'
                ;
 _do_sounddriver_stop_sound               
                ; Save used processor registers
@@ -536,407 +469,633 @@ _do_sounddriver_stop_sound
                rts
 
 
+               ;-------------------------------------------------------------------------
+               ; Play SFX identified by the SFX ID number
+               ; Sound Effects are played on audio channel 03
+               ; Sound Effects are played based on priority
+               ;
+               ;    PRIVATE void _do_sounddriver_play_sfx(d0.w = soundId)
+               ;
+               ;         IN: D0.b = soundId - SFX ID Number
+               ;
+               ;    - Original Address $00004222
+               ;    - If another SFX is already playing and is a higher ID number then
+               ;      the current SFX is not interrupted.
+               ;
+_do_sounddriver_play_sfx        
+               ; test if SFX audio channel 03 already in use
+               tst.w   channel_03_status              
+               beq.b   .start_sfx             
+
+               ; SFX channel is in use.
+               ; check sound priority (exit if current sound is higher priority)
+               cmp.b   sounddriver_sfx_number,d0    
+               bcs.b   .exit                        
+
+.start_sfx     ; start playing SFX (uses)
+               movem.l   d0/d7/a0-a2,-(a7)
+               move.w    #$4000,d1                     ; set sfx active bit            
+               move.b    d0,sounddriver_sfx_number
+               bra.b     _do_init_current_sound    
+               ; do_init_current_sound - pops values back from the stack
+               ; used by both song//tunes and sfx for initialising the audio
+
+.exit          ; exit without starting new sfx                                             
+               rts
 
 
 
-
-                ;------------------------ restart song? ---------------------
-                ; restart song/old init song.
-                ; **** APPEARS UNUSED ****
+                ;----------------------------------------------------------------------
+                ; Play a song/tune identified by soundId passed in d0.w
                 ;
-                ; IN:  D0.w - song number?
+                ;   PRIVATE void _do_sounddriver_play_song(d0.w = soundId)
                 ;
-_do_sounddriver_play_sfx                                                        ; original routine address $00004222
-               tst.w   channel_03_status                ; L00004126 ; test a flag - unknown
-                beq.b   .continue_execution             ; if flag == 0 then continue execution, jmp $0000422e
-
-                cmp.b   sounddriver_sfx_number,d0                    ; compare $4023 with song number? (4023 > d0?)
-                bcs.b   .exit                           ; if $4023 > d0
-
-.continue_execution                                     ; original address $0000422e
+                ;        IN: D0.l = soundId - song/tune to play
+                ;                            - 0 = play nothing/stop
+                ;
+                ;   - Original Address $0000423e
+                ;
+_do_sounddriver_play_song        
                 movem.l d0/d7/a0-a2,-(a7)
-                move.w  #$4000,d1                       ; d1 = unknown (flags?)
-                move.b  d0,sounddriver_sfx_number                    ; store song number? in $4023?
-                bra.b  do_init_current_song             ; calls $0000424a
-.exit                                                   ; original address $0000423c
-                rts
+                move.w  #$8000,d1                      ; set song/tune flag
+                move.b  d0,sounddriver_song_number   
+                ; falls through to '_do_init_current_sound'
+                ; used by both song//tunes and sfx for initialising the audio
 
 
+               ;--------------------------------------------------------------------
+               ; Initialise the audio of a new Song/Tune or SFX
+               ;
+               ;    PRIVATE void _do_init_current_sound(void)
+               ;
+               ;    Original Address $0000424a
+               ;
+               ; Notes:
+               ; Initialisation routine could probably be modified to ignore
+               ; processing the end_or_loop command, so that it just disabes the audio channel
+               ; Also modified to remove hardcoded reference to 'sound_pattern_master_table' and 'sound_master_table'
+               ;
+_do_init_current_sound
+               clr.w   play_tick_counter 
 
-
-
-                ;----------------------- do init song ------------------------
-                ; set the current song number, and initialise for playing.
-                ; if song number is out of range then stop the audio.
-                ;
-                ; initialises each audio channel's data ptrs
-                ; sets cmd param 82/83
-                ; sets $00004020 
-                ;
-                ; IN: D0.l - sound/song to play?
-                ;               - 0 = play nothing/stop
-                ;               - >3 = play nothing/stop
-                ;
-_do_sounddriver_initsong                                                    ; original routine address $0000423e
-                movem.l d0/d7/a0-a2,-(a7)
-                move.w  #$8000,d1                               ; d1 = unknown(flags?)
-                move.b  d0,sounddriver_song_number                          ; $00004022
-do_init_current_song
-                clr.w   play_tick_counter                               ; clear timer/counter?
+               ; check soundId is in acceptable range
+               ; if not, then stop all sound 
 .validate_song_number
-                subq.w  #$01,d0
-                bmi.b   .stop_playing                           ; L00004258
-                cmp.w   #$0003,d0                               ; check song number in range 1-3
-                bcs.b   .init_song
+               subq.w  #SOUND_MIN_SOUND_ID,d0
+               bmi.b   .stop_playing 
+               cmp.w   #SOUND_MAX_SOUND_ID,d0 
+               bcs.b   .initialise_sound
 
-.stop_playing                                                   ; addr $4258
-                bsr.w   _do_sounddriver_stop_all                    ; calls $00004194
-                bra.w   .exit
+               ; stop all sound and exit
+.stop_playing  bsr.w   _do_sounddriver_stop_all 
+               bra.w   .exit
 
-.init_song                                                      ; original address $00004260
-                lea.l   sound_master_table,a0                           ; $0001b9dc - a0 = base ptr
-                asl.w   #$03,d0                                 ; d0 = song no x 8
-                adda.w  d0,a0                                   ; a0 = updated base ptr to song table entry
+               ; soundId is ok, continue to initialise
+               ; get 'sound_master_table' entry address
+.initialise_sound   
+               lea.l   sound_master_table,a0 
+               asl.w   #$03,d0
+               adda.w  d0,a0 
 
-                ;------- init each audio channel -----
-.init_channels
-                lea.l   channel_00_status,a1                     ; L00004024,a1
-                moveq   #$03,d7                                 ; d7 = channel count + 1
-
-                ;------- loop each audio channel ------
-.channel_loop                                                   ; original address $00004270
-                move.w  (a0)+,d0                                ; d0 = channel offset value (from value address) 
-                beq.b   .skip_to_next_channel                   ; if value = 0, jmp $000042e4
-
-                ;------- init audio channel ------
-                lea.l   -2(a0,d0.w),a2                          ; a2 = song channel init data
-                moveq   #$00,d0
-                move.w  d0,CHANNEL_VOLUME(a1)                   ; initialise channel volume
-                move.l  d0,CHANNEL_INIT_DATA_PTR(a1)            ; $0002(a1) ; initialise unknown channel status values
-                move.l  d0,$000a(a1)                            ; initialise unknown channel status values
-                move.b  d0,$0013(a1)                            ; initialise unknown channel status values
-                move.b  #$01,$0012(a1)                          ; initialise unknown channel status values
-                move.w  d1,CHANNEL_CTRL_WORD(a1)                ; (d1 = 8000/d1 = 4000) initialise unknown channel status values
+               ; initialise each audio channel.
+               ; set up track data pointers for each h/w channel
+               ; execute track commands
+               ; initialise first pattern to play
+.init_audio_channels
+               lea.l   channel_00_status,a1   
+               moveq   #HW_AUDIO_CHANNELS-1,d7                
 
 
-                ; ------ init channel CMD Process Loop ------
-.get_next_byte                                                  ; original address $00004292
-                move.b  (a2)+,d0                                ; d0 = song channel init data byte  
+               ; Outer loop initialising each audio channel
+.init_audio_channel_loop                   
+                    ; get track data byte offset - d0.w
+                    move.w  (a0)+,d0 
+     
+                    ; test if channel is in use for this sound
+                    beq.b   .skip_to_next_channel     
 
-                ;------- Check 0x CMD --------
-.chk_code_0x                                                    ; addr $000042c8
-                bpl.b   .is_code_0x                             ; code is '0x', bit 7 = 0, Play Sample?
+                    ; track is used, initialise it.
+                    ; get audio track data address pointer - a2
+                    lea.l   -2(a0,d0.w),a2 
 
+                    ; init 'channel_xx_status'
+                    moveq   #$00,d0
+                    move.w  d0,chan_noteVolume(a1)    
+                    move.l  d0,chan_ptrTrackSequenceLoopStart(a1) 
+                    move.l  d0,chan_ptrPatternDataLoop(a1)
+                    move.b  d0,chan_patternTransposeValue(a1)
+                    move.b  #$01,chan_patternLoopCount(a1)
+                    move.w  d1,chan_ActiveCommandBits(a1)
 
-                ;------ Check for Loop -----
-.chk_code_80                                                    ; addr $00004296
-                sub.b   #$80,d0
-                bne.b   .chk_code_81
+                         ; Inner Loop: process track data bytes
+                         ; process any track commands in a loop
+                         ; set up initial pattern to play and exit.
+.track_command_loop
+                         ; get track data byte
+                         move.b  (a2)+,d0   
 
+                         ; test for pattern id, configure and exit
+                         bpl.b   .set_initial_pattern
 
-                ;--------- Clear channel CTRL Word ------- 
-.is_code_80                                                     ; addr $0000429c
-                movea.l CHANNEL_INIT_DATA_PTR(a1),a2
-                cmpa.w  #$0000,a2
-                bne.b   .get_next_byte
-.is_null_ptr
-                clr.w   CHANNEL_CTRL_WORD(a1)                   ; reset channel control bits
-                bra.b   .skip_to_next_channel                   ; jmp $000042e4
+                         ; test for command 0x80 - end or loop pattern
+.chk_cmd_end_or_loop     sub.b   #$80,d0
+                         bne.b   .chk_cmd_set_loop_start
 
+                              ; byte is 0x80 - end or loop pattern
+                              ; command is ignored or channel is diabled
+.cmd_loop_or_end              movea.l chan_ptrTrackSequenceLoopStart(a1),a2
 
-                ;------ Check for Save Ptr ------
-.chk_code_81                                                    ; addr $000042aa
-                subq.b  #$01,d0
-                bne.b   .chk_code_82
+                              ; check if loop ptr is set (ignore command)
+                              cmpa.w  #$0000,a2
+                              bne.b   .track_command_loop        ; ignore and continue processing track bytes
 
-                ;--------- CMD Save Ptr --------
-                ; used to save address for loop
-.is_code_81                                                     ; original address 000042AE
-                move.l  a2,CHANNEL_INIT_DATA_PTR(a1)            ; store current channel data ptr
-                bra.b   .get_next_byte
+                              ; disable audio channel
+                              clr.w   chan_ActiveCommandBits(a1)
+                              bra.b   .skip_to_next_channel      ; continue to initialise next channel
+                              ; ---------------------------------
 
+                         ; test for command 0x81 - set track loop start ptr
+.chk_cmd_set_loop_start  subq.b  #$01,d0
+                         bne.b   .chk_cmd_transpose_pattern
 
+                              ; byte is 0x81 - set track loop start position
+                              ; continue processing track command loop
+.cmd_set_loop_start           move.l  a2,chan_ptrTrackSequenceLoopStart(a1)
+                              bra.b   .track_command_loop
+                              ; ---------------------------------
 
-                ;------ Check for CMD 82 -------
-.chk_code_82                                                    ; addr $000042b4
-                subq.b  #$01,d0
-                bne.b   .chk_code_83
+                         ; test for command 0x82 - transpose pattern pitch
+.chk_cmd_transpose_pattern
+                         subq.b  #$01,d0
+                         bne.b   .chk_cmd_repeat_pattern
+                              ; byte is 0x82 - set pattern transpose pitch value
+                              move.b  (a2)+,chan_patternTransposeValue(a1)
+                              bra.b   .track_command_loop  
+                              ; -----------------------------------
 
-                ;------- CMD 82 save param -----
-.is_code_82                                                     ; original address 000042B8
-                move.b  (a2)+,$0013(a1)                         ; initialise unknown channel status values
-                bra.b   .get_next_byte                          ; jmp $00004292
+                         ; test for command 0x83 - repeat pattern
+.chk_cmd_repeat_pattern  subq.b  #$01,d0
+                         bne.b   .track_command_loop
+                              ; byte is 0x83 - repeat next pattern 
+                              move.b  (a2)+,chan_patternLoopCount(a1)
+                              bra.b   .track_command_loop
+                              ; -------------------------------------
 
+                    ; set channel initial pattern values and move on to next channel initialisation
+                    ; d0.b = initial track pattern index
+                    ; a1.l = channel_xx_status
+                    ; a2.l = track sequence ptr
+.set_initial_pattern
+                    ; store current track data position ptr
+                     move.l  a2,chan_ptrNextTrackSequencePosition(a1)
 
+                    ; get pattern data using patternIndex (d0.b) and sound_pattern_master_table
+                    lea.l   sound_pattern_master_table,a2
+                    ext.w   d0
+                    add.w   d0,d0
+                    adda.w  d0,a2
 
-                ;------ Check for CMD 83 -------
-.chk_code_83                                                    ; addr $000042be
-                subq.b  #$01,d0                                 ; original address 000042BE
-                bne.b   .get_next_byte
+                    ; get and store pattern data address
+                    adda.w  (a2),a2
+                    move.l  a2,chan_ptrNextPatternDataPosition(a1)
 
-                ;------ CMD 83 save param ------
-.is_code_83                                                     ; original address 000042C2
-                move.b  (a2)+,$0012(a1)                         ; initialise unknown channel status values
-                bra.b   .get_next_byte
+                    ; set initial note played duration to 1 tick
+                    move.w  #$0001,chan_currentNoteTicks(a1)
 
+                    ; set up pointers for initialising next audio channel
+.skip_to_next_channel
+               lea.l   CHANNEL_XX_STATUS_SIZE(a1),a1
+               dbf.w   d7,.init_audio_channel_loop
 
+               ; set song/tune or sfx active bit
+               or.w    d1,sounddriver_ctrl_bits 
 
-                ;----------- CMD 0x --------
-                ; d0 = Command (index to channel music data table)
-                ; ends the channel initialisation, skips to next channel
-                ;
-.is_code_0x                                                     ; original address 000042C8
-                move.l  a2,CHANNEL_CURRENT_DATA_PTR(a1)         ; $0006(a1) ; store song channel data ptr
-                lea.l   sound_pattern_master_table,a2               ; L0001BA06,a2
-                ext.w   d0
-                add.w   d0,d0                                   ; d0 = d0 * 2 (another table index)
-                adda.w  d0,a2                                   ; add index offset to L0001BA06
-                adda.w  (a2),a2
-                move.l  a2,CHANNEL_MUSIC_DATA_PTR(a1)           ; $000e(a1) ; ($90,$0B - $90,$0C) - initialise unknown channel status values
-                move.w  #$0001,CHANNEL_CMD_POS(a1)              ; $0052(a1) ; initialise command counter/tempo?
-
-.skip_to_next_channel                                           ; addr $000042e4
-                lea.l   CHANNEL_STATUS_SIZE(a1),a1              ; $0056(a1),a1
-                dbf.w   d7,.channel_loop                        ; loop, jmp $00004270
-                or.w    d1,sounddriver_ctrl_bits                            ; (d1 = 8000/d1 = 4000)
-.exit                                                           ; addr $000042f0
-                movem.l (a7)+,d0/d7/a0-a2
-                rts
-
-
-
-
-
-                ;--------------------------- do play song -----------------------
-                ;
-_do_sounddriver_vblank_update                                                    ; original routine address $000042f6
-                lea.l   $00dff000,a6                            ; a6 = custom base
-                lea.l   note_period_table+48,a5                 ; L00004bba ; a5 = mid note frequency table (-48 to + 44)
-                clr.w   audio_dma                               ; L0000417c ; clear flag (audio dma)
-
-                tst.w   sounddriver_ctrl_bits                               ; test $4020 (status flags?)
-                beq.b   .L00004354                               ; if $4020 == 0 then jmp $00004354
-
-                addq.w  #$01,play_tick_counter
-                clr.w   sounddriver_ctrl_bits                               ; clear $4020 (status flags)
-
-                ; -------- channel 1 ---------
-.L00004314                                                      ; original address L00004314            
-                lea.l   channel_00_status,a4                     ; a4 = channel 1 status - L00004024,a4
-                move.w  CHANNEL_CTRL_WORD(a4),d7                ; d7 = channel current active command bits
-                beq.b   .L00004324
-.do_commands                                                    ; original address L0000431c
-                bsr.b   do_channel_command_loop                 ; L00004360 ; command loop
-                move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,sounddriver_ctrl_bits
-
-                ; ------- channel 2 ---------
-.no_active_commands                                             ; original address L00004324
-.L00004324      lea.l   channel_01_status,a4                     ;L0000407a,a4
-                move.w  CHANNEL_CTRL_WORD(a4),d7
-                beq.b   .L00004334
-                bsr.b   do_channel_command_loop                 ; L00004360
-                move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,sounddriver_ctrl_bits
-
-                ; ------ channel 3 ----------
-.L00004334                                                      ; original address .L00004334                
-                lea.l   channel_02_status,a4                     ; L000040d0,a4
-                move.w  CHANNEL_CTRL_WORD(a4),d7
-                beq.b   .L00004344
-                bsr.b   do_channel_command_loop                 ; L00004360
-                move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,sounddriver_ctrl_bits
-
-                ; ------ channel 4 ---------
-.L00004344                                                      ; original address .L00004344
-                lea.l   channel_03_status,a4                     ;L00004126,a4
-                move.w  CHANNEL_CTRL_WORD(a4),d7
-                beq.b   .L00004354
-                bsr.b   do_channel_command_loop                 ; L00004360
-                move.w  d7,CHANNEL_CTRL_WORD(a4)
-                or.w    d7,sounddriver_ctrl_bits
-
-.L00004354                                                      ; original address .L00004354 
-                and.w   #$c000,sounddriver_ctrl_bits                        ; %1100 = $c (12) mask all apart from top 2 MSBs
-                bsr.w   update_audio_custom_registers           ; L00004852
-                rts
+               ; restore save registers and exit
+.exit          movem.l (a7)+,d0/d7/a0-a2
+               rts
 
 
 
 
-                ;  IN: a4 = channel status base address
-                ;  IN: d7 = channel status CTRL word
-                ; OUT: d7 = channel status CTRL word
-                ;
-do_channel_command_loop                                 ; original address L00004360
-                tst.w   $0052(a4)                       ; test 82(a4) - command 8 in progress?
-                beq.w   check_command_08                ; if 82(82) == 0 then jmp L000046b2
 
-                subq.w  #$01,$0052(a4)                  ; decrement 82(a4)
-                bne.w   check_command_08                ; if > 0 then  jmp L000046b2
+               ;---------------------------------------------------------------------
+               ; Sound Player - VBlank Update
+               ;
+               ;    PRIVATE void _do_sounddriver_vblank_update(void)
+               ;
+               ;    Original Address $000042f6
+               ;
+               ;   - This routine should be called during the VBlank to play the
+               ;     currently active Song/Tunes and SFX.
+               ;
+_do_sounddriver_vblank_update 
+               lea.l   CUSTOM,a6
+                
+               ; mid note frequency table (-48 to + 44)
+               lea.l   note_period_table+48,a5 
 
-                                                        ; 82(a4) reached 0 
-                movea.l $000e(a4),a3                    ; a3 = 14(a4) is an address                   
-                bclr.l  #$0007,d7                       ; d7 = clear bit 7
+               ; clear audio_dma 
+               ; This function accumlates which channels are active
+               clr.w   audio_dma 
 
-play_song_command_loop                                  ; original address L00004378
-                move.b  (a3)+,d0                        ; d0 = next music command
-                bpl.w   do_command_processing           ; $00004560 ; MSB = 0, jmp $00004560
+               ; test if a sound is being played
+               ; if not, then jump directly to setting audio h/w registers
+               tst.w   sounddriver_ctrl_bits
+               beq.b   .update_audio_hardware
 
-                bclr.l  #$0003,d7                       ; clear bit 3 on start commands
-                cmp.b   #$a0,d0                         ; sub #$a0 from d0
-                bcc.b   play_song_command_loop          ; if d0 > #$a0 (160) then loop (ignore command) ,jmp $00004378
+.do_sound_processing
+               ; else, advance the sound tick counter
+               ; and process each channel/track
+               addq.w  #$01,play_tick_counter
+               clr.w   sounddriver_ctrl_bits  
 
-                lea.l   jump_table(pc),a0               ; $0014(pc),a0
-                sub.b   #$80,d0                         ; d0 = d0 - 128 (max 32 commands)
-                ext.w   d0
-                add.w   d0,d0                           ; d0 = jump table index
-                adda.w  d0,a0                           ; a0 = address of jump table command offset entry
-                move.w  (a0),d0                         ; d0 = offset to music command routine.
-                beq.b   play_song_command_loop          ; if d0 == 0 then ignore command, jmp $00004378
-                jmp     $00(a0,d0.w)                    ; execute music command
+               ; process channel 00
+.process_audio_channel_00             
+               lea.l   channel_00_status,a4
+               move.w  chan_ActiveCommandBits(a4),d7
+               beq.b   .process_audio_channel_01
+
+               ; process pattern commands/effects/notes
+               bsr.b   _do_pattern_processing
+               move.w  d7,chan_ActiveCommandBits(a4)
+               or.w    d7,sounddriver_ctrl_bits
+
+               ; process channel 01
+.process_audio_channel_01
+               lea.l   channel_01_status,a4            
+               move.w  chan_ActiveCommandBits(a4),d7
+               beq.b   .process_audio_channel_02
+
+               ; process pattern commands/effects/notes
+               bsr.b   _do_pattern_processing         
+               move.w  d7,chan_ActiveCommandBits(a4)
+               or.w    d7,sounddriver_ctrl_bits
+
+               ; proocess channel 02
+.process_audio_channel_02                
+               lea.l   channel_02_status,a4
+               move.w  chan_ActiveCommandBits(a4),d7
+               beq.b   .process_audio_channel_03
+
+               ; process pattern commands/effects/notes
+               bsr.b   _do_pattern_processing
+               move.w  d7,chan_ActiveCommandBits(a4)
+               or.w    d7,sounddriver_ctrl_bits
+
+               ; process channel 03
+.process_audio_channel_03  
+               lea.l   channel_03_status,a4
+               move.w  chan_ActiveCommandBits(a4),d7
+               beq.b   .update_audio_hardware
+
+               ; process pattern commands/effects/notes
+               bsr.b   _do_pattern_processing
+               move.w  d7,chan_ActiveCommandBits(a4)
+               or.w    d7,sounddriver_ctrl_bits
+
+.update_audio_hardware 
+               ; clear DMA in use bits, preserve song/sfx active bits
+               and.w   #$c000,sounddriver_ctrl_bits
+               ; update h/w audio registers
+               bsr.w   update_audio_custom_registers
+               rts
+
+
+
+               ;-------------------------------------------------------------------
+               ; Do Pattern Processing
+               ;
+               ;    PRIVATE void _do_pattern_processing(
+               ;                   a4.l = channel_xx_status
+               ;                   a5.l = note_period_table
+               ;                   a6.l = CUSTOM
+               ;                   d7.w = ActiveCommandBits
+               ;                        )
+               ;
+               ;    Original Address $00004360
+               ;
+               ;    This routine processes the current Pattern Data for the Audio Channel.
+               ;       - It decrements a tick value (tempo) and if not 0 then continues to process
+               ;         existing, active sound commands.
+               ;       - When the 'tick' value = 0, it reads a new byte from the pattern data.
+               ; 	- If the pattern byte is a new command byte, then it handles it.
+               ; 	- else, it treats the byte as a new note trigger (i think).
+               ; 
+               ;    Do Active Audio Channel Commannds
+               ;         - a6.l = CUSTOMBASE $dff000
+               ;         - a5.l = Note Period Table - Mid Point
+               ;         - a4.l = Channel (xx) Status - Structure
+               ;         - d7.w = Active Command Bits
+               ; 
+               ; Pattern Commands are values 0x80 and above.
+
+PTNCMDBITS_PORTOMENTO         EQU  $0003
+PTNCMDBITS_CHANNEL_DISABLED   EQU  $0007
+
+
+_do_pattern_processing                                 ; original address L00004360
+               tst.w   chan_currentNoteTicks(a4)                       ; test 82(a4) - command 8 in progress?
+               beq.w   _do_process_active_pattern_commands                ; if 82(82) == 0 then jmp L000046b2
+
+               subq.w  #$01,chan_currentNoteTicks(a4)                  ; decrement 82(a4)
+               bne.w   _do_process_active_pattern_commands                ; if > 0 then  jmp L000046b2
+
+               ; channel ticks have just decremented to 0
+               ; so, process pattern data (next command, notes to play)
+               ; a4 = pattern data position 
+.process_pattern_data
+               ; a3 = get current pattern data pointer
+               movea.l chan_ptrNextPatternDataPosition(a4),a3                   
+               
+               ; clear channel disabled bit
+               bclr.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
+
+pattern_command_loop
+               ; get next pattern data byte
+               move.b  (a3)+,d0
+
+               ; if byte is not a command then it's a new note to play
+               bpl.w   _start_playing_new_note
+
+               ; else, process command byte
+               ; clear any previous portomento effect
+               bclr.l  #PTNCMDBITS_PORTOMENTO,d7
+
+               ; test command in range $80-$a0 (0-31)
+               cmp.b   #$a0,d0
+
+               ; if invald command then ignore it
+               bcc.b   pattern_command_loop
+
+               ; else, use command as index to command jmp table
+               lea.l   pattern_cmd_jump_table(pc),a0
+
+               ; clamp command to range (0-31)
+               sub.b   #$80,d0
+
+               ; get jump table entry
+               ext.w   d0
+               add.w   d0,d0 
+               adda.w  d0,a0
+
+               ; get command jmp address
+               move.w  (a0),d0
+               beq.b   pattern_command_loop
+
+               ; exeute command address
+               jmp     $00(a0,d0.w)
+               ; NB: some commands exit, 
+               ;     others return to 'pattern_command_loop'
 
 
                 ;---------------- music command jump table (max 32 commands) ------------------
-jump_table                                             ; original address $0000439e
-                dc.w music_command_01-(jump_table+0)        ; offset - $0040 ; 439E + 40 = 43DE
-                dc.w music_command_02-(jump_table+2)      ; offset - $00ba ; 43A0 + BA = 445A 
-                dc.w music_command_03-(jump_table+4)      ; offset - $00c0 ; 43A2 + C0 = 4462      
-                dc.w music_command_04-(jump_table+6)      ; offset - $00c2 ; 43A4 + C2 = 4466
-                dc.w music_command_05-(jump_table+8)      ; offset - $00c4 ; 43A6 + C4 = 446A     
-                dc.w music_command_06-(jump_table+10)     ; offset - $00ce ; 43a8 + CE = 4476       
-                dc.w music_command_07-(jump_table+12)     ; offset - $00d4 ; 43aa + D4 = 447E
-                dc.w music_command_08-(jump_table+14)     ; offset - $00dc ; 43ac + DC = 4488        
-                dc.w music_command_09-(jump_table+16)     ; offset - $00ea ; 43ae + ea = 4498
-                dc.w music_command_10-(jump_table+18)     ; offset - $00f8 ; 43b0 + f8 = 44A8
-                dc.w music_command_11-(jump_table+20)     ; offset - $010a ; 43b2 + 10a = 44BC
-                dc.w music_command_12-(jump_table+22)     ; offset - $0140 ; 43b4 + 140 = 44F4
-                dc.w music_command_13-(jump_table+24)     ; offset - $0156 ; 43b6 + 156 = 450C
-                dc.w music_command_14-(jump_table+26)     ; offset - $010c ; 43b8 + 10c = 44C4
-                dc.w music_command_15-(jump_table+28)     ; offset - $0132 ; 43ba + 132 = 44EC
-                dc.w music_command_16-(jump_table+30)     ; offset - $0158 ; 43bc + 158 = 4514
-                dc.w music_command_17-(jump_table+32)     ; offset - $016e ; 43be + 16e = 452c
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
-                dc.w $0000
+pattern_cmd_jump_table                                    ; original address $0000439e
+               ; command 0x80 - End Pattern or Loop inside Pattern
+               dc.w _pattern_cmd_80_EndOrLoop-(pattern_cmd_jump_table+0)        ; offset - $0040 ; 439E + 40 = 43DE
+               dc.w _pattern_cmd_81_SetInPatternLoop-(pattern_cmd_jump_table+2)      ; offset - $00ba ; 43A0 + BA = 445A 
+               dc.w _pattern_cmd_82_NOP-(pattern_cmd_jump_table+4)      ; offset - $00c0 ; 43A2 + C0 = 4462      
+               dc.w _pattern_cmd_83_NOP-(pattern_cmd_jump_table+6)      ; offset - $00c2 ; 43A4 + C2 = 4466
+               dc.w music_command_05-(pattern_cmd_jump_table+8)      ; offset - $00c4 ; 43A6 + C4 = 446A     
+               dc.w music_command_06-(pattern_cmd_jump_table+10)     ; offset - $00ce ; 43a8 + CE = 4476       
+               dc.w music_command_07-(pattern_cmd_jump_table+12)     ; offset - $00d4 ; 43aa + D4 = 447E
+               dc.w music_command_08-(pattern_cmd_jump_table+14)     ; offset - $00dc ; 43ac + DC = 4488        
+               dc.w music_command_09-(pattern_cmd_jump_table+16)     ; offset - $00ea ; 43ae + ea = 4498
+               dc.w music_command_10-(pattern_cmd_jump_table+18)     ; offset - $00f8 ; 43b0 + f8 = 44A8
+               dc.w music_command_11-(pattern_cmd_jump_table+20)     ; offset - $010a ; 43b2 + 10a = 44BC
+               dc.w music_command_12-(pattern_cmd_jump_table+22)     ; offset - $0140 ; 43b4 + 140 = 44F4
+               dc.w music_command_13-(pattern_cmd_jump_table+24)     ; offset - $0156 ; 43b6 + 156 = 450C
+               dc.w music_command_14-(pattern_cmd_jump_table+26)     ; offset - $010c ; 43b8 + 10c = 44C4
+               dc.w music_command_15-(pattern_cmd_jump_table+28)     ; offset - $0132 ; 43ba + 132 = 44EC
+               dc.w music_command_16-(pattern_cmd_jump_table+30)     ; offset - $0158 ; 43bc + 158 = 4514
+               dc.w music_command_17-(pattern_cmd_jump_table+32)     ; offset - $016e ; 43be + 16e = 452c
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+               dc.w $0000
+
+               ;----------------------------------------------------------------------------
+               ; Pattern Command 0x80 - End or Loop Pattern
+               ;
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ;    Original Address $000043de
+               ;
+               ; Quite a complicated command.
+               ;    1) First it checks if there is a loop with in the current pattern
+               ;         If so, then it restored the pattern position to loop.
+               ;
+               ;    2) If there is no loop with the pattern then the pattern has ended
+               ;         if so, then the command enters a track data command processing loop.
+               ;         It runs through the track data from the current position,
+               ;         executes any track data comands.
+               ;         Finally sets the next pattern up for playing and,
+               ;         Resumes exeution of the pattern_command_loop
+               ;
+               ; Notes
+               ; Can be modified to remove hardcoded reference 'sound_pattern_master_table'
+               ;
+_pattern_cmd_80_EndOrLoop    
+               ; do in-pattern loop processing
+               ; update pattern data point with loop back address 
+               movea.l   chan_ptrPatternDataLoop(a4),a3           
+               ; if loop address is set, then return to pattern cmd loop
+               cmpa.w    #$0000,a3 
+               bne.b     pattern_command_loop  
+               
+               ; No in-pattern loop set
+               ; get a3 = track data address
+               ; get d0.b = current pattern id
+               movea.l   chan_ptrNextTrackSequencePosition(a4),a3
+               move.b    -$0001(a3),d0
+               
+               ; check if the pattern has a loop on it.
+               ; subtract 1 from current pattern loop count
+               ; if loop > 0 then select current pattern id again (d0.b)
+               subq.b    #$01,chan_patternLoopCount(a4)
+               bne.b     .init_next_pattern
+
+               ; else, select next pattern to play from audio track data
+.select_next_pattern
+               ; loop count is 0 - select next pattern
+               ; (re)set default loop count and clear transpose values
+               move.b    #$01,chan_patternLoopCount(a4)
+               move.b    #$00,chan_patternTransposeValue(a4)
+
+               ; since it's a new pattern we need
+               ; to process the current position in the track data
+               ; and any track commands
+               ; a3 = current track data position
+.process_track_commands_loop                
+               ; get next track data byte
+               move.b    (a3)+,d0
+               bpl.b     .init_next_pattern
+
+               sub.b     #$80,d0
+               bne.b     .chk_set_loop_start
+                    ; command 0x80 - end or loop track
+                    movea.l   $0002(a4),a3
+                    cmpa.w    #$0000,a3
+                    bne.b     .process_track_commands_loop
+                    move.w    #$0001,$004a(a4)
+                    move.w    #$0000,$004c(a4)
+                    moveq     #$00,d7
+                    rts  
+
+               ; check if command 0x81 - set track loop start
+.chk_set_loop_start
+               subq.b  #$01,d0
+               bne.b   .chk_transpose_pattern
+                    ; command 0x81 - set track loop start
+                    move.l  a3,chan_ptrTrackSequenceLoopStart(a4)
+                    bra.b   .process_track_commands_loop
+
+               ; check if command 0x82 - transpose pattern
+.chk_transpose_pattern
+               subq.b  #$01,d0 
+               bne.b   .chk_repeat_next_pattern
+                    ; command 0x82 - transpose pattern
+                    ; store transposition +- interval value
+                    move.b  (a3)+,chan_patternTransposeValue(a4)
+                    bra.b   .process_track_commands_loop
+
+               ; check if command 0x83 - repeat next pattern
+.chk_repeat_next_pattern
+               subq.b  #$01,d0
+               bne.b   .process_track_commands_loop
+                    ; command 0x83 - repeat next pattern
+                    move.b  (a3)+,chan_patternLoopCount(a4)
+                    bra.b   .process_track_commands_loop
+
+
+               ; set next pattern ptr and return to pattern cmd loop
+               ; a3.l = track data current position
+               ; d0.b = next patternId
+.init_next_pattern
+               ;store track data pointer
+               move.l  a3,chan_ptrNextTrackSequencePosition(a4)
+               
+               ; get pattern data address from pattern table
+               lea.l   sound_pattern_master_table,a3  
+               ext.w   d0
+               add.w   d0,d0
+               adda.w  d0,a3
+               
+               ; update a3 with new pattern data ptr
+               adda.w  (a3),a3
+
+               ; return to pattern processing loop
+               bra.w   pattern_command_loop
 
 
 
-music_command_01                                        ; original addrss L000043de
-                movea.l $000a(a4),a3
-                cmpa.w  #$0000,a3                       ; if a3 != 0 then next command
-                bne.b   play_song_command_loop          ; $00004378
-                movea.l $0006(a4),a3
-                move.b  -$0001(a3),d0
-                subq.b  #$01,$0012(a4)
-                bne.b   .L00004444
-                move.b  #$01,$0012(a4)
-                move.b  #$00,$0013(a4)
-                
-.L00004402                                              ; original address L00004402                
-                move.b  (a3)+,d0
-                bpl.b   .L00004444
-                sub.b   #$80,d0
-                bne.b   .L00004426
-                movea.l $0002(a4),a3
-                cmpa.w  #$0000,a3
-                bne.b   .L00004402
-                move.w  #$0001,$004a(a4)
-                move.w  #$0000,$004c(a4)
-                moveq   #$00,d7
-                rts  
 
-.L00004426      subq.b  #$01,d0                        ; original address L00004428
-                bne.b   .L00004430
-                move.l  a3,$0002(a4)
-                bra.b   .L00004402
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x81
+               ; Set Loop Start Position within this pattern
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $0000445a
+               ;
+_pattern_cmd_81_SetInPatternLoop
+                move.l  a3,chan_ptrPatternDataLoop(a4)
+                bra.w   pattern_command_loop
 
-.L00004430      subq.b  #$01,d0                        ; original address L00004430
-                bne.b   .L0000443a
-                move.b  (a3)+,$0013(a4)
-                bra.b   .L00004402
-
-.L0000443a      subq.b  #$01,d0
-                bne.b   .L00004402
-                move.b  (a3)+,$0012(a4)
-                bra.b   .L00004402
-
-.L00004444      move.l  a3,$0006(a4)
-                lea.l   sound_pattern_master_table,a3        ; $0001ba06,a3
-                ext.w   d0
-                add.w   d0,d0
-                adda.w  d0,a3
-                adda.w  (a3),a3
-                bra.w   play_song_command_loop          ; $00004378
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x82
+               ; No Operation
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $00004462
+               ;
+_pattern_cmd_82_NOP
+                bra.w   pattern_command_loop
 
 
-music_command_02                                        ; original address $0000445a
-                move.l  a3,$000a(a4)                    ; store current command/song ptr in 10(a4)
-                bra.w   play_song_command_loop          ; $00004378
-
-
-music_command_03                                        ; no operation - original address $00004462
-                bra.w   play_song_command_loop          ; $00004378
-
-
-music_command_04                                        ; no operation - original address $00004466
-                bra.w   play_song_command_loop          ; $00004378
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x83
+               ; No Operation
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $00004466
+               ;
+_pattern_cmd_83_NOP
+                bra.w   pattern_command_loop
 
 
 music_command_05                                        ; original address $0000446a
                 bset.l  #$0005,d7                       ; set status bit 5
-                move.b  (a3)+,$0051(a4)                 ; #$51 (81) - store command param in 81(a4)
-                bra.w   play_song_command_loop          ; $00004378
+                move.b  (a3)+,chan_paramPairedNoteDurationTicks(a4)                 ; #$51 (81) - store command param in 81(a4)
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_06                                        ; original address $00004476
                 bclr.l  #$0005,d7                       ; clear status bit 5
-                bra.w   play_song_command_loop          ; $00004378
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_07                                        ; original address $0000447e
-                add.w   #$0100,$0052(a4)                ; increase offset 84(a4) by 256
-                bra.w   play_song_command_loop          ; $00004378
+                add.w   #$0100,chan_currentNoteTicks(a4)                ; increase offset 84(a4) by 256
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_08                                        ; original address $00004488
                 bclr.l  #$0004,d7                       ; clear status bit 4
                 bset.l  #$0007,d7                       ; set status bit 7
-                clr.w   $004c(a4)                       ; clear word at #$4c (76) 
+                clr.w   chan_noteVolume(a4)                       ; clear word at #$4c (76) 
                 bra.w   skip_cmds_09_to_17              ; L0000469c
 
 
 music_command_09                                        ; original address $00004498
                 bset.l  #$0003,d7
-                move.b  (a3)+,$0024(a4)                 ; store - command 09 parameter
-                move.b  (a3)+,$0025(a4)                 ; store - command 09 parameter
-                bra.w   play_song_command_loop          ; $00004378
+                move.b  (a3)+,chan_paramPortomentoStartOffset(a4)                 ; store - command 09 parameter
+                move.b  (a3)+,chan_paramPortomentoLengthTicks(a4)                 ; store - command 09 parameter
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_10                                        ; original address $000044a8
                 and.w   #$fff8,d7                       ; clear bits 0-6 of d7
                 bset.l  #$0000,d7
-                move.b  (a3)+,$0021(a4)                 ; store - command 10 parameter
-                move.b  (a3)+,$0022(a4)                 ; store - command 10 parameter
-                bra.w   play_song_command_loop          ; $00004378
+                move.b  (a3)+,chan_paramLeadInNoteOfffset(a4)                 ; store - command 10 parameter
+                move.b  (a3)+,chan_paramLeadInNoteDurationTicks(a4)                 ; store - command 10 parameter
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_11                                        ; original address $000044bc
                 bclr.l  #$0000,d7
-                bra.w   play_song_command_loop          ; $00004378
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_14                                        ; original address $000044c4
@@ -948,28 +1107,28 @@ music_command_14                                        ; original address $0000
                 add.w   d0,d0
                 adda.w  d0,a0
                 adda.w  (a0),a0
-                move.b  (a0)+,$0032(a4)                 ; store parameter
-                move.b  (a0)+,$0030(a4)                 ; store parameter
-                move.l  a0,$0028(a4)
-                bra.w   play_song_command_loop          ; $00004378
+                move.b  (a0)+,chan_paramArpeggioSpeedTicks(a4)                 ; store parameter
+                move.b  (a0)+,chan_paramArpeggioTableLength(a4)                 ; store parameter
+                move.l  a0,chan_ptrArpeggioTable(a4)
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_15                                        ; original address $000044ec
                 bclr.l  #$0001,d7
-                bra.w   play_song_command_loop          ; $00004378
+                bra.w   pattern_command_loop          ; $00004378
 
 music_command_12                                        ; addr $000044f4
                 and.w   #$fff8,d7       
                 bset.l  #$0002,d7
-                move.b  (a3)+,$0036(a4)
-                move.b  (a3)+,$0034(a4)
-                move.b  (a3)+,$0035(a4)
-                bra.w   play_song_command_loop          ; $00004378
+                move.b  (a3)+,chan_paramModulationDelayStart(a4)
+                move.b  (a3)+,chan_paramModulationLevel(a4)
+                move.b  (a3)+,chan_paramModulationSpeed(a4)
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_13                                        ; addr $0000450c
                 bclr.l  #$0002,d7
-                bra.w   play_song_command_loop          ; $00004378
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_16                                        ; addr $00004514
@@ -979,8 +1138,8 @@ music_command_16                                        ; addr $00004514
                 add.w   d0,d0
                 adda.w  d0,a0
                 adda.w  (a0),a0
-                move.l  a0,$0014(a4) 
-                bra.w   play_song_command_loop          ; $00004378
+                move.l  a0,chan_ptrADSREnvelope(a4) 
+                bra.w   pattern_command_loop          ; $00004378
 
 
 music_command_17                                        ; addr $0000452c
@@ -989,16 +1148,16 @@ music_command_17                                        ; addr $0000452c
                 move.b  (a3)+,d0
                 asl.w   #$04,d0
                 adda.w  d0,a0
-                move.w  (a0)+,$003c(a4)                 ; volume 
-                move.l  (a0)+,$003e(a4)                 ; sample start address
-                move.w  (a0)+,$0042(a4)                 ; sample length
-                move.l  (a0)+,$0044(a4)                 ; sample repeat address
-                move.w  (a0)+,$0048(a4)                 ; sample repeat length   
+                move.w  (a0)+,chan_instrumentTuningAmount(a4)                 ; volume 
+                move.l  (a0)+,chan_ptrInstrumentSampleStart(a4)                 ; sample start address
+                move.w  (a0)+,chan_instrumentSampleLength(a4)                 ; sample length
+                move.l  (a0)+,chan_ptrInstrumentSampleRepeat(a4)                 ; sample repeat address
+                move.w  (a0)+,chan_instrumentRepeatLength(a4)                 ; sample repeat length   
                 bclr.l  #$0006,d7
                 tst.w   (a0)
-                beq.w   play_song_command_loop          ; $00004378
+                beq.w   pattern_command_loop          ; $00004378
                 bset.l  #$0006,d7
-                bra.w   play_song_command_loop          ; $00004378
+                bra.w   pattern_command_loop          ; $00004378
 
 
 
@@ -1006,14 +1165,14 @@ music_command_17                                        ; addr $0000452c
                 ; IN: D0.b = data from command list
                 ; IN: D7.l = command status bits
                 ;
-do_command_processing                                   ; original routine address $00004560
+_start_playing_new_note                                   ; original routine address $00004560
                 ; ------ CMD 17 --------
                 btst.l  #$0006,d7                       ; test for CMD 17
                 bne.b   .not_cmd_17                     ; $0000456a ; no... skip next instruction
 .is_cmd_17
-                add.b   $0013(a4),d0                    ; #$13 (19) - added to command value
+                add.b   chan_patternTransposeValue(a4),d0                    ; #$13 (19) - added to command value
 .not_cmd_17                                             ; original address $0000456a
-                move.b  d0,$004f(a4)                    ; store copy of current command byte value
+                move.b  d0,chan_transposedNoteIndex(a4)                    ; store copy of current command byte value
 
 
                 ;------- CMD 10 --------
@@ -1021,13 +1180,13 @@ do_command_processing                                   ; original routine addre
                 btst.l  #$0000,d7                       ; chk CMD 10
                 beq.b   .not_cmd_10
 .is_cmd_10
-                add.b   $0021(a4),d0                    ; d0 = CMD 10 param 1     - #$21 (33)
-                move.b  $0022(a4),$0023(a4)             ; duplcate CMD 10 param 2 - #$22 (34)
+                add.b   chan_paramLeadInNoteOfffset(a4),d0                    ; d0 = CMD 10 param 1     - #$21 (33)
+                move.b  chan_paramLeadInNoteDurationTicks(a4),chan_leadInNoteCurrentTicks(a4)             ; duplcate CMD 10 param 2 - #$22 (34)
 
 .not_cmd_10                                             ; original routine address $0000457e
-                move.b  d0,$0050(a4)                    ; update working copy of current command value
+                move.b  d0,chan_transposedLeadInNoteIndex(a4)                    ; update working copy of current command value
                 ext.w   d0
-                sub.w   $003c(a4),d0                    ; d0 = d0 - CMD 17 param 1  - #$3c (60)
+                sub.w   chan_instrumentTuningAmount(a4),d0                    ; d0 = d0 - CMD 17 param 1  - #$3c (60)
                 add.w   d0,d0                           ; d0 = d0 * 2 - relative index to middle of note frequency table $00004bba
 
 .validate_command
@@ -1037,11 +1196,11 @@ do_command_processing                                   ; original routine addre
                 ble.b   continue_command_processing_01  ; L000045ac ; this branch is always taken -------->>>>>>>
 
 .debug_assert_fail                                      ; original routine address $00004596
-                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
-                move.b  $0050(a4),d2
-                move.w  $003c(a4),d3
-                move.w  $0054(a4),d4
-                movea.l $0006(a4),a2
+                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  chan_transposedLeadInNoteIndex(a4),d2
+                move.w  chan_instrumentTuningAmount(a4),d3
+                move.w  chan_ChannelDMA(a4),d4
+                movea.l chan_ptrNextTrackSequencePosition(a4),a2
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 
@@ -1049,7 +1208,7 @@ do_command_processing                                   ; original routine addre
 
                 ; IN: D0.w is index to middle of note frequency table $00004bba (offset range -48 to + 44)
 continue_command_processing_01                          ; original address $000045ac
-                move.w  $00(a5,d0.w),$004a(a4)          ; lookup note fequency value from $00004bba (range -48 to +44) - frequency/playback speed?
+                move.w  $00(a5,d0.w),chan_notePeriodValue(a4)          ; lookup note fequency value from $00004bba (range -48 to +44) - frequency/playback speed?
 
 .chk_cmd_12
                 btst.l  #$0002,d7                       ; chk CMD 12
@@ -1057,10 +1216,10 @@ continue_command_processing_01                          ; original address $0000
 
                 ;--------- CMD 12 ---------
 .is_cmd_12                                              ; original routine address $000045b8
-                move.b  $0050(a4),d0                    ; d0 = copy of command byte
-                add.b   $0034(a4),d0                    ; d0 = command byte + cmd 12 parameter
+                move.b  chan_transposedLeadInNoteIndex(a4),d0                    ; d0 = copy of command byte
+                add.b   chan_paramModulationLevel(a4),d0                    ; d0 = command byte + cmd 12 parameter
                 ext.w   d0
-                sub.w   $003c(a4),d0                    ; d0 = d0 - 60
+                sub.w   chan_instrumentTuningAmount(a4),d0                    ; d0 = d0 - 60
                 add.w   d0,d0                           ; d0 = d0 * 2
 .validate_command
                 cmp.w   #$ffd0,d0                       ; compare -48
@@ -1069,26 +1228,26 @@ continue_command_processing_01                          ; original address $0000
                 ble.b   .continue_cmd12                 ; L000045EA ; this branch is always taken ------>>>>>>>>>
 
 .debug_assert_fail
-                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
-                move.b  $0050(a4),d2
-                move.w  $003c(a4),d3
-                move.w  $0054(a4),d4
-                movea.l $0006(a4),a2
+                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  chan_transposedLeadInNoteIndex(a4),d2
+                move.w  chan_instrumentTuningAmount(a4),d3
+                move.w  chan_ChannelDMA(a4),d4
+                movea.l chan_ptrNextTrackSequencePosition(a4),a2
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .continue_cmd12                                         ; original address $45ea
                 move.w  $00(a5,d0.w),d0                 ; d0 = note period value from $00004bba
-                sub.w   $004a(a4),d0                    ; subtract previous lookup value $4bba
+                sub.w   chan_notePeriodValue(a4),d0                    ; subtract previous lookup value $4bba
                 asr.w   #$01,d0                         ; d0 = d0/2
                 ext.l   d0
-                move.b  $0035(a4),d1                    ; d1 = CMD 12 param                  
+                move.b  chan_paramModulationSpeed(a4),d1                    ; d1 = CMD 12 param                  
                 ext.w   d1                              ; d1 = sign extend
                 divs.w  d1,d0                           ; d0 = d0/d1                         
-                move.w  d0,$003a(a4)                    ; #$3a (58) - results of divs
-                move.b  d1,$0039(a4)                    ; #$39 (57) - working copy of CMD 12 param
+                move.w  d0,chan_modulationAmountPerTick(a4)                    ; #$3a (58) - results of divs
+                move.b  d1,chan_modulationSpeedTicks(a4)                    ; #$39 (57) - working copy of CMD 12 param
                 add.b   d1,d1                           ; d1 = d1 * 2
-                move.b  d1,$0038(a4)                    ; #$38 (56) - working copy of CMD 12 param * 2
-                move.b  $0036(a4),$0037(a4)             ; #$37 (55) - working copy of CMD 12 param 
+                move.b  d1,chan_modulationSpeedTicks_x2(a4)                    ; #$38 (56) - working copy of CMD 12 param * 2
+                move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4)             ; #$37 (55) - working copy of CMD 12 param 
 .end_cmd_12
 
 
@@ -1100,10 +1259,10 @@ continue_command_processing_02                          ; original address $0000
 
                 ;---------- CMD 09 ------------
 .is_cmd_09                                              ; original address $00004618
-                move.b  $0050(a4),d0                    ; d0 = current command byte
-                add.b   $0024(a4),d0                    ; d0 = d0 + CMD 09 Param #$24 (36)
+                move.b  chan_transposedLeadInNoteIndex(a4),d0                    ; d0 = current command byte
+                add.b   chan_paramPortomentoStartOffset(a4),d0                    ; d0 = d0 + CMD 09 Param #$24 (36)
                 ext.w   d0                              ; 
-                sub.w   $003c(a4),d0                    ; d0 = d0 - CMD 17 Param #$3c (60)
+                sub.w   chan_instrumentTuningAmount(a4),d0                    ; d0 = d0 - CMD 17 Param #$3c (60)
                 add.w   d0,d0                           ; d0 = d0 * 2
 
 .validate_command                                       ; original address $00004628
@@ -1113,26 +1272,26 @@ continue_command_processing_02                          ; original address $0000
                 ble.b   .continue_cmd_09                ; this branch is always taken ------>>>>>>>>>
 
 .debug_assert_fail                                      ; original address $00004634
-                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
-                move.b  $0050(a4),d2
-                move.w  $003c(a4),d3
-                move.w  $0054(a4),d4
-                movea.l $0006(a4),a2
+                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  chan_transposedLeadInNoteIndex(a4),d2
+                move.w  chan_instrumentTuningAmount(a4),d3
+                move.w  chan_ChannelDMA(a4),d4
+                movea.l chan_ptrNextTrackSequencePosition(a4),a2
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 
 .continue_cmd_09                                        ; original address $0000464a
                 move.w  $00(a5,d0.w),d0                 ; d0 = note period value from $00004bba
 
-                sub.w   $004a(a4),d0                    ; d0 = d0 - current note period value $00004bba
+                sub.w   chan_notePeriodValue(a4),d0                    ; d0 = d0 - current note period value $00004bba
                 ext.l   d0
                 moveq   #$00,d1
-                move.b  $0025(a4),d1                    ; d1 = CMD 09 param #$25 (31)
+                move.b  chan_paramPortomentoLengthTicks(a4),d1                    ; d1 = CMD 09 param #$25 (31)
                 divs.w  d1,d0                           ; d0 = d0/d1
-                move.w  d0,$0026(a4)                    ; store remainder value #$26 ()
+                move.w  d0,chan_portomentoAmountPerTick(a4)                    ; store remainder value #$26 ()
                 neg.w   d0                              ; d0 = remainder * -1
                 muls.w  d1,d0                           ; d0 = d0 * d1
-                sub.w   d0,$004a(a4)                    ; sub d0 from #$4a (74) - previous $00004bba current note period value $00004bba
+                sub.w   d0,chan_notePeriodValue(a4)                    ; sub d0 from #$4a (74) - previous $00004bba current note period value $00004bba
 .end_cmd_09
 
 
@@ -1144,23 +1303,23 @@ continue_command_processing_03                          ; original address $0000
 
                 ; --------- CMD 14 ---------
 .is_cmd_14                                              ; original address $0000466e
-                move.b  #$01,$0033(a4)                  ; set CMD 14 working value - #$33 (51)
-                move.l  $0028(a4),$002c(a4)             ; working copy CMD 14 param - #$2c (44)
-                move.b  $0030(a4),$0031(a4)             ; working copy CMD 14 param - #$31 (49)
+                move.b  #$01,chan_arpeggioRateTicks(a4)                  ; set CMD 14 working value - #$33 (51)
+                move.l  chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)             ; working copy CMD 14 param - #$2c (44)
+                move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)             ; working copy CMD 14 param - #$31 (49)
 .end_cmd_14
 
 
 continue_command_processing_04                          ; original address $00004680
                 bset.l  #$0004,d7                       ; cleared by CMD 08
-                move.l  $0014(a4),$0018(a4)             ; working copy of pointer?
-                move.w  #$0001,$001e(a4)                ; initialise value
-                clr.w   $004c(a4)       
-                move.w  $0054(a4),d0            
+                move.l  chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)             ; working copy of pointer?
+                move.w  #$0001,chan_adsrEnvelopeDelayTicks(a4)                ; initialise value
+                clr.w   chan_noteVolume(a4)       
+                move.w  chan_ChannelDMA(a4),d0            
                 or.w    d0,audio_dma                    ; L0000417c ; audio dma
 
 skip_cmds_09_to_17                                        ; original address $0000469c
                 moveq   #$00,d0                         ; d0 = #$0.l
-                move.b  $0051(a4),d0                    ; d0 = byte CMD 05
+                move.b  chan_paramPairedNoteDurationTicks(a4),d0                    ; d0 = byte CMD 05
 
 
 .chk_cmd_05                                             ; original address $000046a2
@@ -1174,16 +1333,20 @@ skip_cmds_09_to_17                                        ; original address $00
 
                 ;-------- CMD 08 -----------
 .not_cmd_05                                             ; original address $000046aa
-                add.w   d0,$0052(a4)                    ; store d0 in #$52 (82)
-                move.l  a3,$000e(a4)                    ; store ptr to current CMD
+                add.w   d0,chan_currentNoteTicks(a4)                    ; store d0 in #$52 (82)
+                move.l  a3,chan_ptrNextPatternDataPosition(a4)                    ; store ptr to current CMD
 
-check_command_08                                        ; $46b2
+
+
+
+
+_do_process_active_pattern_commands                                        ; $46b2
 .chk_cmd_08                                             ; original address $000046b2
                 btst.l  #$0007,d7
                 bne.w   exit_command_processing         ; jmp $00004850
 
 .do_cmd_08                                              ; original address $000046ba
-                move.w  $004a(a4),d0                    ; d0 = current note period value from table $00004bba
+                move.w  chan_notePeriodValue(a4),d0                    ; d0 = current note period value from table $00004bba
 
 
 
@@ -1194,12 +1357,12 @@ check_command_08                                        ; $46b2
 
                 ;--------- CMD 09 ---------
 .is_cmd_09                                              ; original address $000046c4
-                subq.b  #$01,$0025(a4)                  ; CMD 09 counter
+                subq.b  #$01,chan_paramPortomentoLengthTicks(a4)                  ; CMD 09 counter
                 bne.b   .cont_cmd_09                    ; L000046ce
 .end_cmd_09
                 bclr.l  #$0003,d7                       ; clear CMD 09 bit (switch cmd off)
 .cont_cmd_09
-                sub.w   $0026(a4),d0
+                sub.w   chan_portomentoAmountPerTick(a4),d0
                 bra.w   store_sample_period               ; L000047a8 ; skip next couple of commands 
 
 
@@ -1212,13 +1375,13 @@ chk_cmd_10                                              ; original address$00004
 
                 ;---------- CMD 10 ---------
 .is_cmd_10                                              ; original address $000046dc
-                subq.b  #$01,$0023(a4)
+                subq.b  #$01,chan_leadInNoteCurrentTicks(a4)
                 bcc.w   store_sample_period               ; L000047a8
-                move.b  $004f(a4),d0
-                move.b  $0050(a4),d1
-                move.b  d0,$0050(a4)
+                move.b  chan_transposedNoteIndex(a4),d0
+                move.b  chan_transposedLeadInNoteIndex(a4),d1
+                move.b  d0,chan_transposedLeadInNoteIndex(a4)
                 ext.w   d0
-                sub.w   $003c(a4),d0
+                sub.w   chan_instrumentTuningAmount(a4),d0
                 add.w   d0,d0
 
 .validate_command                                       ; original address $000046f8
@@ -1228,11 +1391,11 @@ chk_cmd_10                                              ; original address$00004
                 ble.b   .continue_cmd_10                ; $0000471a  this branch is always taken ------>>>>>>>>>
 
 .debug_assert_fail                                      ; original address $00004704
-                move.b  $004f(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
-                move.b  $0050(a4),d2
-                move.w  $003c(a4),d3
-                move.w  $0054(a4),d4
-                movea.l $0006(a4),a2
+                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  chan_transposedLeadInNoteIndex(a4),d2
+                move.w  chan_instrumentTuningAmount(a4),d3
+                move.w  chan_ChannelDMA(a4),d4
+                movea.l chan_ptrNextTrackSequencePosition(a4),a2
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .continue_cmd_10                                        ; original address $0000471a           
@@ -1250,19 +1413,19 @@ continue_command_processing_05                          ; original address L0000
 
                 ;------------- CMD 14 ----------
 .is_cmd_14                                              ; original address L00004728
-                subq.b  #$01,$0033(a4)                  ; original address L00004728
+                subq.b  #$01,chan_arpeggioRateTicks(a4)                  ; original address L00004728
                 bne.b   store_sample_period             ; L000047a8
-                movea.l $002c(a4),a0
+                movea.l chan_ptrArpeggioCurrentTable(a4),a0
                 move.b  (a0)+,d0
-                subq.b  #$01,$0031(a4)
+                subq.b  #$01,chan_arpeggioTableLenCount(a4)
                 bne.b   .L00004744
-                movea.l $0028(a4),a0
-                move.b  $0030(a4),$0031(a4)
-.L00004744      move.l  a0,$002c(a4)
-                move.b  $0032(a4),$0033(a4)
-                add.b   $0050(a4),d0
+                movea.l chan_ptrArpeggioTable(a4),a0
+                move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
+.L00004744      move.l  a0,chan_ptrArpeggioCurrentTable(a4)
+                move.b  chan_paramArpeggioSpeedTicks(a4),chan_arpeggioRateTicks(a4)
+                add.b   chan_transposedLeadInNoteIndex(a4),d0
                 ext.w   d0
-                sub.w   $003c(a4),d0
+                sub.w   chan_instrumentTuningAmount(a4),d0
                 add.w   d0,d0
 
 .validate_command                                       ; original address $000046f8
@@ -1272,11 +1435,11 @@ continue_command_processing_05                          ; original address L0000
                 ble.b   .end_cmd_14                     ; $0000471a  this branch is always taken ------>>>>>>>>>
 
 .debug_assert_fail                                      ; original address L00004766
-                move.b  $004f(a4),d1
-                move.b  $0050(a4),d2
-                move.w  $003c(a4),d3
-                move.w  $0054(a4),d4
-                movea.l $0006(a4),a2
+                move.b  chan_transposedNoteIndex(a4),d1
+                move.b  chan_transposedLeadInNoteIndex(a4),d2
+                move.w  chan_instrumentTuningAmount(a4),d3
+                move.w  chan_ChannelDMA(a4),d4
+                movea.l chan_ptrNextTrackSequencePosition(a4),a2
                 illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
 
 .end_cmd_14                                             ; original address L0000477c
@@ -1294,18 +1457,18 @@ continue_command_processing_06                          ; original address L0000
 
                 ;------------ CMD 12 -------------
 .is_cmd_12                                              ; original address L0000478a
-                subq.b  #$01,$0037(a4)
+                subq.b  #$01,chan_modulationDelayStartTicks(a4)
                 bcc.b   store_sample_period             ; L000047a8
-                addq.b  #$01,$0037(a4)
-                subq.b  #$01,$0039(a4)
+                addq.b  #$01,chan_modulationDelayStartTicks(a4)
+                subq.b  #$01,chan_modulationSpeedTicks(a4)
                 bne.b   .L000047a4
-                neg.w   $003a(a4)
-                move.b  $0038(a4),$0039(a4)
-.L000047a4      add.w   $003a(a4),d0
+                neg.w   chan_modulationAmountPerTick(a4)
+                move.b  chan_modulationSpeedTicks_x2(a4),chan_modulationSpeedTicks(a4)
+.L000047a4      add.w   chan_modulationAmountPerTick(a4),d0
 
 
 store_sample_period                                     ; original address L000047a8
-                move.w  d0,CHANNEL_SAMPLE_PERIOD(a4)    ; $004a(a4)
+                move.w  d0,chan_notePeriodValue(a4)    ; $004a(a4)
 
 
                 ; -------- Check CMD 08,12,10,14 --------
@@ -1315,31 +1478,31 @@ store_sample_period                                     ; original address L0000
 
                 ; -------- Is xxxx CMD ----------
 .is_cmd_08_10_12_14                                     ; original address L000047b4
-                subq.w  #$01,$001e(a4)
+                subq.w  #$01,chan_adsrEnvelopeDelayTicks(a4)
                 bne.w   .L0000483a
-                movea.l $0018(a4),a0
+                movea.l chan_ptrCurrentADSREnvelope(a4),a0
                 moveq   #$00,d0
                 move.b  (a0)+,d0
                 beq.b   .L00004808
                 bmi.b   .L000047e2
-                move.w  d0,$001e(a4)
-                move.b  #$01,$001c(a4)
-                move.b  #$01,$001d(a4)
-                move.b  (a0)+,$0020(a4)
-                move.l  a0,$0018(a4)
+                move.w  d0,chan_adsrEnvelopeDelayTicks(a4)
+                move.b  #$01,chan_adsrRateOfChangeTicks(a4)
+                move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
+                move.b  (a0)+,chan_adsrVolumeRateOfChange(a4)
+                move.l  a0,chan_ptrCurrentADSREnvelope(a4)
                 bra.b   .L0000483a
 
 
 .L000047e2      neg.b   d0
-                move.w  d0,$001e(a4)
-                move.b  #$01,$0020(a4)
+                move.w  d0,chan_adsrEnvelopeDelayTicks(a4)
+                move.b  #$01,chan_adsrVolumeRateOfChange(a4)
                 move.b  (a0)+,d0
                 bpl.b   .L000047f8
                 neg.b   d0
-                neg.b   $0020(a4)
-.L000047f8      move.b  d0,$001c(a4)
-                move.b  #$01,$001d(a4)
-                move.l  a0,$0018(a4)
+                neg.b   chan_adsrVolumeRateOfChange(a4)
+.L000047f8      move.b  d0,chan_adsrRateOfChangeTicks(a4)
+                move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
+                move.l  a0,chan_ptrCurrentADSREnvelope(a4)
                 bra.b   .L0000483a
 
 
@@ -1347,27 +1510,28 @@ store_sample_period                                     ; original address L0000
                 beq.b   .L00004816
                 bpl.b   .L00004810
                 neg.b   d0
-.L00004810      sub.w   $0052(a4),d0
+.L00004810      sub.w   chan_currentNoteTicks(a4),d0
                 bmi.b   .L0000481c
 .L00004816      bclr.l  #$0004,d7
                 bra.b   exit_command_processing                 ;L00004850
 
 
 .L0000481c      neg.w   d0
-                move.w  d0,$001e(a4)
-                move.b  #$00,$001c(a4)
-                move.b  #$00,$001d(a4)
-                move.b  #$00,$0020(a4)
-                move.l  a0,$0018(a4)
+                move.w  d0,chan_adsrEnvelopeDelayTicks(a4)
+                move.b  #$00,chan_adsrRateOfChangeTicks(a4)
+                move.b  #$00,chan_adsrCurrentRateOfChangeTicks(a4)
+                move.b  #$00,chan_adsrVolumeRateOfChange(a4)
+                move.l  a0,chan_ptrCurrentADSREnvelope(a4)
                 bra.b   exit_command_processing         ; L00004850
 
 
-.L0000483a      subq.b  #$01,$001d(a4)
+.L0000483a      subq.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
                 bne.b   exit_command_processing         ; L00004850
-                move.b  $001c(a4),$001d(a4)
-                move.b  $0020(a4),d0
+                
+                move.b  chan_adsrRateOfChangeTicks(a4),chan_adsrCurrentRateOfChangeTicks(a4)
+                move.b  chan_adsrVolumeRateOfChange(a4),d0
                 ext.w   d0
-                add.w   d0,CHANNEL_VOLUME(a4)           ; $004c(a4)
+                add.w   d0,chan_noteVolume(a4)           ; $004c(a4)
 
 exit_command_processing                                 ; original address L00004850
                 rts  
@@ -1454,28 +1618,28 @@ do_channel_1
                 lea.l   channel_00_status,a0                     ; $4024,a0
                 move.w  d1,d3
 .chk_volume_mask
-                btst.b  #$0006,(a0)                             ; test which volume mask to use (allows volume off/reduced volume by setting a channel bit) 
+                btst.b  #$0006,chan_ActiveCommandBits(a0)                             ; test which volume mask to use (allows volume off/reduced volume by setting a channel bit) 
                 beq.b   .use_volume_mask_1                      ; $000048dc
 .use_volume_mask_2                                              ; original address L000048da
                 move.w  d2,d3                                   ; d2,d3 = master volume mask
 .use_volume_mask_1                                              ; original address L000048dc
-                and.w   CHANNEL_VOLUME(a0),d3                   ; d3 = channnel volume
+                and.w   chan_noteVolume(a0),d3                   ; d3 = channnel volume
 .set_volume                                                     ; original address L000048e0
                 move.w  d3,AUD0VOL(a6)                          ; $00a8(a6) - set audio volume
 .set_pitch                                                      ; original address L000048e4
-                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD0PER(a6)   ; $00a6(a6) - set sample pitch
+                move.w  chan_notePeriodValue(a0),AUD0PER(a6)   ; $00a6(a6) - set sample pitch
 .chk_new_sample                                                 ; original address L000048ea
                 btst.l  #$0000,d0                               ; d0 = still contains channel interrupt/DMA status bits
                 beq.b   .set_sample_2                           ; L000048fe
                 ; set sample start/repeat
 .set_sample_1                                                   ; original address L000048f0
-                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD0LEN(a6)    ; set DMA Sample Audio Length $00a4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD0LC(a6)     ; set DMA Sample Data Ptr $00a0(a6)
+                move.w  chan_instrumentSampleLength(a0),AUD0LEN(a6)    ; set DMA Sample Audio Length $00a4(a6)
+                move.l  chan_ptrInstrumentSampleStart(a0),AUD0LC(a6)     ; set DMA Sample Data Ptr $00a0(a6)
                 bra.b   do_channel_2                            ; jmp $0000490a
                 ; set sample start/repeat
 .set_sample_2                                                   ; original address L000048fe
-                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD0LEN(a6)    ; $00a4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD0LC(a6)     ; $00a0(a6)
+                move.w  chan_instrumentRepeatLength(a0),AUD0LEN(a6)    ; $00a4(a6)
+                move.l  chan_ptrInstrumentSampleRepeat(a0),AUD0LC(a6)     ; $00a0(a6)
 
 
 
@@ -1485,26 +1649,26 @@ do_channel_2                                                    ; original addre
                 lea.l   channel_01_status,a0                     ; L0000407a,a0
                 move.w  d1,d3
 .chk_volume_mask
-                btst.b  #$0006,(a0)                             ; original address L00004910
+                btst.b  #$0006,chan_ActiveCommandBits(a0)                             ; original address L00004910
                 beq.b   .use_volume_mask_1                      ; L00004918
 .use_volume_mask_2                                              ; original address L00004916
                 move.w  d2,d3
 .use_volume_mask_1                                              ; original address L00004918
-                and.w   CHANNEL_VOLUME(a0),d3
+                and.w   chan_noteVolume(a0),d3
 .set_volume                                                     ; original address L0000491c 
                 move.w  d3,AUD1VOL(a6)                          ; $00b8(a6)
 .set_pitch                                                      ; original address L00004920
-                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD1PER(a6)   ; $00b6(a6)
+                move.w  chan_notePeriodValue(a0),AUD1PER(a6)   ; $00b6(a6)
 .chk_new_sample                                                 ; original address L00004926
                 btst.l  #$0001,d0
                 beq.b   .set_sample_2                           ; L0000493a
 .set_sample_1                                                   ; original address L0000492c
-                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD1LEN(a6)    ; $00b4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD1LC(a6)     ; $00b0(a6)
+                move.w  chan_instrumentSampleLength(a0),AUD1LEN(a6)    ; $00b4(a6)
+                move.l  chan_ptrInstrumentSampleStart(a0),AUD1LC(a6)     ; $00b0(a6)
                 bra.b   do_channel_3                            ; L00004946
 .set_sample_2                                                   ; original address L0000493a
-                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD1LEN(a6)    ; $00b4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD1LC(a6)     ; $00b0(a6)
+                move.w  chan_instrumentRepeatLength(a0),AUD1LEN(a6)    ; $00b4(a6)
+                move.l  chan_ptrInstrumentSampleRepeat(a0),AUD1LC(a6)     ; $00b0(a6)
 
 
 
@@ -1514,26 +1678,26 @@ do_channel_3                                                    ; original addre
                 lea.l   channel_02_status,a0                     ;$40d0,a0
                 move.w  d1,d3
 .chk_volume_mask                                                ; original address  L0000494c
-                btst.b  #$0006,(a0)
+                btst.b  #$0006,chan_ActiveCommandBits(a0)
                 beq.b   .set_volume                             ; L00004954
 .use_volume_mask_2                                              ; original address  L00004952
                 move.w  d2,d3
 .use_volume_mask_1                                              ; original address  L00004954
-                and.w   CHANNEL_VOLUME(a0),d3
+                and.w   chan_noteVolume(a0),d3
 .set_volume                                                     ; original address  L00004958
                 move.w  d3,AUD2VOL(a6)                          ; $00c8(a6)
 .set_pitch                                                      ; original address  L0000495c
-                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD2PER(a6)   ; $00c6(a6)
+                move.w  chan_notePeriodValue(a0),AUD2PER(a6)   ; $00c6(a6)
 .chk_new_sample                                                 ; original address  L00004962
                 btst.l  #$0002,d0
                 beq.b   .set_sample_2                           ; L00004976
 .set_sample_1                                                   ; original address  L00004968
-                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD2LEN(a6)    ; $00c4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD2LC(a6)    ; $00c0(a6)
+                move.w  chan_instrumentSampleLength(a0),AUD2LEN(a6)    ; $00c4(a6)
+                move.l  chan_ptrInstrumentSampleStart(a0),AUD2LC(a6)    ; $00c0(a6)
                 bra.b   do_channel_4                            ; jmp L00004982
 .set_sample_2                                                   ; original address  L00004976
-                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD2LEN(a6)    ; $00c4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD2LC(a6)     ; $00c0(a6)
+                move.w  chan_instrumentRepeatLength(a0),AUD2LEN(a6)    ; $00c4(a6)
+                move.l  chan_ptrInstrumentSampleRepeat(a0),AUD2LC(a6)     ; $00c0(a6)
 
 
 
@@ -1543,26 +1707,26 @@ do_channel_4
                 lea.l   channel_03_status,a0                     ;$4126,a0
                 move.w  d1,d3
 .chk_volume_mask 
-                btst.b  #$0006,(a0)
+                btst.b  #$0006,chan_ActiveCommandBits(a0)
                 beq.b   .use_volume_mask_1                      ; L00004990
 .use_volume_mask_2 
                 move.w  d2,d3
 .use_volume_mask_1
-                and.w   CHANNEL_VOLUME(a0),d3
+                and.w   chan_noteVolume(a0),d3
 .set_volume
                 move.w  d3,AUD3VOL(a6)                          ; $00d8(a6)
 .set_pitch
-                move.w  CHANNEL_SAMPLE_PERIOD(a0),AUD3PER(a6)   ; $00d6(a6)
+                move.w  chan_notePeriodValue(a0),AUD3PER(a6)   ; $00d6(a6)
 .chk_new_sample 
                 btst.l  #$0003,d0
                 beq.b   .set_sample_2                           ; L000049b2
 .set_sample_1 
-                move.w  CHANNEL_SAMPLE_LEN_A(a0),AUD3LEN(a6)    ; $00d4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_A(a0),AUD3LC(a6)     ; $00d0(a6)
+                move.w  chan_instrumentSampleLength(a0),AUD3LEN(a6)    ; $00d4(a6)
+                move.l  chan_ptrInstrumentSampleStart(a0),AUD3LC(a6)     ; $00d0(a6)
                 bra.b   do_enable_dma                           ; L000049be
 .set_sample_2 
-                move.w  CHANNEL_SAMPLE_LEN_B(a0),AUD3LEN(a6)    ; $00d4(a6)
-                move.l  CHANNEL_SAMPLE_PTR_B(a0),AUD3LC(a6)     ; $00d0(a6)
+                move.w  chan_instrumentRepeatLength(a0),AUD3LEN(a6)    ; $00d4(a6)
+                move.l  chan_ptrInstrumentSampleRepeat(a0),AUD3LC(a6)     ; $00d0(a6)
 
 
                 ; Enable channel DMA
@@ -1888,6 +2052,73 @@ process_body_chunk                              ; original routine address L0004
                 movem.l (a7)+,d0/a0
                 rts
 
+               even               ; Audio DMA Value
+               ;    - Changes to DMACON (Active DMA Channels)
+               ;    - Accumulation of Channel_xx_Status offset 0x54 (channel DMA bit)
+               ;    - Original Address $0000417c
+audio_dma      dc.w    $0000                           
+
+
+               ; Current Sound Play/Tick Counter
+               ; Is Cleared when a Song or SFX is started,
+               ; Measures the number of ticks played for the latest started sound
+               ; No good for measuring a background tune when SFX played over the top.
+               ; because it's a shared value for songs and SFX.
+               ; Not used by the player, may be used by external programs?
+               ; - Original Address $0000417e
+play_tick_counter   
+               dc.w    $0000
+               even
+
+               ; Global Music Volume Mask - Allows external progam to mute the music
+               ; Original Address $0000401c
+master_music_volume_mask_1   
+               dc.w    $ffff 
+
+
+               ; Global SFX Volume Mask - Allows external program tomute the SFX
+               ; Original Address $0000401e
+master_sfx_volume_mask_2   
+               dc.w    $ffff 
+
+
+               ; Global Sound Control Bits
+               ; Original Address $00004020
+               ; Accumulated Audio Channel Control Bits/Flags
+               ;    BIT 15 - 1 = Music is Playing
+               ;    BIT 14 - 1 = SFX is PLaying
+               ;    BIT 03 - 1 = Channel 03 is Active (SFX Channel)
+               ;    BIT 02 - 1 = Channel 02 is Active (Music Channel)
+               ;    BIT 01 - 1 = Channel 01 is Active (Music Channel)
+               ;    BIT 00 - 1 = Channel 00 is Active (Music Channel)
+sounddriver_ctrl_bits 
+               dc.w    $0000                                   ; cleared when audio is silenced
+
+
+               ; The currently playing song/tune id number
+               ; Original Address $00004022
+sounddriver_song_number         
+               dc.b    $00
+
+
+               ; The currently playing SFX id number
+               ; Original Address $00004023
+sounddriver_sfx_number
+               dc.b    $00    
+               even
+
+
+
+
+                ; ---------------------------- include sound driver data structures -----------------------------
+                ; Runtime Audio Channel Data Structures for the Sound Driver.
+                ;   - Channel_00_Status - Audio Channel 00 Status Data Structure
+                ;   - Channel_01_Status - Audio Channel 01 Status Data Structure
+                ;   - Channel_02_Status - Audio Channel 02 Status Data Structure
+                ;   - Channel_03_Status - Audio Channel 03 Status Data Structure
+                even
+                include     sounddriver_datastructures.s
+
 
                 even
                 ; COMMAND TABLE - 
@@ -2208,11 +2439,16 @@ L00004D4A       dc.w  $DC82, $BB45, $7E24, $A08C
 
                 ; ------ music sample data table (12 sample offsets & 2 word params) ------
                 ; 12 sound samples in IFF 8SVX format.
-                ; Table of address offsets below, not sure what the additional two 16 bit 
-                ; parameters that follow the offset represent yet. maybe volume and something else.
+                ; Table of address offsets below.
                 ;
-                ; addr $00004D52                                  ; Offset Calc   | Start       | Name           | End
-iff_sample_data_table                                               ;---------------+-------------+----------------+----------
+                ; Format:
+                ;   0x00 - Long Word (32 bits) - Byte Offset to IFF Sample Data
+                ;   0x04 - Word (16 bits)      - Instrument Volume
+                ;   0x06 - Word (16 bits)      - No Transpose Flag (0 = can transpose pitch, !0 = cannot transpose pitch)
+                ;                              - Used for Drum Instruments, other samples that cannot be transposed in pitch
+                ;
+                ; Original Address $00004D52                      ; Offset Calc   | Start       | Name           | End
+iff_sample_data_table                                             ;---------------+-------------+----------------+----------
 .data_01        dc.l  sample_01-.data_01 
                 dc.w  $0018, $0000                                ; $4D52 + $0064 = $00004DB6   - WHATRU         - $000086D6
 .data_02        dc.l  sample_02-.data_02
@@ -2539,7 +2775,7 @@ sound_pattern_00
                ; Original address $0001BA42
 sound_pattern_01                                  
                dc.b PTNCMD_ADSR_ENVELOPE,$01                ; ADSR Envelope $01
-               dc.b PTNCMD_SELECT_INSTRUMENT,$08            ; Insrtument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$08            ; Insrutument $08 - TIMELESS-GS
                dc.b PTNCMD_ARPEGGIO_STOP                    ; Stop Arpeggio
                dc.b PTNCMD_MODULATION_STOP                  ; Stop Vibrato
                dc.b PTNCMD_PAIRED_NOTES_START,$06           ; Paired Notes, Duration 
@@ -2582,111 +2818,111 @@ sound_pattern_01
                ; Original address $0001BA8B 
 sound_pattern_02                                  
                dc.b PTNCMD_ADSR_ENVELOPE,$02                ; ADSR Envelope $02
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4 
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$0C
-               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03
+               dc.b PTNCMD_SELECT_INSTRUMENT,$03            ; Select Instrument $03 - HIT-BASS-C1
                dc.b $0C,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06
+               dc.b PTNCMD_SELECT_INSTRUMENT,$06            ; Select Instrument $06 - KIT OPENHAT-D4
                dc.b $41,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05
+               dc.b PTNCMD_SELECT_INSTRUMENT,$05            ; Select Instrument $05 - KIT HI-HAT-C4
                dc.b $40,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$06
-               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04
+               dc.b PTNCMD_SELECT_INSTRUMENT,$04            ; Select Instrument $04 - HIT SNARE-C2
                dc.b $18,$06
                dc.b PTNCMD_END_OR_LOOP 
 
@@ -2694,7 +2930,7 @@ sound_pattern_02
                ; Pattern 03 - used by channel 2 (bass)
                ; Original address $0001BB62  
 sound_pattern_03                                      
-               dc.b PTNCMD_SELECT_INSTRUMENT,$07            ; Select Instrument $07
+               dc.b PTNCMD_SELECT_INSTRUMENT,$07            ; Select Instrument $07 - BASS2-F
                dc.b PTNCMD_ADSR_ENVELOPE,$02                ; ADSR Envelope $02
                dc.b PTNCMD_ARPEGGIO_STOP                    ; Arpeggio Stop 
                dc.b PTNCMD_MODULATION_STOP                  ; Vibrato Stop
@@ -2741,17 +2977,17 @@ sound_pattern_03
                ; Original address $0001BBB1
 sound_pattern_04                                      
                dc.b PTNCMD_ADSR_ENVELOPE,$03                ; ADSR Envelope $03
-               dc.b PTNCMD_SELECT_INSTRUMENT,$01            ; Select Instrument $01
+               dc.b PTNCMD_SELECT_INSTRUMENT,$01            ; Select Instrument $01 - WHAT-RU
                dc.b PTNCMD_PAUSE_TRACK,$54                  ; Pause Track Duration = $54
                dc.b $23,$90
-               dc.b PTNCMD_SELECT_INSTRUMENT,$02            ; Select Instrument $02
+               dc.b PTNCMD_SELECT_INSTRUMENT,$02            ; Select Instrument $02 - IM-BATMAN
                dc.b $23,$06
                dc.b $23,$96
-               dc.b PTNCMD_SELECT_INSTRUMENT,$01            ; Select Instrument $01
+               dc.b PTNCMD_SELECT_INSTRUMENT,$01            ; Select Instrument $01 - WHAT-RU
                dc.b PTNCMD_PAUSE_TRACK,$54                  ; Pause Track Duration = $54
                dc.b $23,$06
                dc.b $23,$8A
-               dc.b PTNCMD_SELECT_INSTRUMENT,$02            ; Select Instrument $02
+               dc.b PTNCMD_SELECT_INSTRUMENT,$02            ; Select Instrument $02 - IM-BATMAN
                dc.b $23,$9C
                dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
 
@@ -2759,7 +2995,7 @@ sound_pattern_04
                ; Pattern 05 - used by channel 3 ( Voice & Guitar )
                ; Original address $0001BBCC
 sound_pattern_05   
-               dc.b PTNCMD_SELECT_INSTRUMENT,$0a            ; Select Instrument $0A
+               dc.b PTNCMD_SELECT_INSTRUMENT,$0a            ; Select Instrument $0A - CRUNCHGUITAR-C4
                dc.b PTNCMD_ADSR_ENVELOPE,$04                ; ADSR Envelope $04
                dc.b PTNCMD_MODULATION_START,$14,$01,$03     ; Start Vibrato $14,$01,$03
                dc.b $3D,$48                                 ; list of note, duration
@@ -2774,7 +3010,7 @@ sound_pattern_05
                ; Pattern 06 - used by channel 2 (bass) 
                ; Original address $0001BBE1
 sound_pattern_06 
-               dc.b PTNCMD_SELECT_INSTRUMENT,$09            ; Select Instrument $09
+               dc.b PTNCMD_SELECT_INSTRUMENT,$09            ; Select Instrument $09 - TIMEBASS-GS
                dc.b PTNCMD_ADSR_ENVELOPE,$04                ; ADSR Envelope $02
                dc.b $14,$0C                                 ; List of Note, Duration
                dc.b $20,$0C                                 ; ...
@@ -2824,7 +3060,7 @@ sound_pattern_06
                ; Pattern 07 - used by channel 3 ( Joker Laugh )
                ; Original address $0001B9F8
 sound_pattern_07
-               dc.b PTNCMD_SELECT_INSTRUMENT,$0b            ; Select Instrument $0B
+               dc.b PTNCMD_SELECT_INSTRUMENT,$0b            ; Select Instrument $0B - LAUGH (Joker)
                dc.b PTNCMD_ADSR_ENVELOPE,$03                ; ADSR Envelope $03
                dc.b $18,$96                                 ; note, duration
                dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
@@ -2833,7 +3069,7 @@ sound_pattern_07
                ; Pattern 08 - used by channel 3 ( Batman IWanna )
                ; Original address $0001B9FF
 sound_pattern_08                                 
-               dc.b PTNCMD_SELECT_INSTRUMENT,$0c            ; Select Instrument $0C
+               dc.b PTNCMD_SELECT_INSTRUMENT,$0c            ; Select Instrument $0C - IWANNNA (Batman)
                dc.b PTNCMD_ADSR_ENVELOPE,$03                ; ADSR Envelope $03
                dc.b $18,$96                                 ; note, duration
                dc.b PTNCMD_END_OR_LOOP                      ; end pattern (no loop)
@@ -3069,7 +3305,7 @@ init_title_music                                                        ; origin
                 jmp     SoundDriver_Stop_All                            ; calls $00004004 - end music
 .init_song_01
                 moveq   #SOUND_TITLE_TUNE,d0                                         ; set tune to play? 
-                jmp     SoundDriver_InitSong                                       ; jmp $00004010
+                jmp     SoundDriver_Play_Song                                       ; jmp $00004010
                 ; uses rts in Init_Song to return to caller.
 
 
@@ -4575,7 +4811,7 @@ display_completion_screen                                                       
                 move.w  #$0064,d0                                               ; d0 = 100
                 bsr.w   raster_wait_161                                         ; wait for 100 frames (2 seconds) - calls $0001c2f8
                 moveq   #SOUND_BATMAN_SPEACH,d0                                                 ; d0 = song 3
-                jsr     SoundDriver_InitSong                                               ; init play song 4 - calls $00004010
+                jsr     SoundDriver_Play_Song                                               ; init play song 4 - calls $00004010
                 move.w  #$0600,d0                                               ; d0 = 1536 
                 bsr.w   raster_wait_161                                         ; wait for 1536 frames (15 seconds) - calls $0001c2f8
                 bra.w   return_to_title_screen                                  ; jmp $0001c018
@@ -4615,7 +4851,7 @@ display_endgame_joker                                                   ; origin
                 move.w  #$0014,d0
                 bsr.w   raster_wait_161                                 ; calls $0001c2f8
                 moveq   #SOUND_JOKER_LAUGH,d0
-                jsr     SoundDriver_InitSong                                       ; calls $00004010
+                jsr     SoundDriver_Play_Song                                       ; calls $00004010
                 move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
                 bsr.w   raster_wait_161                                 ; calls $0001c2f8
                 bra.w   return_to_title_screen                          ; jmp $0001c018

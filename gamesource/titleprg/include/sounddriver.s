@@ -5,8 +5,8 @@ SOUND_DRIVER_S  EQU 1
 
           rsreset
 chan_ActiveCommandBits                  rs.w      1         ; 0x00
-chan_ptrPatternSequenceLoopStart        rs.l      1         ; 0x02
-chan_ptrNextPatternSequencePosition     rs.l      1         ; 0x06
+chan_ptrTrackSequenceLoopStart          rs.l      1         ; 0x02
+chan_ptrNextTrackSequencePosition       rs.l      1         ; 0x06
 chan_ptrPatternDataLoop                 rs.l      1         ; 0x0a
 chan_ptrNextPatternDataPosition         rs.l      1         ; 0x0e
 chan_patternLoopCount                   rs.b      1         ; 0x12
@@ -51,8 +51,8 @@ chan_paramPairedNoteDurationTicks       rs.b      1         ; 0x51
 chan_currentNoteTicks                   rs.w      1         ; 0x52
 chan_ChannelDMA                         rs.w      1         ; 0x54
 
-CHANNEL_XX_STATUS_SIZE          EQU  $56       ; 86 bytes
-HW_AUDIO_CHANNELS               EQU  $4             ; the number of hardware autio channels
+CHANNEL_XX_STATUS_SIZE          EQU  $56          ; 86 bytes
+HW_AUDIO_CHANNELS               EQU  $4           ; the number of hardware autio channels
 
 
     ENDC
