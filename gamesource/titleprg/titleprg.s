@@ -788,17 +788,7 @@ _do_sounddriver_vblank_update
                ;         - d7.w = Active Command Bits
                ; 
                ; Pattern Commands are values 0x80 and above.
-PTNCMDBITS_LEADIN_NOTES       EQU  $0000
-PTNCMDBITS_ARPEGGIO           EQU  $0001
-PTNCMDBITS_MODULATION         EQU  $0002
-PTNCMDBITS_PORTOMENTO         EQU  $0003
-PTNCMDBITS_ADSR_ACTIVE        EQU  $0004
-PTNCMDBITS_PAIRED_NOTES       EQU  $0005
-PTNCMDBITS_TRANSPOSE_NOTE     EQU  $0006
-PTNCMDBITS_CHANNEL_DISABLED   EQU  $0007
-
-
-_do_pattern_processing                                 ; original address L00004360
+_do_pattern_processing
                tst.w   chan_currentNoteTicks(a4)                       ; test 82(a4) - command 8 in progress?
                beq.w   _do_process_active_pattern_commands                ; if 82(82) == 0 then jmp L000046b2
 
@@ -816,42 +806,42 @@ _do_pattern_processing                                 ; original address L00004
                bclr.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
 
 pattern_command_loop
-               ; get next pattern data byte
-               move.b  (a3)+,d0
+                    ; get next pattern data byte
+                    move.b  (a3)+,d0
 
-               ; if byte is not a command then it's a new note to play
-               bpl.w   _start_playing_new_note
+                    ; if byte is not a command then it's a new note to play
+                    bpl.w   _trigger_playing_new_note
 
-               ; else, process command byte
-               ; clear any previous portomento effect
-               bclr.l  #PTNCMDBITS_PORTOMENTO,d7
+                    ; else, process command byte
+                    ; clear any previous portomento effect
+                    bclr.l  #PTNCMDBITS_PORTOMENTO,d7
 
-               ; test command in range $80-$a0 (0-31)
-               cmp.b   #$a0,d0
+                    ; test command in range $80-$a0 (0-31)
+                    cmp.b   #$a0,d0
 
-               ; if invald command then ignore it
-               bcc.b   pattern_command_loop
+                    ; if invald command then ignore it
+                    bcc.b   pattern_command_loop
 
-               ; else, use command as index to command jmp table
-               lea.l   pattern_cmd_jump_table(pc),a0
+                    ; else, use command as index to command jmp table
+                    lea.l   pattern_cmd_jump_table(pc),a0
 
-               ; clamp command to range (0-31)
-               sub.b   #$80,d0
+                    ; clamp command to range (0-31)
+                    sub.b   #$80,d0
 
-               ; get jump table entry
-               ext.w   d0
-               add.w   d0,d0 
-               adda.w  d0,a0
+                    ; get jump table entry
+                    ext.w   d0
+                    add.w   d0,d0 
+                    adda.w  d0,a0
 
-               ; get command jmp address
-               move.w  (a0),d0
-               beq.b   pattern_command_loop
+                    ; get command jmp address
+                    move.w  (a0),d0
+                    beq.b   pattern_command_loop
 
-               ; exeute command address
-               jmp     $00(a0,d0.w)
-               ; NB: some commands exit, 
-               ;     others return to 'pattern_command_loop'
-
+                    ; exeute command address
+                    jmp     $00(a0,d0.w)
+                    ; NB: the majority of commands return to 'pattern_command_loop'
+                    ;    - _pattern_cmd_87_Pause jmps '_process_note_duration' 
+                    ;
 
                 ;---------------- music command jump table (max 32 commands) ------------------
 pattern_cmd_jump_table                                    ; original address $0000439e
@@ -1136,7 +1126,7 @@ _pattern_cmd_87_Pause
                 bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
                 bset.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
                 clr.w   chan_noteVolume(a4)
-                bra.w   skip_cmds_09_to_17
+                bra.w   _process_note_duration
 
 
                ;-----------------------------------------------------------------
@@ -1157,9 +1147,9 @@ _pattern_cmd_87_Pause
                ; original address $00004498
 _pattern_cmd_88_Portomento                       
                bset.l  #PTNCMDBITS_PORTOMENTO,d7
-               move.b  (a3)+,chan_paramPortomentoStartOffset(a4)                 ; store - command 09 parameter
-               move.b  (a3)+,chan_paramPortomentoLengthTicks(a4)                 ; store - command 09 parameter
-               bra.w   pattern_command_loop          ; $00004378
+               move.b  (a3)+,chan_paramPortomentoStartOffset(a4)
+               move.b  (a3)+,chan_paramPortomentoLengthTicks(a4)
+               bra.w   pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1178,9 +1168,8 @@ _pattern_cmd_88_Portomento
                ; Param1: Byte Value Specifying the signed (+-) interval of the leadin note 
                ; Param2: Byte Value for the length of the lead-in note
                ; original address $000044a8
-_pattern_cmd_89_LeadIn_Notes
-music_command_10                       
-                and.w   #$fff8,d7                       ; Preserve bits 0&1 of ActiveChannel Bits, switch all other effects off
+_pattern_cmd_89_LeadIn_Notes                       
+                and.w   #$fff8,d7                       ; Preserve bits 0, 1 & 2 of ActiveChannel Bits, switch all other effects off
                 bset.l  #PTNCMDBITS_LEADIN_NOTES,d7
                 move.b  (a3)+,chan_paramLeadInNoteOfffset(a4) 
                 move.b  (a3)+,chan_paramLeadInNoteDurationTicks(a4)
@@ -1202,7 +1191,7 @@ music_command_10
                ;
 _pattern_cmd_8a_LeadIn_Notes_Stop
                 bclr.l  #PTNCMDBITS_LEADIN_NOTES,d7
-                bra.w   pattern_command_loop          ; $00004378
+                bra.w   pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1271,10 +1260,14 @@ _pattern_cmd_8c_Modulation_Stop
                ;         Byte = Parameter - Index into Arpeggio Offset Table (table of word offsets)
                ; Original Address $000044c4
                ;
+               ;    ***********************************************************************
+               ;    TODO: Refactor to remove hardcoded reference to 'arpeggio_offset_table'
+               ;    ***********************************************************************
+               ;
 _pattern_cmd_8d_Arpeggio
-                and.w   #$fff8,d7
+                and.w   #$fff8,d7                      ; preserve bits 0, 1 & 2
                 bset.l  #PTNCMDBITS_ARPEGGIO,d7
-                lea.l   _arpeggio_offset_table,a0 
+                lea.l   arpeggio_offset_table,a0 
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 add.w   d0,d0
@@ -1322,8 +1315,12 @@ _pattern_cmd_8e_Arpeggio_Stop
                ;
                ; Original Address $00004514
                ;
+               ;    *********************************************************
+               ;    TODO: Remove hardcoded reference to 'adsr_envelope_table'
+               ;    *********************************************************
+               ;
 _pattern_cmd_8f_Select_ADSR
-                lea.l   _adsr_envelope_table,a0 
+                lea.l   adsr_envelope_table,a0 
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 add.w   d0,d0
@@ -1361,6 +1358,10 @@ _pattern_cmd_8f_Select_ADSR
                ;
                ;    Original Address $0000452c
                ;
+               ;    ***********************************************************************
+               ;    TODO: Refactor to remove hardcoded reference to 'instrument_data_table'
+               ;    ***********************************************************************
+               ;
 _pattern_cmd_90_Select_Instrument
                 lea.l   instrument_data_table,a0
                 moveq   #$00,d0
@@ -1387,145 +1388,190 @@ _pattern_cmd_90_Select_Instrument
 
 
 
+               ;-------------------------------------------------------------------------
+               ; Start Playing a new note 
+               ; i.e. (re)trigger the current instrument at the specified pitch for the
+               ; specified duration.
+               ;
+               ; Called from the pattern_command_loop after all command processing
+               ; has completed,
+               ;
+               ;    IN: d0.b = Note Pitch
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $00004560
+               ;
+_trigger_playing_new_note 
+               ; do transpose pattern processing
+               btst.l  #PTNCMDBITS_TRANSPOSE_NOTE,d7  
+               bne.b   .store_note_pitch_index   
+.add_transpose_pitch_index
+               add.b   chan_patternTransposeValue(a4),d0
+.store_note_pitch_index
+               move.b  d0,chan_transposedNoteIndex(a4)  
 
-                ; IN: D0.b = data from command list
-                ; IN: D7.l = command status bits
-                ;
-_start_playing_new_note                                   ; original routine address $00004560
-                ; ------ CMD 17 --------
-                btst.l  #$0006,d7                       ; test for CMD 17
-                bne.b   .not_cmd_17                     ; $0000456a ; no... skip next instruction
-.is_cmd_17
-                add.b   chan_patternTransposeValue(a4),d0                    ; #$13 (19) - added to command value
-.not_cmd_17                                             ; original address $0000456a
-                move.b  d0,chan_transposedNoteIndex(a4)                    ; store copy of current command byte value
 
+               ; do leadin notes processing
+               ; if no leading notes, then store the same pitch index for leadin note
+               ; d0 = note pitch index
+               btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
+               beq.b   .store_leadin_note_pitch_index
 
-                ;------- CMD 10 --------
-.chk_cmd_10                                             ; addr $0000456e
-                btst.l  #$0000,d7                       ; chk CMD 10
-                beq.b   .not_cmd_10
-.is_cmd_10
-                add.b   chan_paramLeadInNoteOfffset(a4),d0                    ; d0 = CMD 10 param 1     - #$21 (33)
-                move.b  chan_paramLeadInNoteDurationTicks(a4),chan_leadInNoteCurrentTicks(a4)             ; duplcate CMD 10 param 2 - #$22 (34)
+               ; if active, set up leading note pitch index and leadin note duration
+.add_leadin_pitch_index
+               add.b   chan_paramLeadInNoteOfffset(a4),d0
+               move.b  chan_paramLeadInNoteDurationTicks(a4),chan_leadInNoteCurrentTicks(a4)
 
-.not_cmd_10                                             ; original routine address $0000457e
-                move.b  d0,chan_transposedLeadInNoteIndex(a4)                    ; update working copy of current command value
-                ext.w   d0
-                sub.w   chan_instrumentTuningAmount(a4),d0                    ; d0 = d0 - CMD 17 param 1  - #$3c (60)
-                add.w   d0,d0                           ; d0 = d0 * 2 - relative index to middle of note frequency table $00004bba
+               ; store leadin note pitch index (can be same as note pitch index if not active)
+.store_leadin_note_pitch_index
+               move.b  d0,chan_transposedLeadInNoteIndex(a4)
 
-.validate_command
+               ; get note period value from pitch index
+               ext.w   d0
+               sub.w   chan_instrumentTuningAmount(a4),d0   
+               add.w   d0,d0                      
+               ; d0 = index into mid point of Note_Period_Table held in a5
+               
+               ; validate index in table range -48 to +44
+               ; if not then throw 'illegal exception'
+.validate_pitch_index
                 cmp.w   #$ffd0,d0                       ; compare -48
-                blt.b   .debug_assert_fail              ; $00004596 ; ******* BRANCH IS NEVER TAKEN *******
+                blt.b   .debug_assert_fail        
                 cmp.w   #$002c,d0                       ; compare +44
-                ble.b   continue_command_processing_01  ; L000045ac ; this branch is always taken -------->>>>>>>
+                ble.b   .store_note_period_value  
 
-.debug_assert_fail                                      ; original routine address $00004596
-                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+.debug_assert_fail 
+                move.b  chan_transposedNoteIndex(a4),d1 
                 move.b  chan_transposedLeadInNoteIndex(a4),d2
                 move.w  chan_instrumentTuningAmount(a4),d3
                 move.w  chan_ChannelDMA(a4),d4
                 movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
+                illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+
+               ; d0.w = valid index into a5 (Note_Period_Table)
+               ; lookup note period value
+.store_note_period_value
+               move.w  $00(a5,d0.w),chan_notePeriodValue(a4)
 
 
+               ;-------------------------------------------------
+               ; initialise note modulation/vibrato if active
+_initialise_modulation
+               btst.l  #PTNCMDBITS_MODULATION,d7
+               ; if no modulation, initialise portomento
+               beq.b   _initialise_portomento  
 
+               ; calculate modulation pitch limit
+               move.b  chan_transposedLeadInNoteIndex(a4),d0
+               add.b   chan_paramModulationLevel(a4),d0     ; modulation pitch interval index
+               ext.w   d0
+               sub.w   chan_instrumentTuningAmount(a4),d0   ; tuning pitch interval index
+               add.w   d0,d0
 
-                ; IN: D0.w is index to middle of note frequency table $00004bba (offset range -48 to + 44)
-continue_command_processing_01                          ; original address $000045ac
-                move.w  $00(a5,d0.w),chan_notePeriodValue(a4)          ; lookup note fequency value from $00004bba (range -48 to +44) - frequency/playback speed?
-
-.chk_cmd_12
-                btst.l  #$0002,d7                       ; chk CMD 12
-                beq.b   continue_command_processing_02  ; $00004612 ; no... skip cmd 12
-
-                ;--------- CMD 12 ---------
-.is_cmd_12                                              ; original routine address $000045b8
-                move.b  chan_transposedLeadInNoteIndex(a4),d0                    ; d0 = copy of command byte
-                add.b   chan_paramModulationLevel(a4),d0                    ; d0 = command byte + cmd 12 parameter
-                ext.w   d0
-                sub.w   chan_instrumentTuningAmount(a4),d0                    ; d0 = d0 - 60
-                add.w   d0,d0                           ; d0 = d0 * 2
-.validate_command
+               ; validate pitch limit index in table range -48 to +44
+               ; if not then throw 'illegal exception'
+.validate_pitch_index
                 cmp.w   #$ffd0,d0                       ; compare -48
-                blt.b   .debug_assert_fail              ; L000045D4 ; ******* BRANCH IS NEVER TAKEN *******
+                blt.b   .debug_assert_fail
                 cmp.w   #$002c,d0                       ; compare +44
-                ble.b   .continue_cmd12                 ; L000045EA ; this branch is always taken ------>>>>>>>>>
+                ble.b   .continue_init_modulation                                         ; original address $45ea
 
 .debug_assert_fail
-                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+                move.b  chan_transposedNoteIndex(a4),d1
                 move.b  chan_transposedLeadInNoteIndex(a4),d2
                 move.w  chan_instrumentTuningAmount(a4),d3
                 move.w  chan_ChannelDMA(a4),d4
                 movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
+                illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
-.continue_cmd12                                         ; original address $45ea
-                move.w  $00(a5,d0.w),d0                 ; d0 = note period value from $00004bba
-                sub.w   chan_notePeriodValue(a4),d0                    ; subtract previous lookup value $4bba
-                asr.w   #$01,d0                         ; d0 = d0/2
-                ext.l   d0
-                move.b  chan_paramModulationSpeed(a4),d1                    ; d1 = CMD 12 param                  
-                ext.w   d1                              ; d1 = sign extend
-                divs.w  d1,d0                           ; d0 = d0/d1                         
-                move.w  d0,chan_modulationAmountPerTick(a4)                    ; #$3a (58) - results of divs
-                move.b  d1,chan_modulationSpeedTicks(a4)                    ; #$39 (57) - working copy of CMD 12 param
-                add.b   d1,d1                           ; d1 = d1 * 2
-                move.b  d1,chan_modulationSpeedTicks_x2(a4)                    ; #$38 (56) - working copy of CMD 12 param * 2
-                move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4)             ; #$37 (55) - working copy of CMD 12 param 
+.continue_init_modulation 
+               ; get initial modulated pitch/period
+               move.w  $00(a5,d0.w),d0
+               ; d0.w = max modulation pitch/period
+
+               ; get max +- modulated pitch/period offset
+               sub.w   chan_notePeriodValue(a4),d0 
+               asr.w   #$01,d0                         
+               ext.l   d0
+               ; d0.w = max modulation amount(+-) for current note
+
+               ; calculate the amount of modulation to apply per tick
+               ; mod per tick = max modulation amount/modulation speed
+               move.b  chan_paramModulationSpeed(a4),d1                  
+               ext.w   d1
+               divs.w  d1,d0 
+               move.w  d0,chan_modulationAmountPerTick(a4)
+
+               ; store modulation speed ticks and speed ticks x 2
+               move.b  d1,chan_modulationSpeedTicks(a4)  
+               add.b   d1,d1        
+               move.b  d1,chan_modulationSpeedTicks_x2(a4) 
+
+               ; initialise modulation start delay from parameter value
+               move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4)             ; #$37 (55) - working copy of CMD 12 param 
 .end_cmd_12
 
 
+               ;---------------------------------------------
+               ; initialise portomento if active
+_initialise_portomento
+               btst.l  #PTNCMDBITS_PORTOMENTO,d7
+               ; if not active, initialise arpeggio
+               beq.b   _initialise_arpeggio
 
-continue_command_processing_02                          ; original address $00004612
-                btst.l  #$0003,d7                       ; chk CMD 09
-                beq.b   continue_command_processing_03  ; no... jmp $00004668
+               ; initialise portomento
+               ; calculate initial portomento pitch index value
+               move.b  chan_transposedLeadInNoteIndex(a4),d0     ; current note pitch index
+               add.b   chan_paramPortomentoStartOffset(a4),d0    ; add porto start index
+               ext.w   d0 
+               sub.w   chan_instrumentTuningAmount(a4),d0        ; adjust by fine tune index
+               add.w   d0,d0
 
+.validate_pitch_index 
+               cmp.w   #$ffd0,d0                       ; validate -48
+               blt.b   .debug_assert_fail
+               cmp.w   #$002c,d0                       ; validate +44
+               ble.b   .continue_init_portomento
 
-                ;---------- CMD 09 ------------
-.is_cmd_09                                              ; original address $00004618
-                move.b  chan_transposedLeadInNoteIndex(a4),d0                    ; d0 = current command byte
-                add.b   chan_paramPortomentoStartOffset(a4),d0                    ; d0 = d0 + CMD 09 Param #$24 (36)
-                ext.w   d0                              ; 
-                sub.w   chan_instrumentTuningAmount(a4),d0                    ; d0 = d0 - CMD 17 Param #$3c (60)
-                add.w   d0,d0                           ; d0 = d0 * 2
-
-.validate_command                                       ; original address $00004628
-                cmp.w   #$ffd0,d0                       ; validate -48
-                blt.b   .debug_assert_fail              ; $00004634 ; ******* BRANCH IS NEVER TAKEN *******
-                cmp.w   #$002c,d0                       ; validate +44
-                ble.b   .continue_cmd_09                ; this branch is always taken ------>>>>>>>>>
-
-.debug_assert_fail                                      ; original address $00004634
-                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
+.debug_assert_fail
+                move.b  chan_transposedNoteIndex(a4),d1
                 move.b  chan_transposedLeadInNoteIndex(a4),d2
                 move.w  chan_instrumentTuningAmount(a4),d3
                 move.w  chan_ChannelDMA(a4),d4
                 movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
+                illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+
+.continue_init_portomento
+               ; get initial portomento pitch/period
+               move.w  $00(a5,d0.w),d0
+               ; d0.w = initial portomento pitch/period
+
+               ; calculate initial porto amount
+               sub.w   chan_notePeriodValue(a4),d0
+               ext.l   d0
+
+               ; calculate the porto amount per tick
+               moveq   #$00,d1
+               move.b  chan_paramPortomentoLengthTicks(a4),d1  
+               divs.w  d1,d0 
+               move.w  d0,chan_portomentoAmountPerTick(a4) 
+               
+               ; set the initial note period (modified by initial amount)
+               neg.w   d0
+               muls.w  d1,d0
+               sub.w   d0,chan_notePeriodValue(a4) 
 
 
-.continue_cmd_09                                        ; original address $0000464a
-                move.w  $00(a5,d0.w),d0                 ; d0 = note period value from $00004bba
 
-                sub.w   chan_notePeriodValue(a4),d0                    ; d0 = d0 - current note period value $00004bba
-                ext.l   d0
-                moveq   #$00,d1
-                move.b  chan_paramPortomentoLengthTicks(a4),d1                    ; d1 = CMD 09 param #$25 (31)
-                divs.w  d1,d0                           ; d0 = d0/d1
-                move.w  d0,chan_portomentoAmountPerTick(a4)                    ; store remainder value #$26 ()
-                neg.w   d0                              ; d0 = remainder * -1
-                muls.w  d1,d0                           ; d0 = d0 * d1
-                sub.w   d0,chan_notePeriodValue(a4)                    ; sub d0 from #$4a (74) - previous $00004bba current note period value $00004bba
-.end_cmd_09
-
-
-
-
-continue_command_processing_03                          ; original address $00004668
-                btst.l  #$0001,d7                       ; chk CMD 14
-                beq.b   continue_command_processing_04  ; no.... jmp $00004680
+               ;--------------------------------------------------
+               ; initialise arpeggio if active
+_initialise_arpeggio
+                btst.l  #PTNCMDBITS_ARPEGGIO,d7                       ; chk CMD 14
+                beq.b   _initialise_adsr_envelope
 
                 ; --------- CMD 14 ---------
 .is_cmd_14                                              ; original address $0000466e
@@ -1535,42 +1581,68 @@ continue_command_processing_03                          ; original address $0000
 .end_cmd_14
 
 
-continue_command_processing_04                          ; original address $00004680
-                bset.l  #$0004,d7                       ; cleared by CMD 08
+               ;---------------------------------------------------
+               ; initialise ADSR if active
+_initialise_adsr_envelope                          ; original address $00004680
+                bset.l  #PTNCMDBITS_ADSR_ACTIVE,d7                       ; cleared by CMD 08
                 move.l  chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)             ; working copy of pointer?
                 move.w  #$0001,chan_adsrEnvelopeDelayTicks(a4)                ; initialise value
                 clr.w   chan_noteVolume(a4)       
                 move.w  chan_ChannelDMA(a4),d0            
                 or.w    d0,audio_dma                    ; L0000417c ; audio dma
+               ; fall through to '_process_note_duration'
+               ; below
 
+
+               ;--------------------------------------------------------------
+               ; Process Note Duration? (I think...) 
                ; also called by 'pause command'
-skip_cmds_09_to_17                                        ; original address $0000469c
-                moveq   #$00,d0                         ; d0 = #$0.l
-                move.b  chan_paramPairedNoteDurationTicks(a4),d0                    ; d0 = byte CMD 05
-
-
-.chk_cmd_05        
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $0000469c
+               ;
+_process_note_duration                              
+               ; clear paired note duration ticks
+               moveq   #$00,d0
+               move.b  chan_paramPairedNoteDurationTicks(a4),d0
+       
                ; test if PAIRED_NOTES is active
                 btst.l  #PTNCMDBITS_PAIRED_NOTES,d7
-                bne.b   .not_cmd_05                     ; jmp $000046aa
-                ;-------- CMD 05 -----------
-.is_cmd_05                                              ; original address $000046a8
-                move.b  (a3)+,d0                        ; d0 = next CMD Byte
-
-
-
-                ;-------- CMD 08 -----------
-.not_cmd_05                                             ; original address $000046aa
+                bne.b   .is_paired_note
+.not_paired_note 
+               ; get note duration from pattern data
+                move.b  (a3)+,d0                   
+.is_paired_note
                 add.w   d0,chan_currentNoteTicks(a4)                    ; store d0 in #$52 (82)
                 move.l  a3,chan_ptrNextPatternDataPosition(a4)                    ; store ptr to current CMD
+               ; fall through to '_do_process_active_pattern_commands'
+               ; below
 
 
 
-
-
+               ;--------------------------------------------------------------
+               ; Process Active Pattern Comands 
+               ; i.e. process long running note effects
+               ;    - adsr, arpeggios, portomento, vibrato/modulation etc
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $0000469c
+               ;
 _do_process_active_pattern_commands                                        ; $46b2
 .chk_cmd_08                                             ; original address $000046b2
-                btst.l  #$0007,d7
+                btst.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
                 bne.w   exit_command_processing         ; jmp $00004850
 
 .do_cmd_08                                              ; original address $000046ba
@@ -1580,7 +1652,7 @@ _do_process_active_pattern_commands                                        ; $46
 
                 ;--------- Check for CMD 09 ----------
 .chk_cmd_09                                             ; original address $000046be
-                btst.l  #$0003,d7
+                btst.l  #PTNCMDBITS_PORTOMENTO,d7
                 beq.b   chk_cmd_10                      ; L000046d6
 
                 ;--------- CMD 09 ---------
@@ -1588,7 +1660,7 @@ _do_process_active_pattern_commands                                        ; $46
                 subq.b  #$01,chan_paramPortomentoLengthTicks(a4)                  ; CMD 09 counter
                 bne.b   .cont_cmd_09                    ; L000046ce
 .end_cmd_09
-                bclr.l  #$0003,d7                       ; clear CMD 09 bit (switch cmd off)
+                bclr.l  #PTNCMDBITS_PORTOMENTO,d7                       ; clear CMD 09 bit (switch cmd off)
 .cont_cmd_09
                 sub.w   chan_portomentoAmountPerTick(a4),d0
                 bra.w   store_sample_period               ; L000047a8 ; skip next couple of commands 
@@ -1598,7 +1670,7 @@ _do_process_active_pattern_commands                                        ; $46
 
                 ;--------- Check for CMD 10 -----------
 chk_cmd_10                                              ; original address$000046d6
-                btst.l  #$0000,d7
+                btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
                 beq.b   continue_command_processing_05  ; L00004722
 
                 ;---------- CMD 10 ---------
@@ -1635,7 +1707,7 @@ continue_command_processing_05                          ; original address L0000
 
                 ; ---------- check CMD 14 ----------
 .chk_cmd_14                                             ; original address L00004722
-                btst.l  #$0001,d7
+                btst.l  #PTNCMDBITS_ARPEGGIO,d7
                 beq.b   continue_command_processing_06  ; L00004784
 
 
@@ -1680,7 +1752,7 @@ continue_command_processing_06                          ; original address L0000
 
                 ;---------- Check CMD 12 ---------
 .chk_cmd_12                                             ; original address L00004784
-                btst.l  #$0002,d7
+                btst.l  #PTNCMDBITS_MODULATION,d7
                 beq.b   store_sample_period             ; L000047a8
 
                 ;------------ CMD 12 -------------
@@ -1701,7 +1773,7 @@ store_sample_period                                     ; original address L0000
 
                 ; -------- Check CMD 08,12,10,14 --------
 .chk_08_10_12_14                                        ; original address L000047ac
-                btst.l  #$0004,d7
+                btst.l  #PTNCMDBITS_ADSR_ACTIVE,d7
                 beq.w   exit_command_processing         ; Not CMD 08,12,10,14 - jmp $00004850
 
                 ; -------- Is xxxx CMD ----------
@@ -1740,7 +1812,7 @@ store_sample_period                                     ; original address L0000
                 neg.b   d0
 .L00004810      sub.w   chan_currentNoteTicks(a4),d0
                 bmi.b   .L0000481c
-.L00004816      bclr.l  #$0004,d7
+.L00004816      bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
                 bra.b   exit_command_processing                 ;L00004850
 
 
@@ -2810,12 +2882,12 @@ iff_sample_data_table                                             ;-------------
 
                 ; ----------------------- unknown data -------------------------------
                 ; music command 14 data
-_arpeggio_offset_table
+arpeggio_offset_table
 L0001B986 dc.w $0002, $0202                                                     
 L0001B98A dc.w $000C
 
                 ; music command 16 data
-_adsr_envelope_table
+adsr_envelope_table
 L0001B98C       dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B       
 L0001B99A       dc.w $0031, $0037, $0039, $013C, $1EFE, $0000 
 L0001B9A6       dc.w $0119, $08FD

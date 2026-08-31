@@ -2,6 +2,21 @@
     IFND SOUND_DRIVER_S
 SOUND_DRIVER_S  EQU 1
 
+CHANNEL_XX_STATUS_SIZE          EQU  $56          ; 86 bytes
+HW_AUDIO_CHANNELS               EQU  $4           ; the number of hardware autio channels
+
+
+; Pattern Command Bits
+; Stored in 'chan_ActiveCommandBits' word 
+PTNCMDBITS_LEADIN_NOTES       EQU  $0000
+PTNCMDBITS_ARPEGGIO           EQU  $0001
+PTNCMDBITS_MODULATION         EQU  $0002
+PTNCMDBITS_PORTOMENTO         EQU  $0003
+PTNCMDBITS_ADSR_ACTIVE        EQU  $0004
+PTNCMDBITS_PAIRED_NOTES       EQU  $0005
+PTNCMDBITS_TRANSPOSE_NOTE     EQU  $0006
+PTNCMDBITS_CHANNEL_DISABLED   EQU  $0007
+
 
           rsreset
 chan_ActiveCommandBits                  rs.w      1         ; 0x00
@@ -51,8 +66,6 @@ chan_paramPairedNoteDurationTicks       rs.b      1         ; 0x51
 chan_currentNoteTicks                   rs.w      1         ; 0x52
 chan_ChannelDMA                         rs.w      1         ; 0x54
 
-CHANNEL_XX_STATUS_SIZE          EQU  $56          ; 86 bytes
-HW_AUDIO_CHANNELS               EQU  $4           ; the number of hardware autio channels
 
 
     ENDC
