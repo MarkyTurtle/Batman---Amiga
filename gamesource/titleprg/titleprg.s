@@ -347,7 +347,7 @@ SoundDriver_VBlankUpdate
                ;
 _do_sounddriver_initialise                                                                            
                 lea.l   iff_sample_data_table,a0             
-                lea.l   instrument_data_table,a1             
+                lea.l   instrument_data_table+$10,a1        ; skip instrument 0          
                 bsr.w   _initialise_instrument_data_table    
                 bra.w   _do_sounddriver_stop_all             
 
@@ -788,8 +788,13 @@ _do_sounddriver_vblank_update
                ;         - d7.w = Active Command Bits
                ; 
                ; Pattern Commands are values 0x80 and above.
-
+PTNCMDBITS_LEADIN_NOTES       EQU  $0000
+PTNCMDBITS_ARPEGGIO           EQU  $0001
+PTNCMDBITS_MODULATION         EQU  $0002
 PTNCMDBITS_PORTOMENTO         EQU  $0003
+PTNCMDBITS_ADSR_ACTIVE        EQU  $0004
+PTNCMDBITS_PAIRED_NOTES       EQU  $0005
+PTNCMDBITS_TRANSPOSE_NOTE     EQU  $0006
 PTNCMDBITS_CHANNEL_DISABLED   EQU  $0007
 
 
@@ -855,19 +860,19 @@ pattern_cmd_jump_table                                    ; original address $00
                dc.w _pattern_cmd_81_SetInPatternLoop-(pattern_cmd_jump_table+2)      ; offset - $00ba ; 43A0 + BA = 445A 
                dc.w _pattern_cmd_82_NOP-(pattern_cmd_jump_table+4)      ; offset - $00c0 ; 43A2 + C0 = 4462      
                dc.w _pattern_cmd_83_NOP-(pattern_cmd_jump_table+6)      ; offset - $00c2 ; 43A4 + C2 = 4466
-               dc.w music_command_05-(pattern_cmd_jump_table+8)      ; offset - $00c4 ; 43A6 + C4 = 446A     
-               dc.w music_command_06-(pattern_cmd_jump_table+10)     ; offset - $00ce ; 43a8 + CE = 4476       
-               dc.w music_command_07-(pattern_cmd_jump_table+12)     ; offset - $00d4 ; 43aa + D4 = 447E
-               dc.w music_command_08-(pattern_cmd_jump_table+14)     ; offset - $00dc ; 43ac + DC = 4488        
-               dc.w music_command_09-(pattern_cmd_jump_table+16)     ; offset - $00ea ; 43ae + ea = 4498
-               dc.w music_command_10-(pattern_cmd_jump_table+18)     ; offset - $00f8 ; 43b0 + f8 = 44A8
-               dc.w music_command_11-(pattern_cmd_jump_table+20)     ; offset - $010a ; 43b2 + 10a = 44BC
-               dc.w music_command_12-(pattern_cmd_jump_table+22)     ; offset - $0140 ; 43b4 + 140 = 44F4
-               dc.w music_command_13-(pattern_cmd_jump_table+24)     ; offset - $0156 ; 43b6 + 156 = 450C
-               dc.w music_command_14-(pattern_cmd_jump_table+26)     ; offset - $010c ; 43b8 + 10c = 44C4
-               dc.w music_command_15-(pattern_cmd_jump_table+28)     ; offset - $0132 ; 43ba + 132 = 44EC
-               dc.w music_command_16-(pattern_cmd_jump_table+30)     ; offset - $0158 ; 43bc + 158 = 4514
-               dc.w music_command_17-(pattern_cmd_jump_table+32)     ; offset - $016e ; 43be + 16e = 452c
+               dc.w _pattern_cmd_84_Paired_Notes-(pattern_cmd_jump_table+8)      ; offset - $00c4 ; 43A6 + C4 = 446A     
+               dc.w _pattern_cmd_85_Paired_Notes_Stop-(pattern_cmd_jump_table+10)     ; offset - $00ce ; 43a8 + CE = 4476       
+               dc.w _pattern_cmd_86_Extend_Note_Ticks-(pattern_cmd_jump_table+12)     ; offset - $00d4 ; 43aa + D4 = 447E
+               dc.w _pattern_cmd_87_Pause-(pattern_cmd_jump_table+14)     ; offset - $00dc ; 43ac + DC = 4488        
+               dc.w _pattern_cmd_88_Portomento-(pattern_cmd_jump_table+16)     ; offset - $00ea ; 43ae + ea = 4498
+               dc.w _pattern_cmd_89_LeadIn_Notes-(pattern_cmd_jump_table+18)     ; offset - $00f8 ; 43b0 + f8 = 44A8
+               dc.w _pattern_cmd_8a_LeadIn_Notes_Stop-(pattern_cmd_jump_table+20)     ; offset - $010a ; 43b2 + 10a = 44BC
+               dc.w _pattern_cmd_8b_Modulation-(pattern_cmd_jump_table+22)     ; offset - $0140 ; 43b4 + 140 = 44F4
+               dc.w _pattern_cmd_8c_Modulation_Stop-(pattern_cmd_jump_table+24)     ; offset - $0156 ; 43b6 + 156 = 450C
+               dc.w _pattern_cmd_8d_Arpeggio-(pattern_cmd_jump_table+26)     ; offset - $010c ; 43b8 + 10c = 44C4
+               dc.w _pattern_cmd_8e_Arpeggio_Stop-(pattern_cmd_jump_table+28)     ; offset - $0132 ; 43ba + 132 = 44EC
+               dc.w _pattern_cmd_8f_Select_ADSR-(pattern_cmd_jump_table+30)     ; offset - $0158 ; 43bc + 158 = 4514
+               dc.w _pattern_cmd_90_Select_Instrument-(pattern_cmd_jump_table+32)     ; offset - $016e ; 43be + 16e = 452c
                dc.w $0000
                dc.w $0000
                dc.w $0000
@@ -883,6 +888,7 @@ pattern_cmd_jump_table                                    ; original address $00
                dc.w $0000
                dc.w $0000
                dc.w $0000
+
 
                ;----------------------------------------------------------------------------
                ; Pattern Command 0x80 - End or Loop Pattern
@@ -1002,8 +1008,6 @@ _pattern_cmd_80_EndOrLoop
                bra.w   pattern_command_loop
 
 
-
-
                ;-----------------------------------------------------------------
                ; Pattern Command 0x81
                ; Set Loop Start Position within this pattern
@@ -1055,109 +1059,331 @@ _pattern_cmd_83_NOP
                 bra.w   pattern_command_loop
 
 
-music_command_05                                        ; original address $0000446a
-                bset.l  #$0005,d7                       ; set status bit 5
-                move.b  (a3)+,chan_paramPairedNoteDurationTicks(a4)                 ; #$51 (81) - store command param in 81(a4)
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x84
+               ; Paired Notes
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $0000446a
+               ;
+_pattern_cmd_84_Paired_Notes
+                bset.l  #PTNCMDBITS_PAIRED_NOTES,d7
+                ; store command parameter
+                move.b  (a3)+,chan_paramPairedNoteDurationTicks(a4)
+                bra.w   pattern_command_loop 
+
+
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x85
+               ; Paired Notes Stop
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $00004476
+               ;
+_pattern_cmd_85_Paired_Notes_Stop
+                bclr.l  #PTNCMDBITS_PAIRED_NOTES,d7
+                bra.w   pattern_command_loop
+
+
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x86
+               ; Extend Note Ticks
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $0000447e
+               ;
+_pattern_cmd_86_Extend_Note_Ticks
+                add.w   #$0100,chan_currentNoteTicks(a4)
+                bra.w   pattern_command_loop
+
+
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x87
+               ; Pause 
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Desc: Increases the Length of the Current Note Playing by the 
+               ; Byte Parameter Value. Then stop the audio for that period of time.
+               ; Format: 0x87
+               ; Param:  Byte Value of Ticks to Add to Note Length
+               ; Original Address $00004488
+               ;
+_pattern_cmd_87_Pause
+                bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
+                bset.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
+                clr.w   chan_noteVolume(a4)
+                bra.w   skip_cmds_09_to_17
+
+
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x88
+               ; Portomento/slide note
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ;    Desc: Slides to the Next Note in the Patten (From the Specified +- offset and speed) 
+               ;    Format: 0x88
+               ;    Param1: Byte Value Specifying the Start of the PORTO/BEND Offset to the next note. 
+               ;    Param2: Byte Value of the PORTO/BEND Speed.
+               ; original address $00004498
+_pattern_cmd_88_Portomento                       
+               bset.l  #PTNCMDBITS_PORTOMENTO,d7
+               move.b  (a3)+,chan_paramPortomentoStartOffset(a4)                 ; store - command 09 parameter
+               move.b  (a3)+,chan_paramPortomentoLengthTicks(a4)                 ; store - command 09 parameter
+               bra.w   pattern_command_loop          ; $00004378
+
+
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x89
+               ; Start LeadIn Notes
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Desc: Starts adding a lead-in note to the notes played
+               ; Format: 0x89
+               ; Param1: Byte Value Specifying the signed (+-) interval of the leadin note 
+               ; Param2: Byte Value for the length of the lead-in note
+               ; original address $000044a8
+_pattern_cmd_89_LeadIn_Notes
+music_command_10                       
+                and.w   #$fff8,d7                       ; Preserve bits 0&1 of ActiveChannel Bits, switch all other effects off
+                bset.l  #PTNCMDBITS_LEADIN_NOTES,d7
+                move.b  (a3)+,chan_paramLeadInNoteOfffset(a4) 
+                move.b  (a3)+,chan_paramLeadInNoteDurationTicks(a4)
+                bra.w   pattern_command_loop
+
+
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x8a
+               ; Start LeadIn Notes Stop Effect
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $000044b
+               ;
+_pattern_cmd_8a_LeadIn_Notes_Stop
+                bclr.l  #PTNCMDBITS_LEADIN_NOTES,d7
                 bra.w   pattern_command_loop          ; $00004378
 
 
-music_command_06                                        ; original address $00004476
-                bclr.l  #$0005,d7                       ; clear status bit 5
-                bra.w   pattern_command_loop          ; $00004378
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x8b
+               ; Start Vibrato Modulation Effect
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Desc: Starts a Pitch Modulation Effect on this channel.
+               ;       Sets BIT #2 of the Pattern CMD BITS.
+               ; 
+               ; Format: 0x8e = Command
+               ;         Byte = Parameter - Effect Start Delay
+               ;         Byte = Parameter - Amount of Modulation/Level
+               ; 	Byte = Parameter - Speed/Rate of Modulation
+               ;
+               ; Original Address $000044f4
+               ;
+_pattern_cmd_8b_Modulation
+                and.w   #$fff8,d7                      ; Preserve bits 0, 1 & 2
+                bset.l  #PTNCMDBITS_MODULATION,d7
+                move.b  (a3)+,chan_paramModulationDelayStart(a4)
+                move.b  (a3)+,chan_paramModulationLevel(a4)
+                move.b  (a3)+,chan_paramModulationSpeed(a4)
+                bra.w   pattern_command_loop
 
 
-music_command_07                                        ; original address $0000447e
-                add.w   #$0100,chan_currentNoteTicks(a4)                ; increase offset 84(a4) by 256
-                bra.w   pattern_command_loop          ; $00004378
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x8b
+               ; Start Vibrato Modulation Effect
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $0000450c
+               ;
+_pattern_cmd_8c_Modulation_Stop
+                bclr.l  #PTNCMDBITS_MODULATION,d7
+                bra.w   pattern_command_loop
 
 
-music_command_08                                        ; original address $00004488
-                bclr.l  #$0004,d7                       ; clear status bit 4
-                bset.l  #$0007,d7                       ; set status bit 7
-                clr.w   chan_noteVolume(a4)                       ; clear word at #$4c (76) 
-                bra.w   skip_cmds_09_to_17              ; L0000469c
-
-
-music_command_09                                        ; original address $00004498
-                bset.l  #$0003,d7
-                move.b  (a3)+,chan_paramPortomentoStartOffset(a4)                 ; store - command 09 parameter
-                move.b  (a3)+,chan_paramPortomentoLengthTicks(a4)                 ; store - command 09 parameter
-                bra.w   pattern_command_loop          ; $00004378
-
-
-music_command_10                                        ; original address $000044a8
-                and.w   #$fff8,d7                       ; clear bits 0-6 of d7
-                bset.l  #$0000,d7
-                move.b  (a3)+,chan_paramLeadInNoteOfffset(a4)                 ; store - command 10 parameter
-                move.b  (a3)+,chan_paramLeadInNoteDurationTicks(a4)                 ; store - command 10 parameter
-                bra.w   pattern_command_loop          ; $00004378
-
-
-music_command_11                                        ; original address $000044bc
-                bclr.l  #$0000,d7
-                bra.w   pattern_command_loop          ; $00004378
-
-
-music_command_14                                        ; original address $000044c4
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x8d
+               ; Start Arpeggio Effect
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Desc: Starts an Arpeggio effect on the channel using an entry from the Arpeggion Table.
+               ;       Sets BIT #1 of the Pattern CMD BITS.
+               ; 
+               ; Format: 0x8d = Command
+               ;         Byte = Parameter - Index into Arpeggio Offset Table (table of word offsets)
+               ; Original Address $000044c4
+               ;
+_pattern_cmd_8d_Arpeggio
                 and.w   #$fff8,d7
-                bset.l  #$0001,d7
-                lea.l   L0001B986,a0
+                bset.l  #PTNCMDBITS_ARPEGGIO,d7
+                lea.l   _arpeggio_offset_table,a0 
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 add.w   d0,d0
                 adda.w  d0,a0
                 adda.w  (a0),a0
-                move.b  (a0)+,chan_paramArpeggioSpeedTicks(a4)                 ; store parameter
-                move.b  (a0)+,chan_paramArpeggioTableLength(a4)                 ; store parameter
+                move.b  (a0)+,chan_paramArpeggioSpeedTicks(a4)  
+                move.b  (a0)+,chan_paramArpeggioTableLength(a4) 
                 move.l  a0,chan_ptrArpeggioTable(a4)
-                bra.w   pattern_command_loop          ; $00004378
+                bra.w   pattern_command_loop  
 
 
-music_command_15                                        ; original address $000044ec
-                bclr.l  #$0001,d7
-                bra.w   pattern_command_loop          ; $00004378
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x8e
+               ; Stop Arpeggio Effect
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Original Address $000044ec
+               ;
+_pattern_cmd_8e_Arpeggio_Stop
+                bclr.l  #PTNCMDBITS_ARPEGGIO,d7
+                bra.w   pattern_command_loop
 
-music_command_12                                        ; addr $000044f4
-                and.w   #$fff8,d7       
-                bset.l  #$0002,d7
-                move.b  (a3)+,chan_paramModulationDelayStart(a4)
-                move.b  (a3)+,chan_paramModulationLevel(a4)
-                move.b  (a3)+,chan_paramModulationSpeed(a4)
-                bra.w   pattern_command_loop          ; $00004378
 
-
-music_command_13                                        ; addr $0000450c
-                bclr.l  #$0002,d7
-                bra.w   pattern_command_loop          ; $00004378
-
-
-music_command_16                                        ; addr $00004514
-                lea.l   L0001B98C,a0
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x8f
+               ; Select ADSR Envelope
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ; Desc: Sets the Current Instrument's ADSR Envelope.
+               ;
+               ; Format: 0x8f = Command
+               ;    Byte = Parameter - Index into ADSREnvelopeOffsetTable
+               ;
+               ; Original Address $00004514
+               ;
+_pattern_cmd_8f_Select_ADSR
+                lea.l   _adsr_envelope_table,a0 
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 add.w   d0,d0
                 adda.w  d0,a0
                 adda.w  (a0),a0
                 move.l  a0,chan_ptrADSREnvelope(a4) 
-                bra.w   pattern_command_loop          ; $00004378
+                bra.w   pattern_command_loop  
 
 
-music_command_17                                        ; addr $0000452c
-                lea.l   L00004BEA,a0
+               ;-----------------------------------------------------------------
+               ; Pattern Command 0x90
+               ; Select Instrument
+               ;
+               ;    IN: d0.b = Command Byte
+               ;    IN: d7.w = ActiveChannelBits
+               ;    IN: a3.l = Pattern Data Pointer
+               ;    IN: a4.l = Channel_xx_Status
+               ;    IN: a5.l = Note Period Table
+               ;    IN: a6.l = CUSTOM
+               ;
+               ;    Desc: Sets the Current Channel's Sample Data to Play.
+               ;          - Runs the Next Pattern Command (Maybe twice)
+               ;          - Perhaps to allow the set up the Sound's ADSR/Effects as the next command or similar?
+               ;    
+               ;    Format: 0x09 = Command
+               ;            Byte = Parameter - Inntrument Id 01 - 0x0d
+               ;    
+               ;    Notes:
+               ;        1) Copies the instrument data into the Temporary Instrument Parameters Area of Memory.
+               ;        2) Cleas BIT 6 of the ACTIVE Commands Bits.
+               ;        3) If the Instrument's UNKNOWN Flag word is 0, 
+               ;           - then it runs the next Pattern Command (Bit 6 = 0)
+               ;        4) Sets BIT 6 of the ACTIVE Commands Bits.
+               ;        5) Runs the next Pattern Command (BIT 6 = 1)
+               ;
+               ;    Original Address $0000452c
+               ;
+_pattern_cmd_90_Select_Instrument
+                lea.l   instrument_data_table,a0
                 moveq   #$00,d0
                 move.b  (a3)+,d0
                 asl.w   #$04,d0
                 adda.w  d0,a0
-                move.w  (a0)+,chan_instrumentTuningAmount(a4)                 ; volume 
-                move.l  (a0)+,chan_ptrInstrumentSampleStart(a4)                 ; sample start address
-                move.w  (a0)+,chan_instrumentSampleLength(a4)                 ; sample length
-                move.l  (a0)+,chan_ptrInstrumentSampleRepeat(a4)                 ; sample repeat address
-                move.w  (a0)+,chan_instrumentRepeatLength(a4)                 ; sample repeat length   
-                bclr.l  #$0006,d7
+                move.w  (a0)+,chan_instrumentTuningAmount(a4)  
+                move.l  (a0)+,chan_ptrInstrumentSampleStart(a4)
+                move.w  (a0)+,chan_instrumentSampleLength(a4)  
+                move.l  (a0)+,chan_ptrInstrumentSampleRepeat(a4)
+                move.w  (a0)+,chan_instrumentRepeatLength(a4)
+                ; check if the instrument can be transposed in pitch
+                ; some instruments (drums etc) might not want to transposed 
+                ; when a pattern is transposed in pitch.   
+                bclr.l  #PTNCMDBITS_TRANSPOSE_NOTE,d7
                 tst.w   (a0)
-                beq.w   pattern_command_loop          ; $00004378
-                bset.l  #$0006,d7
-                bra.w   pattern_command_loop          ; $00004378
+                beq.w   pattern_command_loop
+                bset.l  #PTNCMDBITS_TRANSPOSE_NOTE,d7
+                bra.w   pattern_command_loop
+
+
+
+
 
 
 
@@ -1317,13 +1543,15 @@ continue_command_processing_04                          ; original address $0000
                 move.w  chan_ChannelDMA(a4),d0            
                 or.w    d0,audio_dma                    ; L0000417c ; audio dma
 
+               ; also called by 'pause command'
 skip_cmds_09_to_17                                        ; original address $0000469c
                 moveq   #$00,d0                         ; d0 = #$0.l
                 move.b  chan_paramPairedNoteDurationTicks(a4),d0                    ; d0 = byte CMD 05
 
 
-.chk_cmd_05                                             ; original address $000046a2
-                btst.l  #$0005,d7
+.chk_cmd_05        
+               ; test if PAIRED_NOTES is active
+                btst.l  #PTNCMDBITS_PAIRED_NOTES,d7
                 bne.b   .not_cmd_05                     ; jmp $000046aa
                 ;-------- CMD 05 -----------
 .is_cmd_05                                              ; original address $000046a8
@@ -1751,7 +1979,7 @@ _initialise_instrument_data_table                                        ; origi
                 move.l  (a0)+,d0                        ; d0 = sound sample byte offset
                 beq.b   .exit                           ; if d0 == 0 then exit
                 move.w  (a0)+,INSTR_VOLUME(a1)          ; copy sample volume
-                move.w  (a0)+,INSTR_SAMPLE_UNKNOWN(a1)  ; copy param value2 (unknown, 0 or -1)
+                move.w  (a0)+,INSTR_SAMPLE_DISABLE_TRANSPOSE(a1)  ; copy param value2 (unknown, 0 or -1)
                 move.l  a0,-(a7)                        ; save a0 - incremented ptr to stack
                                                         ; d0 is offset to data within the structure
                 lea.l   -8(a0,d0.l),a0                  ; a0 = ptr to start of iff sample 'FORM' structure. #$f8 = -8
@@ -2177,12 +2405,7 @@ L00004BBA       dc.w    $01BF           ; B     (447)           ; note_period_ta
                 dc.w    $0077           ; A#    (119)
 
 
-                ; music command 17 data
-L00004BEA       dc.w $0021
-                dc.l L00004D3C  ; $0000, $4D3C
-                dc.w $000b
-                dc.l L00004D3C  ; $0000, $4D3C
-                dc.w $000B, $0000
+
 
 
 
@@ -2217,14 +2440,23 @@ L00004BEA       dc.w $0021
                 ; 14            | 2             | Unknown Parameter, values either 0 or -1
                 ;
 
+; 16 byte data structure for holding instrument data.
+; NB: Instrument 0 is hardcoded to a built in 22 byte wave
 INSTR_VOLUME            EQU     $0
 INSTR_SAMPLE_PTR        EQU     $2
 INSTR_SAMPLE_LEN        EQU     $6
 INSTR_SAMPLE_REPEAT_PTR EQU     $8
 INSTR_SAMPLE_REPEAT_LEN EQU     $C
-INSTR_SAMPLE_UNKNOWN    EQU     $E
+INSTR_SAMPLE_DISABLE_TRANSPOSE  EQU     $E
 
-instrument_data_table                         ; original address L00004BFA
+instrument_data_table
+                ; Instrument 0 (Built in wave)
+L00004BEA       dc.w $0021
+                dc.l L00004D3C  ; $0000, $4D3C
+                dc.w $000b
+                dc.l L00004D3C  ; $0000, $4D3C
+                dc.w $000B, $0000
+
 instrument_01                           ; original address L00004BFA
 .volume         dc.w  $0018
 .samplestart    dc.l  $00004E1E
@@ -2578,10 +2810,12 @@ iff_sample_data_table                                             ;-------------
 
                 ; ----------------------- unknown data -------------------------------
                 ; music command 14 data
+_arpeggio_offset_table
 L0001B986 dc.w $0002, $0202                                                     
 L0001B98A dc.w $000C
 
                 ; music command 16 data
+_adsr_envelope_table
 L0001B98C       dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B       
 L0001B99A       dc.w $0031, $0037, $0039, $013C, $1EFE, $0000 
 L0001B9A6       dc.w $0119, $08FD
