@@ -30,7 +30,8 @@ chan_ptrADSREnvelope                    rs.l      1         ; 0x14
 chan_ptrCurrentADSREnvelope             rs.l      1         ; 0x18
 chan_adsrRateOfChangeTicks              rs.b      1         ; 0x1c
 chan_adsrCurrentRateOfChangeTicks       rs.b      1         ; 0x1d
-chan_adsrEnvelopeDelayTicks             rs.w      1         ; 0x1e
+; current ADSR phase timespan in ticks
+chan_adsrEnvelopePhaseTicks             rs.w      1         ; 0x1e
 chan_adsrVolumeRateOfChange             rs.b      1         ; 0x20
 chan_paramLeadInNoteOfffset             rs.b      1         ; 0x21
 chan_paramLeadInNoteDurationTicks       rs.b      1         ; 0x22

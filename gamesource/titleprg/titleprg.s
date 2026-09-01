@@ -1583,7 +1583,7 @@ _initialise_arpeggio
 _initialise_adsr_envelope
                bset.l  #PTNCMDBITS_ADSR_ACTIVE,d7
                move.l  chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)
-               move.w  #$0001,chan_adsrEnvelopeDelayTicks(a4)
+               move.w  #$0001,chan_adsrEnvelopePhaseTicks(a4)
                clr.w   chan_noteVolume(a4)       
                
                ; set channel dma usage (dma bit for channel)
@@ -1673,111 +1673,135 @@ _do_process_active_pattern_commands
                ;---------------------------------------------------
                ; process lead-in notes effect
                ; NB: is skipped/paused when portomento is playing
-               ;
-_process_leadin_notes_effect                
-chk_cmd_10                                              ; original address$000046d6
-                btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
-                beq.b   continue_command_processing_05  ; L00004722
-
-                ;---------- CMD 10 ---------
-.is_cmd_10                                              ; original address $000046dc
-                subq.b  #$01,chan_leadInNoteCurrentTicks(a4)
-                bcc.w   store_sample_period               ; L000047a8
-                move.b  chan_transposedNoteIndex(a4),d0
-                move.b  chan_transposedLeadInNoteIndex(a4),d1
-                move.b  d0,chan_transposedLeadInNoteIndex(a4)
-                ext.w   d0
-                sub.w   chan_instrumentTuningAmount(a4),d0
-                add.w   d0,d0
-
-.validate_command                                       ; original address $000046f8
-                cmp.w   #$ffd0,d0                       ; validate -48
-                blt.b   .debug_assert_fail              ; L00004704 - this branch is never taken                       
-                cmp.w   #$002c,d0                       ; valdate +44
-                ble.b   .continue_cmd_10                ; $0000471a  this branch is always taken ------>>>>>>>>>
-
-.debug_assert_fail                                      ; original address $00004704
-                move.b  chan_transposedNoteIndex(a4),d1                    ; ******* BRANCH IS NEVER TAKEN *******
-                move.b  chan_transposedLeadInNoteIndex(a4),d2
-                move.w  chan_instrumentTuningAmount(a4),d3
-                move.w  chan_ChannelDMA(a4),d4
-                movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
-
-.continue_cmd_10                                        ; original address $0000471a           
-                move.w  $00(a5,d0.w),d0
-                bra.w   store_sample_period             ; L000047a8
+               ;    also, no leadin notes effect used by title prg music
+_process_leadin_notes_effect
+               btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
+               beq.b   _process_arpeggio_effect
 
 
-continue_command_processing_05                          ; original address L00004722
+               ; update lead-in pitch index
+               subq.b  #$01,chan_leadInNoteCurrentTicks(a4)
+               bcc.w   store_sample_period
 
+               ; update lead-in pitch index (swap notes)
+               ; move.b  chan_transposedLeadInNoteIndex(a4),d1     ; unused d1 (overwritten below)
+               move.b  chan_transposedNoteIndex(a4),d0
+               move.b  d0,chan_transposedLeadInNoteIndex(a4)
+               ext.w   d0
+               sub.w   chan_instrumentTuningAmount(a4),d0
+               add.w   d0,d0
 
-                ;---------------------------------------------------
-                ; process arpeggion efffect
-                ; NB: is skipped/paused when portomento is playing
-                ;
-.chk_cmd_14                                             ; original address L00004722
-                btst.l  #PTNCMDBITS_ARPEGGIO,d7
-                beq.b   continue_command_processing_06  ; L00004784
+.validate_pitch_index
+               cmp.w   #$ffd0,d0                       ; validate -48
+               blt.b   .debug_assert_fail                       
+               cmp.w   #$002c,d0                       ; valdate +44
+               ble.b   .continue_leadin_effect
 
+.debug_assert_fail
+               move.b  chan_transposedNoteIndex(a4),d1   
+               move.b  chan_transposedLeadInNoteIndex(a4),d2
+               move.w  chan_instrumentTuningAmount(a4),d3
+               move.w  chan_ChannelDMA(a4),d4
+               movea.l chan_ptrNextTrackSequencePosition(a4),a2
+               illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
-                ;------------- CMD 14 ----------
-.is_cmd_14                                              ; original address L00004728
-                subq.b  #$01,chan_arpeggioRateTicks(a4)                  ; original address L00004728
-                bne.b   store_sample_period             ; L000047a8
-                movea.l chan_ptrArpeggioCurrentTable(a4),a0
-                move.b  (a0)+,d0
-                subq.b  #$01,chan_arpeggioTableLenCount(a4)
-                bne.b   .L00004744
-                movea.l chan_ptrArpeggioTable(a4),a0
-                move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
-.L00004744      move.l  a0,chan_ptrArpeggioCurrentTable(a4)
-                move.b  chan_paramArpeggioSpeedTicks(a4),chan_arpeggioRateTicks(a4)
-                add.b   chan_transposedLeadInNoteIndex(a4),d0
-                ext.w   d0
-                sub.w   chan_instrumentTuningAmount(a4),d0
-                add.w   d0,d0
-
-.validate_command                                       ; original address $000046f8
-                cmp.w   #$ffd0,d0                       ; validate -48
-                blt.b   .debug_assert_fail              ; L00004766 - this branch is never taken
-                cmp.w   #$002c,d0                       ; valdate +44
-                ble.b   .end_cmd_14                     ; $0000471a  this branch is always taken ------>>>>>>>>>
-
-.debug_assert_fail                                      ; original address L00004766
-                move.b  chan_transposedNoteIndex(a4),d1
-                move.b  chan_transposedLeadInNoteIndex(a4),d2
-                move.w  chan_instrumentTuningAmount(a4),d3
-                move.w  chan_ChannelDMA(a4),d4
-                movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal                                 ; ******* DEBUG/ASSERT BAD COMMAND
-
-.end_cmd_14                                             ; original address L0000477c
-                move.w  $00(a5,d0.w),d0
-                bra.w   store_sample_period             ; L000047a8
-
-
-
-continue_command_processing_06                          ; original address L00004784
-
+.continue_leadin_effect
+               ; get note period value           
+               move.w  $00(a5,d0.w),d0
+               bra.w   store_sample_period 
                ;--------------------------------------------------
-               ; play modulation/vibrato effect
-               ; NB: is skipped when portomento is playing
-               ;
-.chk_cmd_12                                             ; original address L00004784
-                btst.l  #PTNCMDBITS_MODULATION,d7
-                beq.b   store_sample_period             ; L000047a8
 
-                ;------------ CMD 12 -------------
-.is_cmd_12                                              ; original address L0000478a
-                subq.b  #$01,chan_modulationDelayStartTicks(a4)
-                bcc.b   store_sample_period             ; L000047a8
-                addq.b  #$01,chan_modulationDelayStartTicks(a4)
-                subq.b  #$01,chan_modulationSpeedTicks(a4)
-                bne.b   .L000047a4
-                neg.w   chan_modulationAmountPerTick(a4)
-                move.b  chan_modulationSpeedTicks_x2(a4),chan_modulationSpeedTicks(a4)
-.L000047a4      add.w   chan_modulationAmountPerTick(a4),d0
+
+               ;-----------------------------------------------------------
+               ; process arpeggio efffect
+               ; NB: is skipped/paused when portomento or lead-in notes 
+               ;     effect is active.
+               ; Also, there are no arpeggio effects used in titleprg.
+               ;
+_process_arpeggio_effect
+               btst.l  #PTNCMDBITS_ARPEGGIO,d7
+               ; if not active, do modulation/vibrato
+               beq.b   _process_modulation_effect
+
+
+               ; update arpeggio effect
+               subq.b  #$01,chan_arpeggioRateTicks(a4)
+               bne.b   store_sample_period
+
+               ; get next arpeggio entry from table
+               movea.l chan_ptrArpeggioCurrentTable(a4),a0
+               move.b  (a0)+,d0
+               subq.b  #$01,chan_arpeggioTableLenCount(a4)
+               bne.b   .store_arp_table_ptr
+               movea.l chan_ptrArpeggioTable(a4),a0
+               ; end of table, reset ptr to start
+               move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
+
+               ; store arpeggion table ptr 
+.store_arp_table_ptr     
+               move.l  a0,chan_ptrArpeggioCurrentTable(a4)
+
+               ; set arpeggio note duration
+               move.b  chan_paramArpeggioSpeedTicks(a4),chan_arpeggioRateTicks(a4)
+               
+               ; get areggio note pitch/period index
+               add.b   chan_transposedLeadInNoteIndex(a4),d0
+               ext.w   d0
+               sub.w   chan_instrumentTuningAmount(a4),d0
+               add.w   d0,d0
+
+.validate_pitch_index
+               cmp.w   #$ffd0,d0                       ; validate -48
+               blt.b   .debug_assert_fail
+               cmp.w   #$002c,d0                       ; valdate +44
+               ble.b   .continue_arpeggio_effect
+
+.debug_assert_fail
+               move.b  chan_transposedNoteIndex(a4),d1
+               move.b  chan_transposedLeadInNoteIndex(a4),d2
+               move.w  chan_instrumentTuningAmount(a4),d3
+               move.w  chan_ChannelDMA(a4),d4
+               movea.l chan_ptrNextTrackSequencePosition(a4),a2
+               illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+
+.continue_arpeggio_effect
+               ; get arpeggio note pitch/period value
+               move.w  $00(a5,d0.w),d0
+               bra.w   store_sample_period
+               ;----------------------------------------------------------
+
+
+
+
+               ;---------------------------------------------------------------
+               ; play modulation/vibrato effect
+               ; NB: is skipped when portomento, leadin, or arpeggio is playing
+               ;
+_process_modulation_effect
+               btst.l  #PTNCMDBITS_MODULATION,d7
+               ; if not active, no further effect processing
+               beq.b   store_sample_period
+
+               
+               ; do modulation delay ticks value
+               subq.b  #$01,chan_modulationDelayStartTicks(a4)
+               bcc.b   store_sample_period
+               
+               ; do initial modulation wave processing
+               addq.b  #$01,chan_modulationDelayStartTicks(a4)
+               subq.b  #$01,chan_modulationSpeedTicks(a4)
+               bne.b   .add_modulation_value
+
+               ; do tail of modulation wave processing (flip +- addition for half the time)
+               neg.w   chan_modulationAmountPerTick(a4)
+               move.b  chan_modulationSpeedTicks_x2(a4),chan_modulationSpeedTicks(a4)
+
+.add_modulation_value     
+               ; d0.w = note pitch/period value (set at top of process effects)
+               ;move.w  chan_notePeriodValue(a4),d0          ; could do this instead
+               add.w   chan_modulationAmountPerTick(a4),d0
+               ; fall through to 'store_sample_period' below
+               ;
 
 
                ;------------------------------------------------
@@ -1785,34 +1809,81 @@ continue_command_processing_06                          ; original address L0000
                ; effect updated above
                ; i.e. portomento, leadin notes, arpeggio, modulation/vibrato
                ;
-store_sample_period                                     ; original address L000047a8
-                move.w  d0,chan_notePeriodValue(a4)    ; $004a(a4)
+               ; Original Address $000047a8
+               ;
+store_sample_period                                     
+               move.w  d0,chan_notePeriodValue(a4)
+               ; end of pitch modulation effects
 
 
-                ; -------- Check CMD 08,12,10,14 --------
-.chk_08_10_12_14                                        ; original address L000047ac
-                btst.l  #PTNCMDBITS_ADSR_ACTIVE,d7
-                beq.w   exit_command_processing         ; Not CMD 08,12,10,14 - jmp $00004850
 
-                ; -------- Is xxxx CMD ----------
-.is_cmd_08_10_12_14                                     ; original address L000047b4
-                subq.w  #$01,chan_adsrEnvelopeDelayTicks(a4)
-                bne.w   .L0000483a
-                movea.l chan_ptrCurrentADSREnvelope(a4),a0
-                moveq   #$00,d0
-                move.b  (a0)+,d0
-                beq.b   .L00004808
-                bmi.b   .L000047e2
-                move.w  d0,chan_adsrEnvelopeDelayTicks(a4)
-                move.b  #$01,chan_adsrRateOfChangeTicks(a4)
-                move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
-                move.b  (a0)+,chan_adsrVolumeRateOfChange(a4)
-                move.l  a0,chan_ptrCurrentADSREnvelope(a4)
-                bra.b   .L0000483a
+               ;----------------------------------------------------------
+               ; Process ADSR (maybe just ADR) Volume Envelope
+               ; ADSR in pairs of bytes?
+               ;  byte 1 = command byte (+ve, -ve or 0)
+               ;  byte 2 = duration
+               ;
+               ;    +ve command
+               ;         - command is the duration of adsr phase
+               ;         - parameter is the volume change per tick.
+               ;    0 command
+               ;         - parameter = 0 = and ADSR
+               ;         - parameter value = sustain volume duration
+               ;
+               ;    -ve command (over complicated)
+               ;         - command is the duration of adsr phase
+               ;         - parameter sign indicates whether to flip attack/decay
+               ;         - parameter value change rate of volume change
+               ;
+               ;
+               ; Original Address $000047ac
+               ;
+_process_ADSR_Envelope
+               btst.l  #PTNCMDBITS_ADSR_ACTIVE,d7
+               ; if not active then end effect processing
+               beq.w   exit_command_processing  
 
 
-.L000047e2      neg.b   d0
-                move.w  d0,chan_adsrEnvelopeDelayTicks(a4)
+               ; decrement current ADSR phase timespan ticks
+               subq.w  #$01,chan_adsrEnvelopePhaseTicks(a4)
+               ; if ticks > 0 then process volume for current ADSR phase
+               bne.w   .process_current_ADSR_phase
+               
+               ; else initialise next ADSR phase parameter values
+               ; get next ADSR parameter
+               movea.l chan_ptrCurrentADSREnvelope(a4),a0
+               moveq   #$00,d0
+               move.b  (a0)+,d0
+               ; if value == 0 then enter final ADSR phase
+               beq.b   .ADSR_zero_cmd
+               bmi.b   .ADSR_negative_cmd
+
+               ; +ve command = delay ticks
+               ; every tick add rate of change to the volume
+               ; change volume up by rate of change for duration of time
+               ;    command value = duration in ticks
+               ;    parameter from table = volume rate of change
+.ADSR_positive_cmd
+               move.w  d0,chan_adsrEnvelopePhaseTicks(a4)
+               move.b  #$01,chan_adsrRateOfChangeTicks(a4)
+               move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
+               move.b  (a0)+,chan_adsrVolumeRateOfChange(a4)
+               move.l  a0,chan_ptrCurrentADSREnvelope(a4)
+               bra.b   .process_current_ADSR_phase
+
+               ; -ve command
+               ; This command is a bit over complicated, it enables the ADSR phase to
+               ; be reversed (if parameter is negative, so attack becomes decay)
+               ; the parameter is used to set the rate of the Attack/Decay.
+               ;
+               ;    command value = duration in ticks
+               ;    parameter value = 
+               ;                        if (-ve then reverse volume increase direction)
+               ;                        if (+ve then keep volume increase direction)
+               ;                        parameter becomes new rate of change (faster/slower volume increase)
+.ADSR_negative_cmd
+                neg.b   d0
+                move.w  d0,chan_adsrEnvelopePhaseTicks(a4)
                 move.b  #$01,chan_adsrVolumeRateOfChange(a4)
                 move.b  (a0)+,d0
                 bpl.b   .L000047f8
@@ -1821,37 +1892,57 @@ store_sample_period                                     ; original address L0000
 .L000047f8      move.b  d0,chan_adsrRateOfChangeTicks(a4)
                 move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
                 move.l  a0,chan_ptrCurrentADSREnvelope(a4)
-                bra.b   .L0000483a
+                bra.b   .process_current_ADSR_phase
 
 
-.L00004808      move.b  (a0),d0
-                beq.b   .L00004816
-                bpl.b   .L00004810
+               ; ADSR zero command (sustain processing)
+               ; If the parameter is 0, then end ADSR processing
+               ; If not 0 then the absolute value of the parameter becomes the sustain time of the note
+               ; the note is held at the same volume for the period of time.
+               ; If the note ends before end of sustain then the note finishes.
+               ; else, another phase can begin (i.e. release phase)
+.ADSR_zero_cmd
+               ; a0 = ADSR table
+                move.b  (a0),d0
+                beq.b   .end_ADSR            ; if ADSR ends with $00,$00
+                ; so sustain period
+                bpl.b   .calc_sustain_length
+                ; make -ve value a +ve lenght of time
                 neg.b   d0
-.L00004810      sub.w   chan_currentNoteTicks(a4),d0
-                bmi.b   .L0000481c
-.L00004816      bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
-                bra.b   exit_command_processing                 ;L00004850
 
+.calc_sustain_length
+               sub.w   chan_currentNoteTicks(a4),d0
+               bmi.b   .set_sustain_parameters
 
-.L0000481c      neg.w   d0
-                move.w  d0,chan_adsrEnvelopeDelayTicks(a4)
+               ; if note duration expired then end ASDR
+.end_ADSR      bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
+               bra.b   exit_command_processing 
+
+               ; set note sustain parameters 
+.set_sustain_parameters
+                neg.w   d0
+                move.w  d0,chan_adsrEnvelopePhaseTicks(a4)
                 move.b  #$00,chan_adsrRateOfChangeTicks(a4)
                 move.b  #$00,chan_adsrCurrentRateOfChangeTicks(a4)
                 move.b  #$00,chan_adsrVolumeRateOfChange(a4)
                 move.l  a0,chan_ptrCurrentADSREnvelope(a4)
-                bra.b   exit_command_processing         ; L00004850
+                bra.b   exit_command_processing
 
 
-.L0000483a      subq.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
-                bne.b   exit_command_processing         ; L00004850
+               ; current ADSR phase ticks
+               ; process volume change at specified rate for the
+               ; current phase of ADSR
+.process_current_ADSR_phase
+               subq.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)    
+               bne.b   exit_command_processing         ; L00004850
                 
-                move.b  chan_adsrRateOfChangeTicks(a4),chan_adsrCurrentRateOfChangeTicks(a4)
-                move.b  chan_adsrVolumeRateOfChange(a4),d0
-                ext.w   d0
-                add.w   d0,chan_noteVolume(a4)           ; $004c(a4)
+               ; update audio volume (+-) for current ADSR phase
+               move.b  chan_adsrRateOfChangeTicks(a4),chan_adsrCurrentRateOfChangeTicks(a4)
+               move.b  chan_adsrVolumeRateOfChange(a4),d0
+               ext.w   d0
+               add.w   d0,chan_noteVolume(a4)
 
-exit_command_processing                                 ; original address L00004850
+exit_command_processing 
                 rts  
 
 
