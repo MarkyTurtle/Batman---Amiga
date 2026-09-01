@@ -840,7 +840,7 @@ pattern_command_loop
                     ; exeute command address
                     jmp     $00(a0,d0.w)
                     ; NB: the majority of commands return to 'pattern_command_loop'
-                    ;    - _pattern_cmd_87_Pause jmps '_process_note_duration' 
+                    ;    - _pattern_cmd_87_Pause jmps '_initialise_note_duration' 
                     ;
 
                 ;---------------- music command jump table (max 32 commands) ------------------
@@ -1126,7 +1126,7 @@ _pattern_cmd_87_Pause
                 bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
                 bset.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
                 clr.w   chan_noteVolume(a4)
-                bra.w   _process_note_duration
+                bra.w   _initialise_note_duration
 
 
                ;-----------------------------------------------------------------
@@ -1513,7 +1513,6 @@ _initialise_modulation
 
                ; initialise modulation start delay from parameter value
                move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4)             ; #$37 (55) - working copy of CMD 12 param 
-.end_cmd_12
 
 
                ;---------------------------------------------
@@ -1566,31 +1565,31 @@ _initialise_portomento
                sub.w   d0,chan_notePeriodValue(a4) 
 
 
-
                ;--------------------------------------------------
                ; initialise arpeggio if active
 _initialise_arpeggio
-                btst.l  #PTNCMDBITS_ARPEGGIO,d7                       ; chk CMD 14
-                beq.b   _initialise_adsr_envelope
+               btst.l  #PTNCMDBITS_ARPEGGIO,d7 
+               ; if not arpeggio, then initialise ADSR Envelops
+               beq.b   _initialise_adsr_envelope
 
-                ; --------- CMD 14 ---------
-.is_cmd_14                                              ; original address $0000466e
-                move.b  #$01,chan_arpeggioRateTicks(a4)                  ; set CMD 14 working value - #$33 (51)
-                move.l  chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)             ; working copy CMD 14 param - #$2c (44)
-                move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)             ; working copy CMD 14 param - #$31 (49)
-.end_cmd_14
+               ; initialise arpeggio
+               move.b  #$01,chan_arpeggioRateTicks(a4)
+               move.l  chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)             ; working copy CMD 14 param - #$2c (44)
+               move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)             ; working copy CMD 14 param - #$31 (49)
 
 
                ;---------------------------------------------------
                ; initialise ADSR if active
-_initialise_adsr_envelope                          ; original address $00004680
-                bset.l  #PTNCMDBITS_ADSR_ACTIVE,d7                       ; cleared by CMD 08
-                move.l  chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)             ; working copy of pointer?
-                move.w  #$0001,chan_adsrEnvelopeDelayTicks(a4)                ; initialise value
-                clr.w   chan_noteVolume(a4)       
-                move.w  chan_ChannelDMA(a4),d0            
-                or.w    d0,audio_dma                    ; L0000417c ; audio dma
-               ; fall through to '_process_note_duration'
+_initialise_adsr_envelope
+               bset.l  #PTNCMDBITS_ADSR_ACTIVE,d7
+               move.l  chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)
+               move.w  #$0001,chan_adsrEnvelopeDelayTicks(a4)
+               clr.w   chan_noteVolume(a4)       
+               
+               ; set channel dma usage (dma bit for channel)
+               move.w  chan_ChannelDMA(a4),d0            
+               or.w    d0,audio_dma
+               ; fall through to '_initialise_note_duration'
                ; below
 
 
@@ -1607,7 +1606,7 @@ _initialise_adsr_envelope                          ; original address $00004680
                ;
                ; Original Address $0000469c
                ;
-_process_note_duration                              
+_initialise_note_duration                              
                ; clear paired note duration ticks
                moveq   #$00,d0
                move.b  chan_paramPairedNoteDurationTicks(a4),d0
@@ -1631,44 +1630,51 @@ _process_note_duration
                ; i.e. process long running note effects
                ;    - adsr, arpeggios, portomento, vibrato/modulation etc
                ;
-               ;    IN: d0.b = Command Byte
+               ;    IN: d0.b = Command Byte (changes to note period value)
                ;    IN: d7.w = ActiveChannelBits
                ;    IN: a3.l = Pattern Data Pointer
                ;    IN: a4.l = Channel_xx_Status
                ;    IN: a5.l = Note Period Table
                ;    IN: a6.l = CUSTOM
                ;
-               ; Original Address $0000469c
+               ; Original Address $000046b2
                ;
-_do_process_active_pattern_commands                                        ; $46b2
-.chk_cmd_08                                             ; original address $000046b2
-                btst.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
-                bne.w   exit_command_processing         ; jmp $00004850
+_do_process_active_pattern_commands 
+               ; if channel is disabled then skip processing
+               btst.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
+               bne.w   exit_command_processing
 
-.do_cmd_08                                              ; original address $000046ba
-                move.w  chan_notePeriodValue(a4),d0                    ; d0 = current note period value from table $00004bba
+               ; process running effects
+               ; d0.w = note period value
+               move.w  chan_notePeriodValue(a4),d0
+
+               ; ------------------------------------------
+               ; process portomento effect
+               ;
+               btst.l  #PTNCMDBITS_PORTOMENTO,d7
+               ; if portomento not active, skip to next
+               beq.b   _process_leadin_notes_effect
+
+               ; update portomento ticks
+               subq.b  #$01,chan_paramPortomentoLengthTicks(a4)
+               bne.b   .porto_update_note_period
+
+               ; end portomento effect (last update)
+               bclr.l  #PTNCMDBITS_PORTOMENTO,d7
+.porto_update_note_period
+               sub.w   chan_portomentoAmountPerTick(a4),d0
+               ; when porto is active then skip
+               ; leading notes, arpeggio & modulation/vibrato
+               bra.w   store_sample_period 
 
 
 
-                ;--------- Check for CMD 09 ----------
-.chk_cmd_09                                             ; original address $000046be
-                btst.l  #PTNCMDBITS_PORTOMENTO,d7
-                beq.b   chk_cmd_10                      ; L000046d6
 
-                ;--------- CMD 09 ---------
-.is_cmd_09                                              ; original address $000046c4
-                subq.b  #$01,chan_paramPortomentoLengthTicks(a4)                  ; CMD 09 counter
-                bne.b   .cont_cmd_09                    ; L000046ce
-.end_cmd_09
-                bclr.l  #PTNCMDBITS_PORTOMENTO,d7                       ; clear CMD 09 bit (switch cmd off)
-.cont_cmd_09
-                sub.w   chan_portomentoAmountPerTick(a4),d0
-                bra.w   store_sample_period               ; L000047a8 ; skip next couple of commands 
-
-
-
-
-                ;--------- Check for CMD 10 -----------
+               ;---------------------------------------------------
+               ; process lead-in notes effect
+               ; NB: is skipped/paused when portomento is playing
+               ;
+_process_leadin_notes_effect                
 chk_cmd_10                                              ; original address$000046d6
                 btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
                 beq.b   continue_command_processing_05  ; L00004722
@@ -1705,7 +1711,11 @@ chk_cmd_10                                              ; original address$00004
 
 continue_command_processing_05                          ; original address L00004722
 
-                ; ---------- check CMD 14 ----------
+
+                ;---------------------------------------------------
+                ; process arpeggion efffect
+                ; NB: is skipped/paused when portomento is playing
+                ;
 .chk_cmd_14                                             ; original address L00004722
                 btst.l  #PTNCMDBITS_ARPEGGIO,d7
                 beq.b   continue_command_processing_06  ; L00004784
@@ -1750,7 +1760,10 @@ continue_command_processing_05                          ; original address L0000
 
 continue_command_processing_06                          ; original address L00004784
 
-                ;---------- Check CMD 12 ---------
+               ;--------------------------------------------------
+               ; play modulation/vibrato effect
+               ; NB: is skipped when portomento is playing
+               ;
 .chk_cmd_12                                             ; original address L00004784
                 btst.l  #PTNCMDBITS_MODULATION,d7
                 beq.b   store_sample_period             ; L000047a8
@@ -1767,6 +1780,11 @@ continue_command_processing_06                          ; original address L0000
 .L000047a4      add.w   chan_modulationAmountPerTick(a4),d0
 
 
+               ;------------------------------------------------
+               ; store updated sample period from modulation
+               ; effect updated above
+               ; i.e. portomento, leadin notes, arpeggio, modulation/vibrato
+               ;
 store_sample_period                                     ; original address L000047a8
                 move.w  d0,chan_notePeriodValue(a4)    ; $004a(a4)
 
