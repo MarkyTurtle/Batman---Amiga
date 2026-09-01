@@ -1478,7 +1478,7 @@ _initialise_modulation
                 cmp.w   #$ffd0,d0                       ; compare -48
                 blt.b   .debug_assert_fail
                 cmp.w   #$002c,d0                       ; compare +44
-                ble.b   .continue_init_modulation                                         ; original address $45ea
+                ble.b   .continue_init_modulation
 
 .debug_assert_fail
                 move.b  chan_transposedNoteIndex(a4),d1
@@ -1512,7 +1512,7 @@ _initialise_modulation
                move.b  d1,chan_modulationSpeedTicks_x2(a4) 
 
                ; initialise modulation start delay from parameter value
-               move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4)             ; #$37 (55) - working copy of CMD 12 param 
+               move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4) 
 
 
                ;---------------------------------------------
@@ -1574,8 +1574,8 @@ _initialise_arpeggio
 
                ; initialise arpeggio
                move.b  #$01,chan_arpeggioRateTicks(a4)
-               move.l  chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)             ; working copy CMD 14 param - #$2c (44)
-               move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)             ; working copy CMD 14 param - #$31 (49)
+               move.l  chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)
+               move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
 
 
                ;---------------------------------------------------
@@ -1618,8 +1618,8 @@ _initialise_note_duration
                ; get note duration from pattern data
                 move.b  (a3)+,d0                   
 .is_paired_note
-                add.w   d0,chan_currentNoteTicks(a4)                    ; store d0 in #$52 (82)
-                move.l  a3,chan_ptrNextPatternDataPosition(a4)                    ; store ptr to current CMD
+                add.w   d0,chan_currentNoteTicks(a4)       
+                move.l  a3,chan_ptrNextPatternDataPosition(a4)
                ; fall through to '_do_process_active_pattern_commands'
                ; below
 
@@ -2989,26 +2989,62 @@ iff_sample_data_table                                             ;-------------
 
 
 
-                ; ----------------------- unknown data -------------------------------
-                ; music command 14 data
+
+               ; ARPEGGIO Table Offsets
+               ; Each table entry is a word offset to the Aprpeggio sequence of commands
+               ; arpeggio commands start with 2 parameters followed by a sequence of note pitch interval indexes
+               ; parameter 1 = arpeggio speed in ticks
+               ; parameter 2 = arpeggio table size(i.e. the number of following pitch index intervals)
 arpeggio_offset_table
-L0001B986 dc.w $0002, $0202                                                     
-L0001B98A dc.w $000C
+.arpeggioId_00      dc.w .arpeggio_effect_00-.arpeggioId_00         ; L0001B986 - $0002
 
-                ; music command 16 data
+.arpeggio_effect_00
+                    dc.b $02       ; speed
+                    dc.b $02       ; length (number of following interval index bytes)                                            
+                    dc.b $00,$0C   ; arpeggio interval indexes
+
+
+                ; ADSR Table Offsets
+                ; Each entry is a word Offset to the ADSR sequence of commands and values for the envelopeID
+                ; Original Address $0001B98C
 adsr_envelope_table
-L0001B98C       dc.w $0014, $0018, $001C, $001E, $0020, $0025, $002B       
-L0001B99A       dc.w $0031, $0037, $0039, $013C, $1EFE, $0000 
-L0001B9A6       dc.w $0119, $08FD
-L0001B9AA       dc.w $0000
-L0001B9AC       dc.w $011E
-L0001B9AE       dc.w $0000, $013E, $0000
-L0001B9B4       dc.w $020F, $07FF, $000A
-L0001B9BA       dc.w $FF01, $1902, $F605, $FF00, $0001, $190B, $FE01, $FE00
-L0001B9CA       dc.w $0001, $2A14, $FE01, $FE00, $0001, $3E00, $0001, $3200
+.envelopeId_00      dc.w .adsr_envelope_00-.envelopeId_00               ; L0001B98C - $0014 - .adsr_envelope_00
+.envelopeId_01      dc.w .adsr_envelope_01-.envelopeId_01               ; L0001B98E - $0018 - .adsr_envelope_01
+.envelopeId_02      dc.w .adsr_envelope_02-.envelopeId_02               ; L0001B990 - $001C - .adsr_envelope_02
+.envelopeId_03      dc.w .adsr_envelope_03-.envelopeId_03               ; L0001B992 - $001E - .adsr_envelope_03
+.envelopeId_04      dc.w .adsr_envelope_04-.envelopeId_04               ; L0001B994 - $0020 - .adsr_envelope_04
+.envelopeId_05      dc.w .adsr_envelope_05-.envelopeId_05               ; L0001B996 - $0025 - .adsr_envelope_05
+.envelopeId_06      dc.w .adsr_envelope_06-.envelopeId_06               ; L0001B998 - $002B - .adsr_envelope_06
+.envelopeId_07      dc.w .adsr_envelope_07-.envelopeId_07               ; L0001B99A - $0031 - .adsr_envelope_07
+.envelopeId_08      dc.w .adsr_envelope_08-.envelopeId_08               ; L0001B99C - $0037 - .adsr_envelope_08
+.envelopeId_09      dc.w .adsr_envelope_09-.envelopeId_09               ; L0001B99E - $0039 - .adsr_envelope_09
 
-L0001B9DA dc.w $0000 
-                ; ----------------------- unknown data -------------------------------
+               ; ADSR Envelope data - reference by adsr_envelope_table above
+.adsr_envelope_00   dc.b $01,$3C,$1E,$FE,$00,$00 
+
+.adsr_envelope_01   dc.b $01,$19,$08,$FD,$00,$00
+
+.adsr_envelope_02   dc.b $01,$1E,$00,$00
+
+.adsr_envelope_03   dc.b $01,$3E,$00,$00
+
+                    ; this envelope looks bad (ADSR lists should be an even number of bytes)
+                    ; It is used for the guitar sound and bass (who knows)
+.adsr_envelope_04   dc.b $02,$0F,$07,$FF,$00,$0A,$FF
+
+.adsr_envelope_05   dc.b $01,$19,$02,$F6,$05,$FF,$00,$00
+
+.adsr_envelope_06   dc.b $01,$19,$0B,$FE,$01,$FE,$00,$00
+
+.adsr_envelope_07   dc.b $01,$2A,$14,$FE,$01,$FE,$00,$00
+
+.adsr_envelope_08   dc.b $01,$3E,$00,$00
+
+.adsr_envelope_09   dc.b $01,$32,$00,$00
+
+               ; pad byte
+               dc.b $00
+
 
 
 
@@ -3426,7 +3462,7 @@ sound_pattern_05
                ; Original address $0001BBE1
 sound_pattern_06 
                dc.b PTNCMD_SELECT_INSTRUMENT,$09            ; Select Instrument $09 - TIMEBASS-GS
-               dc.b PTNCMD_ADSR_ENVELOPE,$04                ; ADSR Envelope $02
+               dc.b PTNCMD_ADSR_ENVELOPE,$04                ; ADSR Envelope $04
                dc.b $14,$0C                                 ; List of Note, Duration
                dc.b $20,$0C                                 ; ...
                dc.b $20,$0C
