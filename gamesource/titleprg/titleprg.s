@@ -2159,8 +2159,8 @@ do_enable_dma
 _initialise_instrument_data_table                                        ; original routine address L000049cc
                 move.l  (a0)+,d0                        ; d0 = sound sample byte offset
                 beq.b   .exit                           ; if d0 == 0 then exit
-                move.w  (a0)+,INSTR_VOLUME(a1)          ; copy sample volume
-                move.w  (a0)+,INSTR_SAMPLE_DISABLE_TRANSPOSE(a1)  ; copy param value2 (unknown, 0 or -1)
+                move.w  (a0)+,instrument_volume(a1)          ; copy sample volume
+                move.w  (a0)+,instrument_disable_transpose(a1)  ; copy param value2 (unknown, 0 or -1)
                 move.l  a0,-(a7)                        ; save a0 - incremented ptr to stack
                                                         ; d0 is offset to data within the structure
                 lea.l   -8(a0,d0.l),a0                  ; a0 = ptr to start of iff sample 'FORM' structure. #$f8 = -8
@@ -2623,188 +2623,191 @@ L00004BBA       dc.w    $01BF           ; B     (447)           ; note_period_ta
 
 ; 16 byte data structure for holding instrument data.
 ; NB: Instrument 0 is hardcoded to a built in 22 byte wave
-INSTR_VOLUME            EQU     $0
-INSTR_SAMPLE_PTR        EQU     $2
-INSTR_SAMPLE_LEN        EQU     $6
-INSTR_SAMPLE_REPEAT_PTR EQU     $8
-INSTR_SAMPLE_REPEAT_LEN EQU     $C
-INSTR_SAMPLE_DISABLE_TRANSPOSE  EQU     $E
+                    rsreset
+instrument_volume             rs.w      1
+instrument_sample_ptr         rs.l      1
+instrument_sample_len         rs.w      1
+instrument_repeat_ptr         rs.l      1
+instrument_repeat_len         rs.w      1
+instrument_disable_transpose  rs.w      1
+
 
 instrument_data_table
-                ; Instrument 0 (Built in wave)
-L00004BEA       dc.w $0021
-                dc.l L00004D3C  ; $0000, $4D3C
-                dc.w $000b
-                dc.l L00004D3C  ; $0000, $4D3C
-                dc.w $000B, $0000
 
-instrument_01                           ; original address L00004BFA
-.volume         dc.w  $0018
-.samplestart    dc.l  $00004E1E
-.samplelen      dc.w  $1C5C
-.repeatstart    dc.l  silient_repeat
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_02                           ; original address L00004C0A
-.volume         dc.w  $0018
-.samplestart    dc.l  $0000873E
-.samplelen      dc.w  $1703
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_03                           ; original address L00004C1A
-.volume         dc.w  $000C
-.samplestart    dc.l  $0000B5AC
-.samplelen      dc.w  $0A02
-.repeatstart    dc.l  silient_repeat    ; $00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $FFFF    
-instrument_04                           ; original address L00004C2A
-.volume         dc.w  $0018
-.samplestart    dc.l  $0000CA18
-.samplelen      dc.w  $0A28
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $FFFF    
-instrument_05                           ; original address L00004C3A
-.volume         dc.w  $0030
-.samplestart    dc.l  $0000DED0
-.samplelen      dc.w  $012B
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $FFFF    
-instrument_06                           ; original address L00004C4A
-.volume         dc.w  $0032
-.samplestart    dc.l  $0000E18E
-.samplelen      dc.w  $05CF
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $FFFF  
-instrument_07                           ; original address L00004C5A
-.volume         dc.w  $0011
-.samplestart    dc.l  $0000ED94
-.samplelen      dc.w  $06B8
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_08                           ; original address L00004C6A
-.volume         dc.w  $0038
-.samplestart    dc.l  $0000FB6C
-.samplelen      dc.w  $0666
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_09                           ; original address L00004C7A
-.volume         dc.w  $0014
-.samplestart    dc.l  $000108A0
-.samplelen      dc.w  $05E1
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_10                           ; original address L00004C8A
-.volume         dc.w  $003E
-.samplestart    dc.l  $000114CA
-.samplelen      dc.w  $11D6
-.repeatstart    dc.l  $00012DE0
-.repeatlen      dc.w  $054B
-.unknown        dc.w  $0000    
-instrument_11                           ; original address L00004C9A
-.volume         dc.w  $0018
-.samplestart    dc.l  $000138DE
-.samplelen      dc.w  $233A
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_12                           ; original address L00004CAA
-.volume         dc.w  $0018
-.samplestart    dc.l  $00017FBA
-.samplelen      dc.w  $1CE6
-.repeatstart    dc.l  silient_repeat    ;$00004D3A
-.repeatlen      dc.w  $0001
-.unknown        dc.w  $0000    
-instrument_13                           ; original address L00004CBA
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_14                           ; original address L00004CCA
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_15                           ; original address L00004CDA
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_16                           ; original address L00004CEA
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_17                           ; original address L00004CFA
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_18                           ; original address L00004D0A
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_19                           ; original address L00004D1A
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
-instrument_20                           ; original address L00004D2A
-.volume         dc.w  $0000
-.samplestart    dc.l  $00000000
-.samplelen      dc.w  $0000
-.repeatstart    dc.l  $00000000
-.repeatlen      dc.w  $0000
-.unknown        dc.w  $0000    
+instrument_00       ; Instrument 0 (Built in wave)
+.volume             dc.w $0021
+.samplestart        dc.l builtin_waveform
+.samplelen          dc.w $000b
+.repeatstart        dc.l builtin_waveform
+.repeatlen          dc.w $000B 
+.disabletranspose   dc.w $0000
 
-;instrument_data_table                                                                 ; original address L00004BFA
-;.instrument_01  dc.w  $0018, $0000, $4E1E, $1C5C, $0000, $4D3A, $0001, $0000    ; original address L00004BFA
-;.instrument_02  dc.w  $0018, $0000, $873E, $1703, $0000, $4D3A, $0001, $0000    ; original address L00004C0A
-;.instrument_03  dc.w  $000C, $0000, $B5AC, $0A02, $0000, $4D3A, $0001, $FFFF    ; original address L00004C1A
-;.instrument_04  dc.w  $0018, $0000, $CA18, $0A28, $0000, $4D3A, $0001, $FFFF    ; original address L00004C2A
-;.instrument_05  dc.w  $0030, $0000, $DED0, $012B, $0000, $4D3A, $0001, $FFFF    ; original address L00004C3A
-;.instrument_06  dc.w  $0032, $0000, $E18E, $05CF, $0000, $4D3A, $0001, $FFFF  ; original address L00004C4A
-;.instrument_07  dc.w  $0011, $0000, $ED94, $06B8, $0000, $4D3A, $0001, $0000    ; original address L00004C5A
-;.instrument_08  dc.w  $0038, $0000, $FB6C, $0666, $0000, $4D3A, $0001, $0000    ; original address L00004C6A
-;.instrument_09  dc.w  $0014, $0001, $08A0, $05E1, $0000, $4D3A, $0001, $0000    ; original address L00004C7A
-;.instrument_10  dc.w  $003E, $0001, $14CA, $11D6, $0001, $2DE0, $054B, $0000    ; original address L00004C8A
-;.instrument_11  dc.w  $0018, $0001, $38DE, $233A, $0000, $4D3A, $0001, $0000    ; original address L00004C9A
-;.instrument_12  dc.w  $0018, $0001, $7FBA, $1CE6, $0000, $4D3A, $0001, $0000    ; original address L00004CAA
-;.instrument_13  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CBA
-;.instrument_14  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CCA
-;.instrument_15  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CDA
-;.instrument_16  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CEA
-;.instrument_17  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004CFA
-;.instrument_18  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D0A
-;.instrument_19  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D1A
-;.instrument_20  dc.w  $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000    ; original address L00004D2A
+instrument_01       ;  Instrument 1 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_02       ;  Instrument 2 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_03       ;  Instrument 3 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_04       ;  Instrument 4 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000
+
+instrument_05       ;  Instrument 5 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000
+
+instrument_06       ;  Instrument 6 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000  
+
+instrument_07       ;  Instrument 7 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_08       ;  Instrument 8 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_09       ;  Instrument 9 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_10       ;  Instrument 10 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000
+
+instrument_11       ;  Instrument 11 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_12       ;  Instrument 12 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000
+
+instrument_13       ;  Instrument 13 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_14       ;  Instrument 14 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_15       ;  Instrument 15 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_16       ;  Instrument 16 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_17       ;  Instrument 17 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_18       ;  Instrument 18 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_19       ;  Instrument 19 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
+
+instrument_20       ;  Instrument 20 (Built in wave)
+.volume             dc.w  $0000
+.samplestart        dc.l  $00000000
+.samplelen          dc.w  $0000
+.repeatstart        dc.l  $00000000
+.repeatlen          dc.w  $0000
+.disabletranspose   dc.w  $0000    
 
 
-silient_repeat                                                                  ; original address L00004D3A
-                dc.w  $0000                                                     ; repeat data for end of non-repeating samples (2 bytes)
-
+                    ; Silent Repeat Sample Data
+                    ; Used for repeating samples where there is no repeat,
+                    ; to play a quiet sound
+                    ; Original Address $00004D3A
+silient_repeat      dc.w  $0000       
 
 
 
@@ -2843,7 +2846,14 @@ silient_repeat                                                                  
           ; Sound Driver.
           ;
 
-                ; -- unknown data values (11 words/22 bytes)
+
+               ;------------------------------------------------------------
+               ; Instrument 0 - Sample Data
+               ; Built in waveform (11 words/22 bytes)
+               ; Instrument 0 is a built in shart waveform,
+               ; maybe something left over from testing the Sound Driver
+               ; Original Address $00004D3C
+builtin_waveform    
 L00004D3C       dc.w  $0074, $60DC, $82BB, $457E, $24A0, $8C00, $7460
 L00004D4A       dc.w  $DC82, $BB45, $7E24, $A08C
 
