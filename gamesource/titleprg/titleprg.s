@@ -89,10 +89,10 @@ kill_system
                 bsr     init_system
 
 .start_title_screen
-                ;jmp     title_screen_start                      ; Entry point $0001c000
-                jmp     end_game_start
+               ;jmp     title_screen_start                      ; Entry point $0001c000
+               jmp     end_game_start
 
-                include "killsystem.s"
+                include "initsystem.s"
 
         ENDC
 
@@ -175,13 +175,13 @@ titleprg_start
                ;    The relative byte offsets can be signed byte offests:
                ;         I.E. the related table can exist before of after the current table in memory.
                ;
-               ;    sound_master_table
+               ;    sound_table
                ;    ------------------
                ;    This table contains a record of 4 words for each sound/song. 
                ;    Each word is a signed byte offset to the initialisation data for each of the 4 audio channels.
                ;    A Value $0000 indicates that the audio channel is not used by the sound/song.
                ;
-               ;    sound_master_table
+               ;    sound_table
                ;         Sound01:
                ;              dc.w $0000     ; h/w audio channel 00, byte offset to track pattern list 
                ;              dc.w $0000     ; h/w audio channel 01, byte offset to track pattern list
@@ -195,7 +195,7 @@ titleprg_start
                ;
                ;    track pattern list
                ;    ------------------
-               ;    The byte offsets in the sound_master_table point to the start of a track pattern list.
+               ;    The byte offsets in the 'sound_table' point to the start of a track pattern list.
                ;    The track pattern list is a list of 'pattern index bytes' to play in sequence for the audio track.
                ;    It can also contain command bytes ($80+) as follows:
                ;         - track commands:
@@ -215,17 +215,17 @@ titleprg_start
                ;    Command Bytes take between 0 and 3 parameters.
                ;    So, Pattern commands can range in lenght between 0 and 4 bytes.
                ;
-               ;    The 'sound_pattern_master_table' contains a list of byte offsets to the start of each pattern.
+               ;    The 'sound_pattern_table' contains a list of byte offsets to the start of each pattern.
                ;    The pattern indexes from the audio track are used with this table to find the offset for the
                ;    pattern data to play.
                ;
                ;
-               ;    sound_pattern_master_table
+               ;    sound_pattern_table
                ;    --------------------------
                ;    The table contains a 16bit byte offset to each pattern sequence.
                ;    An example of how the entry offset values are calculated are shown below:
                ;
-               ;    sound_pattern_master_table
+               ;    sound_pattern_table
                ;    .pattern_00_offset  dc.w (sound_pattern_00-.pattern_00_offset)        ; Pattern 00 - Sound ID 00 - Title Music
                ;    .pattern_01_offset  dc.w (sound_pattern_01-.pattern_01_offset)        ; Pattern 01 - Sound ID 00 - Title Music
                ;    .pattern_02_offset  dc.w (sound_pattern_02-.pattern_02_offset)        ; Pattern 02 - Sound ID 00 - Title Music
@@ -241,17 +241,60 @@ titleprg_start
                ;----------------------------- Music Player Jump Table ------------------------------
                ; Public interface into the Sound Driver system.
                ; Here follows a table of jumps for usding the sound driver code. 
-               
+
+               rsreset
+mod_iff_samples     rs.l      1
+mod_sound_table     rs.l      1
+mod_pattern_table   rs.l      1
+mod_arpeggio_table  rs.l      1
+mod_adsr_table      rs.l      1
+mod_number_sounds   rs.w      1
+
+
+module_table:
+               dc.l $00000000               
+               dc.l $00000000
+               dc.l $00000000
+               dc.l $00000000
+               dc.l $00000000
+               dc.w $0000
+
 
                ;----------------------------------------------------------------
-               ;    PUBLIC void SoundDriver_Initialise(void)
+               ;    PUBLIC void SoundDriver_Initialise(a0.l = MUSIC_MODULE_DATA)
                ; 
+               ;         IN: A0.l = MUSIC_MODULE_DATA - Address of the music module.
+               ;
                ;    Original Address $00004000
                ;
                ;  - Set up the Sound Player for use with the Sound Data.
                ; 
-SoundDriver_Initialise              
-               bra.w   _do_sounddriver_initialise
+SoundDriver_Initialise
+               lea       module_table,a1
+               ; calc iff sample data table offset
+               move.l    (a0)+,d0
+               lea       -4(a0,d0.l),a3
+               move.l    a3,(a1)+
+               ; calc sound table offset
+               move.l    (a0)+,d0
+               lea       -4(a0,d0.l),a3
+               move.l    a3,(a1)+
+               ; calc sound pattern table offset
+               move.l    (a0)+,d0
+               lea       -4(a0,d0.l),a3
+               move.l    a3,(a1)+
+               ; calc arpeggio table offset
+               move.l    (a0)+,d0
+               lea       -4(a0,d0.l),a3
+               move.l    a3,(a1)+
+               ; calc adsr envelope table offset
+               move.l    (a0)+,d0
+               lea       -4(a0,d0.l),a3
+               move.l    a3,(a1)+
+               ; set max number of sounds
+               move.w    (a0),(a1)
+
+               bra.w     _do_sounddriver_initialise
 
 
                ;----------------------------------------------------------------
@@ -345,11 +388,15 @@ SoundDriver_VBlankUpdate
                ; Notes
                ; Can be modified to remove hardcoded reference to 'iff_sample_data_table'
                ;
-_do_sounddriver_initialise                                                                            
-                lea.l   iff_sample_data_table,a0             
-                lea.l   instrument_data_table+$10,a1        ; skip instrument 0          
-                bsr.w   _initialise_instrument_data_table    
-                bra.w   _do_sounddriver_stop_all             
+               ; IN a0.l = MUSIC_MODULE_DATA ptr
+_do_sounddriver_initialise
+               lea       module_table,a0
+               move.l    mod_iff_samples(a0),a0                                                                          
+               ;lea.l   iff_sample_data_table,a0     
+
+               lea.l     instrument_data_table+$10,a1        ; skip instrument 0          
+               bsr.w     _initialise_instrument_data_table    
+               bra.w     _do_sounddriver_stop_all             
 
 
                ;---------------------------------------------------------------------
@@ -420,7 +467,7 @@ _initialise_audio_channel
                ;         Sound by switching them off.
                ;
                ; Notes:
-               ; Can be modified to remove hardcoded reference to 'sound_master_table'
+               ;    Removed hardcoded reference to 'sound_table'
                ;
 _do_sounddriver_stop_sound               
                ; Save used processor registers
@@ -430,8 +477,11 @@ _do_sounddriver_stop_sound
                ; If out of range then silence all audio chanels
                ; If in range then only silence channels used by the soundId
                subq.w  #SOUND_MIN_SOUND_ID,d0
-               bmi.b   .silence_all_audio     
-               cmp.w   #SOUND_MIN_SOUND_ID,d0
+               bmi.b   .silence_all_audio  
+               
+               lea       module_table,a0
+               cmp.w     mod_number_sounds(a0),d0   
+               ;cmp.w   #SOUND_MAX_SOUND_ID,d0
                bcs.b   .silence_inuse_channels
 .silence_all_audio
                bsr.b   _do_sounddriver_stop_all
@@ -441,7 +491,10 @@ _do_sounddriver_stop_sound
                ; sound identified by soundId
 .silence_inuse_channels
                ; get sound by soundId in a0
-               lea.l   sound_master_table,a2          
+               lea       module_table,a2
+               move.l    mod_sound_table(a2),a2
+               ;lea.l   sound_table,a2                       **** REFACTOR OUT HARDCODED REFERENCE TO SOUND_TABLE ****         
+               
                asl.w   #$03,d0
                adda.w  d0,a2
                lea.l   channel_00_status,a0  
@@ -533,7 +586,7 @@ _do_sounddriver_play_song
                ; Notes:
                ; Initialisation routine could probably be modified to ignore
                ; processing the end_or_loop command, so that it just disabes the audio channel
-               ; Also modified to remove hardcoded reference to 'sound_pattern_master_table' and 'sound_master_table'
+               ; Also modified to remove hardcoded reference to 'sound_pattern_table' and 'sound_table'
                ;
 _do_init_current_sound
                clr.w   play_tick_counter 
@@ -543,7 +596,10 @@ _do_init_current_sound
 .validate_song_number
                subq.w  #SOUND_MIN_SOUND_ID,d0
                bmi.b   .stop_playing 
-               cmp.w   #SOUND_MAX_SOUND_ID,d0 
+
+               lea       module_table,a0
+               cmp.w     mod_number_sounds(a0),d0
+               ;cmp.w   #SOUND_MAX_SOUND_ID,d0 
                bcs.b   .initialise_sound
 
                ; stop all sound and exit
@@ -551,9 +607,12 @@ _do_init_current_sound
                bra.w   .exit
 
                ; soundId is ok, continue to initialise
-               ; get 'sound_master_table' entry address
-.initialise_sound   
-               lea.l   sound_master_table,a0 
+               ; get 'sound_table' entry address
+.initialise_sound  
+               lea       module_table,a0
+               move.l    mod_sound_table(a0),a0
+               ;lea.l   sound_table,a0                       *** REFATOR OUT HARDCODED REFERENCE TO SOUND_TABLE ***
+               
                asl.w   #$03,d0
                adda.w  d0,a0 
 
@@ -649,8 +708,10 @@ _do_init_current_sound
                     ; store current track data position ptr
                      move.l  a2,chan_ptrNextTrackSequencePosition(a1)
 
-                    ; get pattern data using patternIndex (d0.b) and sound_pattern_master_table
-                    lea.l   sound_pattern_master_table,a2
+                    ; get pattern data using patternIndex (d0.b) and sound_pattern_table
+                    lea.l     module_table,a2
+                    move.l    mod_pattern_table(a2),a2
+                    ;lea.l   sound_pattern_table,a2                         *** REFATOR OUT HARDCODED REFERENCE TO SOUND_PATTERN_TABLE ***
                     ext.w   d0
                     add.w   d0,d0
                     adda.w  d0,a2
@@ -903,7 +964,7 @@ pattern_cmd_jump_table                                    ; original address $00
                ;         Resumes exeution of the pattern_command_loop
                ;
                ; Notes
-               ; Can be modified to remove hardcoded reference 'sound_pattern_master_table'
+               ;    Refactored to remove hardcoded reference 'sound_pattern_table'
                ;
 _pattern_cmd_80_EndOrLoop    
                ; do in-pattern loop processing
@@ -954,28 +1015,28 @@ _pattern_cmd_80_EndOrLoop
 
                ; check if command 0x81 - set track loop start
 .chk_set_loop_start
-               subq.b  #$01,d0
-               bne.b   .chk_transpose_pattern
+               subq.b    #$01,d0
+               bne.b     .chk_transpose_pattern
                     ; command 0x81 - set track loop start
-                    move.l  a3,chan_ptrTrackSequenceLoopStart(a4)
-                    bra.b   .process_track_commands_loop
+                    move.l    a3,chan_ptrTrackSequenceLoopStart(a4)
+                    bra.b     .process_track_commands_loop
 
                ; check if command 0x82 - transpose pattern
 .chk_transpose_pattern
-               subq.b  #$01,d0 
-               bne.b   .chk_repeat_next_pattern
+               subq.b    #$01,d0 
+               bne.b     .chk_repeat_next_pattern
                     ; command 0x82 - transpose pattern
                     ; store transposition +- interval value
-                    move.b  (a3)+,chan_patternTransposeValue(a4)
-                    bra.b   .process_track_commands_loop
+                    move.b    (a3)+,chan_patternTransposeValue(a4)
+                    bra.b     .process_track_commands_loop
 
                ; check if command 0x83 - repeat next pattern
 .chk_repeat_next_pattern
-               subq.b  #$01,d0
-               bne.b   .process_track_commands_loop
+               subq.b    #$01,d0
+               bne.b     .process_track_commands_loop
                     ; command 0x83 - repeat next pattern
-                    move.b  (a3)+,chan_patternLoopCount(a4)
-                    bra.b   .process_track_commands_loop
+                    move.b    (a3)+,chan_patternLoopCount(a4)
+                    bra.b     .process_track_commands_loop
 
 
                ; set next pattern ptr and return to pattern cmd loop
@@ -983,19 +1044,22 @@ _pattern_cmd_80_EndOrLoop
                ; d0.b = next patternId
 .init_next_pattern
                ;store track data pointer
-               move.l  a3,chan_ptrNextTrackSequencePosition(a4)
+               move.l    a3,chan_ptrNextTrackSequencePosition(a4)
                
                ; get pattern data address from pattern table
-               lea.l   sound_pattern_master_table,a3  
-               ext.w   d0
-               add.w   d0,d0
-               adda.w  d0,a3
+               lea.l     module_table,a3
+               move.l    mod_pattern_table(a3),a3
+               ;lea.l   sound_pattern_table,a3                         *** REFATOR OUT HARDCODED REFERENCE TO SOUND_PATTERN_TABLE ***
+               
+               ext.w     d0
+               add.w     d0,d0
+               adda.w    d0,a3
                
                ; update a3 with new pattern data ptr
-               adda.w  (a3),a3
+               adda.w    (a3),a3
 
                ; return to pattern processing loop
-               bra.w   pattern_command_loop
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1012,8 +1076,9 @@ _pattern_cmd_80_EndOrLoop
                ; Original Address $0000445a
                ;
 _pattern_cmd_81_SetInPatternLoop
-                move.l  a3,chan_ptrPatternDataLoop(a4)
-                bra.w   pattern_command_loop
+               move.l    a3,chan_ptrPatternDataLoop(a4)
+               bra.w     pattern_command_loop
+
 
                ;-----------------------------------------------------------------
                ; Pattern Command 0x82
@@ -1029,7 +1094,7 @@ _pattern_cmd_81_SetInPatternLoop
                ; Original Address $00004462
                ;
 _pattern_cmd_82_NOP
-                bra.w   pattern_command_loop
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1046,7 +1111,7 @@ _pattern_cmd_82_NOP
                ; Original Address $00004466
                ;
 _pattern_cmd_83_NOP
-                bra.w   pattern_command_loop
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1063,10 +1128,10 @@ _pattern_cmd_83_NOP
                ; Original Address $0000446a
                ;
 _pattern_cmd_84_Paired_Notes
-                bset.l  #PTNCMDBITS_PAIRED_NOTES,d7
-                ; store command parameter
-                move.b  (a3)+,chan_paramPairedNoteDurationTicks(a4)
-                bra.w   pattern_command_loop 
+               bset.l    #PTNCMDBITS_PAIRED_NOTES,d7
+               ; store command parameter
+               move.b    (a3)+,chan_paramPairedNoteDurationTicks(a4)
+               bra.w     pattern_command_loop 
 
 
                ;-----------------------------------------------------------------
@@ -1083,8 +1148,8 @@ _pattern_cmd_84_Paired_Notes
                ; Original Address $00004476
                ;
 _pattern_cmd_85_Paired_Notes_Stop
-                bclr.l  #PTNCMDBITS_PAIRED_NOTES,d7
-                bra.w   pattern_command_loop
+               bclr.l    #PTNCMDBITS_PAIRED_NOTES,d7
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1101,8 +1166,8 @@ _pattern_cmd_85_Paired_Notes_Stop
                ; Original Address $0000447e
                ;
 _pattern_cmd_86_Extend_Note_Ticks
-                add.w   #$0100,chan_currentNoteTicks(a4)
-                bra.w   pattern_command_loop
+               add.w     #$0100,chan_currentNoteTicks(a4)
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1123,10 +1188,10 @@ _pattern_cmd_86_Extend_Note_Ticks
                ; Original Address $00004488
                ;
 _pattern_cmd_87_Pause
-                bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
-                bset.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
-                clr.w   chan_noteVolume(a4)
-                bra.w   _initialise_note_duration
+               bclr.l    #PTNCMDBITS_ADSR_ACTIVE,d7
+               bset.l    #PTNCMDBITS_CHANNEL_DISABLED,d7
+               clr.w     chan_noteVolume(a4)
+               bra.w     _initialise_note_duration
 
 
                ;-----------------------------------------------------------------
@@ -1146,10 +1211,10 @@ _pattern_cmd_87_Pause
                ;    Param2: Byte Value of the PORTO/BEND Speed.
                ; original address $00004498
 _pattern_cmd_88_Portomento                       
-               bset.l  #PTNCMDBITS_PORTOMENTO,d7
-               move.b  (a3)+,chan_paramPortomentoStartOffset(a4)
-               move.b  (a3)+,chan_paramPortomentoLengthTicks(a4)
-               bra.w   pattern_command_loop
+               bset.l    #PTNCMDBITS_PORTOMENTO,d7
+               move.b    (a3)+,chan_paramPortomentoStartOffset(a4)
+               move.b    (a3)+,chan_paramPortomentoLengthTicks(a4)
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1169,11 +1234,11 @@ _pattern_cmd_88_Portomento
                ; Param2: Byte Value for the length of the lead-in note
                ; original address $000044a8
 _pattern_cmd_89_LeadIn_Notes                       
-                and.w   #$fff8,d7                       ; Preserve bits 0, 1 & 2 of ActiveChannel Bits, switch all other effects off
-                bset.l  #PTNCMDBITS_LEADIN_NOTES,d7
-                move.b  (a3)+,chan_paramLeadInNoteOfffset(a4) 
-                move.b  (a3)+,chan_paramLeadInNoteDurationTicks(a4)
-                bra.w   pattern_command_loop
+               and.w     #$fff8,d7                       ; Preserve bits 0, 1 & 2 of ActiveChannel Bits, switch all other effects off
+               bset.l    #PTNCMDBITS_LEADIN_NOTES,d7
+               move.b    (a3)+,chan_paramLeadInNoteOfffset(a4) 
+               move.b    (a3)+,chan_paramLeadInNoteDurationTicks(a4)
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1190,8 +1255,8 @@ _pattern_cmd_89_LeadIn_Notes
                ; Original Address $000044b
                ;
 _pattern_cmd_8a_LeadIn_Notes_Stop
-                bclr.l  #PTNCMDBITS_LEADIN_NOTES,d7
-                bra.w   pattern_command_loop
+               bclr.l    #PTNCMDBITS_LEADIN_NOTES,d7
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1216,12 +1281,12 @@ _pattern_cmd_8a_LeadIn_Notes_Stop
                ; Original Address $000044f4
                ;
 _pattern_cmd_8b_Modulation
-                and.w   #$fff8,d7                      ; Preserve bits 0, 1 & 2
-                bset.l  #PTNCMDBITS_MODULATION,d7
-                move.b  (a3)+,chan_paramModulationDelayStart(a4)
-                move.b  (a3)+,chan_paramModulationLevel(a4)
-                move.b  (a3)+,chan_paramModulationSpeed(a4)
-                bra.w   pattern_command_loop
+               and.w     #$fff8,d7                      ; Preserve bits 0, 1 & 2
+               bset.l    #PTNCMDBITS_MODULATION,d7
+               move.b    (a3)+,chan_paramModulationDelayStart(a4)
+               move.b    (a3)+,chan_paramModulationLevel(a4)
+               move.b    (a3)+,chan_paramModulationSpeed(a4)
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1238,8 +1303,8 @@ _pattern_cmd_8b_Modulation
                ; Original Address $0000450c
                ;
 _pattern_cmd_8c_Modulation_Stop
-                bclr.l  #PTNCMDBITS_MODULATION,d7
-                bra.w   pattern_command_loop
+               bclr.l    #PTNCMDBITS_MODULATION,d7
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1260,23 +1325,26 @@ _pattern_cmd_8c_Modulation_Stop
                ;         Byte = Parameter - Index into Arpeggio Offset Table (table of word offsets)
                ; Original Address $000044c4
                ;
-               ;    ***********************************************************************
-               ;    TODO: Refactor to remove hardcoded reference to 'arpeggio_offset_table'
-               ;    ***********************************************************************
+               ;    Additional Notes:
+               ;         Refactored to remove hardcoded reference to 'arpeggio_table'
                ;
 _pattern_cmd_8d_Arpeggio
-                and.w   #$fff8,d7                      ; preserve bits 0, 1 & 2
-                bset.l  #PTNCMDBITS_ARPEGGIO,d7
-                lea.l   arpeggio_offset_table,a0 
-                moveq   #$00,d0
-                move.b  (a3)+,d0
-                add.w   d0,d0
-                adda.w  d0,a0
-                adda.w  (a0),a0
-                move.b  (a0)+,chan_paramArpeggioSpeedTicks(a4)  
-                move.b  (a0)+,chan_paramArpeggioTableLength(a4) 
-                move.l  a0,chan_ptrArpeggioTable(a4)
-                bra.w   pattern_command_loop  
+               and.w     #$fff8,d7                      ; preserve bits 0, 1 & 2
+               bset.l    #PTNCMDBITS_ARPEGGIO,d7
+
+               lea       module_table,a0
+               move.l    mod_arpeggio_table(a0),a0
+               ;lea.l    arpeggio_table,a0
+                
+               moveq     #$00,d0
+               move.b    (a3)+,d0
+               add.w     d0,d0
+               adda.w    d0,a0
+               adda.w    (a0),a0
+               move.b    (a0)+,chan_paramArpeggioSpeedTicks(a4)  
+               move.b    (a0)+,chan_paramArpeggioTableLength(a4) 
+               move.l    a0,chan_ptrArpeggioTable(a4)
+               bra.w     pattern_command_loop  
 
 
                ;-----------------------------------------------------------------
@@ -1293,8 +1361,8 @@ _pattern_cmd_8d_Arpeggio
                ; Original Address $000044ec
                ;
 _pattern_cmd_8e_Arpeggio_Stop
-                bclr.l  #PTNCMDBITS_ARPEGGIO,d7
-                bra.w   pattern_command_loop
+               bclr.l    #PTNCMDBITS_ARPEGGIO,d7
+               bra.w     pattern_command_loop
 
 
                ;-----------------------------------------------------------------
@@ -1315,19 +1383,22 @@ _pattern_cmd_8e_Arpeggio_Stop
                ;
                ; Original Address $00004514
                ;
-               ;    *********************************************************
-               ;    TODO: Remove hardcoded reference to 'adsr_envelope_table'
-               ;    *********************************************************
+               ;    Additional Notes:
+               ;         Refactored to remove hardcoded reference to 'adsr_envelope_table'
                ;
 _pattern_cmd_8f_Select_ADSR
-                lea.l   adsr_envelope_table,a0 
-                moveq   #$00,d0
-                move.b  (a3)+,d0
-                add.w   d0,d0
-                adda.w  d0,a0
-                adda.w  (a0),a0
-                move.l  a0,chan_ptrADSREnvelope(a4) 
-                bra.w   pattern_command_loop  
+
+               lea.l     module_table,a0
+               move.l    mod_adsr_table(a0),a0
+               ;lea.l    adsr_envelope_table,a0              *** REFACTOR OUT HARDCODED REFERENCE TO ADSR_ENVELOPE_TABLE ***
+                
+               moveq     #$00,d0
+               move.b    (a3)+,d0
+               add.w     d0,d0
+               adda.w    d0,a0
+               adda.w    (a0),a0
+               move.l    a0,chan_ptrADSREnvelope(a4) 
+               bra.w     pattern_command_loop  
 
 
                ;-----------------------------------------------------------------
@@ -1357,35 +1428,27 @@ _pattern_cmd_8f_Select_ADSR
                ;        5) Runs the next Pattern Command (BIT 6 = 1)
                ;
                ;    Original Address $0000452c
-               ;
-               ;    ***********************************************************************
-               ;    TODO: Refactor to remove hardcoded reference to 'instrument_data_table'
-               ;    ***********************************************************************
+               ;  
                ;
 _pattern_cmd_90_Select_Instrument
-                lea.l   instrument_data_table,a0
-                moveq   #$00,d0
-                move.b  (a3)+,d0
-                asl.w   #$04,d0
-                adda.w  d0,a0
-                move.w  (a0)+,chan_instrumentTuningAmount(a4)  
-                move.l  (a0)+,chan_ptrInstrumentSampleStart(a4)
-                move.w  (a0)+,chan_instrumentSampleLength(a4)  
-                move.l  (a0)+,chan_ptrInstrumentSampleRepeat(a4)
-                move.w  (a0)+,chan_instrumentRepeatLength(a4)
-                ; check if the instrument can be transposed in pitch
-                ; some instruments (drums etc) might not want to transposed 
-                ; when a pattern is transposed in pitch.   
-                bclr.l  #PTNCMDBITS_TRANSPOSE_NOTE,d7
-                tst.w   (a0)
-                beq.w   pattern_command_loop
-                bset.l  #PTNCMDBITS_TRANSPOSE_NOTE,d7
-                bra.w   pattern_command_loop
-
-
-
-
-
+               lea.l     instrument_data_table,a0
+               moveq     #$00,d0
+               move.b    (a3)+,d0
+               asl.w     #$04,d0
+               adda.w    d0,a0
+               move.w    (a0)+,chan_instrumentTuningAmount(a4)  
+               move.l    (a0)+,chan_ptrInstrumentSampleStart(a4)
+               move.w    (a0)+,chan_instrumentSampleLength(a4)  
+               move.l    (a0)+,chan_ptrInstrumentSampleRepeat(a4)
+               move.w    (a0)+,chan_instrumentRepeatLength(a4)
+               ; check if the instrument can be transposed in pitch
+               ; some instruments (drums etc) might not want to transposed 
+               ; when a pattern is transposed in pitch.   
+               bclr.l    #PTNCMDBITS_TRANSPOSE_NOTE,d7
+               tst.w     (a0)
+               beq.w     pattern_command_loop
+               bset.l    #PTNCMDBITS_TRANSPOSE_NOTE,d7
+               bra.w     pattern_command_loop
 
 
                ;-------------------------------------------------------------------------
@@ -1407,188 +1470,185 @@ _pattern_cmd_90_Select_Instrument
                ;
 _trigger_playing_new_note 
                ; do transpose pattern processing
-               btst.l  #PTNCMDBITS_TRANSPOSE_NOTE,d7  
-               bne.b   .store_note_pitch_index   
+               btst.l    #PTNCMDBITS_TRANSPOSE_NOTE,d7  
+               bne.b     .store_note_pitch_index   
 .add_transpose_pitch_index
-               add.b   chan_patternTransposeValue(a4),d0
+               add.b     chan_patternTransposeValue(a4),d0
 .store_note_pitch_index
-               move.b  d0,chan_transposedNoteIndex(a4)  
+               move.b    d0,chan_transposedNoteIndex(a4)  
 
 
                ; do leadin notes processing
                ; if no leading notes, then store the same pitch index for leadin note
                ; d0 = note pitch index
-               btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
-               beq.b   .store_leadin_note_pitch_index
+               btst.l    #PTNCMDBITS_LEADIN_NOTES,d7
+               beq.b     .store_leadin_note_pitch_index
 
                ; if active, set up leading note pitch index and leadin note duration
 .add_leadin_pitch_index
-               add.b   chan_paramLeadInNoteOfffset(a4),d0
-               move.b  chan_paramLeadInNoteDurationTicks(a4),chan_leadInNoteCurrentTicks(a4)
+               add.b     chan_paramLeadInNoteOfffset(a4),d0
+               move.b    chan_paramLeadInNoteDurationTicks(a4),chan_leadInNoteCurrentTicks(a4)
 
                ; store leadin note pitch index (can be same as note pitch index if not active)
 .store_leadin_note_pitch_index
-               move.b  d0,chan_transposedLeadInNoteIndex(a4)
+               move.b    d0,chan_transposedLeadInNoteIndex(a4)
 
                ; get note period value from pitch index
-               ext.w   d0
-               sub.w   chan_instrumentTuningAmount(a4),d0   
-               add.w   d0,d0                      
+               ext.w     d0
+               sub.w     chan_instrumentTuningAmount(a4),d0   
+               add.w     d0,d0                      
                ; d0 = index into mid point of Note_Period_Table held in a5
                
                ; validate index in table range -48 to +44
                ; if not then throw 'illegal exception'
 .validate_pitch_index
-                cmp.w   #$ffd0,d0                       ; compare -48
-                blt.b   .debug_assert_fail        
-                cmp.w   #$002c,d0                       ; compare +44
-                ble.b   .store_note_period_value  
+                cmp.w    #$ffd0,d0                       ; compare -48
+                blt.b    .debug_assert_fail        
+                cmp.w    #$002c,d0                       ; compare +44
+                ble.b    .store_note_period_value  
 
 .debug_assert_fail 
-                move.b  chan_transposedNoteIndex(a4),d1 
-                move.b  chan_transposedLeadInNoteIndex(a4),d2
-                move.w  chan_instrumentTuningAmount(a4),d3
-                move.w  chan_ChannelDMA(a4),d4
-                movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+                move.b   chan_transposedNoteIndex(a4),d1 
+                move.b   chan_transposedLeadInNoteIndex(a4),d2
+                move.w   chan_instrumentTuningAmount(a4),d3
+                move.w   chan_ChannelDMA(a4),d4
+                movea.l  chan_ptrNextTrackSequencePosition(a4),a2
+                illegal  ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
                ; d0.w = valid index into a5 (Note_Period_Table)
                ; lookup note period value
 .store_note_period_value
-               move.w  $00(a5,d0.w),chan_notePeriodValue(a4)
+               move.w    $00(a5,d0.w),chan_notePeriodValue(a4)
 
 
                ;-------------------------------------------------
                ; initialise note modulation/vibrato if active
 _initialise_modulation
-               btst.l  #PTNCMDBITS_MODULATION,d7
+               btst.l    #PTNCMDBITS_MODULATION,d7
                ; if no modulation, initialise portomento
-               beq.b   _initialise_portomento  
+               beq.b     _initialise_portomento  
 
                ; calculate modulation pitch limit
-               move.b  chan_transposedLeadInNoteIndex(a4),d0
-               add.b   chan_paramModulationLevel(a4),d0     ; modulation pitch interval index
-               ext.w   d0
-               sub.w   chan_instrumentTuningAmount(a4),d0   ; tuning pitch interval index
-               add.w   d0,d0
+               move.b    chan_transposedLeadInNoteIndex(a4),d0
+               add.b     chan_paramModulationLevel(a4),d0     ; modulation pitch interval index
+               ext.w     d0
+               sub.w     chan_instrumentTuningAmount(a4),d0   ; tuning pitch interval index
+               add.w     d0,d0
 
                ; validate pitch limit index in table range -48 to +44
                ; if not then throw 'illegal exception'
 .validate_pitch_index
-                cmp.w   #$ffd0,d0                       ; compare -48
-                blt.b   .debug_assert_fail
-                cmp.w   #$002c,d0                       ; compare +44
-                ble.b   .continue_init_modulation
+                cmp.w    #$ffd0,d0                       ; compare -48
+                blt.b    .debug_assert_fail
+                cmp.w    #$002c,d0                       ; compare +44
+                ble.b    .continue_init_modulation
 
 .debug_assert_fail
-                move.b  chan_transposedNoteIndex(a4),d1
-                move.b  chan_transposedLeadInNoteIndex(a4),d2
-                move.w  chan_instrumentTuningAmount(a4),d3
-                move.w  chan_ChannelDMA(a4),d4
-                movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+                move.b   chan_transposedNoteIndex(a4),d1
+                move.b   chan_transposedLeadInNoteIndex(a4),d2
+                move.w   chan_instrumentTuningAmount(a4),d3
+                move.w   chan_ChannelDMA(a4),d4
+                movea.l  chan_ptrNextTrackSequencePosition(a4),a2
+                illegal  ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
 .continue_init_modulation 
                ; get initial modulated pitch/period
-               move.w  $00(a5,d0.w),d0
+               move.w    $00(a5,d0.w),d0
                ; d0.w = max modulation pitch/period
 
                ; get max +- modulated pitch/period offset
-               sub.w   chan_notePeriodValue(a4),d0 
-               asr.w   #$01,d0                         
-               ext.l   d0
+               sub.w     chan_notePeriodValue(a4),d0 
+               asr.w     #$01,d0                         
+               ext.l     d0
                ; d0.w = max modulation amount(+-) for current note
 
                ; calculate the amount of modulation to apply per tick
                ; mod per tick = max modulation amount/modulation speed
-               move.b  chan_paramModulationSpeed(a4),d1                  
-               ext.w   d1
-               divs.w  d1,d0 
-               move.w  d0,chan_modulationAmountPerTick(a4)
+               move.b    chan_paramModulationSpeed(a4),d1                  
+               ext.w     d1
+               divs.w    d1,d0 
+               move.w    d0,chan_modulationAmountPerTick(a4)
 
                ; store modulation speed ticks and speed ticks x 2
-               move.b  d1,chan_modulationSpeedTicks(a4)  
-               add.b   d1,d1        
-               move.b  d1,chan_modulationSpeedTicks_x2(a4) 
+               move.b    d1,chan_modulationSpeedTicks(a4)  
+               add.b     d1,d1        
+               move.b    d1,chan_modulationSpeedTicks_x2(a4) 
 
                ; initialise modulation start delay from parameter value
-               move.b  chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4) 
-
+               move.b    chan_paramModulationDelayStart(a4),chan_modulationDelayStartTicks(a4) 
 
                ;---------------------------------------------
                ; initialise portomento if active
 _initialise_portomento
-               btst.l  #PTNCMDBITS_PORTOMENTO,d7
+               btst.l    #PTNCMDBITS_PORTOMENTO,d7
                ; if not active, initialise arpeggio
-               beq.b   _initialise_arpeggio
+               beq.b     _initialise_arpeggio
 
                ; initialise portomento
                ; calculate initial portomento pitch index value
-               move.b  chan_transposedLeadInNoteIndex(a4),d0     ; current note pitch index
-               add.b   chan_paramPortomentoStartOffset(a4),d0    ; add porto start index
-               ext.w   d0 
-               sub.w   chan_instrumentTuningAmount(a4),d0        ; adjust by fine tune index
-               add.w   d0,d0
-
+               move.b    chan_transposedLeadInNoteIndex(a4),d0     ; current note pitch index
+               add.b     chan_paramPortomentoStartOffset(a4),d0    ; add porto start index
+               ext.w     d0 
+               sub.w     chan_instrumentTuningAmount(a4),d0        ; adjust by fine tune index
+               add.w     d0,d0
 .validate_pitch_index 
-               cmp.w   #$ffd0,d0                       ; validate -48
-               blt.b   .debug_assert_fail
-               cmp.w   #$002c,d0                       ; validate +44
-               ble.b   .continue_init_portomento
+               cmp.w     #$ffd0,d0                       ; validate -48
+               blt.b     .debug_assert_fail
+               cmp.w     #$002c,d0                       ; validate +44
+               ble.b     .continue_init_portomento
 
 .debug_assert_fail
-                move.b  chan_transposedNoteIndex(a4),d1
-                move.b  chan_transposedLeadInNoteIndex(a4),d2
-                move.w  chan_instrumentTuningAmount(a4),d3
-                move.w  chan_ChannelDMA(a4),d4
-                movea.l chan_ptrNextTrackSequencePosition(a4),a2
-                illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+                move.b   chan_transposedNoteIndex(a4),d1
+                move.b   chan_transposedLeadInNoteIndex(a4),d2
+                move.w   chan_instrumentTuningAmount(a4),d3
+                move.w   chan_ChannelDMA(a4),d4
+                movea.l  chan_ptrNextTrackSequencePosition(a4),a2
+                illegal  ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
 .continue_init_portomento
                ; get initial portomento pitch/period
-               move.w  $00(a5,d0.w),d0
+               move.w    $00(a5,d0.w),d0
                ; d0.w = initial portomento pitch/period
 
                ; calculate initial porto amount
-               sub.w   chan_notePeriodValue(a4),d0
-               ext.l   d0
+               sub.w     chan_notePeriodValue(a4),d0
+               ext.l     d0
 
                ; calculate the porto amount per tick
-               moveq   #$00,d1
-               move.b  chan_paramPortomentoLengthTicks(a4),d1  
-               divs.w  d1,d0 
-               move.w  d0,chan_portomentoAmountPerTick(a4) 
+               moveq     #$00,d1
+               move.b    chan_paramPortomentoLengthTicks(a4),d1  
+               divs.w    d1,d0 
+               move.w    d0,chan_portomentoAmountPerTick(a4) 
                
                ; set the initial note period (modified by initial amount)
-               neg.w   d0
-               muls.w  d1,d0
-               sub.w   d0,chan_notePeriodValue(a4) 
+               neg.w     d0
+               muls.w    d1,d0
+               sub.w     d0,chan_notePeriodValue(a4) 
 
 
                ;--------------------------------------------------
                ; initialise arpeggio if active
 _initialise_arpeggio
-               btst.l  #PTNCMDBITS_ARPEGGIO,d7 
+               btst.l    #PTNCMDBITS_ARPEGGIO,d7 
                ; if not arpeggio, then initialise ADSR Envelops
-               beq.b   _initialise_adsr_envelope
+               beq.b     _initialise_adsr_envelope
 
                ; initialise arpeggio
-               move.b  #$01,chan_arpeggioRateTicks(a4)
-               move.l  chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)
-               move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
-
+               move.b    #$01,chan_arpeggioRateTicks(a4)
+               move.l    chan_ptrArpeggioTable(a4),chan_ptrArpeggioCurrentTable(a4)
+               move.b    chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
 
                ;---------------------------------------------------
                ; initialise ADSR if active
 _initialise_adsr_envelope
-               bset.l  #PTNCMDBITS_ADSR_ACTIVE,d7
-               move.l  chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)
-               move.w  #$0001,chan_adsrEnvelopePhaseTicks(a4)
-               clr.w   chan_noteVolume(a4)       
+               bset.l    #PTNCMDBITS_ADSR_ACTIVE,d7
+               move.l    chan_ptrADSREnvelope(a4),chan_ptrCurrentADSREnvelope(a4)
+               move.w    #$0001,chan_adsrEnvelopePhaseTicks(a4)
+               clr.w     chan_noteVolume(a4)       
                
                ; set channel dma usage (dma bit for channel)
-               move.w  chan_ChannelDMA(a4),d0            
-               or.w    d0,audio_dma
+               move.w    chan_ChannelDMA(a4),d0            
+               or.w      d0,audio_dma
                ; fall through to '_initialise_note_duration'
                ; below
 
@@ -1608,18 +1668,18 @@ _initialise_adsr_envelope
                ;
 _initialise_note_duration                              
                ; clear paired note duration ticks
-               moveq   #$00,d0
-               move.b  chan_paramPairedNoteDurationTicks(a4),d0
+               moveq     #$00,d0
+               move.b    chan_paramPairedNoteDurationTicks(a4),d0
        
                ; test if PAIRED_NOTES is active
-                btst.l  #PTNCMDBITS_PAIRED_NOTES,d7
-                bne.b   .is_paired_note
+                btst.l    #PTNCMDBITS_PAIRED_NOTES,d7
+                bne.b     .is_paired_note
 .not_paired_note 
                ; get note duration from pattern data
-                move.b  (a3)+,d0                   
+                move.b   (a3)+,d0                   
 .is_paired_note
-                add.w   d0,chan_currentNoteTicks(a4)       
-                move.l  a3,chan_ptrNextPatternDataPosition(a4)
+                add.w    d0,chan_currentNoteTicks(a4)       
+                move.l   a3,chan_ptrNextPatternDataPosition(a4)
                ; fall through to '_do_process_active_pattern_commands'
                ; below
 
@@ -1641,31 +1701,31 @@ _initialise_note_duration
                ;
 _do_process_active_pattern_commands 
                ; if channel is disabled then skip processing
-               btst.l  #PTNCMDBITS_CHANNEL_DISABLED,d7
-               bne.w   exit_command_processing
+               btst.l    #PTNCMDBITS_CHANNEL_DISABLED,d7
+               bne.w     exit_command_processing
 
                ; process running effects
                ; d0.w = note period value
-               move.w  chan_notePeriodValue(a4),d0
+               move.w    chan_notePeriodValue(a4),d0
 
                ; ------------------------------------------
                ; process portomento effect
                ;
-               btst.l  #PTNCMDBITS_PORTOMENTO,d7
+               btst.l    #PTNCMDBITS_PORTOMENTO,d7
                ; if portomento not active, skip to next
-               beq.b   _process_leadin_notes_effect
+               beq.b     _process_leadin_notes_effect
 
                ; update portomento ticks
-               subq.b  #$01,chan_paramPortomentoLengthTicks(a4)
-               bne.b   .porto_update_note_period
+               subq.b    #$01,chan_paramPortomentoLengthTicks(a4)
+               bne.b     .porto_update_note_period
 
                ; end portomento effect (last update)
-               bclr.l  #PTNCMDBITS_PORTOMENTO,d7
+               bclr.l    #PTNCMDBITS_PORTOMENTO,d7
 .porto_update_note_period
-               sub.w   chan_portomentoAmountPerTick(a4),d0
+               sub.w     chan_portomentoAmountPerTick(a4),d0
                ; when porto is active then skip
                ; leading notes, arpeggio & modulation/vibrato
-               bra.w   store_sample_period 
+               bra.w     store_sample_period 
 
 
 
@@ -1675,40 +1735,40 @@ _do_process_active_pattern_commands
                ; NB: is skipped/paused when portomento is playing
                ;    also, no leadin notes effect used by title prg music
 _process_leadin_notes_effect
-               btst.l  #PTNCMDBITS_LEADIN_NOTES,d7
-               beq.b   _process_arpeggio_effect
+               btst.l    #PTNCMDBITS_LEADIN_NOTES,d7
+               beq.b     _process_arpeggio_effect
 
 
                ; update lead-in pitch index
-               subq.b  #$01,chan_leadInNoteCurrentTicks(a4)
-               bcc.w   store_sample_period
+               subq.b    #$01,chan_leadInNoteCurrentTicks(a4)
+               bcc.w     store_sample_period
 
                ; update lead-in pitch index (swap notes)
                ; move.b  chan_transposedLeadInNoteIndex(a4),d1     ; unused d1 (overwritten below)
-               move.b  chan_transposedNoteIndex(a4),d0
-               move.b  d0,chan_transposedLeadInNoteIndex(a4)
-               ext.w   d0
-               sub.w   chan_instrumentTuningAmount(a4),d0
-               add.w   d0,d0
+               move.b    chan_transposedNoteIndex(a4),d0
+               move.b    d0,chan_transposedLeadInNoteIndex(a4)
+               ext.w     d0
+               sub.w     chan_instrumentTuningAmount(a4),d0
+               add.w     d0,d0
 
 .validate_pitch_index
-               cmp.w   #$ffd0,d0                       ; validate -48
-               blt.b   .debug_assert_fail                       
-               cmp.w   #$002c,d0                       ; valdate +44
-               ble.b   .continue_leadin_effect
+               cmp.w     #$ffd0,d0                       ; validate -48
+               blt.b     .debug_assert_fail                       
+               cmp.w     #$002c,d0                       ; valdate +44
+               ble.b     .continue_leadin_effect
 
 .debug_assert_fail
-               move.b  chan_transposedNoteIndex(a4),d1   
-               move.b  chan_transposedLeadInNoteIndex(a4),d2
-               move.w  chan_instrumentTuningAmount(a4),d3
-               move.w  chan_ChannelDMA(a4),d4
-               movea.l chan_ptrNextTrackSequencePosition(a4),a2
-               illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+               move.b    chan_transposedNoteIndex(a4),d1   
+               move.b    chan_transposedLeadInNoteIndex(a4),d2
+               move.w    chan_instrumentTuningAmount(a4),d3
+               move.w    chan_ChannelDMA(a4),d4
+               movea.l   chan_ptrNextTrackSequencePosition(a4),a2
+               illegal   ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
 .continue_leadin_effect
                ; get note period value           
-               move.w  $00(a5,d0.w),d0
-               bra.w   store_sample_period 
+               move.w    $00(a5,d0.w),d0
+               bra.w     store_sample_period 
                ;--------------------------------------------------
 
 
@@ -1719,55 +1779,55 @@ _process_leadin_notes_effect
                ; Also, there are no arpeggio effects used in titleprg.
                ;
 _process_arpeggio_effect
-               btst.l  #PTNCMDBITS_ARPEGGIO,d7
+               btst.l    #PTNCMDBITS_ARPEGGIO,d7
                ; if not active, do modulation/vibrato
-               beq.b   _process_modulation_effect
+               beq.b     _process_modulation_effect
 
 
                ; update arpeggio effect
-               subq.b  #$01,chan_arpeggioRateTicks(a4)
-               bne.b   store_sample_period
+               subq.b    #$01,chan_arpeggioRateTicks(a4)
+               bne.b     store_sample_period
 
                ; get next arpeggio entry from table
-               movea.l chan_ptrArpeggioCurrentTable(a4),a0
-               move.b  (a0)+,d0
-               subq.b  #$01,chan_arpeggioTableLenCount(a4)
-               bne.b   .store_arp_table_ptr
-               movea.l chan_ptrArpeggioTable(a4),a0
+               movea.l   chan_ptrArpeggioCurrentTable(a4),a0
+               move.b    (a0)+,d0
+               subq.b    #$01,chan_arpeggioTableLenCount(a4)
+               bne.b     .store_arp_table_ptr
+               movea.l   chan_ptrArpeggioTable(a4),a0
                ; end of table, reset ptr to start
-               move.b  chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
+               move.b    chan_paramArpeggioTableLength(a4),chan_arpeggioTableLenCount(a4)
 
                ; store arpeggion table ptr 
 .store_arp_table_ptr     
-               move.l  a0,chan_ptrArpeggioCurrentTable(a4)
+               move.l    a0,chan_ptrArpeggioCurrentTable(a4)
 
                ; set arpeggio note duration
-               move.b  chan_paramArpeggioSpeedTicks(a4),chan_arpeggioRateTicks(a4)
+               move.b    chan_paramArpeggioSpeedTicks(a4),chan_arpeggioRateTicks(a4)
                
                ; get areggio note pitch/period index
-               add.b   chan_transposedLeadInNoteIndex(a4),d0
-               ext.w   d0
-               sub.w   chan_instrumentTuningAmount(a4),d0
-               add.w   d0,d0
+               add.b     chan_transposedLeadInNoteIndex(a4),d0
+               ext.w     d0
+               sub.w     chan_instrumentTuningAmount(a4),d0
+               add.w     d0,d0
 
 .validate_pitch_index
-               cmp.w   #$ffd0,d0                       ; validate -48
-               blt.b   .debug_assert_fail
-               cmp.w   #$002c,d0                       ; valdate +44
-               ble.b   .continue_arpeggio_effect
+               cmp.w     #$ffd0,d0                       ; validate -48
+               blt.b     .debug_assert_fail
+               cmp.w     #$002c,d0                       ; valdate +44
+               ble.b     .continue_arpeggio_effect
 
 .debug_assert_fail
-               move.b  chan_transposedNoteIndex(a4),d1
-               move.b  chan_transposedLeadInNoteIndex(a4),d2
-               move.w  chan_instrumentTuningAmount(a4),d3
-               move.w  chan_ChannelDMA(a4),d4
-               movea.l chan_ptrNextTrackSequencePosition(a4),a2
-               illegal ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
+               move.b    chan_transposedNoteIndex(a4),d1
+               move.b    chan_transposedLeadInNoteIndex(a4),d2
+               move.w    chan_instrumentTuningAmount(a4),d3
+               move.w    chan_ChannelDMA(a4),d4
+               movea.l   chan_ptrNextTrackSequencePosition(a4),a2
+               illegal   ; ******* DEBUG/ASSERT BAD PITCH INDEX VALUE
 
 .continue_arpeggio_effect
                ; get arpeggio note pitch/period value
-               move.w  $00(a5,d0.w),d0
-               bra.w   store_sample_period
+               move.w    $00(a5,d0.w),d0
+               bra.w     store_sample_period
                ;----------------------------------------------------------
 
 
@@ -1778,28 +1838,28 @@ _process_arpeggio_effect
                ; NB: is skipped when portomento, leadin, or arpeggio is playing
                ;
 _process_modulation_effect
-               btst.l  #PTNCMDBITS_MODULATION,d7
+               btst.l    #PTNCMDBITS_MODULATION,d7
                ; if not active, no further effect processing
-               beq.b   store_sample_period
+               beq.b     store_sample_period
 
                
                ; do modulation delay ticks value
-               subq.b  #$01,chan_modulationDelayStartTicks(a4)
-               bcc.b   store_sample_period
+               subq.b    #$01,chan_modulationDelayStartTicks(a4)
+               bcc.b     store_sample_period
                
                ; do initial modulation wave processing
-               addq.b  #$01,chan_modulationDelayStartTicks(a4)
-               subq.b  #$01,chan_modulationSpeedTicks(a4)
-               bne.b   .add_modulation_value
+               addq.b    #$01,chan_modulationDelayStartTicks(a4)
+               subq.b    #$01,chan_modulationSpeedTicks(a4)
+               bne.b     .add_modulation_value
 
                ; do tail of modulation wave processing (flip +- addition for half the time)
-               neg.w   chan_modulationAmountPerTick(a4)
-               move.b  chan_modulationSpeedTicks_x2(a4),chan_modulationSpeedTicks(a4)
+               neg.w     chan_modulationAmountPerTick(a4)
+               move.b    chan_modulationSpeedTicks_x2(a4),chan_modulationSpeedTicks(a4)
 
 .add_modulation_value     
                ; d0.w = note pitch/period value (set at top of process effects)
-               ;move.w  chan_notePeriodValue(a4),d0          ; could do this instead
-               add.w   chan_modulationAmountPerTick(a4),d0
+               ;move.w    chan_notePeriodValue(a4),d0          ; could do this instead
+               add.w     chan_modulationAmountPerTick(a4),d0
                ; fall through to 'store_sample_period' below
                ;
 
@@ -1812,7 +1872,7 @@ _process_modulation_effect
                ; Original Address $000047a8
                ;
 store_sample_period                                     
-               move.w  d0,chan_notePeriodValue(a4)
+               move.w    d0,chan_notePeriodValue(a4)
                ; end of pitch modulation effects
 
 
@@ -1839,24 +1899,24 @@ store_sample_period
                ; Original Address $000047ac
                ;
 _process_ADSR_Envelope
-               btst.l  #PTNCMDBITS_ADSR_ACTIVE,d7
+               btst.l    #PTNCMDBITS_ADSR_ACTIVE,d7
                ; if not active then end effect processing
-               beq.w   exit_command_processing  
+               beq.w     exit_command_processing  
 
 
                ; decrement current ADSR phase timespan ticks
-               subq.w  #$01,chan_adsrEnvelopePhaseTicks(a4)
+               subq.w    #$01,chan_adsrEnvelopePhaseTicks(a4)
                ; if ticks > 0 then process volume for current ADSR phase
-               bne.w   .process_current_ADSR_phase
+               bne.w     .process_current_ADSR_phase
                
                ; else initialise next ADSR phase parameter values
                ; get next ADSR parameter
-               movea.l chan_ptrCurrentADSREnvelope(a4),a0
-               moveq   #$00,d0
-               move.b  (a0)+,d0
+               movea.l   chan_ptrCurrentADSREnvelope(a4),a0
+               moveq     #$00,d0
+               move.b    (a0)+,d0
                ; if value == 0 then enter final ADSR phase
-               beq.b   .ADSR_zero_cmd
-               bmi.b   .ADSR_negative_cmd
+               beq.b     .ADSR_zero_cmd
+               bmi.b     .ADSR_negative_cmd
 
                ; +ve command = delay ticks
                ; every tick add rate of change to the volume
@@ -1864,13 +1924,12 @@ _process_ADSR_Envelope
                ;    command value = duration in ticks
                ;    parameter from table = volume rate of change
 .ADSR_positive_cmd
-               move.w  d0,chan_adsrEnvelopePhaseTicks(a4)
-               move.b  #$01,chan_adsrRateOfChangeTicks(a4)
-               move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
-               move.b  (a0)+,chan_adsrVolumeRateOfChange(a4)
-               move.l  a0,chan_ptrCurrentADSREnvelope(a4)
-               bra.b   .process_current_ADSR_phase
-
+               move.w    d0,chan_adsrEnvelopePhaseTicks(a4)
+               move.b    #$01,chan_adsrRateOfChangeTicks(a4)
+               move.b    #$01,chan_adsrCurrentRateOfChangeTicks(a4)
+               move.b    (a0)+,chan_adsrVolumeRateOfChange(a4)
+               move.l    a0,chan_ptrCurrentADSREnvelope(a4)
+               bra.b     .process_current_ADSR_phase
                ; -ve command
                ; This command is a bit over complicated, it enables the ADSR phase to
                ; be reversed (if parameter is negative, so attack becomes decay)
@@ -1882,17 +1941,17 @@ _process_ADSR_Envelope
                ;                        if (+ve then keep volume increase direction)
                ;                        parameter becomes new rate of change (faster/slower volume increase)
 .ADSR_negative_cmd
-                neg.b   d0
-                move.w  d0,chan_adsrEnvelopePhaseTicks(a4)
-                move.b  #$01,chan_adsrVolumeRateOfChange(a4)
-                move.b  (a0)+,d0
-                bpl.b   .L000047f8
-                neg.b   d0
-                neg.b   chan_adsrVolumeRateOfChange(a4)
-.L000047f8      move.b  d0,chan_adsrRateOfChangeTicks(a4)
-                move.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)
-                move.l  a0,chan_ptrCurrentADSREnvelope(a4)
-                bra.b   .process_current_ADSR_phase
+               neg.b     d0
+               move.w    d0,chan_adsrEnvelopePhaseTicks(a4)
+               move.b    #$01,chan_adsrVolumeRateOfChange(a4)
+               move.b    (a0)+,d0
+               bpl.b     .L000047f8
+               neg.b     d0
+               neg.b     chan_adsrVolumeRateOfChange(a4)
+.L000047f8     move.b    d0,chan_adsrRateOfChangeTicks(a4)
+               move.b    #$01,chan_adsrCurrentRateOfChangeTicks(a4)
+               move.l    a0,chan_ptrCurrentADSREnvelope(a4)
+               bra.b     .process_current_ADSR_phase
 
 
                ; ADSR zero command (sustain processing)
@@ -1903,47 +1962,47 @@ _process_ADSR_Envelope
                ; else, another phase can begin (i.e. release phase)
 .ADSR_zero_cmd
                ; a0 = ADSR table
-                move.b  (a0),d0
-                beq.b   .end_ADSR            ; if ADSR ends with $00,$00
-                ; so sustain period
-                bpl.b   .calc_sustain_length
-                ; make -ve value a +ve lenght of time
-                neg.b   d0
+               move.b    (a0),d0
+               beq.b     .end_ADSR            ; if ADSR ends with $00,$00
+               ; so sustain period
+               bpl.b     .calc_sustain_length
+               ; make -ve value a +ve lenght of time
+               neg.b     d0
 
 .calc_sustain_length
-               sub.w   chan_currentNoteTicks(a4),d0
-               bmi.b   .set_sustain_parameters
+               sub.w     chan_currentNoteTicks(a4),d0
+               bmi.b     .set_sustain_parameters
 
                ; if note duration expired then end ASDR
-.end_ADSR      bclr.l  #PTNCMDBITS_ADSR_ACTIVE,d7
-               bra.b   exit_command_processing 
+.end_ADSR      bclr.l    #PTNCMDBITS_ADSR_ACTIVE,d7
+               bra.b     exit_command_processing 
 
                ; set note sustain parameters 
 .set_sustain_parameters
-                neg.w   d0
-                move.w  d0,chan_adsrEnvelopePhaseTicks(a4)
-                move.b  #$00,chan_adsrRateOfChangeTicks(a4)
-                move.b  #$00,chan_adsrCurrentRateOfChangeTicks(a4)
-                move.b  #$00,chan_adsrVolumeRateOfChange(a4)
-                move.l  a0,chan_ptrCurrentADSREnvelope(a4)
-                bra.b   exit_command_processing
+               neg.w     d0
+               move.w    d0,chan_adsrEnvelopePhaseTicks(a4)
+               move.b    #$00,chan_adsrRateOfChangeTicks(a4)
+               move.b    #$00,chan_adsrCurrentRateOfChangeTicks(a4)
+               move.b    #$00,chan_adsrVolumeRateOfChange(a4)
+               move.l    a0,chan_ptrCurrentADSREnvelope(a4)
+               bra.b     exit_command_processing
 
 
                ; current ADSR phase ticks
                ; process volume change at specified rate for the
                ; current phase of ADSR
 .process_current_ADSR_phase
-               subq.b  #$01,chan_adsrCurrentRateOfChangeTicks(a4)    
-               bne.b   exit_command_processing         ; L00004850
+               subq.b    #$01,chan_adsrCurrentRateOfChangeTicks(a4)    
+               bne.b     exit_command_processing         ; L00004850
                 
                ; update audio volume (+-) for current ADSR phase
-               move.b  chan_adsrRateOfChangeTicks(a4),chan_adsrCurrentRateOfChangeTicks(a4)
-               move.b  chan_adsrVolumeRateOfChange(a4),d0
-               ext.w   d0
-               add.w   d0,chan_noteVolume(a4)
+               move.b    chan_adsrRateOfChangeTicks(a4),chan_adsrCurrentRateOfChangeTicks(a4)
+               move.b    chan_adsrVolumeRateOfChange(a4),d0
+               ext.w     d0
+               add.w     d0,chan_noteVolume(a4)
 
 exit_command_processing 
-                rts  
+               rts  
 
 
 
@@ -2810,6 +2869,19 @@ instrument_20       ;  Instrument 20 (Built in wave)
 silient_repeat      dc.w  $0000       
 
 
+                    ;------------------------------------------------------------
+                    ; Instrument 0 - Sample Data
+                    ; Built in waveform (11 words/22 bytes)
+                    ; Instrument 0 is a built in shart waveform,
+                    ; maybe something left over from testing the Sound Driver
+                    ; Original Address $00004D3C
+builtin_waveform    
+                    dc.w  $0074,$60DC,$82BB,$457E,$24A0,$8C00,$7460
+                    dc.w  $DC82,$BB45,$7E24,$A08C
+
+
+
+MUSIC_MODULE_DATA
 
           ; ********************************************************************************************************************************************
           ; ********************************************************************************************************************************************
@@ -2847,16 +2919,17 @@ silient_repeat      dc.w  $0000
           ;
 
 
-               ;------------------------------------------------------------
-               ; Instrument 0 - Sample Data
-               ; Built in waveform (11 words/22 bytes)
-               ; Instrument 0 is a built in shart waveform,
-               ; maybe something left over from testing the Sound Driver
-               ; Original Address $00004D3C
-builtin_waveform    
-L00004D3C       dc.w  $0074, $60DC, $82BB, $457E, $24A0, $8C00, $7460
-L00004D4A       dc.w  $DC82, $BB45, $7E24, $A08C
-
+          ; In an attempt to modularise the music data, 
+          ; I have created the following table which can be used to 
+          ; hold the offsets to the various data tables,
+          ; and modified the initialisation code to populate the table with the correct offsets.
+module_offset_table
+.sample_offset      dc.l iff_sample_data_table-.sample_offset    ; IFF Sample Data Table Offset
+.sound_offset       dc.l sound_table-.sound_offset               ; Sound Table Offset
+.pattern_offset     dc.l sound_pattern_table-.pattern_offset     ; Pattern Table Offset
+.arpeggio_offset    dc.l arpeggio_table-.arpeggio_offset         ; Arpeggio Table Offset
+.adsr_offset        dc.l adsr_envelope_table-.adsr_offset        ; ADSR Envelope Table Offset
+.max_soundId        dc.w $0003                                   ; Maximum Sound ID (1 to 3) - 3 sounds in this module
 
 
 
@@ -3005,7 +3078,7 @@ iff_sample_data_table                                             ;-------------
                ; arpeggio commands start with 2 parameters followed by a sequence of note pitch interval indexes
                ; parameter 1 = arpeggio speed in ticks
                ; parameter 2 = arpeggio table size(i.e. the number of following pitch index intervals)
-arpeggio_offset_table
+arpeggio_table
 .arpeggioId_00      dc.w .arpeggio_effect_00-.arpeggioId_00         ; L0001B986 - $0002
 
 .arpeggio_effect_00
@@ -3060,12 +3133,12 @@ adsr_envelope_table
 
 
 
-               ; -------------------------- Sound Master Table ----------------------------
+               ; -------------------------- Sound Table ----------------------------
                ; 4 values per song entry (channel settings)
                ;   - Each 2 byte value is an offset to the channel data for the song
                ;
                     even
-sound_master_table  ; original address $0001b9dc
+sound_table    ; original address $0001b9dc
 
                     ; Sound ID 01 - Title Screen - Music 
 soundId_01          ; original address $0001b9dc
@@ -3090,14 +3163,15 @@ soundId_03          ; original address $0001b9ec
 
 
 
+
                ;------------------------------- sound pattern master table ---------------------------------
                ; This is a table of offsets to the sound pattern data for each pattern used in the game.
                ; Each entry is a 2 byte offset to the pattern data for that pattern.
-               ; The table is indexed by the pattern ID's used in the track data for each channel.sound_pattern_master_table
+               ; The table is indexed by the pattern ID's used in the track data for each channel.sound_pattern_table
                ;
                ; original address $0001BA06
                   even
-sound_pattern_master_table
+sound_pattern_table
 .pattern_00_offset  dc.w (sound_pattern_00-.pattern_00_offset)        ; Pattern 00 - Sound ID 00 - Title Music
 .pattern_01_offset  dc.w (sound_pattern_01-.pattern_01_offset)        ; Pattern 01 - Sound ID 00 - Title Music
 .pattern_02_offset  dc.w (sound_pattern_02-.pattern_02_offset)        ; Pattern 02 - Sound ID 00 - Title Music
@@ -3114,7 +3188,7 @@ sound_pattern_master_table
 
                ; ------------------------------------ Sound Track Data -------------------------------------
                ; Each sound has track data for each channel addressed via the byte offset
-               ; stored in the sound_master_table above. 
+               ; stored in the 'sound_table' above. 
                ;
                ; Each track contains a mixture of commands and pattern Id's that are used
                ; to describe the music for that channel. 
@@ -3122,7 +3196,7 @@ sound_pattern_master_table
                ;    - Commands are 1 byte values that are greater than $80, 
                ;    - Pattern Id's are 1 byte values less than $80.
                ;
-               ; The Pattern Id's are an index into the 'sound_pattern_master_table'
+               ; The Pattern Id's are an index into the 'sound_pattern_table'
                ;
                ; The Pattern Commands are:
                ;
@@ -3724,7 +3798,10 @@ initialise_title_screen                                         ; original routi
                 move.w  d0,$00dff088
                 move.b  #$7f,$00bfed01
                 move.b  #$7f,$00bfed01
-                jsr     SoundDriver_Initialise                 ; calls $00004000
+
+               lea      MUSIC_MODULE_DATA,a0
+               jsr      SoundDriver_Initialise                   ; calls $00004000
+                
                 move.l  #$00001f40,d0                           ; d0 = bitplane size in bytes (8000)
                 bra.w   reset_title_screen_display              ; calls $0001d2de
 
