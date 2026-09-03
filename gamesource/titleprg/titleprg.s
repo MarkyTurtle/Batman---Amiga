@@ -51,10 +51,15 @@ SOUND_BATMAN_SPEACH EQU  $3
 
 
 
-TEST_TITLEPRG SET 1             ; run a test build with imported GFX
-DEBUG_TYPER   SET 1             ; when set - updated text type on the title screen.
-VBLANK_FIX    SET 1             ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
-TEST_JOKER    SET 1             ; start with joker screen, comment out to start with batman screen
+TEST_TITLEPRG            SET 1     ; run a test buildin VSCode, else build to absolute address
+
+TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
+                                   ; comment out to test JOKER, BATMAN return screens.
+TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
+
+DEBUG_TYPER              SET 1     ; when set - updated text type on the title screen.
+VBLANK_FIX               SET 1     ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
+
 
 
 
@@ -66,10 +71,14 @@ TEST_JOKER    SET 1             ; start with joker screen, comment out to start 
                ; RELATIVE ADDRESSING BUILD
                ; When testing in VSCode, set resource address consstants and
                ; include code to take over the system and start the title screen.
-DISPLAY_BITPLANE_ADDRESS        EQU     test_display
-ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c                 ; address of charset in memory
-JOKER_GFX                       EQU     test_bitplanes+$AA06
-BATMAN_GFX                      EQU     test_bitplanes+$1722A
+DISPLAY_BITPLANE_ADDRESS        EQU     test_display                  ; address of display buffer
+ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c            ; address of charset in memory
+JOKER_GFX                       EQU     test_bitplanes+$AA06          ; address of JOKER energy panel GFX
+BATMAN_GFX                      EQU     test_bitplanes+$1722A         ; address of BATMAN energy panel GFX
+PANEL_STATUS_1                  EQU     PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
+PANEL_STATUS_2                  EQU     PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
+PANEL_HIGHSCORE                 EQU     PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
+PANEL_PLAYERSCORE               EQU     PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
 
 kill_system
                lea     $dff000,a6
@@ -80,21 +89,47 @@ kill_system
                bsr     init_system
 
 .start_title_screen
-               ;jmp     title_screen_start                      ; Entry point $0001c000
-               jmp     end_game_start
+               jmp     title_screen_start                      ; Entry point $0001c000
+               ;jmp     end_game_start
 
-                include "initsystem.s"
+               include "initsystem.s"
+
+               even
+               ; Status Byte 1 bits (1 = active)
+               ;   - 0 = Timer Has Expired
+               ;   - 1 = No Player Lives Left
+               ;   - 2 = Life has been lost
+PANEL_StatusByte_01                     ; original address $0007c874
+               dc.b    $00  
+
+               ; Status Byte 2 Bits (1 = active)
+               ;   - 0 = Music/FX
+               ;   - 5 = Game Over
+               ;   - 6 = Game Completed
+               ;   - 7 = Cheat Active
+PANEL_StatusByte_02                     ; original address $0007c875
+               dc.b    $00          
+
+               even
+PANEL_HighScore_BCD                     ; original address $0007c878
+               dc.l    $00000000        ; High Score Value value (BCD 6 digits, first byte unused 000,000)
+
+PANEL_PlayerScore_BCD                   ; original address 0007c87c 
+               dc.l    $00030000        ; Player Score Value (BCD 6 digits, first byte unused 000,000)
 
           ELSE
                ; ABSOLUTE ADDDRESSSING BUILD
                ; The original binaries of the game start with a long word that provide
                ; the start address of the file.
                ; Original Address $00003FFC        
-DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
-ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
-JOKER_GFX                       EQU     $49C40
-BATMAN_GFX                      EQU     $56460
-
+DISPLAY_BITPLANE_ADDRESS        EQU     $63190                        ; address of display bitplanes in memory
+ASSET_CHARSET_BASE              EQU     $3f1ea                        ; address of charset in memory
+JOKER_GFX                       EQU     $49C40                        ; address of Joker Energy Panel GFX
+BATMAN_GFX                      EQU     $56460                        ; address of Batman Energy Panel GFX
+PANEL_STATUS_1                  EQU     $0007c874                     ; address of Panel.Panel_Status_1  
+PANEL_STATUS_2                  EQU     $0007c875                     ; address of Panel.Panel_Status_2 
+PANEL_HIGHSCORE                 EQU     $0007c878                     ; address of Panel.High_Score 
+PANEL_PLAYERSCORE               EQU     $0007c87c                     ; address of Panel.Player_Score
                
                org     $3ffc       ; absolute compilation address
 
@@ -106,7 +141,7 @@ titleprg_start
 
 
   
-                ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
+                ;------------------------ TITLE SCREEN ENTRY POINTS ---------------------------
                 ; original address hardcoded to $1c000, 
                 ; I may change this so that the jump table is placed at $4000-$0c
                 ; to create a jump table that starts at $3FF4 but this will require an update
@@ -129,10 +164,6 @@ end_game_start                                                  ; original routi
 
 PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c               ; address of Panel.Initialise_Player_Score
 PANEL_INITIALISE_PLAYER_LIVES   EQU     $0007c838               ; address of Panel.Initialise_Player_Lives
-PANEL_STATUS_1                  EQU     $0007c874               ; address of Panel.Panel_Status_1  
-PANEL_STATUS_2                  EQU     $0007c875               ; address of Panel.Panel_Status_2 
-PANEL_HIGHSCORE                 EQU     $0007c878               ; address of Panel.High_Score 
-PANEL_PLAYERSCORE               EQU     $0007c87c               ; address of Panel.Player_Score
 LOADER_LOAD_LEVEL_1             EQU     $824                    ; address of Loader.Load_Level_1()
 
 PANEL_STATUS_2_INFINITE_LIVES   EQU     $7                      ; panel status 2: bit 7 = 1 (infinite lives on)
@@ -810,7 +841,7 @@ char_plot_y_coord                               ; original address $0001c45c
 plot_character
                 moveq   #$00,d3
                 moveq   #$00,d2
-                move.w  char_plot_y_coord,d2            ; L0001c45c,d3 ; y co-ordinate
+                move.w  char_plot_y_coord,d3            ; L0001c45c,d3 ; y co-ordinate
                 move.w  char_plot_x_coord,d2            ; L0001c45a,d2 ; x co-ordinate
                 mulu.w  #$0028,d3                       ; d3 = d3 * 40 (raster line)
                 add.w   d3,d2                           ; d2 = x & y co-ords byte offset
@@ -971,7 +1002,7 @@ hi_score_and_text_typer                                                 ; origin
                 moveq   #$00,d0
 .score_check_loop
                 move.l  (a5),d6                                         ; d6 = next lowest high score
-                cmp.l   PANEL_HIGHSCORE,d6                              ; High Score/Player Score
+                cmp.l   PANEL_PLAYERSCORE,d6                              ; High Score/Player Score
                 bgt.w   .not_high_score                                 ; jmp $0001c5ec
 .is_higher_score
                 ; copy score display text down the list one entry
@@ -1001,11 +1032,12 @@ hi_score_and_text_typer                                                 ; origin
                 ; d0 = score index
 .is_an_high_score                                                       ; original address $0001c5f2
                 move.l  (a5),$0004(a5)
-                move.l  PANEL_HIGHSCORE,(a5)                            ; set high score in score table
+                move.l  PANEL_PLAYERSCORE,(a5)                          ; set high score in score table
                 move.b  #$20,$000a(a4)                                  ; insert space at text display index 10 - initial 1
                 move.b  #$20,$000b(a4)                                  ; insert space at text display index 11 - initial 2
                 move.b  #$20,$000c(a4)                                  ; insert space at text display index 12 - initial 3
 
+               ; add player score to score table as ASCII chars for display
 .add_score_to_table_bcd
 .digits_1_and_2                                                         ; original address $0001c60e
                 movem.l d0,-(a7)                                        ; save d0 (score entry index)
