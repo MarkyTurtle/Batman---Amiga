@@ -57,34 +57,27 @@ VBLANK_FIX    SET 1             ; Implement VBLANK FIX (remove processor wait fr
 TEST_JOKER    SET 1             ; start with joker screen, comment out to start with batman screen
 
 
-        IFND TEST_TITLEPRG
-                org     $3ffc                                           ; original load address $3FFC
-        ENDC
 
 
-        IFND TEST_TITLEPRG
-DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
-ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
-JOKER_GFX                       EQU     $49C40
-BATMAN_GFX                      EQU     $56460
-        ELSE
+           ;--------------------------- conditional start-up code ----------------------------
+          ; if TEST_TITLEPRG is defined then can build an execute in VSCode
+          ;
+          IFD TEST_TITLEPRG  
+               ; RELATIVE ADDRESSING BUILD
+               ; When testing in VSCode, set resource address consstants and
+               ; include code to take over the system and start the title screen.
 DISPLAY_BITPLANE_ADDRESS        EQU     test_display
 ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c                 ; address of charset in memory
 JOKER_GFX                       EQU     test_bitplanes+$AA06
 BATMAN_GFX                      EQU     test_bitplanes+$1722A
-        ENDC
-
-
-
-        IFD TEST_TITLEPRG  
 
 kill_system
-                lea     $dff000,a6
-                move.w  #$7fff,INTENA(a6)
-                move.w  #$7fff,DMACON(a6)
-                move.w  #$7fff,INTREQ(a6)   
-                lea     kill_system,a7                              ; initialise stack 
-                bsr     init_system
+               lea     $dff000,a6
+               move.w  #$7fff,INTENA(a6)
+               move.w  #$7fff,DMACON(a6)
+               move.w  #$7fff,INTREQ(a6)   
+               lea     kill_system,a7                              ; initialise stack 
+               bsr     init_system
 
 .start_title_screen
                ;jmp     title_screen_start                      ; Entry point $0001c000
@@ -92,46 +85,24 @@ kill_system
 
                 include "initsystem.s"
 
-        ENDC
+          ELSE
+               ; ABSOLUTE ADDDRESSSING BUILD
+               ; The original binaries of the game start with a long word that provide
+               ; the start address of the file.
+               ; Original Address $00003FFC        
+DISPLAY_BITPLANE_ADDRESS        EQU     $63190                          ; address of display bitplanes in memory
+ASSET_CHARSET_BASE              EQU     $3f1ea                          ; address of charset in memory
+JOKER_GFX                       EQU     $49C40
+BATMAN_GFX                      EQU     $56460
 
+               
+               org     $3ffc       ; absolute compilation address
 
-                ;-------------------------- title prg start -----------------------------
-                ; The original binaries of the game start with a long word that provide
-                ; the load/address of the file.
 titleprg_start
-        dc.l    $00004000                                       ; original start address $00003FFC
+               dc.l $00004000      ; perhaps an artifact of the original 'absolute addressing' build system (most files contain this initial address)                                  
 
 
-
-
-
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;
-                ;
-                ;               NEW ENTRY POINT TO TITLE SCREEN 
-                ;               Added to have known entry points into the title screen (updated new loader to compensate)
-                ;
-                ;
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;****************************************************************************************************************
-                ;------------------------ TITLE SCREEN ENTRY POINT ---------------------------
-                ;jmp   title_screen_start                        ; original address jmp $0001c000
-                ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
-                ;jmp   end_game_start                            ; original address jmp $0001c006
-
-
-
-
-
-
-
-
-
-
-
+          ENDC
 
 
   
