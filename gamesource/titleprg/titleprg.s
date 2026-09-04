@@ -62,8 +62,8 @@ TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same a
 DEBUG_TYPER              SET 1     ; when set - updated text type on the title screen.
 VBLANK_FIX               SET 1     ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
 
-TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
-;TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
+;TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
+TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
 
 
 
@@ -194,7 +194,7 @@ PANEL_STATUS_2_MUSIC_SFX        EQU     $0                      ; Music/SFX (0 =
                 ;
 do_title_screen_start                                           ; original routine address $0001c008
                 clr.l   PANEL_HIGHSCORE                         ; clear Panel.HighScore
-                move.l  highscore_table,PANEL_HIGHSCORE         ; set Panel.HighScore to top high-score
+                move.l  highscore_table_BCD_format,PANEL_HIGHSCORE         ; set Panel.HighScore to top high-score
                 ; continue as 'return_to_title_screen' below
 
 
@@ -248,7 +248,7 @@ start_game                                                      ; original addre
                 moveq   #$01,d0                                 ; d0 = frames to wait + 1
                 bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
 .init_game
-                move.l  highscore_table,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
+                move.l  highscore_table_BCD_format,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
                 jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
                 jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
                 jsr     SoundDriver_StopSound                              ; calls $00004008
@@ -731,7 +731,9 @@ unused_background_flash                                 ; original routine addre
                 rts 
 
 
-
+DISPLAY_WIDTH_BYTES      EQU $28        ; display width = 40 bytes per scan line
+TYPERCHAR_BITPLANE_SIZE  EQU $10        ; character set = 16 bytes per bitplane
+TYPERCHAR_WIDTH_BYTES    EQU $2         ; character is 2 bytes wide (16 pixels)
 
                 ;----------------------- text typer ------------------------
                 ; type out screen of text, also process control codes for
@@ -742,12 +744,12 @@ unused_background_flash                                 ; original routine addre
                 ;          x bytes - text & display codes
                 ;          1 byte  - #$ff - end text display
                 ;
-text_typer                                                      ; original routine address $0001c324
+_run_text_typer                                                      ; original routine address $0001c324
                 move.l  a6,current_text_ptr                     ; $0001c314 ; store a6 address (used for looping when CODE #$00)
                 move.b  (a6)+,x_coord+1                         ; store x coord - $0001c311
                 move.b  (a6)+,y_coord+1                         ; store y coord - $0001c313
 
-resume_text_start_line
+resume_text_typer_start_line
                 moveq   #$00,d0
                 move.w  y_coord,d0                              ; $0001c312 ; d0 = y co-ord
                 mulu.w  #$0028,d0                               ; d0 = d0 * 40 (bytes per scan line)
@@ -756,7 +758,7 @@ resume_text_start_line
                 exg.l   d0,a2                                   ; a2 = display destination address
                 movea.l a2,a3                                   ; a3 = display destination address
 
-resume_text_current_position
+resume_text_typer_current_position
                 tst.w   typer_extended_command_1                ; $0001c782 - exension command/params (for commands #$02)
                 bne.w   continue_wait_or_start_game             ; jmp $0001c50e
                 move.b  (a6)+,d0                                ; get display param
@@ -809,32 +811,47 @@ resume_text_current_position
 
 .space_symbol
                 addq.l  #$01,a3
-                bra.w   resume_text_current_position            ; jmp $0001c352
+                bra.w   resume_text_typer_current_position            ; jmp $0001c352
 
 .plot_character
-                mulu.w  #$0050,d0
-                add.l   #ASSET_CHARSET_BASE,d0                  ; #$0003f1ea,d0
-                exg.l   d0,a1
-                moveq   #$04,d7                                 ; d7 = 4 + 1 = 5 bitplanes
-                moveq   #$00,d1
-                movea.l a3,a2
-.copy_loop
-                move.b  (a1),(a2)                               ; copy char data - line 1
-                move.b  $0002(a1),$0028(a2)                     ; copy char data - line 2
-                move.b  $0004(a1),$0050(a2)                     ; copy char data - line 3
-                move.b  $0006(a1),$0078(a2)                     ; copy char data - line 4
-                move.b  $0008(a1),$00a0(a2)                     ; copy char data - line 5
-                move.b  $000a(a1),$00c8(a2)                     ; copy char data - line 6
-                move.b  $000c(a1),$00f0(a2)                     ; copy char data - line 7
-                move.b  $000e(a1),$0118(a2)                     ; copy char data - line 8
+               ; decrement character offset by 1, to match gfx data
+               subq.w   #1,d0
 
-                adda.l  #$00000010,a1                           ; add 16 bytes to source (next bitplane of character)
-                adda.l  bitplane_size,a2                        ; increment dest to next bitplane.
-                dbf.w   d7,.copy_loop                           ; bitplane loop, jmp $0001c416
-                
-                addq.l  #$01,a3                                 ; increment x position
-                bra.w   resume_text_current_position            ; loop next char, $0001c352
-                rts  
+               ; calculate the character gfx data address from the character offset
+               ; 80 bytes per char (16 bytes per bitplane * 5 bitplanes)
+               mulu.w  #$0050,d0
+               add.l   #ASSET_CHARSET_BASE,d0
+               exg.l   d0,a1
+
+               ; set up bitplane loop counter
+               moveq   #$04,d7                                 
+
+               ; set gfx destination address for plotting character
+               movea.l a3,a2
+.copy_loop
+                    ; plot the bitplane bytes
+                    move.b  TYPERCHAR_WIDTH_BYTES*0(a1),DISPLAY_WIDTH_BYTES*0(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*1(a1),DISPLAY_WIDTH_BYTES*1(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*2(a1),DISPLAY_WIDTH_BYTES*2(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*3(a1),DISPLAY_WIDTH_BYTES*3(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*4(a1),DISPLAY_WIDTH_BYTES*4(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*5(a1),DISPLAY_WIDTH_BYTES*5(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*6(a1),DISPLAY_WIDTH_BYTES*6(a2)
+                    move.b  TYPERCHAR_WIDTH_BYTES*7(a1),DISPLAY_WIDTH_BYTES*7(a2)
+
+                    ; update source and destination addresses for next bitplane
+                    adda.l  #TYPERCHAR_BITPLANE_SIZE,a1  
+                    adda.l  bitplane_size,a2  
+
+               ; draw next bitplane   
+               dbf.w   d7,.copy_loop         
+               
+               ; move cursor to next x position for next character
+               addq.l  #$01,a3
+
+               ; continue typing at the current position on the screen
+               bra.w   resume_text_typer_current_position
+               ;rts  
 
 
 
@@ -858,8 +875,9 @@ plot_character
                 add.l   #DISPLAY_BITPLANE_ADDRESS,d2    ; #$00063190 ; add bitplane 1 base address
                 exg.l   d2,a2                           ; a2 = dest address, d1 = prev value of a2
                 and.l   #$0000003f,d0                   ; clamp d0 to 0-63
+                subq.w  #$0001,d0                       ; decrement character offset by 1, to match gfx data
                 mulu.w  #$0050,d0                       ; 80 bytes per char (16 bytes per bitplane) 8*8
-                add.l   #ASSET_CHARSET_BASE,d0           ; #$0003f1ea ; character set gfx base address
+                add.l   #ASSET_CHARSET_BASE,d0          ; #$0003f1ea ; character set gfx base address
                 exg.l   d0,a1                           ; a1 = character source address
                 moveq   #$04,d7                         ; d7 = 4 + 1 - bitplane loop count
                 moveq   #$00,d1                         ; d1 = 0
@@ -885,7 +903,7 @@ plot_character
                 ; line on the screen.
 crlf                                                    ; original address $0001c4d0
                 add.w   #$0008,y_coord                  ; $0001c312, add 8 scan lines to y coord
-                bra.w   resume_text_start_line          ; jmp $0001c336
+                bra.w   resume_text_typer_start_line          ; jmp $0001c336
 
 
 
@@ -895,7 +913,7 @@ crlf                                                    ; original address $0001
 lf                                                      ; original address $0001c4dc
                 adda.l  #$00000140,a3                   ; add 320 to raster line (next page)
                 movea.l a3,a2                           ; update dest display ptrs
-                bra.w   resume_text_current_position    ; jmp $0001c352
+                bra.w   resume_text_typer_current_position    ; jmp $0001c352
 
 
 
@@ -906,7 +924,7 @@ cls
                 bsr.w   copy_title_screen_bitplanes     ; calls $0001ca34
                 move.w  #$0007,x_coord                  ; $0001c310
                 clr.w   y_coord                         ; $0001c312 
-                bra.w   resume_text_start_line          ; $0001c336 
+                bra.w   resume_text_typer_start_line          ; $0001c336 
 
 
 
@@ -938,7 +956,7 @@ continue_wait_or_start_game
                 btst.b  #$0007,$00bfe001                ; Port 2 Fire Button (Joystick)
                 beq.b   .firebutton_pressed             ; $0001c52e ; if button pressed, start game?
                 sub.w   #$0001,typer_extended_command_1 ; $0001c782 - decrement fame wait time
-                bra.w   resume_text_current_position    ; jmp $0001c352
+                bra.w   resume_text_typer_current_position    ; jmp $0001c352
 
 .firebutton_pressed
                 jmp     start_game                      ; jmp $0001c05e
@@ -950,8 +968,8 @@ continue_wait_or_start_game
                 ;             saved text prt
 loop_text_typer                                                 ; original address $0001c534
                 movea.l current_text_ptr,a6                     ; $0001c314 [00000000],a6
-                bra.w   text_typer                              ; calls $0001c324 - display text
-                ; use text_typer rts to return
+                bra.w   _run_text_typer                              ; calls $0001c324 - display text
+                ; use _run_text_typer rts to return
 
 
 
@@ -961,7 +979,7 @@ loop_text_typer                                                 ; original addre
 hi_scores                                                       ; original routine address $0001c53e
                 move.l  a6,temp_typer_text_ptr                  ; $0001c77e ; store current text typer ptr position
                 movea.l #high_score_display_text,a6             ; #$0001c974 ; resume text from this location (HI SCORE TABLE)
-                bra.w   resume_text_current_position            ; jmp $0001c352
+                bra.w   resume_text_typer_current_position            ; jmp $0001c352
 
 
 
@@ -970,7 +988,7 @@ hi_scores                                                       ; original routi
                 ;
 end_hi_scores                                                   ; original routine address $0001c54e
                 movea.l temp_typer_text_ptr,a6                  ; $0001c77e ; restore text typer source ptr from saved location
-                bra.w   resume_text_current_position            ; jmp $0001c352
+                bra.w   resume_text_typer_current_position            ; jmp $0001c352
 
 
 
@@ -980,14 +998,14 @@ maybe_backspace                                                 ; original routi
                 move.b  #$20,d0
                 bsr.w   plot_character                          ; calls $0001c45e
                 sub.w   #$0001,x_coord                          ; $0001c310
-                bra.w   resume_text_current_position            ; jmp $0001c352
+                bra.w   resume_text_typer_current_position            ; jmp $0001c352
 
 
 
                 ;-------------------- nop -----------------------
                 ; do nothing, just resume text typing
 _nop                                                            ; original address $0001c580
-                bra.w   resume_text_current_position            ; jmp $0001c352
+                bra.w   resume_text_typer_current_position            ; jmp $0001c352
 
 
 
@@ -1006,34 +1024,57 @@ _nop                                                            ; original addre
                 ; enter intials.
                 ; start title screen text typer loop.
                 ;
-hi_score_and_text_typer                                                 ; original routine address $0001c586
-                lea.l   highscore_table+16,a5                           ; L0001ca28,a5 ; Lowest Hi Score (5th)
-                lea.l   end_highscore_display_text,a4                   ; L0001c9fc,a4 ; end of score table display text
+                ; Original Address $0001c586
+                ;
+hi_score_and_text_typer                  
+               ; a5.l = lowest highscore table entry (5th)                               
+               lea.l   highscore_table_BCD_format+16,a5 
+
+               ; a4.l = text display for highscore table (6th entry) not displayed, 
+               ; used for rolling down the last entry making space for the new high score entry.
+               lea.l   end_of_highscore_table_text,a4
+                
+               ; initialise d0.l (index into score_y_coord_table) to 0
                 moveq   #$00,d0
-.score_check_loop
-                move.l  (a5),d6                                         ; d6 = next lowest high score
-                cmp.l   PANEL_PLAYERSCORE,d6                              ; High Score/Player Score
-                bgt.w   .not_high_score                                 ; jmp $0001c5ec
+.hiscore_check_loop
+                    ; get high score entry from BCD table,
+                    move.l  (a5),d6                        
+                    ; compare high score entry with player score
+                    cmp.l   PANEL_PLAYERSCORE,d6                 
+                    ; if not higher than the current high score then exit loop
+                    bgt.w   .exit_hiscore_check_loop
+
 .is_higher_score
-                ; copy score display text down the list one entry
-                move.l  (a5),$0004(a5)                                  ; shift lowest high score down the table
-                subq.l  #$04,a5                                         ; update pointer to next highest score
-                suba.l  #$00000017,a4                                   ; #$17 (23) update pointer to next highest score (display text)
-                move.b  $000a(a4),$0021(a4)                             ; copy display test down the table.
-                move.b  $000b(a4),$0022(a4)
-                move.b  $000c(a4),$0023(a4)
-                move.b  $000f(a4),$0026(a4)
-                move.b  $0010(a4),$0027(a4)
-                move.b  $0011(a4),$0028(a4)
-                move.b  $0012(a4),$0029(a4)
-                move.b  $0013(a4),$002a(a4)
-                move.b  $0014(a4),$002b(a4)
-                addq.w  #$01,d0                                         ; increase index counter
-                cmp.w   #$0005,d0                                       ; 5 high scores to check against
-                bne.w   .score_check_loop
+                    ; copy current hi-score text down one entry in the list
+                    ; makes space for the new high score entry to be inserted into the table.
+
+                    ; first move the entry down in the BCD score table
+                    move.l  (a5),$0004(a5)
+                    subq.l  #$04,a5
+                    
+                    ; second move the entry down in the text display table
+                    ; get pointer to text display entry to move down - #$17 (23) characters 
+                    suba.l  #$00000017,a4                 
+                    move.b  $000a(a4),$0021(a4)           ; copy display test down the table.
+                    move.b  $000b(a4),$0022(a4)
+                    move.b  $000c(a4),$0023(a4)
+                    move.b  $000f(a4),$0026(a4)
+                    move.b  $0010(a4),$0027(a4)
+                    move.b  $0011(a4),$0028(a4)
+                    move.b  $0012(a4),$0029(a4)
+                    move.b  $0013(a4),$002a(a4)
+                    move.b  $0014(a4),$002b(a4)
+
+                    ; increase index counter for score_y_coord_table
+                    addq.w  #$01,d0
+               
+               ; have we checked all 5 high score entries?
+               cmp.w   #$0005,d0                                       ; 5 high scores to check against
+               bne.w   .hiscore_check_loop
 
                 ; d0 = high score entry counting from bottom of the table 1-5
-.not_high_score
+.exit_hiscore_check_loop
+.check_hiscore_index
                 tst.w   d0
                 beq.w   display_title_screen_text                       ; if d0 = 0 then not an high score, jmp $0001c760
 
@@ -1049,8 +1090,11 @@ hi_score_and_text_typer                                                 ; origin
 
                ; add player score to score table as ASCII chars for display
 .add_score_to_table_bcd
-.digits_1_and_2                                                         ; original address $0001c60e
-                movem.l d0,-(a7)                                        ; save d0 (score entry index)
+.digits_1_and_2  ; original address $0001c60e
+               
+               ; save d0.l (index of hi-score entry into score_y_coord_table)
+                movem.l d0,-(a7)
+                
                 move.b  $0003(a5),d0                                    ; d0 = score byte (BCD)
                 move.b  d0,d1                                           ; d1 = copy score byte (BCD)
                 and.b   #$0f,d0                                         ; d0 = low digit
@@ -1083,7 +1127,9 @@ hi_score_and_text_typer                                                 ; origin
 .init_enter_initials
                 adda.l  #$0000000a,a4                                   ; increase text display ptr by 10 chars
                 lea.l   score_y_coord_table,a0                          ; L0001c76a,a0
-                movem.l (a7)+,d0                                        ; d0 = restored table entry index
+                
+                ; restore d0.l (index of hi-score entry into score_y_coord_table)
+                movem.l (a7)+,d0
                 asl.w   #$01,d0                                         ; d0 = d0 * 2 (index to a0 table)
                 move.w  $00(a0,d0.w),char_plot_y_coord                  ; L0001c45c - set y co-ord 
                 move.w  #$0011,char_plot_x_coord                        ; L0001c45a - set x co-ord first char
@@ -1092,7 +1138,7 @@ hi_score_and_text_typer                                                 ; origin
                                                                         ; CODE #$04 makes typer End HighScore table
 .display_hiscore_table
                 lea.l   display_hiscores,a6                             ; L0001c96e ; (a6) = $0c30 - x,y display co-ords
-                bsr.w   text_typer                                      ; $0001c324 ; type text
+                bsr.w   _run_text_typer                                      ; $0001c324 ; type text
 
                 moveq   #$01,d6                                         ; d6 = initialise the current displayed character(initials entry)
                 bsr.w   .draw_current_character                         ; calls $0001c710 
@@ -1123,7 +1169,8 @@ hi_score_and_text_typer                                                 ; origin
                 bne.w   .stick_left                                     ; L0001c706
 
 .stick_right
-                cmp.w   #$001b,d6                                       ; check last character index
+                ;cmp.w   #$001b,d6                                       ; check last character index
+                cmp.w   #$0025,d6                                       ; check last character index
                 beq.w   .initials_entry_loop                            ; if at last character then loop
                 addq.w  #$01,d6                                         ; increment current character
                 bra.w   .draw_current_character                         ; calls $0001c710
@@ -1164,23 +1211,36 @@ hi_score_and_text_typer                                                 ; origin
 
 
 
-                ;--------------------- display title screen text -----------------------------
-                ; start the text typer routine that cycles through the text displayyed over
-                ; the title screen as a set of text pages. Includes the display of the 
-                ; high score table etc. 
-                ; strangely the typer routine also waits for the joystick button to be
-                ; pressed for the start game.
-                ;
-display_title_screen_text                                               ; original address $0001c760
-                lea.l   title_screen_text,a6                            ; $0001c784 - a6 = title screen text for display
-                bra.w   text_typer                                      ; jmp $0001c324 - display text
-                ; uses text_typer rts to return?
+               ;--------------------- display title screen text -----------------------------
+               ; start the text typer routine that cycles through the text displayed over
+               ; the title screen as a set of text pages. Includes the display of the 
+               ; high score table etc. 
+               ; strangely the typer routine also waits for the joystick button to be
+               ; pressed for the start game.
+               ;
+               ; Original Address $0001c760
+               ;
+display_title_screen_text         
+               ; start displaying title screen text
+               ; NB: typer returns when start button is pressed.
+               lea.l     title_screen_text,a6
+               bsr       _run_text_typer
+               rts
 
 
 
 
-score_y_coord_table                                             ; original address $0001C76A
-                dc.w $0058, $0060, $0050, $0040, $0030, $0020   ; table of y co-ord values for each line of the hi-score table on the screen, bottom to top (not sure if 1st entry is used)
+               ; ookup table of y co-ordinates for each line of the hi-score table on the screen, bottom to top
+               ; first entry is not used, 2nd entry is the bottom line of the hi-score table.
+               ; Original Address $0001C76A
+               ;
+score_y_coord_table                                             
+                dc.w $0058              ; unused entry as index always at least 1
+                dc.w $0060
+                dc.w $0050
+                dc.w $0040
+                dc.w $0030
+                dc.w $0020
 
 name_initials_count                                             ; original address $0001C776
                 dc.w $0000                                      ; count of hi-score initials entered during the entry loop. initialised to 3, exits loop when 0
@@ -1295,7 +1355,7 @@ high_score_display_text                                                         
                 dc.b $20,$20,$20,$20,$20,$33,$52,$44,$20,$20,$4A,$4F,$42,$20,$20,$30,$37,$35,$30,$30,$30,$0D,$0D   ;     3RD  JOB  075000
                 dc.b $20,$20,$20,$20,$20,$34,$54,$48,$20,$20,$42,$49,$4C,$20,$20,$30,$35,$30,$30,$30,$30,$0D,$0D   ;     4TH  BIL  050000
                 dc.b $20,$20,$20,$20,$20,$35,$54,$48,$20,$20,$4A,$4F,$4E,$20,$20,$30,$32,$35,$30,$30,$30,$0D,$0D   ;     5TH  JON  025000
-end_highscore_display_text                                                                                         ; original address $0001C9FC
+end_of_highscore_table_text                                                                                         ; original address $0001C9FC
 high_score_6th_entry                                                                                               ; original address $0001C9FC - not displayed, buffer to roll last entry into
                 dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$0D,$0D
                 dc.b $04                        ; #$04 - typer code - resume typer after high score table
@@ -1315,7 +1375,7 @@ L0001CA14       dc.b $00, $00, $00, $00
                 ; last score into when inserting a new
                 ; hi-score into the table.
                 ;
-highscore_table                                         ; original address $0001CA18
+highscore_table_BCD_format                                         ; original address $0001CA18
                 dc.l $00125000
                 dc.l $00100000
                 dc.l $00075000
@@ -2128,7 +2188,6 @@ titlescreen_gfx
                ; Each character is 5 bitplanes, so 16 x 5 = 80 bytes per character.
                ; 45 characters in total, including the initial blank character.
 character_set_gfx
-               dcb.b     80,$00                   ; initial blank character (Think there's an off by 1 error in the gfx)
                incbin    'character_set.raw'
 
 
