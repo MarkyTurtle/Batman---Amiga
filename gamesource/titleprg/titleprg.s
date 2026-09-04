@@ -53,15 +53,15 @@ SOUND_BATMAN_SPEACH EQU  $3
 
 TEST_TITLEPRG            SET 1     ; run a test buildin VSCode, else build to absolute address
 
-TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
+;TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
                                    ; comment out to test JOKER, BATMAN return screens.
-TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
+;TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
 
 DEBUG_TYPER              SET 1     ; when set - updated text type on the title screen.
 VBLANK_FIX               SET 1     ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
 
-TEST_PLAYER_SCORE   EQU  $00139876 ; BCD Score to start the title screen with
-                                   ; for testing player initials entry.
+TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
+;TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
 
 
 
@@ -72,14 +72,15 @@ TEST_PLAYER_SCORE   EQU  $00139876 ; BCD Score to start the title screen with
                ; RELATIVE ADDRESSING BUILD
                ; When testing in VSCode, set resource address consstants and
                ; include code to take over the system and start the title screen.
-DISPLAY_BITPLANE_ADDRESS        EQU     test_display                  ; address of display buffer
-ASSET_CHARSET_BASE              EQU     test_bitplanes-$4c            ; address of charset in memory
-JOKER_GFX                       EQU     test_bitplanes+$AA06          ; address of JOKER energy panel GFX
-BATMAN_GFX                      EQU     test_bitplanes+$1722A         ; address of BATMAN energy panel GFX
-PANEL_STATUS_1                  EQU     PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
-PANEL_STATUS_2                  EQU     PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
-PANEL_HIGHSCORE                 EQU     PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
-PANEL_PLAYERSCORE               EQU     PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
+DISPLAY_BITPLANE_ADDRESS      EQU  test_display                  ; address of display buffer
+ASSET_CHARSET_BASE            EQU  test_bitplanes-$4c            ; address of charset in memory (76 bytes into charset)
+JOKER_GFX                     EQU  joker_gfx                     ; address of JOKER Game Over Screen
+JOKER_PALETTE                 EQU  joker_background_palette
+BATMAN_GFX                    EQU  batman_gfx                    ; test_bitplanes+$1722A         ; address of BATMAN Game Completion Screen
+PANEL_STATUS_1                EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
+PANEL_STATUS_2                EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
+PANEL_HIGHSCORE               EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
+PANEL_PLAYERSCORE             EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
 
 kill_system
                lea     $dff000,a6
@@ -90,8 +91,11 @@ kill_system
                bsr     init_system
 
 .start_title_screen
+          IFD TEST_TITLESCREEN_START
                jmp     title_screen_start                      ; Entry point $0001c000
-               ;jmp     end_game_start
+          ELSE
+               jmp     end_game_start
+          ENDC
 
                include "initsystem.s"
 
@@ -125,7 +129,8 @@ PANEL_PlayerScore_BCD                        ; original address 0007c87c
                ; Original Address $00003FFC        
 DISPLAY_BITPLANE_ADDRESS        EQU     $63190                        ; address of display bitplanes in memory
 ASSET_CHARSET_BASE              EQU     $3f1ea                        ; address of charset in memory
-JOKER_GFX                       EQU     $49C40                        ; address of Joker Energy Panel GFX
+JOKER_GFX                       EQU     $49C40                        ; address of Joker Game Over Screen (starts with palette)
+JOKER_PALETTE                   EQU     $49C40+$40                    ; 
 BATMAN_GFX                      EQU     $56460                        ; address of Batman Energy Panel GFX
 PANEL_STATUS_1                  EQU     $0007c874                     ; address of Panel.Panel_Status_1  
 PANEL_STATUS_2                  EQU     $0007c875                     ; address of Panel.Panel_Status_2 
@@ -207,7 +212,7 @@ return_to_title_screen                                          ; original addre
                 bsr.w   initialise_title_screen                 ; calls $0001c0d8
 .init_display
                 move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
-                lea.l   title_screen_colors,a0                  ; $0001d79a - screen colours
+                lea.l   title_screen_palette,a0                  ; $0001d79a - screen colours
                 bsr.w   copper_copy                             ; calls $0001d3a0
 .init_game_status
                 and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
@@ -1859,7 +1864,7 @@ display_completion_screen                                                       
                 move.l  #$00001f40,d0                                           ; d0 = bitplane size (bytes) (8000)
                 bsr.w   reset_title_screen_display                              ; calls $0001d2de
                 move.w  #$4000,$00dff100                                        ; set 4 bitplane screen
-                lea.l   palette_16_colours,a0                                   ; L0001d4cc ; 16 colour palette address
+                lea.l   batman_background_palette,a0                            ; L0001d4cc ; 16 colour palette address
                 bsr.w   copper_copy                                             ; calls $0001d3a0
                 lea.l   BATMAN_GFX,a0                                            ; a0 = source gfx
                 ;lea.l   $00056460,a0                                            ; a0 = source gfx
@@ -1877,13 +1882,6 @@ display_completion_screen                                                       
 
 
 
-                ;------------------- 16 colour palette -----------------------
-                ; 16 colour palatte for the above.
-palette_16_colours                                                              ; original address $0001d4cc
-                dc.w $0000, $0ec2, $0e80, $0a40, $0820, $0e60, $0ea8, $0eca 
-                dc.w $0ea0, $0eee, $0222, $0444, $0666, $0888, $0AAA, $0CCC
-
-
 
 
                 ;---------------------- display end game joker -----------------------
@@ -1893,13 +1891,13 @@ display_endgame_joker                                                   ; origin
                 move.l  #$2800,d0                                       ; d0,d4 = bitplane size (bytes)
                 bsr.w   reset_title_screen_display                      ; calls $0001d2de
         IFND     TEST_TITLEPRG
-                lea.l   $00040000,a0
-                lea.l   JOKER_GFX,a0                                    ; a0 = display palette colour table
+                ;lea.l   $00040000,a0
+                lea.l   JOKER_PALETTE,a0                                ; a0 = display palette colour table
                 bsr.w   copper_copy                                     ; calls $0001d3a0
                 lea.l   JOKER_GFX+$40,a0                                ; a0 = display palette colour table
         ELSE
-                lea.l   test_bitplanes,a0                               ; a0 = display palette colour table
-                lea.l   JOKER_GFX+4,a0                                  ; a0 = display palette colour table
+                ;lea.l   test_bitplanes,a0                              ; a0 = display palette colour table
+                lea.l   JOKER_PALETTE+4,a0                              ; a0 = display palette colour table
                 bsr.w   copper_copy                                     ; calls $0001d3a0
                 lea.l   JOKER_GFX+$44,a0                                ; a0 = display palette colour table
         ENDC
@@ -2052,17 +2050,6 @@ copper_colors                                                   ; original addre
 
 
 
-                ;------------------------ title screen colours ---------------------
-                ; table of colours copied into the copper list colour registers.
-                ; the palette used for the title screen display.
-                ;
-title_screen_colors                                                     ; original address $0001D79A       
-                dc.w $0000, $0521, $0310, $0731, $0831, $0A41, $0B51, $0D61
-                dc.w $0E70, $0F80, $0F90, $0FA0, $0FB0, $0FC0, $0FE0, $0FF0
-                dc.w $0045, $0900, $0FFF, $0033, $0067, $0222, $0333, $0444
-                dc.w $0F99, $0666, $0706, $0504, $099A, $0403, $0302, $0DDE
-
-
 
 
           ;***********************************************************
@@ -2096,9 +2083,42 @@ test_display
 
           ENDC
 
+               ;------------------------ title screen colours ---------------------
+               ; Title Screen COlour Pallette.
+               ; Table of colours copied into the copper list colour registers.
+               ; Original Address $0001D79A
+               ;
+title_screen_palette                                                            
+               dc.w $0000,$0521,$0310,$0731,$0831,$0A41,$0B51,$0D61
+               dc.w $0E70,$0F80,$0F90,$0FA0,$0FB0,$0FC0,$0FE0,$0FF0
+               dc.w $0045,$0900,$0FFF,$0033,$0067,$0222,$0333,$0444
+               dc.w $0F99,$0666,$0706,$0504,$099A,$0403,$0302,$0DDE
 
 
+                ;------------------- 16 colour palette -----------------------
+                ; 16 colour palatte for the game completion screen.
+                ; Displays Batman and a message to the player.
+                ;
+                ; Notes:
+                ; The code actually copies 32 colours into the copper list
+                ; and originally overran the end of the table.
+                ;
+                ; Original Address $0001d4cc
+                ;
+batman_background_palette    
+               dc.w $0000,$0ec2,$0e80,$0a40,$0820,$0e60,$0ea8,$0eca 
+               dc.w $0ea0,$0eee,$0222,$0444,$0666,$0888,$0AAA,$0CCC
+               dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+               dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+               
+joker_background_palette
+               incbin    'joker_palette.raw'
 
+joker_gfx
+               incbin    'joker_gfx.raw'
+
+batman_gfx     
+               incbin    'batman.raw'
 
                ;*****************************************************
                ;  SOUND DRIVER LIBRARY CODE
