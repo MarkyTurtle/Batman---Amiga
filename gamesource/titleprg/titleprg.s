@@ -42,6 +42,8 @@
                incdir    "include/"
                incdir    "libs/"
                incdir    "libs/sound/"
+               incdir    "music/"
+               incdir    'gfx/'
                include   "hw.i"                             ; hardware custom register includes
                
 
@@ -53,7 +55,7 @@ SOUND_BATMAN_SPEACH EQU  $3
 
 TEST_TITLEPRG            SET 1     ; run a test buildin VSCode, else build to absolute address
 
-;TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
+TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
                                    ; comment out to test JOKER, BATMAN return screens.
 ;TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
 
@@ -72,11 +74,12 @@ TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
                ; RELATIVE ADDRESSING BUILD
                ; When testing in VSCode, set resource address consstants and
                ; include code to take over the system and start the title screen.
-DISPLAY_BITPLANE_ADDRESS      EQU  test_display                  ; address of display buffer
-ASSET_CHARSET_BASE            EQU  test_bitplanes-$4c            ; address of charset in memory (76 bytes into charset)
-JOKER_GFX                     EQU  joker_gfx                     ; address of JOKER Game Over Screen
-JOKER_PALETTE                 EQU  joker_background_palette
+DISPLAY_BITPLANE_ADDRESS      EQU  display_buffer                ; address of display buffer
+ASSET_CHARSET_BASE            EQU  character_set_gfx             ; test_bitplanes-$4c            ; address of charset in memory (76 bytes into charset)
+JOKER_GFX                     EQU  joker_gfx                     ; test_bitplanes+$AA06 - address of JOKER Game Over Screen
+JOKER_PALETTE                 EQU  joker_background_palette      ; test_bitplanes+$AA06+$40         ; address of JOKER Game Over Screen Palette
 BATMAN_GFX                    EQU  batman_gfx                    ; test_bitplanes+$1722A         ; address of BATMAN Game Completion Screen
+TITLE_SCREEN_GFX              EQU  titlescreen_gfx               ; test_bitplanes+(40*88)+10     ; 
 PANEL_STATUS_1                EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
 PANEL_STATUS_2                EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
 PANEL_HIGHSCORE               EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
@@ -127,11 +130,12 @@ PANEL_PlayerScore_BCD                        ; original address 0007c87c
                ; The original binaries of the game start with a long word that provide
                ; the start address of the file.
                ; Original Address $00003FFC        
-DISPLAY_BITPLANE_ADDRESS        EQU     $63190                        ; address of display bitplanes in memory
-ASSET_CHARSET_BASE              EQU     $3f1ea                        ; address of charset in memory
-JOKER_GFX                       EQU     $49C40                        ; address of Joker Game Over Screen (starts with palette)
-JOKER_PALETTE                   EQU     $49C40+$40                    ; 
-BATMAN_GFX                      EQU     $56460                        ; address of Batman Energy Panel GFX
+DISPLAY_BITPLANE_ADDRESS        EQU     $00003190                        ; address of display bitplanes in memory
+ASSET_CHARSET_BASE              EQU     $0003f1ea                        ; address of charset in memory
+JOKER_GFX                       EQU     $00049C40                        ; address of Joker Game Over Screen (starts with palette)
+JOKER_PALETTE                   EQU     $00049C40+$40                    ; 
+BATMAN_GFX                      EQU     $00056460                        ; address of Batman Energy Panel GFX
+TITLE_SCREEN_GFX                EQU     $00040000
 PANEL_STATUS_1                  EQU     $0007c874                     ; address of Panel.Panel_Status_1  
 PANEL_STATUS_2                  EQU     $0007c875                     ; address of Panel.Panel_Status_2 
 PANEL_HIGHSCORE                 EQU     $0007c878                     ; address of Panel.High_Score 
@@ -1329,17 +1333,14 @@ L0001CA2E       dc.w $0000, $0000                       ; **** UNUSED??? ****
 
 
 
-                even
-                ; --------------- Copy Title Screen Bitplanes ----------------
-                ; A0 = Source Address
+               
+               even
+               ; --------------- Copy Title Screen Bitplanes ----------------
+               ; A0 = Source Address
 copy_title_screen_bitplanes
-        IFND     TEST_TITLEPRG
-                lea.l   $00040000,a0
-        ELSE
-                lea.l   test_bitplanes+(40*88)+10,a0
-        ENDC
-                bra.w   copy_bitplanes_to_display                 ; calls $0001d3da
-                ; uses routine rts to return to caller
+               lea.l     TITLE_SCREEN_GFX,a0
+               bra.w     copy_bitplanes_to_display
+               ; uses routine rts to return to caller
 
 
 
@@ -1778,7 +1779,7 @@ copy_bitplane_memory                                            ; original routi
                 ; - 28 x 3 = 84 bytes per loop iteration
                 ; - 84 x 477 = 40,068 bytes
                 ;  - 320 x 200 screen = 8000 bytes per bitplane 
-                ;  - 8000 x5 = 40,0000
+                ;  - 8000 x5 = 40,000
                 ; - over copies 68 bytes?
                 ;
                 ; IN: A0 = ptr to src gfx
@@ -2052,9 +2053,22 @@ copper_colors                                                   ; original addre
 
 
 
-          ;***********************************************************
+          ;*************************************************************************************
+          ; DISPLAY BUFFER
+          ;*************************************************************************************
+          IFD TEST_TITLEPRG
+               even
+display_buffer    
+               dcb.w   40000,$f0f0                ; 3200 x 200 display buffer, 5 bitplanes, 40000 bytes
+
+          ENDC
+
+
+
+
+          ;*************************************************************************************
           ; TITLE SCREEN GRAPHICS
-          ;***********************************************************
+          ;*************************************************************************************
           ; Normally loaded into the absolute address $0003F236 by 
           ; the game loader.
           ; 
@@ -2064,27 +2078,10 @@ copper_colors                                                   ; original addre
           ;         - Title Screen Background GFX Joker, Batman and Batman Logo
           ;         - Game Over Screen (Joker Laughing)
           ;         - Game Completion Screen (Batman)
-          ;    - allocate display buffer for title screen (normally absolute address)
-          ;
-          IFD TEST_TITLEPRG
-               even
-test_bitplanes  
-               ; TITLEPIC.IFF - File loaded including loading screen
-               ; normally loaded before the TITLEPRG.IFF loads.
-               ; TODO: Separate out the individual GFX Files.
-               INCDIR './gfx/'
-               INCBIN 'titlepic.iff'
-
-               ; allocate display memory for title screen 
-               ; 320x200 - 5 bitplanes
-               even
-test_display    
-               dcb.w   40000,$f0f0
-
-          ENDC
+          
 
                ;------------------------ title screen colours ---------------------
-               ; Title Screen COlour Pallette.
+               ; Title Screen Colour Pallette.
                ; Table of colours copied into the copper list colour registers.
                ; Original Address $0001D79A
                ;
@@ -2110,7 +2107,8 @@ batman_background_palette
                dc.w $0ea0,$0eee,$0222,$0444,$0666,$0888,$0AAA,$0CCC
                dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
                dc.w $0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
-               
+
+           
 joker_background_palette
                incbin    'joker_palette.raw'
 
@@ -2120,6 +2118,30 @@ joker_gfx
 batman_gfx     
                incbin    'batman.raw'
 
+titlescreen_gfx
+               incbin    'titlescreen.raw'
+
+               ; Each character is 16 bits wide (2 bytes)
+               ; The character gfx only occupies the lower byte.
+               ; The characters are 8 lines high.
+               ; Each character is 2x8 = 16 bytes per bitplane.
+               ; Each character is 5 bitplanes, so 16 x 5 = 80 bytes per character.
+               ; 45 characters in total, including the initial blank character.
+character_set_gfx
+               dcb.b     80,$00                   ; initial blank character (Think there's an off by 1 error in the gfx)
+               incbin    'character_set.raw'
+
+
+
+
+
+               ;********************************************************************************
+               ;  AUDIO CODE & DATA
+               ;********************************************************************************
+               ; Audio code and data is grouped below.
+               ;
+
+
                ;*****************************************************
                ;  SOUND DRIVER LIBRARY CODE
                ;*****************************************************
@@ -2128,7 +2150,9 @@ batman_gfx
                ; the end of the title screen code.
                ; Original Address $00004000
                ;
+               even
                include   "sounddriver.s"
+
 
                ;*****************************************************
                ;  MUSIC MODULE DATA
@@ -2139,8 +2163,8 @@ batman_gfx
                ; the sound driver code in memory at the start of
                ; the title screen code in the real game.
                ;
+               even
 MUSIC_MODULE_DATA
-               incdir    "music/"
                include   "music/title_music_module.i"
 
 
