@@ -2064,30 +2064,60 @@ title_screen_colors                                                     ; origin
 
 
 
-
-
-        IFD TEST_TITLEPRG
-                even
+          ;***********************************************************
+          ; TITLE SCREEN GRAPHICS
+          ;***********************************************************
+          ; Normally loaded into the absolute address $0003F236 by 
+          ; the game loader.
+          ; 
+          ; if test build, then:
+          ;    - include gfx normally loaded into absolute address $0003F236
+          ;         - Title Screen Character Set
+          ;         - Title Screen Background GFX Joker, Batman and Batman Logo
+          ;         - Game Over Screen (Joker Laughing)
+          ;         - Game Completion Screen (Batman)
+          ;    - allocate display buffer for title screen (normally absolute address)
+          ;
+          IFD TEST_TITLEPRG
+               even
 test_bitplanes  
-                INCDIR './gfx/'
-                INCBIN 'titlepic.iff'
-                ;dcb.w   40068,$ff00
+               ; TITLEPIC.IFF - File loaded including loading screen
+               ; normally loaded before the TITLEPRG.IFF loads.
+               ; TODO: Separate out the individual GFX Files.
+               INCDIR './gfx/'
+               INCBIN 'titlepic.iff'
 
-                even
+               ; allocate display memory for title screen 
+               ; 320x200 - 5 bitplanes
+               even
 test_display    
-                dcb.w   40000,$f0f0
-        ENDC
+               dcb.w   40000,$f0f0
+
+          ENDC
+
+
 
 
 
                ;*****************************************************
                ;  SOUND DRIVER LIBRARY CODE
                ;*****************************************************
+               ; Notes, I've rearranged the title screen memory map
+               ; to include the sound driver and music module at
+               ; the end of the title screen code.
+               ; Original Address $00004000
+               ;
                include   "sounddriver.s"
 
                ;*****************************************************
                ;  MUSIC MODULE DATA
                ;*****************************************************
+               ; Notes: I've rearranged the title screen memory map
+               ; to 'modularise' the music to make it re-rusable and
+               ; relocateable in memory. This would normally follow
+               ; the sound driver code in memory at the start of
+               ; the title screen code in the real game.
+               ;
 MUSIC_MODULE_DATA
                incdir    "music/"
                include   "music/title_music_module.i"
