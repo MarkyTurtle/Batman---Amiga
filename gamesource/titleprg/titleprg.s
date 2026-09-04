@@ -60,7 +60,8 @@ TEST_JOKER               SET 1     ; start with joker screen, comment out to sta
 DEBUG_TYPER              SET 1     ; when set - updated text type on the title screen.
 VBLANK_FIX               SET 1     ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
 
-
+TEST_PLAYER_SCORE   EQU  $00139876 ; BCD Score to start the title screen with
+                                   ; for testing player initials entry.
 
 
 
@@ -107,15 +108,15 @@ PANEL_StatusByte_01                     ; original address $0007c874
                ;   - 5 = Game Over
                ;   - 6 = Game Completed
                ;   - 7 = Cheat Active
-PANEL_StatusByte_02                     ; original address $0007c875
+PANEL_StatusByte_02                          ; original address $0007c875
                dc.b    $00          
 
                even
-PANEL_HighScore_BCD                     ; original address $0007c878
-               dc.l    $00000000        ; High Score Value value (BCD 6 digits, first byte unused 000,000)
+PANEL_HighScore_BCD                          ; original address $0007c878
+               dc.l    $00000000             ; High Score Value value (BCD 6 digits, first byte unused 000,000)
 
-PANEL_PlayerScore_BCD                   ; original address 0007c87c 
-               dc.l    $00030000        ; Player Score Value (BCD 6 digits, first byte unused 000,000)
+PANEL_PlayerScore_BCD                        ; original address 0007c87c 
+               dc.l    TEST_PLAYER_SCORE     ; Player Score Value (BCD 6 digits, first byte unused 000,000)
 
           ELSE
                ; ABSOLUTE ADDDRESSSING BUILD
