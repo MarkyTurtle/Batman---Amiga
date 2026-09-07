@@ -1016,7 +1016,8 @@ _nop                                                            ; original addre
 
 
 
-
+HISCORE_TEXT_LINE_LEN    EQU $17        ; 23 bytes per line of text for hi score table
+HISCORE_TEXT_LINE_INITIALS_OFFSET  EQU $0a        ; 10 bytes into the line is where the initials are stored
 
                 ;------------------------ hi score and text typer -------------------------
                 ; If Player score is a high score then insert is into the 
@@ -1054,16 +1055,16 @@ hi_score_and_text_typer
                     
                     ; second move the entry down in the text display table
                     ; get pointer to text display entry to move down - #$17 (23) characters 
-                    suba.l  #$00000017,a4                 
-                    move.b  $000a(a4),$0021(a4)           ; copy display test down the table.
-                    move.b  $000b(a4),$0022(a4)
-                    move.b  $000c(a4),$0023(a4)
-                    move.b  $000f(a4),$0026(a4)
-                    move.b  $0010(a4),$0027(a4)
-                    move.b  $0011(a4),$0028(a4)
-                    move.b  $0012(a4),$0029(a4)
-                    move.b  $0013(a4),$002a(a4)
-                    move.b  $0014(a4),$002b(a4)
+                    suba.l  #HISCORE_TEXT_LINE_LEN,a4                 
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN(a4)           ; copy display test down the table.
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+1(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+1(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+2(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+2(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+5(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+5(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+6(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+6(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+7(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+7(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+8(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+8(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+9(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+9(a4)
+                    move.b  HISCORE_TEXT_LINE_INITIALS_OFFSET+10(a4),HISCORE_TEXT_LINE_INITIALS_OFFSET+HISCORE_TEXT_LINE_LEN+10(a4)
 
                     ; increase index counter for score_y_coord_table
                     addq.w  #$01,d0
