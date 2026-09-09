@@ -151,23 +151,22 @@ titleprg_start
 
 
   
-                ;------------------------ TITLE SCREEN ENTRY POINTS ---------------------------
-                ; original address hardcoded to $1c000, 
-                ; I may change this so that the jump table is placed at $4000-$0c
-                ; to create a jump table that starts at $3FF4 but this will require an update
-                ; to the new game loader to change the start jmp addresses of the title screen
-                ; and return to title screen loader methods.
-                ; I want to keep this file as 'original' as possible and anyy changes wil be
-                ; made in separate project.
-                ;
-title_screen_start                                              ; original routine address $0001c000
-                bra.w   do_title_screen_start                   ; jmp $0001c008 
 
 
 
-                ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
-end_game_start                                                  ; original routine address $0001c004
-                bra.w   do_return_to_title_screen               ; jmp $0001d450
+               ;------------------------ TITLE SCREEN ENTRY POINTS ---------------------------
+               ; Original Address $0001c000
+               ;
+title_screen_start                                              
+               bra.w   do_title_screen_start
+
+
+
+               ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
+               ; Original Address $0001c004
+end_game_start                                                  
+               bra.w   do_return_to_title_screen
+
 
 
 
@@ -183,77 +182,97 @@ PANEL_STATUS_2_MUSIC_SFX        EQU     $0                      ; Music/SFX (0 =
 
 
 
-                ;---------------------------- do title screenn start ----------------------------
-                ; Routine to set up & run the title screen the first time the game is started.
-                ; the routine 'return_to_title_screen' is called after game over/completion. 
-                ;
-                ; Sets Window start to bottom of screen (probably for scroll up routine)
-                ; H/w Ref, standard DIWSRT & DIWSTOP
-                ; PAL - $2c81, $2cc1
-                ; NTSC- $2c81, $f4c1
-                ;
-do_title_screen_start                                           ; original routine address $0001c008
-                clr.l   PANEL_HIGHSCORE                         ; clear Panel.HighScore
-                move.l  highscore_table_BCD_format,PANEL_HIGHSCORE         ; set Panel.HighScore to top high-score
-                ; continue as 'return_to_title_screen' below
+               ;---------------------------- do title screen start ----------------------------
+               ; Routine to set up & run the title screen the first time the game is started.
+               ; the routine 'return_to_title_screen' is called after game over/completion. 
+               ;
+               ; Sets Window start to bottom of screen (probably for scroll up routine)
+               ; H/w Ref, standard DIWSRT & DIWSTOP
+               ; PAL - $2c81, $2cc1
+               ; NTSC- $2c81, $f4c1
+               ;
+               ; Original Address $0001c008
+               ;
+do_title_screen_start   
+               ; set Panel.HighScore to top high-score                                        
+               clr.l   PANEL_HIGHSCORE
+               move.l  highscore_table_BCD_format,PANEL_HIGHSCORE  
+               ; continue to 'return_to_title_screen' below
 
 
 
 
-                ;------------------------- return to title screen ----------------------------
-                ; called after game over/compltion to return to the title screen.
-                ;
-return_to_title_screen                                          ; original address $0001c018
-                lea.l   temp_stack_top,a7                       ; set temp stack space - $0001d6de,a7
+               ;------------------------- return to title screen ----------------------------
+               ; called after game over/compltion to return to the title screen.
+               ;
+               ; Original Address $0001c018
+               ;
+return_to_title_screen                                          
+               lea.l   temp_stack_top,a7                       ; set temp stack space - $0001d6de,a7
 
 .init_display_window                                            ; Initialise Window Scroll (start window = bottom of NTSC display)
-                move.b  #$f4,copper_diwstrt                     ; reset window start line (usually $2c) - $0001d6e8
-                move.b  #$f4,copper_diwstop                     ; reset widndow stop line (usually $2c or $f4 PAL/NTSC ) - $0001d6ec
+               move.b  #$f4,copper_diwstrt                     ; reset window start line (usually $2c) - $0001d6e8
+               move.b  #$f4,copper_diwstop                     ; reset widndow stop line (usually $2c or $f4 PAL/NTSC ) - $0001d6ec
 .wait_frame
-                moveq   #$01,d0                                 ; d0 = frames to wait + 1
-                bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+               moveq   #$01,d0                                 ; d0 = frames to wait + 1
+               bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+
 .init_system
-                bsr.w   initialise_title_screen                 ; calls $0001c0d8
+               bsr.w   initialise_title_screen
+
 .init_display
-                move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
-                lea.l   title_screen_palette,a0                  ; $0001d79a - screen colours
-                bsr.w   copper_copy                             ; calls $0001d3a0
+               move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
+               lea.l   title_screen_palette,a0                 ; $0001d79a - screen colours
+               bsr.w   copper_copy                             ; calls $0001d3a0
+
 .init_game_status
-                and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
-                                                                ; low 3 bits of status 1 (game over, life lost, timer expired)
-                                                                ; bits 6 & 5 of status 2 (don't know what these do yet) - Think it's end game flags (success/fail etc)
+               and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
+                                                               ; low 3 bits of status 1 (game over, life lost, timer expired)
+                                                               ; bits 6 & 5 of status 2 (don't know what these do yet) - Think it's end game flags (success/fail etc)
 .init_music
-                bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
+               bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
+
 .init_background
-                bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
+               bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
 
 
-                ;************ TITLE SCREEN WAIT LOOP *****************
-                ; Manage hi-score entry and text typer display.
-                ; The text typer controls the main title-screen wait
-                ; loop, waits for joystick button press to jump
-                ; to 'start_game' below.
+               ;************ TITLE SCREEN WAIT LOOP *****************
+               ; Manage hi-score entry and text typer display.
+               ; The text typer controls the main title-screen wait
+               ; loop, waits for joystick button press to jump
+               ; to 'start_game' below.
 .title_screen_loop
-                bsr.w   hi_score_and_text_typer                 ; calls $0001c586
+               bsr.w   hi_score_and_text_typer
 
 
-                ;************* START GAME - LOAD LEVEL 1 *************
-                ;text typer jumps out to here when start button pressed
-start_game                                                      ; original address $0001c05e
-                not.w   start_game_flag                         ; invert bits, value not used anywhere else in the title screen. $0001c09c
+               ;************* START GAME - LOAD LEVEL 1 *************
+               ; text typer jumps out to here when start button pressed
+               ; Original Address $0001c05e
+start_game                                                      
+               ; set flag to start transition of end title screen
+               ; i.e. scroll title screen to bottom of display.
+               not.w   start_game_flag       
+
+               ; wait until screen scrolled to bottom of display
 .wait_diwstrt
-                cmp.b   #$f4,copper_diwstrt                     ; L0001d6e8
-                bne.b    .wait_diwstrt                          ; if starting before title screen has openned, then wait 
+               cmp.b   #$f4,copper_diwstrt
+               bne.b    .wait_diwstrt 
+
+               ; wait for a 2 frames for good luck
 .wait_frame
-                moveq   #$01,d0                                 ; d0 = frames to wait + 1
-                bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+               moveq   #$01,d0                                 
+               bsr.w   raster_wait_161
+
+               ; initialise player stats for new game
 .init_game
-                move.l  highscore_table_BCD_format,PANEL_PLAYERSCORE       ; set player score in panel to high score (reset next)
-                jsr     PANEL_INITIALISE_PLAYER_SCORE           ; calls Panel.Initialise_Player_Score
-                jsr     PANEL_INITIALISE_PLAYER_LIVES           ; calls Panel.Initialise_Player_Lives
-                jsr     SoundDriver_StopSound                              ; calls $00004008
+               move.l  highscore_table_BCD_format,PANEL_PLAYERSCORE
+               jsr     PANEL_INITIALISE_PLAYER_SCORE           
+               jsr     PANEL_INITIALISE_PLAYER_LIVES           
+               jsr     SoundDriver_StopSound                    
+
+               ; load and execute level 1
 .load_level_1
-                jmp     LOADER_LOAD_LEVEL_1                     ; jmp $00000824 - Loader.Load_Level_1
+               jmp     LOADER_LOAD_LEVEL_1
 
 
 
@@ -1016,17 +1035,61 @@ _nop                                                            ; original addre
 
 
 
-HISCORE_TEXT_LINE_LEN    EQU $17        ; 23 bytes per line of text for hi score table
-HISCORE_TEXT_LINE_INITIALS_OFFSET  EQU $0a        ; 10 bytes into the line is where the initials are stored
 
-                ;------------------------ hi score and text typer -------------------------
-                ; If Player score is a high score then insert is into the 
-                ; highscore table.
-                ; enter intials.
-                ; start title screen text typer loop.
-                ;
-                ; Original Address $0001c586
-                ;
+
+
+               ;------------------------ hi score and text typer -------------------------
+               ; This routine probably covers too much responsibility which make it
+               ; hard to understand. It does the following:-
+               ;
+               ;    1) Checks if the player's score is a high score.
+               ;         - As part of this check it manipulates 2 tables (if is a HiScore)
+               ;              - a) highscore_table_BCD_format - a table of 32 bit BCD formatted HiScore entries
+               ;              - b) highscore_table_text - the formatted display of the high scores for the title screen.
+               ;         - It will have moved the lower scores down into their new positions.
+               ;         - It will have calculated the Index into the tables for the new score and Initials to be entered.
+               ;
+               ;    2) IF is a HiScore THEN 
+               ;         - Populates new HiScore into BCD Score table (using index above)
+               ;         - Populates the Text Display ready for entering player initials (using index above)
+               ;         - Displays the HiScore Text Display
+               ;         - Enters a loop where Player Initials are entered
+               ;         - Calls the main title screen text typer (which also detects start game)
+               ;              - highscore_table_text
+               ;
+               ;       ELSE
+               ;         - Calls the main title screen text typer (which also detects start game)
+               ;              - highscore_table_text
+               ;
+               ;
+               ; Additional Note:
+               ;    The return from this routine is to the source of the BSR to hi_score_and_text_typer
+               ;    made from the 'return_to_title_screen' procedure which then transistions out of the
+               ;    title screen and calls the loader to load level 1.
+               ;
+               ; Original Address $0001c586
+               ;
+
+HISCORE_TEXT_LINE_LEN              EQU $17        ; 23 bytes per line of text for hi score table
+HISCORE_TEXT_LINE_INITIALS_OFFSET  EQU $0a        ; 10 bytes into the line is where the initials are stored
+HISCORE_ENTRIES_LIMIT              EQU $05        ; 5 entries in the hi score table
+HISCORE_TEXT_SCORE_DIGIT_OFFSET    EQU $000f      ; index to the first character of the HiScore text within the text line.
+HISCORE_TEXT_INITIALS_CHAR_OFFSET  EQU $0011      ; index to the first character of the Player Initials within the text line.
+
+               ; The score is stored as a long (32 bit) value in the BCD format, 
+               ; Only the lowest 24bits (3 bytes) are used to store 6 digits of the score.
+               ;  - the lowest 2 digist (units and tens) are stored 3 bytes into the BCD score table
+               ;  - the middle 2 digits (hundreds and thousands) are stored 1 byte into the BCD score table
+               ;  - the highest 2 digits (ten thousands and hundred thousands) are stored 2 bytes into the BCD score table
+               ;
+BCD_SCORE_LSB_OFFSET          EQU $0003           ; 3 bytes into the BCD score table is where the lowest 2 digits of the score are stored
+BCD_SCORE_MID_OFFSET          EQU $0002           ; 2 bytes into the BCD score table is where the middle 2 digits of the score are stored
+BCD_SCORE_MSB_OFFSET          EQU $0001           ; 1 byte into the BCD score table is where the highest 2 digits of the score are stored
+                                                  ; Byte at offset 0 is unused
+
+ASCII_CHAR_0                  EQU $30             ; ASCII char '0' = #$30, used to convert BCD digit to ASCII char for display
+ASCII_CHAR_SPACE              EQU $20             ; ASCII char ' ' = #$20, used to clear initials in hi score table text display
+
 hi_score_and_text_typer                  
                ; a5.l = lowest highscore table entry (5th)                               
                lea.l   highscore_table_BCD_format+16,a5 
@@ -1070,7 +1133,7 @@ hi_score_and_text_typer
                     addq.w  #$01,d0
                
                ; have we checked all 5 high score entries?
-               cmp.w   #$0005,d0                                       ; 5 high scores to check against
+               cmp.w   #HISCORE_ENTRIES_LIMIT,d0                                       ; 5 high scores to check against
                bne.w   .hiscore_check_loop
 
                 ; d0 = high score entry counting from bottom of the table 1-5
@@ -1082,67 +1145,82 @@ hi_score_and_text_typer
                 ; a4 = text display
                 ; a5 = score table
                 ; d0 = score index
-.is_an_high_score                                                       ; original address $0001c5f2
+.is_an_high_score            
+               ; move old BCD HiScore down in the BCD score table
                 move.l  (a5),$0004(a5)
+                ; insert new HiScore into DCB score table
                 move.l  PANEL_PLAYERSCORE,(a5)                          ; set high score in score table
-                move.b  #$20,$000a(a4)                                  ; insert space at text display index 10 - initial 1
-                move.b  #$20,$000b(a4)                                  ; insert space at text display index 11 - initial 2
-                move.b  #$20,$000c(a4)                                  ; insert space at text display index 12 - initial 3
+                
+               ; clear the initials in the text display for the new high score entry
+                move.b  #ASCII_CHAR_SPACE,HISCORE_TEXT_LINE_INITIALS_OFFSET(a4) 
+                move.b  #ASCII_CHAR_SPACE,HISCORE_TEXT_LINE_INITIALS_OFFSET+1(a4) 
+                move.b  #ASCII_CHAR_SPACE,HISCORE_TEXT_LINE_INITIALS_OFFSET+2(a4) 
 
-               ; add player score to score table as ASCII chars for display
-.add_score_to_table_bcd
-.digits_1_and_2  ; original address $0001c60e
-               
+               ; Add player score to text display score table as ASCII chars for display.
+               ; Converts pairs of digits from BCD to ASCII and stores them 
+               ; in the display text for the new high score entry.
+               ; a5 = address of BCD format score (32 bit long word)
+               ; a4 = address of line of text for the new high score entry (23 bytes)
+.add_score_to_table_bcd              
                ; save d0.l (index of hi-score entry into score_y_coord_table)
                 movem.l d0,-(a7)
-                
-                move.b  $0003(a5),d0                                    ; d0 = score byte (BCD)
+.digits_5_and_6_to_ASCII                
+                move.b  BCD_SCORE_LSB_OFFSET(a5),d0                     ; d0 = score byte (BCD)
                 move.b  d0,d1                                           ; d1 = copy score byte (BCD)
                 and.b   #$0f,d0                                         ; d0 = low digit
-                add.w   #$0030,d0                                       ; d0 = add Ascii base for '0'
+                add.w   #ASCII_CHAR_0,d0                                ; d0 = add Ascii base for '0'
                 lsr.b   #$04,d1                                         ; d1 = second score digit
-                add.w   #$0030,d1                                       ; d1 = add Ascii base for '0'
-                move.b  d0,$0014(a4)                                    ; store score digit 1 - least significant
-                move.b  d1,$0013(a4)                                    ; store score digit 2 - second digit
+                add.w   #ASCII_CHAR_0,d1                                ; d1 = add Ascii base for '0'
+                move.b  d0,HISCORE_TEXT_SCORE_DIGIT_OFFSET+5(a4)        ; store score digit 1 - least significant
+                move.b  d1,HISCORE_TEXT_SCORE_DIGIT_OFFSET+4(a4)        ; store score digit 2 - second digit
 
-.digits_3_and_4                                                         ; original address $0001c62e
-                move.b  $0002(a5),d0                                    ; d0 = score byte (BCD)
+.digits_3_and_4_to_ASCII                                                         ; original address $0001c62e
+                move.b  BCD_SCORE_MID_OFFSET(a5),d0                     ; d0 = score byte (BCD)
                 move.b  d0,d1                                           ; d1 = copy score byte (BCD)
                 and.b   #$0f,d0                                         ; d0 = low digit
-                add.w   #$0030,d0                                       ; d0 = add Ascii base for '0'
+                add.w   #ASCII_CHAR_0,d0                                ; d0 = add Ascii base for '0'
                 lsr.b   #$04,d1                                         ; d1 = second score digit
-                add.w   #$0030,d1                                       ; d1 = add Ascii base for '0'
-                move.b  d0,$0012(a4)                                    ; store score digit 1 - least significant
-                move.b  d1,$0011(a4)                                    ; store score digit 2 - second digit
+                add.w   #ASCII_CHAR_0,d1                                ; d1 = add Ascii base for '0'
+                move.b  d0,HISCORE_TEXT_SCORE_DIGIT_OFFSET+3(a4)        ; store score digit 1 - least significant
+                move.b  d1,HISCORE_TEXT_SCORE_DIGIT_OFFSET+2(a4)        ; store score digit 2 - second digit
 
-.digits_5_and_6                                                         ; original address $0001c64a
-                move.b  $0001(a5),d0                                    ; d0 = score byte (BCD)
+.digits_1_and_2_to_ASCII                                                         ; original address $0001c64a
+                move.b  BCD_SCORE_MSB_OFFSET(a5),d0                     ; d0 = score byte (BCD)
                 move.b  d0,d1                                           ; d1 = copy score byte (BCD)
                 and.b   #$0f,d0                                         ; d0 = low digit
-                add.w   #$0030,d0                                       ; d0 = add Ascii base for '0'
+                add.w   #ASCII_CHAR_0,d0                                ; d0 = add Ascii base for '0'
                 lsr.b   #$04,d1                                         ; d1 = second score digit
-                add.w   #$0030,d1                                       ; d1 = add Ascii base for '0'
-                move.b  d0,$0010(a4)                                    ; store score digit 1 - least significant
-                move.b  d1,$000f(a4)                                    ; store score digit 2 - second digit
+                add.w   #ASCII_CHAR_0,d1                                ; d1 = add Ascii base for '0'
+                move.b  d0,HISCORE_TEXT_SCORE_DIGIT_OFFSET+1(a4)        ; store score digit 1 - least significant
+                move.b  d1,HISCORE_TEXT_SCORE_DIGIT_OFFSET(a4)          ; store score digit 2 - second digit
 
 .init_enter_initials
-                adda.l  #$0000000a,a4                                   ; increase text display ptr by 10 chars
-                lea.l   score_y_coord_table,a0                          ; L0001c76a,a0
-                
-                ; restore d0.l (index of hi-score entry into score_y_coord_table)
-                movem.l (a7)+,d0
-                asl.w   #$01,d0                                         ; d0 = d0 * 2 (index to a0 table)
-                move.w  $00(a0,d0.w),char_plot_y_coord                  ; L0001c45c - set y co-ord 
-                move.w  #$0011,char_plot_x_coord                        ; L0001c45a - set x co-ord first char
-                move.w  #$0003,name_initials_count                      ; L0001c776 - number of letters to enter
-                move.b  #$04,high_score_6th_entry                       ; $0001C9FC - insert text typer code to not display last entry
-                                                                        ; CODE #$04 makes typer End HighScore table
-.display_hiscore_table
-                lea.l   display_hiscores,a6                             ; L0001c96e ; (a6) = $0c30 - x,y display co-ords
-                bsr.w   _run_text_typer                                      ; $0001c324 ; type text
+               ; set text position to the correct address for 1st initial character
+               adda.l  #HISCORE_TEXT_LINE_INITIALS_OFFSET,a4                                   ; increase text display ptr by 10 chars
+         
+               ; restore d0.l (index of hi-score entry into score_y_coord_table)
+               movem.l (a7)+,d0
 
-                moveq   #$01,d6                                         ; d6 = initialise the current displayed character(initials entry)
-                bsr.w   .draw_current_character                         ; calls $0001c710 
+               ; look up starting y screen co-ord for ploting Player Initials
+               lea.l   score_y_coord_table,a0 
+               asl.w   #$01,d0                                         ; d0 = d0 * 2 (index to a0 table)
+               move.w  $00(a0,d0.w),char_plot_y_coord                  ; L0001c45c - set y co-ord 
+               
+               ; set starting x screen co-ord for plotting Player Initials
+               move.w  #HISCORE_TEXT_INITIALS_CHAR_OFFSET,char_plot_x_coord                        ; L0001c45a - set x co-ord first char
+               
+               move.w  #$0003,name_initials_count                      ; L0001c776 - number of letters to enter
+               
+               ; Insert text typer code to end display of last hidden entry
+               ; CODE #$04 makes typer End HighScore table
+               move.b  #$04,high_score_6th_entry   
+             
+.display_hiscore_table
+               lea.l   display_hiscores,a6                             ; L0001c96e ; (a6) = $0c30 - x,y display co-ords
+               bsr.w   _run_text_typer                                      ; $0001c324 ; type text
+
+               moveq   #$01,d6                                         ; d6 = initialise the current displayed character(initials entry)
+               bsr.w   .draw_current_character                         ; calls $0001c710 
                 *** This never returns (looks like it should be a bra?) ***
                 *** Enters the .initials_entry_loop ***
                 *** Eventually jumps out at .end_intial_entry
@@ -1151,7 +1229,7 @@ hi_score_and_text_typer
                 moveq   #$04,d0
                 bsr.w   raster_wait_161                                 ; calls $0001c2f8 - wait 4 frames
                 clr.l   joystick_left                                   ; clear both joystick left & right flags - $0001c778
-                clr.w   unused_var_flag                                 ; clear the 16 bit word - appears unused else where - $0001c77c
+                ;clr.w   unused_var_flag                                 ; clear the 16 bit word - appears unused else where - $0001c77c
                 move.w  $00dff00c,d0                                    ; d0 = JOT1DAT
                 btst.l  #$0001,d0                                       ; joystick right (active high)
                 sne.b   joystick_right                                  ; $0001c77a
@@ -1236,12 +1314,12 @@ display_title_screen_text
                ; Original Address $0001C76A
                ;
 score_y_coord_table                                             
-                dc.w $0058              ; unused entry as index always at least 1
-                dc.w $0060
-                dc.w $0050
-                dc.w $0040
-                dc.w $0030
-                dc.w $0020
+               dc.w $0058              ; unused entry as index always at least 1
+               dc.w $0060
+               dc.w $0050
+               dc.w $0040
+               dc.w $0030
+               dc.w $0020
 
 name_initials_count                                             ; original address $0001C776
                 dc.w $0000                                      ; count of hi-score initials entered during the entry loop. initialised to 3, exits loop when 0
@@ -1252,8 +1330,8 @@ joystick_left                                                   ; original addre
 joystick_right
                 dc.w $0000                                      ; joystick right (SET TRUE)
 
-unused_var_flag                                                 ; original address $0001C77C
-                dc.w $0000                                      ; cleared when joystick values are read during hi-score initials entry loop - appears unused apart from being cleared in the loop.
+;unused_var_flag                                                 ; original address $0001C77C
+;                dc.w $0000                                      ; cleared when joystick values are read during hi-score initials entry loop - appears unused apart from being cleared in the loop.
 
 temp_typer_text_ptr                                             ; original address $0001c77e
                 dc.l $00000000                                  ; store ptr to typer text while command types hi-score table
@@ -1264,133 +1342,166 @@ typer_extended_command_2                                        ; original addre
                 dc.b $00 
 
 
-title_screen_text       
 
-                IFND DEBUG_TYPER
-                                                                ; original address $0001c784
-                        dc.b $01,$01                                    ; display co-ords (x,y)
-                        dc.b $01                                        ; clear screen command
-                        dc.b $0D,$0D,$0D,$0D,$0D,$0D                    ; #$0D = carriage return
-                        dc.b '      OCEAN SOFTWARE',$0D,$0D                   
-                        dc.b '         PRESENTS   ',$0D                       
-                        dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
 
-                ELSE
+               ; -------------------------------- TITLE SCREEN TEXT ----------------------------
+               ; The following data constructs the text displayed on the title screen as
+               ; individual pages of text.
+               ;
+               ; There are vaious codes that control the display formatting definied in the
+               ; equates below.
+               ;
+               ; Original Address $0001c784
+               ; 
+TEXT_TYPER_LOOP_TO_START           EQU  $00       ; 1 Byte Command - Restart Text Typer from the start
+TEXT_TYPER_CLEAR_SCREEN            EQU  $01       ; 1 Byte Command - Clear Text Typer Screen (Restores Background GFX)
+TEXT_TYPER_PAUSE                   EQU  $02       ; 3 byte Command - following 2 bytes are the wait time in screen frames (50 Hz)
+TEXT_TYPER_HISCORES                EQU  $03       ; 1 byte Command - Display High Score Table
+TEXT_TYPER_END_HISCORE_TABLE       EQU  $04       ; 1 Byte Command - CODE #$04 makes typer End HighScore table
+TEXT_TYPER_NOP                     EQU  $06       ; 1 Byte Command - No Operation
+TEXT_TYPER_CR                      EQU  $0d       ; 1 Byte Command - Carriage Return
+TEXT_TYPER_TERMINATE               EQU  $ff       ; 1 Byte Command - Exit Typer (Used for Displaying hi-Scores then exiting for entering player initials) 
 
-                        dc.b $01,$01                                    ; display co-ords (x,y)
-                        dc.b $01                                        ; clear screen command
-                        dc.b $0D,$0D,$0D,$0D,$0D,$0D                    ; #$0D = carriage return
-                        dc.b '      OCEAN SOFTWARE',$0D,$0D                   
-                        dc.b '    REBUILT FROM SOURCE   ',$0D                       
-                        dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
 
-                ENDC
+title_screen_text                                                                    
+               ; Page 1
+               dc.b $01,$01                                 ; display co-ords (x,y)
+               dc.b TEXT_TYPER_CLEAR_SCREEN 
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '      OCEAN SOFTWARE',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR                   
+               dc.b '         PRESENTS   ',TEXT_TYPER_CR                       
+               dc.b TEXT_TYPER_PAUSE,$00,$80                ; wait for 2.5 seconds (128 frames)
 
-                dc.b $01                                        ; #$01 = clear the screen
-                dc.b $06                                        ; #$06 = No Operation (nop)
-                dc.b $0D,$0D,$0D,$0D,$0D,$0D
-                dc.b '          BATMAN',$0D,$0D
-                dc.b '        THE MOVIE'
-                dc.b $02,$00,$80                                ; #$02 = wait for 2.5 seconds (128 frames)
+               ; Page 2
+               dc.b TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_NOP
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '          BATMAN',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '        THE MOVIE'
+               dc.b TEXT_TYPER_PAUSE,$00,$80                ; wait for 2.5 seconds (128 frames)
 
-                dc.b $01                                        ; #$01 = clear the screen
-                dc.b $0D,$0D
-                dc.b '   TM & @ DC COMICS INC',$2E,$0D          ; #$2E = full stop symbol
-                dc.b '           1989 ',$0D,$0D,$0D
-                dc.b '   @ OCEAN SOFTWARE 1989',$0D,$0D
-                dc.b '     ESC',$2E,$2E,'ABORT GAME',$0D,$0D    ; #$2E = full stop symbol
-                dc.b '      F1',$2E,$2E,'PAUSE GAME',$0D,$0D
-                dc.b '      F2',$2E,$2E,'TOGGLE MUSIC',$0D
-                dc.b $02,$01,$00                                ; #$02 = wait for 5 (256) seconds
+               ; Page 3
+               dc.b TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '   TM & @ DC COMICS INC.',TEXT_TYPER_CR 
+               dc.b '           1989 ',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '   @ OCEAN SOFTWARE 1989',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '     ESC..ABORT GAME',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR 
+               dc.b '      F1..PAUSE GAME',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '      F2..TOGGLE MUSIC',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_PAUSE,$01,$00                ; wait for 5 (256) seconds
 
-                dc.b $01                                        ; #$01 = clear screen
-                dc.b $0D
-                dc.b '   CODING BY',$0D
-                dc.b '            MIKE LAMB',$0D 
-                dc.b '            JOBBEEEE',$0D
-                dc.b '            SHORTY',$0D,$0D
-                dc.b '   GRAPHICS BY',$0D
-                dc.b '            DAWN DRAKE',$0D
-                dc.b '            BILL HARBISON',$0D
-                dc.b '            JOHN PALMER',$0D,$0D
-                dc.b '   MUSIC AND FX BY',$0D
-                dc.b '            JON DUNN',$0D
-                dc.b '            MATTHEW CANNON' 
-                dc.b $02,$01,$00                        ; #$02 = wait for 5 (256) seconds
+               ; Page 4
+               dc.b TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_CR
+               dc.b '   CODING BY',TEXT_TYPER_CR
+               dc.b '            MIKE LAMB',TEXT_TYPER_CR 
+               dc.b '            JOBBEEEE',TEXT_TYPER_CR
+               dc.b '            SHORTY',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '   GRAPHICS BY',TEXT_TYPER_CR
+               dc.b '            DAWN DRAKE',TEXT_TYPER_CR
+               dc.b '            BILL HARBISON',TEXT_TYPER_CR
+               dc.b '            JOHN PALMER',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b '   MUSIC AND FX BY',TEXT_TYPER_CR
+               dc.b '            JON DUNN',TEXT_TYPER_CR
+               dc.b '            MATTHEW CANNON' 
+               dc.b TEXT_TYPER_PAUSE,$01,$00                ; wait for 5 (256) seconds
                 
-                dc.b $01                                ; #$01 = clear screen
-                dc.b $03                                ; #$03 = display hi score table
-                dc.b $02,$00,$f0                        ; #$02 = wait for 2.5 seconds
+               ; Page 5 (HiScore Table)
+               dc.b TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_HISCORES
+               dc.b TEXT_TYPER_PAUSE,$00,$f0                ; wait for 2.5 seconds
 
-                dc.w $01                                ; #$01 - clear screen
-                dc.b $00                                ; #$00 - loop text to start
-                dc.b $FF                                ; #$ff - end typer (never reaches here)                                                     
-
-
-
-
-display_hiscores                                        ; original address $0001C96E
-                dc.b $0C,$30                            ; x, y               
-                dc.b $01                                ; $01 - clear screen
-                dc.b $0D                                ; $0D - carriage return
-                dc.b $03                                ; $03 - display hi scores
-                dc.b $FF                                ; $ff - end typer
+               ; Page 6 (non page)
+               dc.w TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_LOOP_TO_START
+               dc.b TEXT_TYPER_TERMINATE                    ; Exit Typer (never reaches here)                                                     
 
 
 
+               ; Text Screen for Entering Hi-Score Player Initials
+               ;
+               ; Original Address $0001C96E
+               ;
+display_hiscores 
+               dc.b $0C,$30                                ; display co-ords x, y               
+               dc.b TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_HISCORES
+               dc.b TEXT_TYPER_TERMINATE                   ; Exit Typer
 
-                ;------------------------- HIGH SCORE DISPLAY TABLE ----------------------------
-                ; The text typer displays this text when encountering CODE #$03, it ends
-                ; and resumes where it left off when encountering CODE #$04.
-                ; - title     = 21 chars (incl control codes)
-                ; - lines 1-6 = 23 chars (incl control codes)
-                ; - The 6th line entry is only used to roll the last entry into when inserting
-                ;   a new high score into the table.
-                ;   The insertion routine stuffs the code #$04 into the start of the 6th 
-                ;   entry, preventing the text typer routine from displaying it on screen.
-                ;
+
+
+
+               ;------------------------- HIGH SCORE DISPLAY TABLE ----------------------------
+               ; The text typer displays this text when encountering CODE #$03, it ends
+               ; and resumes where it left off when encountering CODE #$04.
+               ; - title     = 21 chars (incl control codes)
+               ; - lines 1-6 = 23 chars (incl control codes)
+               ; - The 6th line entry is only used to roll the last entry into when inserting
+               ;   a new high score into the table.
+               ;   The insertion routine stuffs the code #$04 into the start of the 6th 
+               ;   entry, preventing the text typer routine from displaying it on screen.
+               ;
+               ;  Contains Default Hi-Score Player Initials
+               ;
 high_score_display_text                                                                                            ; original address $0001C974
-                dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$48,$49,$20,$53,$43,$4F,$52,$45,$53,$0D,$0D,$0D           ;         HI SCORES
-                dc.b $20,$20,$20,$20,$20,$31,$53,$54,$20,$20,$41,$4A,$53,$20,$20,$31,$32,$35,$30,$30,$30,$0D,$0D   ;     1ST  AJS  125000
-                dc.b $20,$20,$20,$20,$20,$32,$4E,$44,$20,$20,$4D,$49,$4B,$20,$20,$31,$30,$30,$30,$30,$30,$0D,$0D   ;     2ND  MIK  100000
-                dc.b $20,$20,$20,$20,$20,$33,$52,$44,$20,$20,$4A,$4F,$42,$20,$20,$30,$37,$35,$30,$30,$30,$0D,$0D   ;     3RD  JOB  075000
-                dc.b $20,$20,$20,$20,$20,$34,$54,$48,$20,$20,$42,$49,$4C,$20,$20,$30,$35,$30,$30,$30,$30,$0D,$0D   ;     4TH  BIL  050000
-                dc.b $20,$20,$20,$20,$20,$35,$54,$48,$20,$20,$4A,$4F,$4E,$20,$20,$30,$32,$35,$30,$30,$30,$0D,$0D   ;     5TH  JON  025000
+               dc.b '         HI SCORES',TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR
+               dc.b TEXT_TYPER_CR       
+               dc.b '     1ST  AJS  125000',TEXT_TYPER_CR,TEXT_TYPER_CR
+               dc.b '     2ND  MIK  100000',TEXT_TYPER_CR,TEXT_TYPER_CR
+               dc.b '     3RD  JOB  075000',TEXT_TYPER_CR,TEXT_TYPER_CR
+               dc.b '     4TH  BIL  050000',TEXT_TYPER_CR,TEXT_TYPER_CR
+               dc.b '     5TH  JON  025000',TEXT_TYPER_CR,TEXT_TYPER_CR
 end_of_highscore_table_text                                                                                         ; original address $0001C9FC
 high_score_6th_entry                                                                                               ; original address $0001C9FC - not displayed, buffer to roll last entry into
-                dc.b $20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$20,$0D,$0D
-                dc.b $04                        ; #$04 - typer code - resume typer after high score table
+               dc.b '                     ',TEXT_TYPER_CR,TEXT_TYPER_CR
+               dc.b TEXT_TYPER_END_HISCORE_TABLE            ; resume typer after insertion of high score table
 
 
 
 
-L0001CA14       dc.b $00, $00, $00, $00 
-                even
 
 
 
-                ;--------------- High Score Table -------------
-                ; High score table where the top 5 scores are
-                ; stored in BCD format.
-                ; The 6th entry is only used to roll the
-                ; last score into when inserting a new
-                ; hi-score into the table.
-                ;
-highscore_table_BCD_format                                         ; original address $0001CA18
-                dc.l $00125000
-                dc.l $00100000
-                dc.l $00075000
-                dc.l $00050000
-                dc.l $00025000                          ; highscore_table+16 ; original address $0001CA28                              
-                dc.l $00000000                          ; highscore_table+20 ; original address $0001CA2c - not displayed, used to roll last entry into
-
-
-
-
-                ; -------------- other data 1 ----------------------
-                ; currently unknown/unused data
-.other_data1                                            ; original address $0001CA2E
-L0001CA2E       dc.w $0000, $0000                       ; **** UNUSED??? ****
+               ;--------------- High Score Table -------------
+               ; High score table where the top 5 scores are
+               ; stored in BCD format.
+               ; The 6th entry is only used to roll the
+               ; last score into when inserting a new
+               ; hi-score into the table.
+               ;
+               ; Original Address $0001CA18
+               ;
+               even
+highscore_table_BCD_format                                         
+               dc.l $00125000
+               dc.l $00100000
+               dc.l $00075000
+               dc.l $00050000
+               dc.l $00025000     ; highscore_table+16                              
+               dc.l $00000000     ; highscore_table+20 - not displayed, used to roll last entry into when processing hi-scores
 
 
 
@@ -1406,326 +1517,20 @@ copy_title_screen_bitplanes
 
 
 
-bitplane_size                                   ; original address $0001ca3e
-                dc.l $00000000                  ; The size of the current display bitplane in bytes          
+               ; The size of the current bitplane to copy 
+               ; to the display_buffer_address
+               ; Original Address $0001ca3e
+bitplane_size                                  
+
+               dc.l $00000000                  ; The size of the current display bitplane in bytes          
 
 
 
+               ; The address of the Display buffer for the Title Screen
+               ; Original Address $0001ca42
+display_buffer_address
+               dc.l $00000000
 
-                ; -------------- other data 2 ----------------------
-                ; currently unknown/unused data
-.other_data2
-L0001CA42       dc.w $0000, $0000                ;or.b #$00,d0
-
-
-
-
-
-
-
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------  
-
-
-                ; l0001cd0e = $7e (126) - reset_title_screen_display
-                ; l0001cd12 = $3c (60)  - reset title screen display (L0001cd0e+4)          
-L0001ca46       lea.l   L0001CD0E,a0
-L0001ca4c       lea.l   L0001CD2E,a2
-L0001ca52       lea.l   L0001CD16,a3
-L0001ca58       lea.l   L0001CD34,a4
-L0001ca5e       lea.l   L0001CD3A,a5
-L0001ca64       lea.l   L0001CD40,a6
-
-L0001ca6a       moveq   #$00,d7
-L0001ca6c       bsr.w   L0001cb94
-
-L0001ca70       move.w  #$0fca,d1
-L0001ca74       or.w    L0001CD8C,d1
-L0001ca7a       move.w  d1,$00dff040
-L0001ca80       move.w  L0001CD8C,$00dff042
-L0001ca8a       move.l  L0001CD86,d0
-L0001ca90       beq.w   L0001cb92
-L0001ca94       move.l  L0001CD6E,$00dff04c
-L0001ca9e       move.l  L0001CD82,$00dff050
-L0001caa8       move.l  d0,$00dff048
-L0001caae       move.l  d0,$00dff054
-L0001cab4       clr.w   $00dff064
-L0001caba       clr.w   $00dff062
-L0001cac0       move.w  (a4),$00dff060
-L0001cac6       move.w  (a4),$00dff066
-L0001cacc       move.w  (a2),$00dff058
-L0001cad2       add.l   bitplane_size,d0                        ;$0001ca3e,d0
-L0001cad8       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cadc       move.l  L0001CD72,$00dff04c
-L0001cae6       move.l  L0001CD82,$00dff050
-L0001caf0       move.l  d0,$00dff048
-L0001caf6       move.l  d0,$00dff054
-L0001cafc       move.w  (a2),$00dff058
-L0001cb02       add.l   bitplane_size,d0                        ;$0001ca3e,d0
-L0001cb08       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cb0c       move.l  L0001CD76,$00dff04c
-L0001cb16       move.l  L0001CD82,$00dff050
-L0001cb20       move.l  d0,$00dff048
-L0001cb26       move.l  d0,$00dff054
-L0001cb2c       move.w  (a2),$00dff058
-L0001cb32       add.l   bitplane_size,d0                        ; $0001ca3e,d0
-L0001cb38       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cb3c       move.l  L0001CD7A,$00dff04c
-L0001cb46       move.l  L0001CD82,$00dff050
-L0001cb50       move.l  d0,$00dff048
-L0001cb56       move.l  d0,$00dff054
-L0001cb5c       move.w  (a2),$00dff058
-L0001cb62       add.l   bitplane_size,d0                        ; $0001ca3e,d0
-L0001cb68       bsr.w   wait_blitter                            ; calls $0001d442
-L0001cb6c       move.l  L0001CD7E,$00dff04c
-L0001cb76       move.l  L0001CD82,$00dff050
-L0001cb80       move.l  d0,$00dff048
-L0001cb86       move.l  d0,$00dff054
-L0001cb8c       move.w  (a2),$00dff058
-L0001cb92       rts
-
-
-                ; L0001cd0e,a0
-                ; L0001cd2e,a2
-                ; L0001cd16,a3
-                ; L0001cd34,a4
-                ; L0001cd3a,a5
-                ; L0001cd40,a6                  ; index for source copy
-                ; d7 = 0
-L0001cb94       moveq   #$00,d0
-L0001cb96       move.w  #$0028,(a4)
-
-L0001cb9a       movem.l a0,-(a7)
-L0001cb9e       move.w  (a6),d0
-L0001cba0       mulu.w  #$001c,d0
-L0001cba4       lea.l   L0001CD44,a0
-L0001cbaa       move.l  $00(a0,d0.l),L0001CD66
-L0001cbb2       move.l  $04(a0,d0.l),L0001CD66+8                ; L0001cd6e
-L0001cbba       move.l  $08(a0,d0.l),L0001CD66+12               ; L0001cd72
-L0001cbc2       move.l  $0c(a0,d0.l),L0001CD66+16               ; L0001cd76
-L0001cbca       move.l  $10(a0,d0.l),L0001CD66+20               ; L0001cd7a
-L0001cbd2       move.l  $14(a0,d0.l),L0001CD66+24               ; L0001cd7e
-L0001cbda       move.l  $18(a0,d0.l),L0001CD66+28               ; L0001cd82
-L0001cbe2       movem.l (a7)+,a0
-
-L0001cbe6       move.w  (a0),d0                 ; d0 = 1st word
-L0001cbe8       move.w  d0,d2                   ; d2 = 1st word
-L0001cbea       and.w   #$000f,d2               ; mask to 8 bits
-L0001cbee       lsr.w   #$03,d0                 ; d0 = d0 * 8
-L0001cbf0       move.w  $0004(a0),d1            ; d1 = 2nd word
-L0001cbf4       add.w   #$0100,d1               ; d1 = d1 + 256
-L0001cbf8       ext.w   d0                      ; sign extend byte to word
-L0001cbfa       add.w   #$0100,d0               ; d0 = d0 + 256
-L0001cbfe       move.w  L0001CD66+2,d4          ; L0001cd68,d4
-L0001cc04       move.w  d1,d3                   ; d3 = d1
-L0001cc06       cmp.w   #$01c7,d3       
-L0001cc0a       bgt.w   clear_and_exit          ; L0001cc22
-L0001cc0e       add.w   d4,d3
-L0001cc10       cmp.w   #$01c7,d3
-L0001cc14       blt.w   L0001cc2a
-L0001cc18       sub.w   #$01c7,d3
-L0001cc1c       sub.w   d3,d4
-L0001cc1e       beq.b   clear_and_exit          ; L0001cc22
-L0001cc20       bpl.b   L0001cc2a
-clear_and_exit
-L0001cc22       clr.l   L0001CD86
-L0001cc28       rts  
-
-
-L0001cc2a       cmp.w   #$0100,d1
-L0001cc2e       bgt.w   L0001cc7a
-L0001cc32       move.w  d1,d3
-L0001cc34       add.w   d4,d3
-L0001cc36       sub.w   #$0100,d3
-L0001cc3a       bmi.w   L0001cc22
-L0001cc3e       move.w  d3,d4
-L0001cc40       beq.w   L0001cc22
-L0001cc44       sub.w   L0001CD68,d3
-L0001cc4a       neg.w   d3
-L0001cc4c       mulu.w  L0001CD66,d3
-L0001cc52       add.l   d3,$0001CD6E
-L0001cc58       add.l   d3,$0001CD72
-L0001cc5e       add.l   d3,$0001CD76
-L0001cc64       add.l   d3,$0001CD7A
-L0001cc6a       add.l   d3,$0001CD7E
-L0001cc70       add.l   d3,$0001CD82
-L0001cc76       move.w  #$0100,d1
-L0001cc7a       clr.w   (a5)
-L0001cc7c       cmp.w   #$0128,d0
-L0001cc80       bgt.w   L0001cc22
-L0001cc84       cmp.w   #$0100,d0
-L0001cc88       bgt.w   L0001cc9c
-L0001cc8c       move.w  d0,d3
-L0001cc8e       sub.w   #$0100,d3
-L0001cc92       bmi.w   L0001cc22
-L0001cc96       nop
-L0001cc98       move.w  #$0100,d0
-L0001cc9c       move.w  d0,d3
-L0001cc9e       add.w   L0001CD66,d3
-L0001cca4       cmp.w   #$0128,d3
-L0001cca8       blt.w   L0001ccb0
-L0001ccac       bra.w   L0001cc22
-L0001ccb0       move.w  L0001CD66,d6
-L0001ccb6       sub.w   d6,(a4)
-L0001ccb8       sub.w   #$0100,d0
-L0001ccbc       sub.w   #$0100,d1
-L0001ccc0       mulu.w  #$0028,d1
-L0001ccc4       add.l   d1,d0
-L0001ccc6       move.l  L0001CA42,d1
-L0001cccc       add.l   d0,d1
-L0001ccce       move.l  d1,L0001CD86
-L0001ccd4       asl.w   #$08,d2
-L0001ccd6       asl.w   #$04,d2
-L0001ccd8       move.w  d2,L0001CD8C
-L0001ccde       move.w  L0001CD66,d5
-L0001cce4       mulu.w  d4,d5
-L0001cce6       move.l  d5,L0001CD6A
-L0001ccec       move.w  L0001CD66,d5
-L0001ccf2       lsr.w   #$01,d5
-L0001ccf4       asl.w   #$06,d4
-L0001ccf6       or.w    d4,d5
-L0001ccf8       move.w  d5,(a2)
-L0001ccfa       rts
-
-L0001ccfc       lea.l   L0001CD2E,a0
-L0001cd02       move.w  #$0002,d7
-L0001cd06       clr.w   (a0)+
-L0001cd08       dbf.w   d7,L0001cd06
-L0001cd0c       rts
-
-
-
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-                ;-------------------------------- UNUSED CODE -----------------------------
-
-
-
-
-                ; l0001cd0e = $7e (126) - reset_title_screen_display
-                ; l0001cd12 = $3c (60)  - reset title screen display (L0001cd0e+4)
-L0001CD0E       dc.w $0000, $0018, $0000, $0012 
-L0001CD16       dc.w $0000, $0000, $0000, $0000
-                dc.w $0000, $0000, $0000, $0000
-                dc.w $0000, $0000
-                
-L0001CD2A       dc.w $0000, $0000       ;unused? 
-
-L0001CD2E       dc.w $0000, $0000, $0000
-L0001CD34       dc.w $0000, $0000, $0000
-L0001CD3A       dc.w $0000, $0000, $0000
-L0001CD40       dc.w $0000              ; index for copy above L0001CD0E -> L0001CD66
-                dc.w $0000
-L0001CD44       dc.w $000C
-
-L0001CD46 dc.w $001C, $0005, $0000, $0005
-L0001CD4E dc.w $0150, $0005, $02A0, $0005, $03F0, $0005, $0540, $0001           ;.P...........@..
-L0001CD5E dc.w $CD8E, $0000, $0000, $0000
-
-                ; Values from L0001CD0E - is copied to these values here.
-L0001CD66       dc.w $0000
-L0001CD68       dc.w $0000
-L0001CD6A       dc.l $00000000          ; skipped by data copy
-L0001CD6E       dc.l $00000000
-L0001CD72       dc.l $00000000
-L0001CD76       dc.l $00000000
-L0001CD7A       dc.l $00000000 
-L0001CD7E       dc.l $00000000             
-L0001CD82       dc.l $00000000
-
-L0001CD86 dc.w $0000, $0000, $0000
-L0001CD8C dc.w $0000           
-L0001CD8E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CD9E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CDAE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CDBE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CDCE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CDDE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CDEE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CDFE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE0E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE1E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE2E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE3E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE4E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE5E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE6E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE7E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE8E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CE9E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CEAE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CEBE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CECE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CEDE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CEEE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CEFE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF0E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF1E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF2E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF3E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF4E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF5E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF6E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF7E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF8E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CF9E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CFAE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CFBE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CFCE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CFDE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CFEE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001CFFE dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001D00E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001D01E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF, $FFFF           ;................
-L0001D02E dc.w $FFFF, $FFFF, $FFFF, $FFFF, $0000, $0000, $0000, $0000           ;................
-L0001D03E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D04E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D05E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D06E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D07E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D08E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D09E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D0AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D0BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D0CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D0DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D0EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D0FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D10E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D11E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D12E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D13E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D14E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D15E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D16E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D17E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D18E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D19E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D1AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D1BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D1CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D1DE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D1EE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D1FE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D20E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D21E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D22E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D23E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D24E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D25E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D26E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D27E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D28E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D29E dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D2AE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D2BE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
-L0001D2CE dc.w $0000, $0000, $0000, $0000, $0000, $0000, $0000, $0000           ;................
 
 
 
@@ -1746,13 +1551,10 @@ reset_title_screen_display                                              ; origin
                 move.b  #$f4,$00dff08e                                  ; DIWSTRT - reset window to closed
                 moveq   #$01,d0
                 bsr.w   raster_wait_161                                 ; wait for 2 frames ; calls $0001c2f8
-                ;move.w  #$1000,$00dff100                                ; BPLCON0 - 5 bitplane screen
                 move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
                 move.w  #$0040,$00dff104                                ; BPLCON2 - Playfield 2 - priority (dual playfield?)
                 move.w  #$0000,$00dff102                                ; BPLCON1 - Clear scroll delay
-                move.l  #DISPLAY_BITPLANE_ADDRESS,L0001CA42             ; #$00063190,$0001ca42 [00000000]
-                move.w  #$007e,L0001CD0E                                ; #$7e (126)
-                move.w  #$003c,L0001CD0E+4                              ; #$3c (60)
+                move.l  #DISPLAY_BITPLANE_ADDRESS,display_buffer_address   ; #$00063190,$0001ca42 [00000000]
                 move.l  #$003800d0,$00dff092                            ; DDFSTRT/DDFSTOP - DMA bitplane fetch
                 clr.w   $00dff108                                       ; BPL1MOD - CLR not the best on custom regs
                 clr.w   $00dff10a                                       ; BPL2MOD
