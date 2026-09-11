@@ -62,8 +62,8 @@ TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same a
 DEBUG_TYPER              SET 1     ; when set - updated text type on the title screen.
 VBLANK_FIX               SET 1     ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
 
-;TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
-TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
+TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
+;TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
 
 
 
@@ -84,6 +84,9 @@ PANEL_STATUS_1                EQU  PANEL_StatusByte_01           ; mock address 
 PANEL_STATUS_2                EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
 PANEL_HIGHSCORE               EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
 PANEL_PLAYERSCORE             EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
+PANEL_INITIALISE_PLAYER_SCORE   EQU     test_nop                 ; address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES   EQU     test_nop                 ; address of Panel.Initialise_Player_Lives
+LOADER_LOAD_LEVEL_1             EQU     test_load_level_1        ; address of Loader.Load_Level_1()
 
 kill_system
                lea     $dff000,a6
@@ -97,7 +100,7 @@ kill_system
           IFD TEST_TITLESCREEN_START
                jmp     title_screen_start                      ; Entry point $0001c000
           ELSE
-               jmp     end_game_start
+               jmp     end_game_return_to_title_screen
           ENDC
 
                include "initsystem.s"
@@ -140,7 +143,11 @@ PANEL_STATUS_1                  EQU     $0007c874                     ; address 
 PANEL_STATUS_2                  EQU     $0007c875                     ; address of Panel.Panel_Status_2 
 PANEL_HIGHSCORE                 EQU     $0007c878                     ; address of Panel.High_Score 
 PANEL_PLAYERSCORE               EQU     $0007c87c                     ; address of Panel.Player_Score
-               
+PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c               ; address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES   EQU     $0007c838               ; address of Panel.Initialise_Player_Lives
+LOADER_LOAD_LEVEL_1             EQU     $824                    ; address of Loader.Load_Level_1()
+
+
                org     $3ffc       ; absolute compilation address
 
 titleprg_start
@@ -164,21 +171,18 @@ title_screen_start
 
                ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
                ; Original Address $0001c004
-end_game_start                                                  
-               bra.w   do_return_to_title_screen
+end_game_return_to_title_screen                                                 
+               bra.w   do_end_game_return_to_title_screen
 
 
 
 
 
-PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c               ; address of Panel.Initialise_Player_Score
-PANEL_INITIALISE_PLAYER_LIVES   EQU     $0007c838               ; address of Panel.Initialise_Player_Lives
-LOADER_LOAD_LEVEL_1             EQU     $824                    ; address of Loader.Load_Level_1()
 
 PANEL_STATUS_2_INFINITE_LIVES   EQU     $7                      ; panel status 2: bit 7 = 1 (infinite lives on)
 PANEL_STATUS_2_GAME_COMPLETED   EQU     $6                      ; game completed = 1
 PANEL_STATUS_2_GAME_OVER        EQU     $5                      ; game over/completion  - return from game
-PANEL_STATUS_2_MUSIC_SFX        EQU     $0                      ; Music/SFX (0 = music, 1 = sfx)
+PANEL_STATUS_2_SFX_ONLY         EQU     $0                      ; Music/SFX (0 = music, 1 = sfx)
 
 
 
@@ -207,150 +211,207 @@ do_title_screen_start
                ;
                ; Original Address $0001c018
                ;
-return_to_title_screen                                          
-               lea.l   temp_stack_top,a7                       ; set temp stack space - $0001d6de,a7
+DISPLAY_MAX_WINDOW_START EQU  $f4            ; Display Window starts at bottom of line 200
+DISPLAY_MIN_WINDOW_START EQU  $2c            ; Display Window top, starts at PAL/NTSC line 0
+DISPLAY_5_BITPLANES      EQU  $5000          ; BPLCON0 setting for 5 bitplanes
+DISPLAY_320_200_BYTES    EQU  $00001f40      ; Bitplane size for 320x200 display
 
-.init_display_window                                            ; Initialise Window Scroll (start window = bottom of NTSC display)
-               move.b  #$f4,copper_diwstrt                     ; reset window start line (usually $2c) - $0001d6e8
-               move.b  #$f4,copper_diwstop                     ; reset widndow stop line (usually $2c or $f4 PAL/NTSC ) - $0001d6ec
-.wait_frame
-               moveq   #$01,d0                                 ; d0 = frames to wait + 1
-               bsr.w   raster_wait_161                         ; wait for raster 161 - $0001c2f8
+return_to_title_screen        
+               ; initialise the stack                                  
+               lea.l   temp_stack_top,a7                       
 
-.init_system
-               bsr.w   initialise_title_screen
+               ; initialise window (ready for start transition)
+               move.b  #DISPLAY_MAX_WINDOW_START,copper_diwstrt   
+               move.b  #DISPLAY_MAX_WINDOW_START,copper_diwstop  
 
-.init_display
-               move.w  #$5000,$00dff100                        ; set 5 bitplane screen - BPLCON0
-               lea.l   title_screen_palette,a0                 ; $0001d79a - screen colours
-               bsr.w   copper_copy                             ; calls $0001d3a0
+               ; wait for 2 display frames
+               moveq   #$01,d0
+               bsr.w   raster_wait_161
 
-.init_game_status
-               and.w   #$f89f,PANEL_STATUS_1                   ; clear panel status bits (panel status 1 & 2)
-                                                               ; low 3 bits of status 1 (game over, life lost, timer expired)
-                                                               ; bits 6 & 5 of status 2 (don't know what these do yet) - Think it's end game flags (success/fail etc)
-.init_music
-               bsr.w   init_title_music                        ; calls $0001c1a0 ; Play Song 01 (Title Tune)
+               ; initialise hardware state
+               bsr.w   initialise_hardware_state
 
-.init_background
-               bsr.w   copy_title_screen_bitplanes             ; calls $0001ca34 - copy title screen bitplanes to display memory (copper list display)
+               ; initialise display & colour palette
+               move.w  #DISPLAY_5_BITPLANES,CUSTOM+BPLCON0
+               lea.l   title_screen_palette,a0
+               bsr.w   copper_copy
+
+               ; clear 'timer expired', 'life lost', 'no lives' - flags from status byte 1
+               ; clear 'game over', 'game complete' - flags from status byte 2
+               and.w   #$f89f,PANEL_STATUS_1
+                                                      
+               ; initialise music/sfx depending on status flags
+               bsr.w   init_title_music
+
+               ; refresh display buffer
+               bsr.w   copy_title_screen_bitplanes           
 
 
-               ;************ TITLE SCREEN WAIT LOOP *****************
+               ;************ TITLE SCREEN TEXT TYPER WAIT LOOP *****************
                ; Manage hi-score entry and text typer display.
                ; The text typer controls the main title-screen wait
                ; loop, waits for joystick button press to jump
-               ; to 'start_game' below.
-.title_screen_loop
-               bsr.w   hi_score_and_text_typer
+               ; to return to 'start_game' below.
+               ;
+               ; was originally a bsr.w, changed to bra.w to honor
+               ; return jump and the stack.
+.title_screen_loop           
+               bra.w   hi_score_and_text_typer
 
 
-               ;************* START GAME - LOAD LEVEL 1 *************
-               ; text typer jumps out to here when start button pressed
+
+
+
+               ;------------------------- START GAME - LOAD LEVEL 1 ----------------------
+               ; The Text Typer jumps to here when start button pressed, instead of
+               ; using 'rts'
+               ;
                ; Original Address $0001c05e
+               ;
 start_game                                                      
                ; set flag to start transition of end title screen
                ; i.e. scroll title screen to bottom of display.
-               not.w   start_game_flag       
+               not.w     screen_transision_direction_flag       
 
-               ; wait until screen scrolled to bottom of display
+               ; wait for screen transition out (scroll down to bottom)
 .wait_diwstrt
-               cmp.b   #$f4,copper_diwstrt
-               bne.b    .wait_diwstrt 
+               cmp.b     #DISPLAY_MAX_WINDOW_START,copper_diwstrt
+               bne.b     .wait_diwstrt 
 
                ; wait for a 2 frames for good luck
-.wait_frame
-               moveq   #$01,d0                                 
-               bsr.w   raster_wait_161
+               moveq     #$01,d0                                 
+               bsr.w     raster_wait_161
 
-               ; initialise player stats for new game
-.init_game
-               move.l  highscore_table_BCD_format,PANEL_PLAYERSCORE
-               jsr     PANEL_INITIALISE_PLAYER_SCORE           
-               jsr     PANEL_INITIALISE_PLAYER_LIVES           
-               jsr     SoundDriver_StopSound                    
+               ; initialise player score, lives, energy for new game
+               move.l    highscore_table_BCD_format,PANEL_PLAYERSCORE
+               jsr       PANEL_INITIALISE_PLAYER_SCORE           
+               jsr       PANEL_INITIALISE_PLAYER_LIVES  
+
+               ; stop title screen music         
+               jsr       SoundDriver_StopSound                    
 
                ; load and execute level 1
-.load_level_1
-               jmp     LOADER_LOAD_LEVEL_1
-
-
-
-
-                ;---------------------- fatal error --------------------
-                ; loop forever increment backgounr colour in tight loop
-                ; UNUSED CODE
-fatal_error
-                jmp     do_fatal_error                          ; jmp $0001d542 
-
-
-
-start_game_flag                                                 ; original address $0001c09c
-                dc.w $0000                                      ; bits are inverted (not.w) on game_start 
+               jmp       LOADER_LOAD_LEVEL_1
 
 
 
 
 
-                ;------------------------- do window scroll -------------------------
-                ; called from level 3 interrupt handler, manages the title screen
-                ; window scroll up (on title screen start) and the scroll down
-                ; (on game start).
-                ;
-                ; The window scrolls in at 1 raster per call.
-                ; The window scrolls out at 4 rasters per call.
-                ;
+
+          ; --------------------------------------------------
+          ; Test patch routines for the PANEL and LOADER
+          ; to prevent crashes when executing in VSCODE
+          ;
+          IFD TEST_TITLEPRG
+test_nop  
+               rts
+
+test_load_level_1
+               move.w    d0,CUSTOM+COLOR00
+               add.w     #1,d0
+               bra.s     test_load_level_1
+
+          ENDC
+
+
+
+
+
+               ;------------------------- do window scroll -------------------------
+               ; called from level 3 interrupt handler, manages the title screen
+               ; window scroll up (on title screen start) and the scroll down
+               ; (on game start).
+               ;
+               ; The window scrolls in at 1 raster per call.
+               ; The window scrolls out at 4 rasters per call.
+               ;
+               ;
+               ; flag inverted on game start to signal title screen transition. 
+screen_transision_direction_flag                                                
+               dc.w $0000   
+
+
 do_window_scroll
-                tst.w   start_game_flag                         ; test if game has started, $0001c09c
-                bne.b  do_scroll_down                           ; jmp L0001c0ba
-.do_scroll_up                                                   ; original address $0001c0a6
-                cmp.b   #$2c,copper_diwstrt                     ; test window start position byte, $0001d6e8 
-                beq.b   .exit                                   ; if window is fully 'open' (scrolled to top), jmp $0001c0b8
-                sub.w   #$0100,copper_diwstrt                   ; else, scrol window top up by 1 raster line, $0001d6e8
-.exit
-                rts  
+               ; check scroll up/down flag
+               tst.w     screen_transision_direction_flag 
+               bne.b     do_scroll_down 
 
-do_scroll_down                                                 ; original address $0001c0ba
-                cmp.b   #$f4,copper_diwstrt                     ; test if window top is at bottom of display, $0001d6e8
-                beq.b   .exit                                   ; if yes, then exit
-                bcs.b   .scroll_down                            ; if no, then scroll down
-.already_down
-                move.b  #$f0,copper_diwstrt                     ; if somewhere near, set at the bottom
+               ; title screen start transistion (scroll up from bottom)
+.do_scroll_up  
+               ; check scroll up limit
+               cmp.b     #DISPLAY_MIN_WINDOW_START,copper_diwstrt  
+               beq.b     .exit
+               ; scroll window top up by 1 raster line
+               sub.w     #$0100,copper_diwstrt 
+.exit
+               rts  
+
+
+               ; title screen end transition (scroll down to bottom)
+do_scroll_down 
+               ; check scroll down limit
+               cmp.b     #DISPLAY_MAX_WINDOW_START,copper_diwstrt
+               beq.b     .exit
+               bcs.b     .scroll_down 
+.overshot_limit
+               ; set to max (when combined with following add.w)
+               move.b    #$f0,copper_diwstrt                    
+
+               ; scroll window top down by 4 pixels (faster then scroll in)
 .scroll_down
-                add.w   #$0400,copper_diwstrt                   ; scroll window top down by 4 raster lines, $0001d6e8
+               add.w     #$0400,copper_diwstrt                  
 .exit
-                rts 
+               rts 
 
 
 
 
-                ;--------------------------- initialise title screen ----------------------------
-                ; set up the system, interrupts annd display.
-                ; NB: Level 6 interrupt enabled, but no handler (set previously in disk loader)
-                ;
-initialise_title_screen                                         ; original routine address $0001c0d8
-                move.l  #$f481f4c1,$00dff08e                    ; DIWSTRT/DIWSTOP - Initialise
-                move.w  #$7fff,d0       
-                move.w  d0,$00dff096                            ; DMACON - DMA off
-                move.w  d0,$00dff09a                            ; INTENA - Interrupts off
-                move.w  d0,$00dff09c                            ; INTREQ - Clear Interrupt Requests
-                move.l  #level_1_interrupt_handler,$00000064    ; Level 1 Interrupt Vector
-                move.l  #level_2_interrupt_handler,$00000068    ; Level 2 Interrupt Vector           
-                move.l  #level_3_interrupt_handler,$0000006c    ; Level 3 Interrupt Vector   
-                move.l  #level_4_interrupt_handler,$00000070    ; Level 4 Interrupt Vector        
-                move.l  #level_5_interrupt_handler,$00000074    ; Level 5 Interrupt Vector
-                move.w  #$e028,$00dff09a                        ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
-                move.w  #$83c0,$00dff096
-                move.l  #copper_list,$dff080                     ;#$0001d6e2,$00dff080
-                move.w  d0,$00dff088
-                move.b  #$7f,$00bfed01
-                move.b  #$7f,$00bfed01
 
+               ;--------------------------- initialise title screen ----------------------------
+               ; set up the system, interrupts annd display.
+               ; NB: Level 6 interrupt enabled, but no handler (set previously in disk loader)
+               ;
+               ; original routine address $0001c0d8
+               ;
+initialise_hardware_state         
+               ; set window start and stop to line 200                               
+                move.l  #$f481f4c1,CUSTOM+DIWSTRT
+
+               ; disable dma & interrupts
+               move.w  #$7fff,d0       
+               move.w  d0,CUSTOM+DMACON
+               move.w  d0,CUSTOM+INTENA
+               move.w  d0,CUSTOM+INTREQ
+
+               ; set interrupt handlers
+               move.l  #level_1_interrupt_handler,$00000064    ; Level 1 Interrupt Vector
+               move.l  #level_2_interrupt_handler,$00000068    ; Level 2 Interrupt Vector           
+               move.l  #level_3_interrupt_handler,$0000006c    ; Level 3 Interrupt Vector   
+               move.l  #level_4_interrupt_handler,$00000070    ; Level 4 Interrupt Vector        
+               move.l  #level_5_interrupt_handler,$00000074    ; Level 5 Interrupt Vector
+
+               ; enable interrupts
+               ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
+               move.w  #$e028,CUSTOM+INTENA 
+
+               ; enable DMA
+               move.w  #$83c0,CUSTOM+DMACON 
+
+               ; set copper list
+               move.l  #copper_list,CUSTOM+COP1LC
+               move.w  d0,CUSTOM+COPJMP1
+
+               ; clear interrupt control register CIAA
+               move.b  #$7f,$00bfed01
+               move.b  #$7f,$00bfed01
+
+               ; initialise music
                lea      MUSIC_MODULE_DATA,a0
-               jsr      SoundDriver_Initialise                   ; calls $00004000
+               jsr      SoundDriver_Initialise
                 
-                move.l  #$00001f40,d0                           ; d0 = bitplane size in bytes (8000)
-                bra.w   reset_title_screen_display              ; calls $0001d2de
+               ; set display initial display parameters
+               move.l  #DISPLAY_320_200_BYTES,d0
+               bra.w   reset_title_screen_display
 
 clear_keycode_and_exit                                          ; original address $0001c16a
                 clr.w   raw_key_code_store                      ;$L0001c2f0 - clear raw keycode store
@@ -360,49 +421,70 @@ global_rts                                                      ; original addre
 
 
 
-                ;------------------- Do Title Screen Menu Options --------------------
-                ; check for key presses and do menu screen menu options.
-                ; called from typer main loop when waiting for start game.
-                ;
-                ;       F2 = Music/SFX toggle 
-                ;       
-do_title_screen_menu_options                                            ; original routine address $0001c172
-                btst.b  #$0000,raw_keyboard_serial_data_byte            ; is last key code - key up? $0001c2ed
-                bne.w   clear_menu_flag_and_exit                        ; no, clear menu flag and exit, $0001c1b8
-                tst.w   menu_keypress_flag                              ; $0001c2f2
-                bne.w   global_rts                                      ; jmp $0001c170
-.check_f2                                                               ; original address $0001c188
-                cmp.w   #$005c,raw_keyboard_serial_data_word            ; compare 'F2' key press, $0001c2ec 
-                bne.b   clear_menu_flag_and_exit                        ; no, clear menu flag and exit, $0001c1b8
-.is_f2               
-                not.w   menu_keypress_flag                              ; toggle flag. $0001c2f2
-                bchg.b  #PANEL_STATUS_2_MUSIC_SFX,PANEL_STATUS_2        ; $0007c875
+               ;------------------- Do Title Screen Menu Options --------------------
+               ; check for key presses and do menu screen menu options.
+               ; called from typer main loop when waiting for start game.
+               ;
+               ;       F2 = Music/SFX toggle 
+               ;       
+               ; original routine address $0001c172
+               ;
+KEY_CODE_F2    EQU  $005c
 
-                ; fall through to init_title_music (toggle on/off)
+do_title_screen_menu_options       
+               ; check key up
+               btst.b    #$0,raw_keyboard_serial_data_byte
+               bne.w     .clear_menu_flag_and_exit
+ 
+               ; test if F2 key already pressed, then deduplicate and exit
+               tst.w     deduplicate_keypress_flag
+               bne.w     global_rts
+
+               ; check if F2 key is pressed                                                        
+               cmp.w     #KEY_CODE_F2,raw_keyboard_serial_data_word 
+               beq.s     .f2_pressed
+               ;bne.b   clear_menu_flag_and_exit
+
+               ; other keypressed, clear dedup flag and exit
+.clear_menu_flag_and_exit
+               clr.w deduplicate_keypress_flag
+               rts
+
+.f2_pressed             
+                    ; F2 is pressed,
+                    ; set deduplicate keypress flag (prevent multiple key strokes processed)
+                    not.w   deduplicate_keypress_flag
+                    ; flip sfx/music enabled bit                              
+                    bchg.b  #PANEL_STATUS_2_SFX_ONLY,PANEL_STATUS_2 
+                    ; fall through to init_title_music (toggle on/off)
 
 
 
 
-                ;------------------- Init Title Music -----------------
-init_title_music                                                        ; original routine address $0001c1a0
-                btst.b  #PANEL_STATUS_2_MUSIC_SFX,PANEL_STATUS_2        ; music or sfx bit of panel_status_2 
-                beq.b   .init_song_01 
-                jmp     SoundDriver_Stop_All                            ; calls $00004004 - end music
+               ;------------------- Init Title Music -----------------
+               ; original routine address $0001c1a0
+init_title_music                                                        
+               btst.b  #PANEL_STATUS_2_SFX_ONLY,PANEL_STATUS_2      
+               beq.b   .init_song_01 
+               ; stop playing title music
+               jmp     SoundDriver_Stop_All
+               ; use rts from jmp above to exit
 .init_song_01
-                moveq   #SOUND_TITLE_TUNE,d0                                         ; set tune to play? 
-                jmp     SoundDriver_Play_Song                                       ; jmp $00004010
-                ; uses rts in Init_Song to return to caller.
+               ; start playing title music
+               moveq   #SOUND_TITLE_TUNE,d0 
+               jmp     SoundDriver_Play_Song
+               ; uses rts in Init_Song to return to caller.
 
 
 
 
-                ;------------------ clear menu flag and exit ----------------
-                ; used by the do_title_screen_menu_options routine above.
-                ; clears keypress flag and exit, used to detect single
-                ; keypress.
-clear_menu_flag_and_exit
-                clr.w menu_keypress_flag                        ; L0001c2f2
-                rts
+               ;------------------ clear menu flag and exit ----------------
+               ; used by the do_title_screen_menu_options routine above.
+               ; clears keypress flag and exit, used to detect single
+               ; keypress.
+;clear_menu_flag_and_exit
+;               clr.w deduplicate_keypress_flag
+;               rts
 
 
 
@@ -472,7 +554,7 @@ do_infinite_live_cheat_code                                             ; origin
 .toggle_infinite_lives
                 bchg.b  #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2           ; #$0007,$0007c875 ; Enable CHEAT?
                 move.b  #$f4,copper_diwstrt                                     ; reset title screen window (closed) $0001d6e8
-                move.l  #$00001f40,d0                                           ; bitplane size in bytes (8000)
+                move.l  #DISPLAY_320_200_BYTES,d0                                           ; bitplane size in bytes (8000)
                 bsr.w   reset_title_screen_display                              ; calls $0001d2de ; reset title screen display
 .exit
                 rts 
@@ -595,7 +677,7 @@ level_1_interrupt_handler                                       ; original addre
                 ; Obviously this works for reading the keyboard etc, but...
                 ; it doesn't appear correct as per the h/w refs that I've read.
                 ;
-                ; This interrupt is enabled in 'initialise_title_screen' (PORTS - LVL2)
+                ; This interrupt is enabled in 'initialise_hardware_state' (PORTS - LVL2)
                 ;
 level_2_interrupt_handler                                                       ; original routine address $0001c26e
                 movem.l d0-d7/a0-a6,-(a7)
@@ -619,7 +701,7 @@ level_2_interrupt_handler                                                       
                 ;   - does hacky stuff with CIAA and keyboard port 
                 ;      - reset for serial register input (end of keyboard ACK)
                 ;
-                ; This interrupt is enabled in 'initialise_title_screen' (VERTB)
+                ; This interrupt is enabled in 'initialise_hardware_state' (VERTB)
                 ;
 level_3_interrupt_handler
                 movem.l d0-d7/a0-a6,-(a7)
@@ -686,10 +768,10 @@ raw_keyboard_serial_data_byte                                           ; origin
 raw_key_code_store                                                      ; original address $0001c2f0
                 dc.w $0000                                              ; keyboard reading data/flags
 
-menu_keypress_flag                                                      ; original address $0001c2f2
-                dc.w $0000                                              ; 0 = music, $ffff = sfx
+deduplicate_keypress_flag                                                      ; original address $0001c2f2
+               dc.w $0000                                              ; 0 = music, $ffff = sfx
 
-                dc.w $0000, $0000
+                ;dc.w $0000, $0000
 
 
 
@@ -1696,28 +1778,35 @@ wait_blitter
 
 
 
-                ;--------------------- do return to title screen ----------------
-                ; perform game over/game completion checks, display correct
-                ; screens on return from the game back to the title screen.
-                ;
-do_return_to_title_screen                                                       ; original routine address $0001d450
-                lea.l   temp_stack_top,a7                                       ; set temp stack, $0001d6de,a7
-                bsr.w   initialise_title_screen                                 ; calls $0001c0d8
-                btst.b  #PANEL_STATUS_2_GAME_OVER,PANEL_STATUS_2                ; #$0005,$0007c875 
-                beq.b   do_gameover_completion                                  ; calls $0001d46e
-                clr.l   PANEL_HIGHSCORE                                         ; $0007c87c
-                bra.w   return_to_title_screen                                  ; $0001c018
+               ;--------------------- do end game return to title screen ----------------
+               ; A previous game has ended, so this is a return to the title screen via
+               ; either the Joker Laugh screen or the Game Completion Screen.
+               ;
+               ; Performs game over/game completion checks to display the correct
+               ; screens on return from the game back to the title screen.
+               ;
+               ; original routine address $0001d450
+               ;
+do_end_game_return_to_title_screen   
+               ; initialise the stack              
+               lea.l   temp_stack_top,a7  
+               bsr.w   initialise_hardware_state 
 
+               ; unnecessary code - commented out
+               ; check game over status
+               ;btst.b  #PANEL_STATUS_2_GAME_OVER,PANEL_STATUS_2 
+               ;beq.b   .chk_gameover_completion
+               ;clr.l   PANEL_HIGHSCORE      
+               ;bra.w   return_to_title_screen
 
-
-                ;------------------- do game over/completion -------------------
                 ; check panel_status_2 bit to see if the game was completed
                 ; or whether it's a game over.
-do_gameover_completion                                                          ; original routine address $0001d46e
-                btst.b  #PANEL_STATUS_2_GAME_COMPLETED,PANEL_STATUS_2           ; #$0006,$0007c875 
-                IFD TEST_JOKER
-                beq.w   display_endgame_joker                                   ; jmp $0001d4ec
-                ENDC
+.chk_gameover_completion 
+               btst.b  #PANEL_STATUS_2_GAME_COMPLETED,PANEL_STATUS_2 
+
+               IFD TEST_JOKER
+                    beq.w   display_endgame_joker                         
+               ENDC
 
 
 
@@ -1725,7 +1814,7 @@ do_gameover_completion                                                          
                 ; displays the game completion screen, plays the batman voice (song 3)
                 ; waits for ~15 seconds, returns to title screen.
 display_completion_screen                                                       ; original routine address $0001d47a
-                move.l  #$00001f40,d0                                           ; d0 = bitplane size (bytes) (8000)
+                move.l  #DISPLAY_320_200_BYTES,d0                                           ; d0 = bitplane size (bytes) (8000)
                 bsr.w   reset_title_screen_display                              ; calls $0001d2de
                 move.w  #$4000,$00dff100                                        ; set 4 bitplane screen
                 lea.l   batman_background_palette,a0                            ; L0001d4cc ; 16 colour palette address
@@ -1788,16 +1877,6 @@ wait_10_seconds
                 bra.w   return_to_title_screen                          ; jmp $0001c018
 
 
-
-
-                ;-----------------------do  fatal error ------------------
-                ; Takes back ground colour and sets it, then increments the value
-                ; loops forever.
-                ;
-do_fatal_error                                                          ; original routine address $0001d542
-                move.w  d0,$00dff180
-                addq.w  #$01,d0
-                bra.w   do_fatal_error
 
 
 
