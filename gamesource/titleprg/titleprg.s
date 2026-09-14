@@ -59,8 +59,6 @@ TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same a
                                    ; comment out to test JOKER, BATMAN return screens.
 ;TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
 
-DEBUG_TYPER              SET 1     ; when set - updated text type on the title screen.
-VBLANK_FIX               SET 1     ; Implement VBLANK FIX (remove processor wait from raster wait routine) 
 
 TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
 ;TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
@@ -74,19 +72,19 @@ TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
                ; RELATIVE ADDRESSING BUILD
                ; When testing in VSCode, set resource address consstants and
                ; include code to take over the system and start the title screen.
-DISPLAY_BITPLANE_ADDRESS      EQU  display_buffer                ; address of display buffer
-ASSET_CHARSET_BASE            EQU  character_set_gfx             ; test_bitplanes-$4c            ; address of charset in memory (76 bytes into charset)
-JOKER_GFX                     EQU  joker_gfx                     ; test_bitplanes+$AA06 - address of JOKER Game Over Screen
-JOKER_PALETTE                 EQU  joker_background_palette      ; test_bitplanes+$AA06+$40         ; address of JOKER Game Over Screen Palette
-BATMAN_GFX                    EQU  batman_gfx                    ; test_bitplanes+$1722A         ; address of BATMAN Game Completion Screen
-TITLE_SCREEN_GFX              EQU  titlescreen_gfx               ; test_bitplanes+(40*88)+10     ; 
-PANEL_STATUS_1                EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
-PANEL_STATUS_2                EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
-PANEL_HIGHSCORE               EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
-PANEL_PLAYERSCORE             EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
-PANEL_INITIALISE_PLAYER_SCORE   EQU     test_nop                 ; address of Panel.Initialise_Player_Score
-PANEL_INITIALISE_PLAYER_LIVES   EQU     test_nop                 ; address of Panel.Initialise_Player_Lives
-LOADER_LOAD_LEVEL_1             EQU     test_load_level_1        ; address of Loader.Load_Level_1()
+DISPLAY_BITPLANE_ADDRESS           EQU  display_buffer                ; address of display buffer
+ASSET_CHARSET_BASE                 EQU  character_set_gfx             ; test_bitplanes-$4c            ; address of charset in memory (76 bytes into charset)
+JOKER_GFX                          EQU  joker_gfx                     ; test_bitplanes+$AA06 - address of JOKER Game Over Screen
+JOKER_PALETTE                      EQU  joker_background_palette      ; test_bitplanes+$AA06+$40         ; address of JOKER Game Over Screen Palette
+BATMAN_GFX                         EQU  batman_gfx                    ; test_bitplanes+$1722A         ; address of BATMAN Game Completion Screen
+TITLE_SCREEN_GFX                   EQU  titlescreen_gfx               ; test_bitplanes+(40*88)+10     ; 
+PANEL_STATUS_1                     EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
+PANEL_STATUS_2                     EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
+PANEL_HIGHSCORE                    EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
+PANEL_PLAYERSCORE                  EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
+PANEL_INITIALISE_PLAYER_SCORE      EQU     test_nop                   ; address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES      EQU     test_nop                   ; address of Panel.Initialise_Player_Lives
+LOADER_LOAD_LEVEL_1                EQU     test_load_level_1          ; address of Loader.Load_Level_1()
 
 kill_system
                lea     $dff000,a6
@@ -271,7 +269,7 @@ return_to_title_screen
 start_game                                                      
                ; set flag to start transition of end title screen
                ; i.e. scroll title screen to bottom of display.
-               not.w     screen_transision_direction_flag       
+               not.w     screen_transition_direction_flag       
 
                ; wait for screen transition out (scroll down to bottom)
 .wait_diwstrt
@@ -303,13 +301,20 @@ start_game
           ; to prevent crashes when executing in VSCODE
           ;
           IFD TEST_TITLEPRG
+
+          ; Fake function used to do nothing for PANEL 
+          ; function calls.
 test_nop  
                rts
 
+
+          ; Fake function used to flash the screen when
+          ; LOAD LEVEL 1 is called when testing.
 test_load_level_1
                move.w    d0,CUSTOM+COLOR00
                add.w     #1,d0
                bra.s     test_load_level_1
+
 
           ENDC
 
@@ -327,13 +332,13 @@ test_load_level_1
                ;
                ;
                ; flag inverted on game start to signal title screen transition. 
-screen_transision_direction_flag                                                
+screen_transition_direction_flag                                                
                dc.w $0000   
 
 
-do_window_scroll
+do_window_transition
                ; check scroll up/down flag
-               tst.w     screen_transision_direction_flag 
+               tst.w     screen_transition_direction_flag 
                bne.b     do_scroll_down 
 
                ; title screen start transistion (scroll up from bottom)
@@ -383,14 +388,19 @@ initialise_hardware_state
                move.w  d0,CUSTOM+INTENA
                move.w  d0,CUSTOM+INTREQ
 
-               ; set interrupt handlers
+               ; set interrupt handlers (added level 6 handler)
                move.l  #level_1_interrupt_handler,$00000064    ; Level 1 Interrupt Vector
                move.l  #level_2_interrupt_handler,$00000068    ; Level 2 Interrupt Vector           
                move.l  #level_3_interrupt_handler,$0000006c    ; Level 3 Interrupt Vector   
                move.l  #level_4_interrupt_handler,$00000070    ; Level 4 Interrupt Vector        
                move.l  #level_5_interrupt_handler,$00000074    ; Level 5 Interrupt Vector
+               move.l  #level_6_interrupt_handler,$00000078    ; Level 6 Interrupt Vector
 
                ; enable interrupts
+               ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
+               ; move.w  #$e028,CUSTOM+INTENA 
+
+               ; updated enable interrupts
                ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
                move.w  #$e028,CUSTOM+INTENA 
 
@@ -694,84 +704,136 @@ level_2_interrupt_handler                                                       
 
 
 
-                ;---------------------- level 3 interrupt handler -------------------
-                ; Vertical blank interrupt handler.
-                ;   - plays current song
-                ;   - scrolls window up/down
-                ;   - does hacky stuff with CIAA and keyboard port 
-                ;      - reset for serial register input (end of keyboard ACK)
-                ;
-                ; This interrupt is enabled in 'initialise_hardware_state' (VERTB)
-                ;
+               ;---------------------- level 3 interrupt handler -------------------
+               ; Vertical blank interrupt handler.
+               ;    - plays current song
+               ;    - scrolls window up/down
+               ;    - sets CIAA Timer A to one shot mode.
+               ;    - sets CIAA registers to enable keyboard interrupt on CIAA
+               ;
 level_3_interrupt_handler
-                movem.l d0-d7/a0-a6,-(a7)
-                jsr     SoundDriver_VBlankUpdate                ; $00004018 ; play song
-                bsr.w   do_window_scroll                        ; calls $0001c09e
-                move.b  $00bfed01,$00bfed01                     ; ICR -> ICR (why?) CIAA nothing to do with level 3 interrupts, also just looks like nonsence
-                move.b  #$08,$00bfee01                          ; CIAA - CRA - one shot timer A, stop timer A, SPMODE = input (keyboard)
-                move.b  #$88,$00bfed01                          ; CIAA - ICR - enable SP interrupt LVL 2 (keyboard())
-                move.w  #$0020,$00dff09c                        ; Clear VERTB interrupt
-                not.w   vertical_blank_toggle                   ; toggle vertical blank flag, $0001c2e8
-                movem.l (a7)+,d0-d7/a0-a6
-                rte  
+               movem.l d0-d7/a0-a6,-(a7)
+
+               ; play audio (i.e. title screen music)
+               jsr     SoundDriver_VBlankUpdate
+
+               ; do title screen start/end transition
+               ; (i.e scroll window up/down)
+               bsr.w   do_window_transition  
+                
+               ; CIAA - Interrupt control register (read & write)
+               ; reading the ICR clears the interrupt
+               ; writing the value back into the register will mask the interrupt.
+               ; this will turn-off/mask the CIAA interrupt that has occurred,
+               ;
+               ;move.b  $00bfed01,$00bfed01
+
+               ; CIAA - Control Register A
+               ; BIT 7 - 0 = Unused
+               ; BIT 6 - 0 = SPMODE  - Serial Ports is input mode (keyboard)
+               ; BIT 5 - 0 = INMODE  - Timer A counts system clock pulses
+               ; BIT 4 - 0 - LOAD    - don't force load the timer A value
+               ; BIT 3 - 1 - RUNMODE - Set Timer A in single shot mode.
+               ; BIT 2 - 0 - OUTMODE - PRB pin 6 pulse when timer A underflows (depend on PRB direction bits)
+               ; BIT 1 - 0 - PBON    - PRB pin 6 works as normal GPIO master switch (depend on PRB direction bits)
+               ; BIT 0 - 0 - START   - Stop timer A
+               ;
+               ; required for keyboard reader.
+               move.b  #$08,$00bfee01
+
+               ; set Interrupt Contol Register
+               ; Enable - CIAA - SP (Serial port interrupt) - Keyboard
+               ; Doubt this needs to be doen every VertB
+               move.b  #$88,$00bfed01  
+               
+               ; Clear VERTB interrupt
+               move.w  #$0020,CUSTOM+INTREQ                        
+               
+               ; toggle vertical blank flag,
+               not.w   vertical_blank_toggle   
+
+               movem.l (a7)+,d0-d7/a0-a6
+               rte  
 
 
 
 
-                ;---------------------- level 4 interrupt handler -------------------
-                ; Do nothing. This should probably clear the INTREQ bits for
-                ; Level 4 interrupts
-                ;
-                ; *** This interrupt is not enabled in the title screen ***f
-                ; 
-level_4_interrupt_handler                                       ; original address $0001c2e4
+               ;---------------------- level 4 interrupt handler -------------------
+               ; Do nothing. This should probably clear the INTREQ bits for
+               ; Level 4 interrupts
+               ;
+               ; *** This interrupt is not enabled in the title screen ***
+               ;
+               ; Original Address $0001c2e4
+               ; 
+level_4_interrupt_handler                                       
+               rte
+
+
+
+
+               ;---------------------- level 5 interrupt handler -------------------
+               ; Do nothing. This should probably clear the INTREQ bits for
+               ; Level 5 interrupts
+               ;
+               ; *** This interrupt is not enabled in the title screen ***
+               ;
+               ; original address $0001c2e6
+               ;
+level_5_interrupt_handler                                       
                 rte
 
 
 
 
-                ;---------------------- level 5 interrupt handler -------------------
-                ; Do nothing. This should probably clear the INTREQ bits for
-                ; Level 5 interrupts
-                ;
-                ; *** This interrupt is not enabled in the title screen ***f
-                ;
-level_5_interrupt_handler                                       ; original address $0001c2e6
+               ;---------------------- level 5 interrupt handler -------------------
+               ; Do nothing. This should probably clear the INTREQ bits for
+               ; Level 6 interrupts
+               ;
+               ; *** This interrupt is not enabled in the title screen ***
+               ;
+               ; Routine does not exist in original TITLEPRG progrm.
+               ;
+level_6_interrupt_handler                                       
                 rte
 
 
 
-
-                ;---------------------- level 6 interrupt handler --------------------
-                ; ***** MISSING ALTOGETHER, BUT INTERRUPTS ARE ENABLED FOR THIS *****
-                ; TODO: Add a handler once i've got this assembling as is.
-
-
-
                 even
-vertical_blank_toggle                                   ; original address $0001C2E8
-                dc.w $0000                              ; value appears unused by the title screen (toggled every frame)
-
-unused_002                                              ; original address $0001C2EA
-                dc.w $0000
-
+               ; value unused by the title screen (toggled every frame by VERTB LVL3 handler)
+               ; original address $0001C2E8   
+vertical_blank_toggle                                   
+                dc.w $0000                              
 
 
-raw_keyboard_serial_data_word                                           ; original address $0001C2EC
-                dc.b $00                                                ; keyboard raw key code word (high byte always 0)
-raw_keyboard_serial_data_byte                                           ; original address $0001c2ed
-                dc.b $00                                                ; keyboard raw key code byte
 
-                even
-                dc.w $0000 
+               even
+               ; keyboard raw key code word (high byte always 0)
+               ; original address $0001C2EC
+raw_keyboard_serial_data_word                                           
+               dc.b $00 
+               ; keyboard raw key code byte 
+               ; original address $0001c2ed                                              
+raw_keyboard_serial_data_byte                                           
+               dc.b $00                                                
 
-raw_key_code_store                                                      ; original address $0001c2f0
-                dc.w $0000                                              ; keyboard reading data/flags
+               ;even
+               ;dc.w $0000 
 
-deduplicate_keypress_flag                                                      ; original address $0001c2f2
-               dc.w $0000                                              ; 0 = music, $ffff = sfx
+               even
+               ; keyboard reading data/flags
+               ; original address $0001c2f0
+raw_key_code_store                                                      
+               dc.w $0000                                              
 
-                ;dc.w $0000, $0000
+
+               ; flag used to prevent key repeats on F2 - music/sfx press
+               ; 0 = music, $ffff = sfx
+               ; original address $0001c2f2
+deduplicate_keypress_flag                                                      
+               dc.w $0000                                              
+
+
 
 
 
@@ -789,16 +851,6 @@ deduplicate_keypress_flag                                                      ;
                 ; IN: D0.l = number of frames to wait + 1
                 ;
 raster_wait_161                                                 ; original routine address $0001c2f8
-
-        IFND VBLANK_FIX
-.vwait 
-                cmp.b   #$a1,$00dff006                          ; compare VHPOSR with #$a1 (161)
-                bne.b   .vwait
-                move.w  #$001e,d1
-.processor_wait
-                dbf.w  d1,.processor_wait
-                dbf.w  d0,raster_wait_161
-        ELSE
 .vwait1 
                 cmp.b   #$a1,$00dff006                          ; compare VHPOSR with #$a1 (161)
                 bne.b   .vwait1
@@ -806,8 +858,6 @@ raster_wait_161                                                 ; original routi
                 cmp.b   #$a2,$00dff006                          ; compare VHPOSR with #$a2 (162)
                 bne.b   .vwait2
                 dbf.w  d0,.vwait1
-        ENDC
-
 return_rts      rts
 
 
