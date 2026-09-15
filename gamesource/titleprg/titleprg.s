@@ -47,17 +47,13 @@
                include   "hw.i"                             ; hardware custom register includes
                
 
-SOUND_TITLE_TUNE    EQU  $1
-SOUND_JOKER_LAUGH   EQU  $2
-SOUND_BATMAN_SPEACH EQU  $3
-
 
 
 TEST_TITLEPRG            SET 1     ; run a test buildin VSCode, else build to absolute address
 
-TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
+;TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
                                    ; comment out to test JOKER, BATMAN return screens.
-;TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
+TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
 
 
 TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
@@ -65,26 +61,51 @@ TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
 
 
 
+                         ; ------------- Sound Identifiers ---------------
+SOUND_TITLE_TUNE              EQU       $1                  ; Id of the Title Tune
+SOUND_JOKER_LAUGH             EQU       $2                  ; Id of the Game Over Joker Laugh
+SOUND_BATMAN_SPEACH           EQU       $3                  ; ID of the Game Completion Batman Speach
+
+
+
+                         ; ------------ Player Status Bits ---------------
+                         ; The PANEL.IFF program contains player status
+                         ; bits that control how the title screen
+                         ; reacts when executed, for instance, the
+                         ; Game Over, Game Completed bits control whether
+                         ; the Joker or Batman screen is displayed when 
+                         ; returning to the title screen.
+                         ; the infinite lives bit is use to invert the
+                         ; display when the cheat mode is active.
+                         ;
+PANEL_STATUS_2_INFINITE_LIVES   EQU     $7                  ; panel status 2: bit 7 = 1 (infinite lives on)
+PANEL_STATUS_2_GAME_COMPLETED   EQU     $6                  ; game completed = 1
+PANEL_STATUS_2_GAME_OVER        EQU     $5                  ; game over/completion  - return from game
+PANEL_STATUS_2_SFX_ONLY         EQU     $0                  ; Music/SFX (0 = music, 1 = sfx)
+
+
            ;--------------------------- conditional start-up code ----------------------------
           ; if TEST_TITLEPRG is defined then can build an execute in VSCode
+          ; 
+          ; This section definwa equates for relative resource addresses
           ;
           IFD TEST_TITLEPRG  
                ; RELATIVE ADDRESSING BUILD
                ; When testing in VSCode, set resource address consstants and
                ; include code to take over the system and start the title screen.
-DISPLAY_BITPLANE_ADDRESS           EQU  display_buffer                ; address of display buffer
-ASSET_CHARSET_BASE                 EQU  character_set_gfx             ; test_bitplanes-$4c            ; address of charset in memory (76 bytes into charset)
-JOKER_GFX                          EQU  joker_gfx                     ; test_bitplanes+$AA06 - address of JOKER Game Over Screen
-JOKER_PALETTE                      EQU  joker_background_palette      ; test_bitplanes+$AA06+$40         ; address of JOKER Game Over Screen Palette
-BATMAN_GFX                         EQU  batman_gfx                    ; test_bitplanes+$1722A         ; address of BATMAN Game Completion Screen
-TITLE_SCREEN_GFX                   EQU  titlescreen_gfx               ; test_bitplanes+(40*88)+10     ; 
+DISPLAY_BUFFER_ADDRESS             EQU  display_buffer                ; address of display buffer
+ASSET_CHARSET_BASE                 EQU  character_set_gfx             ; address of charset in memory (76 bytes into charset)
+JOKER_GFX                          EQU  joker_gfx+$44                     ; address of JOKER Game Over Screen
+JOKER_PALETTE                      EQU  joker_background_palette+$4      ; address of JOKER Game Over Screen Palette
+BATMAN_GFX                         EQU  batman_gfx                    ; address of BATMAN Game Completion Screen
+TITLE_SCREEN_GFX                   EQU  titlescreen_gfx               ; address of Title Screen Background GFX 
 PANEL_STATUS_1                     EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
 PANEL_STATUS_2                     EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
 PANEL_HIGHSCORE                    EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
 PANEL_PLAYERSCORE                  EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
-PANEL_INITIALISE_PLAYER_SCORE      EQU     test_nop                   ; address of Panel.Initialise_Player_Score
-PANEL_INITIALISE_PLAYER_LIVES      EQU     test_nop                   ; address of Panel.Initialise_Player_Lives
-LOADER_LOAD_LEVEL_1                EQU     test_load_level_1          ; address of Loader.Load_Level_1()
+PANEL_INITIALISE_PLAYER_SCORE      EQU  test_nop                      ; mock address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES      EQU  test_nop                      ; mock address of Panel.Initialise_Player_Lives
+LOADER_LOAD_LEVEL_1                EQU  test_load_level_1             ; mock address of Loader.Load_Level_1()
 
 kill_system
                lea     $dff000,a6
@@ -103,53 +124,92 @@ kill_system
 
                include "initsystem.s"
 
-               even
+          
                ; Status Byte 1 bits (1 = active)
+               ; created as a mock memory location (contained in PANEL.IFF)
                ;   - 0 = Timer Has Expired
                ;   - 1 = No Player Lives Left
                ;   - 2 = Life has been lost
-PANEL_StatusByte_01                     ; original address $0007c874
+               ;
+               ; Original Address $0007c874
+               ;
+               even
+PANEL_StatusByte_01                     
                dc.b    $00  
 
                ; Status Byte 2 Bits (1 = active)
+               ; created as a mock memory location (contained in PANEL.IFF)
                ;   - 0 = Music/FX
                ;   - 5 = Game Over
                ;   - 6 = Game Completed
                ;   - 7 = Cheat Active
-PANEL_StatusByte_02                          ; original address $0007c875
+               ;
+               ; Original Address $0007c875
+               ;
+PANEL_StatusByte_02                          
                dc.b    $00          
 
+               ; HI-SCORE stored as a 32 bit BCD value
+               ; BCD 6 digits, MSB byte unused giving a score range 000000 - 999999
+               ; created as a mock memory location (contained in PANEL.IFF)
+               ;
+               ; Original Address $0007c878
+               ;
                even
-PANEL_HighScore_BCD                          ; original address $0007c878
-               dc.l    $00000000             ; High Score Value value (BCD 6 digits, first byte unused 000,000)
+PANEL_HighScore_BCD                          
+               dc.l    $00000000            
 
-PANEL_PlayerScore_BCD                        ; original address 0007c87c 
-               dc.l    TEST_PLAYER_SCORE     ; Player Score Value (BCD 6 digits, first byte unused 000,000)
+
+               ; PLAYER-SCORE stored as a 32 bit BCD value
+               ; BCD 6 digits, MSB byte unused giving a score range 000000 - 999999
+               ; created as a mock memory location (contained in PANEL.IFF)
+               ;
+               ; original address 0007c87c 
+               ;
+PANEL_PlayerScore_BCD                        
+               dc.l    TEST_PLAYER_SCORE     
+
+
+
 
           ELSE
                ; ABSOLUTE ADDDRESSSING BUILD
+               ; This section defines memory addresses of resources as if they were
+               ; loaded using the original game loader.
+               ;
+               ; Might be useful if the code is ever rebuilt and the original disk 
+               ; rebuilt, but really more of an original code documentation feature
+               ; than anything else. 
+               ;
+               ; The original TITLEPRG.IFF code started with the sound driver 
+               ; code and data, this has been moved to the end of the code now,
+               ; so thats a big change already.
+               ;
+               org     $3ffc       ; absolute compilation address  
+
+
+DISPLAY_BUFFER_ADDRESS          EQU     $00003190      ; address of display bitplanes in memory
+ASSET_CHARSET_BASE              EQU     $0003f1ea      ; address of charset in memory
+JOKER_GFX                       EQU     $00049C40+$40  ; address of Joker Game Over Screen (starts with palette)
+JOKER_PALETTE                   EQU     $00049C40      ; address of Joker Screen Palette
+BATMAN_GFX                      EQU     $00056460      ; address of Batman Energy Panel GFX
+TITLE_SCREEN_GFX                EQU     $00040000      ; address of Title Screen background GFX
+PANEL_STATUS_1                  EQU     $0007c874      ; address of Panel.Panel_Status_1  
+PANEL_STATUS_2                  EQU     $0007c875      ; address of Panel.Panel_Status_2 
+PANEL_HIGHSCORE                 EQU     $0007c878      ; address of Panel.High_Score 
+PANEL_PLAYERSCORE               EQU     $0007c87c      ; address of Panel.Player_Score
+PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c      ; address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES   EQU     $0007c838      ; address of Panel.Initialise_Player_Lives
+LOADER_LOAD_LEVEL_1             EQU     $824           ; address of Loader.Load_Level_1()
+
+
                ; The original binaries of the game start with a long word that provide
                ; the start address of the file.
-               ; Original Address $00003FFC        
-DISPLAY_BITPLANE_ADDRESS        EQU     $00003190                        ; address of display bitplanes in memory
-ASSET_CHARSET_BASE              EQU     $0003f1ea                        ; address of charset in memory
-JOKER_GFX                       EQU     $00049C40                        ; address of Joker Game Over Screen (starts with palette)
-JOKER_PALETTE                   EQU     $00049C40+$40                    ; 
-BATMAN_GFX                      EQU     $00056460                        ; address of Batman Energy Panel GFX
-TITLE_SCREEN_GFX                EQU     $00040000
-PANEL_STATUS_1                  EQU     $0007c874                     ; address of Panel.Panel_Status_1  
-PANEL_STATUS_2                  EQU     $0007c875                     ; address of Panel.Panel_Status_2 
-PANEL_HIGHSCORE                 EQU     $0007c878                     ; address of Panel.High_Score 
-PANEL_PLAYERSCORE               EQU     $0007c87c                     ; address of Panel.Player_Score
-PANEL_INITIALISE_PLAYER_SCORE   EQU     $0007c81c               ; address of Panel.Initialise_Player_Score
-PANEL_INITIALISE_PLAYER_LIVES   EQU     $0007c838               ; address of Panel.Initialise_Player_Lives
-LOADER_LOAD_LEVEL_1             EQU     $824                    ; address of Loader.Load_Level_1()
-
-
-               org     $3ffc       ; absolute compilation address
-
+               ;
+               ; Original Address $00003FFC 
+               ;
 titleprg_start
-               dc.l $00004000      ; perhaps an artifact of the original 'absolute addressing' build system (most files contain this initial address)                                  
+               dc.l $00004000                                        
 
 
           ENDC
@@ -160,6 +220,9 @@ titleprg_start
 
 
                ;------------------------ TITLE SCREEN ENTRY POINTS ---------------------------
+               ; Entry point on first game load, starts drectly into the title screen,
+               ; no checks for Game Over, Game Completed, etc.
+               ;
                ; Original Address $0001c000
                ;
 title_screen_start                                              
@@ -168,7 +231,11 @@ title_screen_start
 
 
                ;-------------------- GAME OVER/COMPLETION ENTRY POINT -----------------------
+               ; Entry point on Game Over/Game Completion, checks and displays appropriate
+               ; end game screen, then proceeds to run the title screen.
+               ;
                ; Original Address $0001c004
+               ;
 end_game_return_to_title_screen                                                 
                bra.w   do_end_game_return_to_title_screen
 
@@ -177,16 +244,11 @@ end_game_return_to_title_screen
 
 
 
-PANEL_STATUS_2_INFINITE_LIVES   EQU     $7                      ; panel status 2: bit 7 = 1 (infinite lives on)
-PANEL_STATUS_2_GAME_COMPLETED   EQU     $6                      ; game completed = 1
-PANEL_STATUS_2_GAME_OVER        EQU     $5                      ; game over/completion  - return from game
-PANEL_STATUS_2_SFX_ONLY         EQU     $0                      ; Music/SFX (0 = music, 1 = sfx)
-
 
 
                ;---------------------------- do title screen start ----------------------------
                ; Routine to set up & run the title screen the first time the game is started.
-               ; the routine 'return_to_title_screen' is called after game over/completion. 
+               ; the routine 'initialise_title_screen' is called after game over/completion. 
                ;
                ; Sets Window start to bottom of screen (probably for scroll up routine)
                ; H/w Ref, standard DIWSRT & DIWSTOP
@@ -199,7 +261,7 @@ do_title_screen_start
                ; set Panel.HighScore to top high-score                                        
                clr.l   PANEL_HIGHSCORE
                move.l  highscore_table_BCD_format,PANEL_HIGHSCORE  
-               ; continue to 'return_to_title_screen' below
+               ; continue to 'initialise_title_screen' below
 
 
 
@@ -211,10 +273,22 @@ do_title_screen_start
                ;
 DISPLAY_MAX_WINDOW_START EQU  $f4            ; Display Window starts at bottom of line 200
 DISPLAY_MIN_WINDOW_START EQU  $2c            ; Display Window top, starts at PAL/NTSC line 0
-DISPLAY_5_BITPLANES      EQU  $5000          ; BPLCON0 setting for 5 bitplanes
-DISPLAY_320_200_BYTES    EQU  $00001f40      ; Bitplane size for 320x200 display
 
-return_to_title_screen        
+DISPLAY_WINDOW_START     EQU  $2c            ; PAL/NTSC standard window start
+DISPLAY_NTSC_WINDOW_STOP EQU  $f4            ; NTSC standard window stop (200/400 rasters)
+DISPLAY_PAL_WINDOW_STOP  EQU  $2b            ; almost PAL standard window stop (256/512 rasters)
+
+DISPLAY_5_BITPLANES      EQU  $5000          ; BPLCON0 setting for 5 bitplanes
+DISPLAY_4_BITPLANES      EQU  $4000          ; BPLCON0 setting for 4 bitplanes
+
+DISPLAY_BYTES_WIDE       EQU  $28            ; 40 bytes wide display screen (320 pixels)
+DISPLAY_200_HIGH         EQU  $c8            ; 200 lines high
+DISPLAY_256_HIGH         EQU  $100           ; 256 lines high
+
+BITPLANE_320x200_BYTES   EQU  $00001f40      ; Bitplane size for 320x200 display in bytes
+BITPLANE_320x256_BYTES   EQU  $00002800      ; Bitplane size for 320x256 display in bytes
+
+initialise_title_screen        
                ; initialise the stack                                  
                lea.l   temp_stack_top,a7                       
 
@@ -232,7 +306,7 @@ return_to_title_screen
                ; initialise display & colour palette
                move.w  #DISPLAY_5_BITPLANES,CUSTOM+BPLCON0
                lea.l   title_screen_palette,a0
-               bsr.w   copper_copy
+               bsr.w   copper_palette_copy
 
                ; clear 'timer expired', 'life lost', 'no lives' - flags from status byte 1
                ; clear 'game over', 'game complete' - flags from status byte 2
@@ -242,7 +316,7 @@ return_to_title_screen
                bsr.w   init_title_music
 
                ; refresh display buffer
-               bsr.w   copy_title_screen_bitplanes           
+               bsr.w   copy_batman_gfx_to_display_buffer           
 
 
                ;************ TITLE SCREEN TEXT TYPER WAIT LOOP *****************
@@ -420,7 +494,7 @@ initialise_hardware_state
                jsr      SoundDriver_Initialise
                 
                ; set display initial display parameters
-               move.l  #DISPLAY_320_200_BYTES,d0
+               move.l  #BITPLANE_320x200_BYTES,d0
                bra.w   reset_title_screen_display
 
 clear_keycode_and_exit                                          ; original address $0001c16a
@@ -564,7 +638,7 @@ do_infinite_live_cheat_code                                             ; origin
 .toggle_infinite_lives
                 bchg.b  #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2           ; #$0007,$0007c875 ; Enable CHEAT?
                 move.b  #$f4,copper_diwstrt                                     ; reset title screen window (closed) $0001d6e8
-                move.l  #DISPLAY_320_200_BYTES,d0                                           ; bitplane size in bytes (8000)
+                move.l  #BITPLANE_320x200_BYTES,d0                                           ; bitplane size in bytes (8000)
                 bsr.w   reset_title_screen_display                              ; calls $0001d2de ; reset title screen display
 .exit
                 rts 
@@ -636,70 +710,80 @@ raw_key_code_table
 
 
                 even
-                ;*********************************************************************************************************************
-                ;*********************************************************************************************************************
-                ;*********************************************************************************************************************
-                ;
-                ;
-                ;       Interrupt Service Routines (ISRs)
-                ;
-                ;
-                ;*********************************************************************************************************************
-                ;*********************************************************************************************************************
-                ;*********************************************************************************************************************
+               ;*********************************************************************************************************************
+               ;*********************************************************************************************************************
+               ;*********************************************************************************************************************
+               ;
+               ;
+               ;       Interrupt Service Routines (ISRs)
+               ;
+               ;
+               ;*********************************************************************************************************************
+               ;*********************************************************************************************************************
+               ;*********************************************************************************************************************
 
 
 
 
-                ;---------------------- level 1 interrupt handler -------------------
-                ; Do nothing. This should probably clear the INTREQ bits for
-                ; Level 1 interrupts
-                ;
-                ; *** This interrupt is not enabled in the title screen ***f
-                ;
+               ;---------------------- level 1 interrupt handler -------------------
+               ; Do nothing. This should probably clear the INTREQ bits for
+               ; Level 1 interrupts
+               ;
+               ; *** This interrupt is not enabled in the title screen ***f
+               ;
 level_1_interrupt_handler                                       ; original address $0001c26c
-                rte
+               rte
 
 
 
 
-                ;---------------------- level 2 interrupt handler -------------------
-                ; PORTS/TIMERS - Level 2 Interrupt Handler
-                ; CIA-A Timers & Ports
-                ;
-                ; The ICR Register is cleared by reading the register, but this
-                ; code immediately sets it back to the value it just read.
-                ; The implications of this are that if this interrupt was not
-                ; raised by the CIAA then bit 7 will = 0, this means that when
-                ; that value is written back to the register then it will
-                ; mask the interrupts that just occurred, and prevent them
-                ; from occurring again.
-                ;
-                ; Conversly if the interrupt was raised by the CIAA then Bit 7 
-                ; will be 1, this will enable the interrupt enable bit for the 
-                ; interrupts that were raised. This code looks dodgy/hacky
-                ;
-                ; later the ICR is then set to #$08 which masks the SP bit
-                ; this sets the SP bit to 0, which is the keyboard interrupt
-                ; serial register bit. So this interrupt is being disabled here
-                ; as far as I can make out.
-                ;
-                ; Obviously this works for reading the keyboard etc, but...
-                ; it doesn't appear correct as per the h/w refs that I've read.
-                ;
-                ; This interrupt is enabled in 'initialise_hardware_state' (PORTS - LVL2)
-                ;
-level_2_interrupt_handler                                                       ; original routine address $0001c26e
-                movem.l d0-d7/a0-a6,-(a7)
-                move.b  $00bfec01,raw_keyboard_serial_data_byte                 ; SDR - $0001c2ed ; keyboard serial data
-                move.b  $00bfed01,$00bfed01                                     ; ICR - WTF-1!, clear the interrupt control if not a CIAA/Set Interrupts if is CIAA
-                move.w  #$0808,$00dff09c                                        ; INTREQ - Clear PORTS(2), 
-                                                                                ; WTF-2! - Clear RBF(5) (keyboard serial) - Level 5 Interrupt!
-                move.b  #$08,$00bfed01                                          ; ICR - Mask SP bit = 0 (keyboard serial)
-                move.b  #$60,$00bfee01                                          ; CRA - Timer A Control - INMODE=1, SPMODE=1
-                bsr.w   do_infinite_live_cheat_code                             ; calls $0001c1c0
-                movem.l (a7)+,d0-d7/a0-a6
-                rte
+               ;---------------------- level 2 interrupt handler -------------------
+               ; PORTS/TIMERS - Level 2 Interrupt Handler
+               ; CIA-A Timers & Ports
+               ;
+               ; The ICR Register is cleared by reading the register, and the 
+               ; interrupt masked from occurring again.
+               ;
+               ; The Level 2 (PORTS) and Level 5 (SERIAL RECEIVE BUFFER - RBF)
+               ; bits are cleared. I believe the (RBF clear is a mistake as this is 
+               ; not releated to the keyboard serial buffer).
+               ;
+               ; Set the keyboard serial SP to output, which is required to 
+               ; acknowledge the keycode read, as per the keyboard protocol.
+               ;
+               ; original routine address $0001c26e
+               ;
+level_2_interrupt_handler                                                       
+               movem.l d0-d7/a0-a6,-(a7)
+               
+               ; read keyboard raw key code
+               move.b  $00bfec01,raw_keyboard_serial_data_byte                 ; SDR - $0001c2ed ; keyboard serial data
+                          
+               ; clear PORTS (LVL2), SERIAL RECIEVE BUFFER (LVL5 - Not required)
+               move.w  #$0808,CUSTOM+INTREQ                 
+
+               ; CIAA - ICR - Interrupt Control Register
+               ; mask SP serial interrupt - prevent it occurring again
+               ; this is reset every frame by the vertb handler.
+               move.b  #$08,$00bfed01  
+               
+               ; CIAA - CRA - Control Register A
+               ; SPMODE  = 1 - output - keyboard protocol to acknowledge key read
+               ; INMODE  = 1 - Timer A counts external pulses on CNT line;
+               ; 
+               ; Sets output on SP to ack key code read above.
+               ; This is the keyboard protocol to acknowledge a key read.
+               ; It should be done within 143 milliseconds of the receive.
+               ; Should be set for at lease 83 microseconds apparently.
+               ;
+               move.b  #$60,$00bfee01  
+
+               ; check if cheat code has been entered.
+               ; store key presses entered.
+               bsr.w   do_infinite_live_cheat_code 
+
+               movem.l (a7)+,d0-d7/a0-a6
+               rte
 
 
 
@@ -708,8 +792,8 @@ level_2_interrupt_handler                                                       
                ; Vertical blank interrupt handler.
                ;    - plays current song
                ;    - scrolls window up/down
-               ;    - sets CIAA Timer A to one shot mode.
-               ;    - sets CIAA registers to enable keyboard interrupt on CIAA
+               ;    - re-sets keyboard SP (serial line) to input (CIAA - CRA)
+               ;    - re-enables keyboard interrupts (CIAA - ICR)
                ;
 level_3_interrupt_handler
                movem.l d0-d7/a0-a6,-(a7)
@@ -721,12 +805,6 @@ level_3_interrupt_handler
                ; (i.e scroll window up/down)
                bsr.w   do_window_transition  
                 
-               ; CIAA - Interrupt control register (read & write)
-               ; reading the ICR clears the interrupt
-               ; writing the value back into the register will mask the interrupt.
-               ; this will turn-off/mask the CIAA interrupt that has occurred,
-               ;
-               ;move.b  $00bfed01,$00bfed01
 
                ; CIAA - Control Register A
                ; BIT 7 - 0 = Unused
@@ -738,12 +816,13 @@ level_3_interrupt_handler
                ; BIT 1 - 0 - PBON    - PRB pin 6 works as normal GPIO master switch (depend on PRB direction bits)
                ; BIT 0 - 0 - START   - Stop timer A
                ;
-               ; required for keyboard reader.
+               ; SP INMODE - required for keyboard reader.
+               ; re-enabling SP input after disabled by LVL2 handler above
                move.b  #$08,$00bfee01
 
-               ; set Interrupt Contol Register
+               ; CIAA - ICR - Interrupt control register
                ; Enable - CIAA - SP (Serial port interrupt) - Keyboard
-               ; Doubt this needs to be doen every VertB
+               ; Re-enabling interrupt disabled by LVL2 handler above.
                move.b  #$88,$00bfed01  
                
                ; Clear VERTB interrupt
@@ -781,7 +860,7 @@ level_4_interrupt_handler
                ; original address $0001c2e6
                ;
 level_5_interrupt_handler                                       
-                rte
+               rte
 
 
 
@@ -795,7 +874,7 @@ level_5_interrupt_handler
                ; Routine does not exist in original TITLEPRG progrm.
                ;
 level_6_interrupt_handler                                       
-                rte
+               rte
 
 
 
@@ -838,27 +917,29 @@ deduplicate_keypress_flag
 
 
 
-                ;------------------------- wait raster 161 -------------------------
-                ; Waits for raster 161 (#$a1) in a busy loop, it will also
-                ; wait for multiple frames for the value set in d0.l
-                ;
-                ; It has a dodgy processor wait loop which prevents false +ve's
-                ; with the vertical check on the same raster line (it's a bit shit) 
-                ;
-                ; reading and comparing a byte value might not be the best approach
-                ; on a custom register.
-                ;
-                ; IN: D0.l = number of frames to wait + 1
-                ;
-raster_wait_161                                                 ; original routine address $0001c2f8
+               ;------------------------- wait raster 161 -------------------------
+               ; Waits for raster 161 (#$a1) in a busy loop, it will also
+               ; wait for multiple frames for the value set in d0.l
+               ;
+               ; Originally, it had a dodgy processor wait loop i've taken this out
+               ; and it now waits for the next raster line.
+               ;               ;
+               ;    IN: D0.l = number of frames to wait + 1
+               ;
+               ; original routine address $0001c2f8
+               ;
+raster_wait_161               
 .vwait1 
-                cmp.b   #$a1,$00dff006                          ; compare VHPOSR with #$a1 (161)
-                bne.b   .vwait1
+                    cmp.b     #$a1,CUSTOM+VHPOSR
+                    bne.b     .vwait1
 .vwait2 
-                cmp.b   #$a2,$00dff006                          ; compare VHPOSR with #$a2 (162)
-                bne.b   .vwait2
-                dbf.w  d0,.vwait1
-return_rts      rts
+                    cmp.b     #$a2,CUSTOM+VHPOSR
+                    bne.b     .vwait2
+
+               ; loop and wait for additional 
+               ; frames
+               dbf.w     d0,.vwait1
+               rts
 
 
 
@@ -875,11 +956,6 @@ current_text_ptr                                        ; original address L0001
 
 
 
-
-unused_background_flash                                 ; original routine address $0001c318
-                add.w #$0001,d7
-                move.w d7,$00dff180
-                rts 
 
 
 DISPLAY_WIDTH_BYTES      EQU $28        ; display width = 40 bytes per scan line
@@ -905,7 +981,7 @@ resume_text_typer_start_line
                 move.w  y_coord,d0                              ; $0001c312 ; d0 = y co-ord
                 mulu.w  #$0028,d0                               ; d0 = d0 * 40 (bytes per scan line)
                 add.w   x_coord,d0                              ; $0001c310 ; d0 = d0 + x co-ord
-                add.l   #DISPLAY_BITPLANE_ADDRESS,d0            ; #$00063190,d0 ; add bitplane base address
+                add.l   #DISPLAY_BUFFER_ADDRESS,d0              ; #$00063190,d0 ; add bitplane base address
                 exg.l   d0,a2                                   ; a2 = display destination address
                 movea.l a2,a3                                   ; a3 = display destination address
 
@@ -914,7 +990,7 @@ resume_text_typer_current_position
                 bne.w   continue_wait_or_start_game             ; jmp $0001c50e
                 move.b  (a6)+,d0                                ; get display param
                 cmp.b   #$ff,d0
-                beq.w   return_rts                              ; $0001c30e
+                beq.w   .exit
                 cmp.b   #$0d,d0
                 beq.w   crlf                                    ; jmp $0001c4d0 - crlf - carriage return plus line feed
                 cmp.b   #$0e,d0
@@ -1002,7 +1078,9 @@ resume_text_typer_current_position
 
                ; continue typing at the current position on the screen
                bra.w   resume_text_typer_current_position
-               ;rts  
+
+
+.exit          rts  
 
 
 
@@ -1023,7 +1101,7 @@ plot_character
                 move.w  char_plot_x_coord,d2            ; L0001c45a,d2 ; x co-ordinate
                 mulu.w  #$0028,d3                       ; d3 = d3 * 40 (raster line)
                 add.w   d3,d2                           ; d2 = x & y co-ords byte offset
-                add.l   #DISPLAY_BITPLANE_ADDRESS,d2    ; #$00063190 ; add bitplane 1 base address
+                add.l   #DISPLAY_BUFFER_ADDRESS,d2      ; #$00063190 ; add bitplane 1 base address
                 exg.l   d2,a2                           ; a2 = dest address, d1 = prev value of a2
                 and.l   #$0000003f,d0                   ; clamp d0 to 0-63
                 subq.w  #$0001,d0                       ; decrement character offset by 1, to match gfx data
@@ -1072,7 +1150,7 @@ lf                                                      ; original address $0001
                 ; clear screen bitplanes and reset x,y
                 ; coords.
 cls
-                bsr.w   copy_title_screen_bitplanes     ; calls $0001ca34
+                bsr.w   copy_batman_gfx_to_display_buffer     ; calls $0001ca34
                 move.w  #$0007,x_coord                  ; $0001c310
                 clr.w   y_coord                         ; $0001c312 
                 bra.w   resume_text_typer_start_line          ; $0001c336 
@@ -1161,7 +1239,7 @@ _nop                                                            ; original addre
 
 
                 ;-------- dangling rts instruction --------------
-                rts
+                ;rts
 
 
 
@@ -1196,7 +1274,7 @@ _nop                                                            ; original addre
                ;
                ; Additional Note:
                ;    The return from this routine is to the source of the BSR to hi_score_and_text_typer
-               ;    made from the 'return_to_title_screen' procedure which then transistions out of the
+               ;    made from the 'initialise_title_screen' procedure which then transistions out of the
                ;    title screen and calls the loader to load level 1.
                ;
                ; Original Address $0001c586
@@ -1637,18 +1715,6 @@ highscore_table_BCD_format
 
 
 
-               
-               even
-               ; --------------- Copy Title Screen Bitplanes ----------------
-               ; A0 = Source Address
-copy_title_screen_bitplanes
-               lea.l     TITLE_SCREEN_GFX,a0
-               bra.w     copy_bitplanes_to_display
-               ; uses routine rts to return to caller
-
-
-
-
                ; The size of the current bitplane to copy 
                ; to the display_buffer_address
                ; Original Address $0001ca3e
@@ -1665,166 +1731,208 @@ display_buffer_address
 
 
 
+               ; --------------- Copy Title Screen Bitplanes ----------------
+               ; Copies the main Title Screen background GFX into the
+               ; display buffer.
+copy_batman_gfx_to_display_buffer
+               lea.l     TITLE_SCREEN_GFX,a0
+               bsr       copy_320x200x5_to_display
+               rts
 
 
-                ;---------------------- reset title screen display ------------------------
-                ; 
-                ;
-                ; 1) resets the display window to closed, set general display parameters
-                ; in custom registers.
-                ; Checks if cheat is enabled, and if so flips the display.
-                ;
-                ; Called from:
-                ;
-                ; IN: D0.l = bitplane size (bytes)
-                ;
-reset_title_screen_display                                              ; original address $0001d2de
-                move.l  d0,bitplane_size                                ; $0001ca3e
-                move.b  #$f4,$00dff08e                                  ; DIWSTRT - reset window to closed
-                moveq   #$01,d0
-                bsr.w   raster_wait_161                                 ; wait for 2 frames ; calls $0001c2f8
-                move.w  #$5000,$00dff100                                ; BPLCON0 - 5 bitplane screen
-                move.w  #$0040,$00dff104                                ; BPLCON2 - Playfield 2 - priority (dual playfield?)
-                move.w  #$0000,$00dff102                                ; BPLCON1 - Clear scroll delay
-                move.l  #DISPLAY_BITPLANE_ADDRESS,display_buffer_address   ; #$00063190,$0001ca42 [00000000]
-                move.l  #$003800d0,$00dff092                            ; DDFSTRT/DDFSTOP - DMA bitplane fetch
-                clr.w   $00dff108                                       ; BPL1MOD - CLR not the best on custom regs
-                clr.w   $00dff10a                                       ; BPL2MOD
-                move.l  #$ffffffff,$00dff044                            ; BLTAFWM/BLTALWM - blitter word masks
-                move.l  #DISPLAY_BITPLANE_ADDRESS,d0                    ; #$00063190,d0
-                btst.b  #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2   ; $0007c875
-                beq.b   .set_bitplane_ptrs                              ; $0001d372
+
+               ;---------------------- reset title screen display ------------------------
+               ; Sets the Title Screen display to a default 320x200, 5 bitplane screen.
+               ;
+               ; Stores the current bitplane size in the bitplane_size variable.
+               ;    - variable used by cheat code to calc bitplane ptrs for flipped screen
+               ;    - also used by the typer for drawing characters on screen.
+               ;
+               ; If the cheat mode is active then is calculates bitplane ptrs and
+               ; sets the necessary negative modulo to flip the screen.
+               ;
+               ;    IN: D0.l = bitplane size (bytes)
+               ;
+               ; Original Address $0001d2de
+               ;
+reset_title_screen_display    
+               ; store current bitplane size                                          
+               move.l    d0,bitplane_size
+
+               ; move top of window to the bottom of the display
+               move.b    #DISPLAY_MAX_WINDOW_START,CUSTOM+DIWSTRT
+
+               ; wait for 2 frames
+               moveq     #$01,d0
+               bsr.w     raster_wait_161
+                
+               ; default 5 bitplane display
+               ; clear scroll delay
+               ; reset bpl/spr priorities
+               move.w    #DISPLAY_5_BITPLANES,CUSTOM+BPLCON0
+               move.w    #$0000,CUSTOM+BPLCON1
+               move.w    #$0000,CUSTOM+BPLCON2 
+               
+               ; set display buffer address
+               move.l    #DISPLAY_BUFFER_ADDRESS,display_buffer_address
+
+               ; set display DMA and Modulo
+               move.l    #$003800d0,CUSTOM+DDFSTRT
+               move.w    #$0000,CUSTOM+BPL1MOD
+               move.w    #$0000,CUSTOM+BPL2MOD
+
+               ; calculate copper bitplane ptrs
+               ; display modified when cheat enabled
+               move.l    #DISPLAY_BUFFER_ADDRESS,d0 
+
+               ; check if cheat enabled
+               btst.b    #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2
+               beq.b     .set_bitplane_ptrs
+
+               ; Cheat enabled, so flip screen
+               ; Update bpl pointer to end of screen
+               ; Use a negative modulo to flip the screen.
 .cheat_enabled
-                move.w  #$ffb0,$00dff108                                ; BPL1MOD = -80 (flip screen)
-                move.w  #$ffb0,$00dff10a                                ; BPL2MOD = -80 (flip screen)
-                move.l  bitplane_size,d1                                ; $0001ca3e,d1
-                sub.l   #$00000028,d1
-                add.l   d1,d0                                           ; d0 last line of title screen bitplane
+               ; set modulos to -80 (flip screen)
+               move.w    #$ffb0,CUSTOM+BPL1MOD 
+               move.w    #$ffb0,CUSTOM+BPL2MOD 
+               move.l    bitplane_size,d1 
+               sub.l     #DISPLAY_BYTES_WIDE,d1
+               ; d0 = address of last line of title screen bitplane
+               add.l     d1,d0                                           
 
+               ; set copper bitplane pointers
+               ; for display
 .set_bitplane_ptrs
-                moveq   #$04,d7                                         ; d7 = 4 + 1 (5 bitplanes) set bitplane pointers for title screen
-                lea.l   copper_bplh_ptrs,a0                             ; L0001d6ee,a0 - bitplane high 16bit ptrs
-                lea.l   copper_bpll_ptrs,a1                             ; L0001d702,a1 - bitplane low  16bit ptrs
+               ; set loop counter (5) and,
+               ; init copper data ptrs
+               moveq     #$04,d7 
+               lea.l     copper_bplh_ptrs,a0
+               lea.l     copper_bpll_ptrs,a1
 .bitplane_loop
-                move.w  d0,$0002(a1)
-                swap.w  d0
-                move.w  d0,$0002(a0)
-                swap.w  d0
-                addq.l  #$04,a0                                         ; increment to next bitplane ptr in copper list
-                addq.l  #$04,a1                                         ; increment to next bitplane ptr in copper list
-                add.l   bitplane_size,d0                                ; $0001ca3e,d0 - calc next bitplane start address
-                dbf.w   d7,.bitplane_loop                               ; loop 5 times, jmp $0001d380
-                rts
+                    ; set bpl ptr in copper list
+                    move.w    d0,$0002(a1)
+                    swap.w    d0
+                    move.w    d0,$0002(a0)
+                    swap.w    d0
+
+                    ; update copper/bpl pointers
+                    addq.l    #$04,a0
+                    addq.l    #$04,a1
+                    add.l     bitplane_size,d0
+               
+               ; set next bitplane pointer
+               dbf.w     d7,.bitplane_loop
+               
+               rts
 
 
 
-                ;------------------- do copy bitplane memory -----------------
-                ; copies memory to the display bitplanes from $20000
-                ; appears to be unused code.
-                ;
-do_copy_bitplane_memory
-                bra.w   copy_bitplane_memory                            ; jmp $0001d3b4
-
-
-
-
-                ;--------------------- copper copy -------------------
-                ; copies colours into the copper for the current
-                ; screen display
-                ; IN: A0 = ptr to screen colours
-                ;
-copper_copy                                                     ; original address $0001d3a0
-                lea.l   copper_colors,a1                        ; 0001d718,a1
-                move.w  #$001f,d0                               ; d0 = 31 + 1 - counter
+               ;--------------------- copper copy -------------------
+               ; Copies colours into the copper for the current
+               ; screen display.
+               ; Always copies 32 colours regardless of palette
+               ; size.
+               ;
+               ; IN: A0 = ptr to screen colours
+               ;
+               ; original address $0001d3a0
+               ;
+copper_palette_copy  
+               lea.l   copper_colors,a1
+               move.w  #$001f,d0
 .copy_loop
-                move.w  (a0)+,(a1)
-                addq.l  #$04,a1                                 ; update dest ptr to next colour value
-                dbf.w   d0,.copy_loop
-                rts
+                    move.w  (a0)+,(a1)
+                    addq.l  #$04,a1
+               dbf.w   d0,.copy_loop
+               rts
 
 
 
+               ; ----------------------------- Copy 320x200x5 to Display  --------------------------------
+               ; Copy source data to the destination 320x200 5 bitplanes.
+               ; Used to restore title screen display with background gfx.
+               ;
+               ; The original routine used the processor to do the copy, this being an 
+               ; Amiga, I just can't have that sort of thing.
+               ;
+               ; IN: A0 = ptr to src gfx
+               ;
+               ; Original Address $0001d3da
+               ;
+copy_320x200x5_to_display 
+               ; store used registers
+               movem.l   a0/a6,-(a7)
 
-                ;------------------- copy bitplane memory -----------------
-                ; copies memory to the display bitplanes from $20000
-                ; appears to be unused code.
-                ;
-copy_bitplane_memory                                            ; original routine address
-                clr.l   DISPLAY_BITPLANE_ADDRESS                ; $00063190 - clear first 32 bits?
-                lea.l   $00020000,a0                            ; a0 = $20000 - source address
-                lea.l   DISPLAY_BITPLANE_ADDRESS+4,a1           ; a1 = $63194 - destination address
-                movea.l a0,a2                                   ; a2 = copy dest address
-                moveq   #$04,d1                                 ; d1 = counter 4 + 1 (5 bitplanes)
-.bitplane_copy_loop
-                move.w  #$1f40,d0                               ; d0 = bitplane size (8000)
-.byte_copy_loop
-                move.b  (a0)+,(a1)+                             ; copy byte by byte from source to dest
-                dbf.w   d0,.byte_copy_loop
-                dbf.w   d1,.bitplane_copy_loop
-                rts
+               lea       CUSTOM,a6
+               ; enable blitter & nasty
+               move.w    #$8640,DMACON(a6)  
 
+               ; wait for any previous blit to complete
+               bsr       wait_blitter
 
+               ; do blit 20 words wide by 1000 lines high
+               ; 40x200x5 = blit size.
+               ; no mask, no shift, D=A
+               move.l    a0,BLTAPT(a6)
+               move.l    #DISPLAY_BUFFER_ADDRESS,BLTDPT(a6)
+               move.l    #$ffffffff,BLTAFWM(a6)
+               move.l    #$00000000,BLTAMOD(a6)
+               move.l    #$09f00000,BLTCON0(a6)
+               move.w    #(1000<<6)+20,BLTSIZE(a6)
 
-
-                ; ----------------------------- Copy Bitplanes to Display  --------------------------------
-                ; copy source gfx to display bitplanes.
-                ;
-                ; - address $63190 = Bitplane address for display - see copper list
-                ;
-                ; - 28 x 3 = 84 bytes per loop iteration
-                ; - 84 x 477 = 40,068 bytes
-                ;  - 320 x 200 screen = 8000 bytes per bitplane 
-                ;  - 8000 x5 = 40,000
-                ; - over copies 68 bytes?
-                ;
-                ; IN: A0 = ptr to src gfx
-                ;
-copy_bitplanes_to_display                               ; original routine address $0001d3da
-                movem.l d0/a0-a1,-(a7)
-                lea.l   DISPLAY_BITPLANE_ADDRESS,a1     ; $00063190,a1
-                move.w  #$01dc,d0                       ; d0 = $1cd (476) + 1
-.copy_loop
-                movem.l (a0)+,d1-d7                     ; copy 28 bytes src -> registers
-                movem.l d1-d7,(a1)                      ; copy 28 bytes reg -> dest (a1)
-                adda.l  #$0000001c,a1                   ; #$1c = 28 (28 bytes to dest ptr)
-                movem.l (a0)+,d1-d7                     ; copy 28 bytes src -> registers
-                movem.l d1-d7,(a1)                      ; copy 28 bytes reg -> dest
-                adda.l  #$0000001c,a1                   ; #$1c = 28 (28 bytes to dest ptr) 
-                movem.l (a0)+,d1-d7                     ; copy 28 bytes src > registers
-                movem.l d1-d7,(a1)                      ; copy 28 bytes reg -> dest
-                adda.l  #$0000001c,a1                   ; #$1c = 28 (28 bytes to dest ptr) 
-                dbf.w   d0,.copy_loop                   ; copy loop (477 times x 28 bytes = 40,068)
-
-                movem.l (a7)+,d0/a0-a1
-                rts
+               ; restore used registers
+               movem.l   (sp)+,a0/a6
+               rts
 
 
 
-                ; --------------------- copy gfx to display ---------------------
-                ; copies 51,212 bytes from source to dest.
-                ; IN: a0 = source gfx ptr
-copy_gfx_to_display                                     ; original address $0001d41c
-                movem.l d0/a1,-(a7)
-                lea.l   DISPLAY_BITPLANE_ADDRESS,a1     ; $00063190,a1
-                move.w  #$0724,d0                       ; #$724 + 1 (1829) ; 1829 * 28 = 51,212
-.copy_loop
-                movem.l (a0)+,d1-d7                     ; get 28 source bytes (d1-d7)
-                movem.l d1-d7,(a1)                      ; set 28 dest bytes (d1-d7)
-                adda.l  #$0000001c,a1                   ; increment dest ptr by #$1c (28)
-                dbf.w   d0,.copy_loop                   ; loop 1829 times
-                movem.l (a7)+,d0/a1
-                rts 
+               ; --------------------- copy gfx to display ---------------------
+               ; Copy source data to the destination 320x200 5 bitplanes.
+               ; Used to restore title screen display with background gfx.
+               ;
+               ; The original routine used the processor to do the copy, this being an 
+               ; Amiga, I just can't have that sort of thing.
+               ;
+               ; IN: A0 = ptr to src gfx
+               ;
+               ; Original Address $0001d41c
+               ;
+copy_320x256x5_to_display  
+               ; store used registers
+               movem.l   a0/a6,-(a7)
+
+               lea       CUSTOM,a6
+               ; enable blitter & nasty
+               move.w    #$8640,DMACON(a6)  
+
+               ; wait for any previous blit to complete
+               bsr       wait_blitter
+
+               ; do blit 20 words wide by 1000 lines high
+               ; 40x200x5 = blit size.
+               ; no mask, no shift, D=A
+               move.l    a0,BLTAPT(a6)
+               move.l    #DISPLAY_BUFFER_ADDRESS,BLTDPT(a6)
+               move.l    #$ffffffff,BLTAFWM(a6)
+               move.l    #$00000000,BLTAMOD(a6)
+               move.l    #$09f00000,BLTCON0(a6)
+               move.w    #(640<<6)+40,BLTSIZE(a6)
+
+               ; restore used registers
+               movem.l   (sp)+,a0/a6
+               rts
 
 
 
-
-                ;--------------------- wait blitter ---------------------------
-                ; wait for blitter to finish it's current operation.
-                ; busy wait loop.
+               ;--------------------- wait blitter ---------------------------
+               ; wait for blitter to finish it's current operation.
+               ; busy wait loop.
 wait_blitter
-                btst.b  #$0006,$00dff002                 ; test BBUSY bit of DMACONR
-                bne.w   wait_blitter
-                rts  
+               ; test BBUSY bit of DMACONR (bit 14 of word, bit 6 of byte)
+               btst.b  #$6,CUSTOM+DMACONR                 
+               bne.w   wait_blitter
+               rts  
 
 
 
@@ -1847,7 +1955,7 @@ do_end_game_return_to_title_screen
                ;btst.b  #PANEL_STATUS_2_GAME_OVER,PANEL_STATUS_2 
                ;beq.b   .chk_gameover_completion
                ;clr.l   PANEL_HIGHSCORE      
-               ;bra.w   return_to_title_screen
+               ;bra.w   initialise_title_screen
 
                 ; check panel_status_2 bit to see if the game was completed
                 ; or whether it's a game over.
@@ -1855,78 +1963,96 @@ do_end_game_return_to_title_screen
                btst.b  #PANEL_STATUS_2_GAME_COMPLETED,PANEL_STATUS_2 
 
                IFD TEST_JOKER
-                    beq.w   display_endgame_joker                         
+                    beq.w   display_game_over_joker                         
                ENDC
 
 
 
-                ;---------------------- display completion screen -----------------------
-                ; displays the game completion screen, plays the batman voice (song 3)
-                ; waits for ~15 seconds, returns to title screen.
-display_completion_screen                                                       ; original routine address $0001d47a
-                move.l  #DISPLAY_320_200_BYTES,d0                                           ; d0 = bitplane size (bytes) (8000)
-                bsr.w   reset_title_screen_display                              ; calls $0001d2de
-                move.w  #$4000,$00dff100                                        ; set 4 bitplane screen
-                lea.l   batman_background_palette,a0                            ; L0001d4cc ; 16 colour palette address
-                bsr.w   copper_copy                                             ; calls $0001d3a0
-                lea.l   BATMAN_GFX,a0                                            ; a0 = source gfx
-                ;lea.l   $00056460,a0                                            ; a0 = source gfx
-                bsr.w   copy_bitplanes_to_display                               ; calls $0001d3da
-                move.b  #$2c,copper_diwstrt                                     ; $0001d6e8 - set window open
-                move.b  #$f4,copper_diwstop                                     ; $0001d6ec 
-                move.w  #$0064,d0                                               ; d0 = 100
-                bsr.w   raster_wait_161                                         ; wait for 100 frames (2 seconds) - calls $0001c2f8
-                moveq   #SOUND_BATMAN_SPEACH,d0                                                 ; d0 = song 3
-                jsr     SoundDriver_Play_Song                                               ; init play song 4 - calls $00004010
-                move.w  #$0600,d0                                               ; d0 = 1536 
-                bsr.w   raster_wait_161                                         ; wait for 1536 frames (15 seconds) - calls $0001c2f8
-                bra.w   return_to_title_screen                                  ; jmp $0001c018
+               ;---------------------- display completion screen -----------------------
+               ; Display the game completion screen, 
+               ; Play the batman voice (song 3)
+               ; waits for ~30 seconds, returns to title screen.
+               ;
+               ; Original Address $0001d47a
+               ;
+display_completion_screen   
+               ;  bitplane size (bytes) (8000) = d0.l                                                
+               move.l  #BITPLANE_320x200_BYTES,d0
+               bsr.w   reset_title_screen_display
+
+               ; set 4 bitplane screen
+               move.w  #DISPLAY_4_BITPLANES,CUSTOM+BPLCON0
+
+               ; set screen palette
+               lea.l   batman_background_palette,a0
+               bsr.w   copper_palette_copy
+
+               ; copy background gfx
+               lea.l   BATMAN_GFX,a0
+               bsr.w   copy_320x200x5_to_display
+               
+               ; set display window 200 rasters
+               move.b  #DISPLAY_WINDOW_START,copper_diwstrt
+               move.b  #DISPLAY_NTSC_WINDOW_STOP,copper_diwstop                                     ; $0001d6ec 
+               
+               ; wait for approx 2 seconds
+               move.w  #$0064,d0 
+               bsr.w   raster_wait_161
+               
+               ; play game completed
+               ; - batman speach sound
+               moveq   #SOUND_BATMAN_SPEACH,d0
+               jsr     SoundDriver_Play_Song
+               
+               ; wait for apprix 30 seconds
+               move.w  #$0600,d0 
+               bsr.w   raster_wait_161
+                
+               ; return to the title screen
+               bra.w   initialise_title_screen
 
 
 
+               ;---------------------- display end game joker -----------------------
+               ; Displays the game over screen
+               ; Plays the joker laugh (song 2)
+               ; Waits for ~10 seconds, 
+               ; Returns to title screen.
+               ;
+               ; original address $0001d4f0
+               ;
+display_game_over_joker   
+               ; set bitplane size. d0.l                                                
+               move.l  #BITPLANE_320x256_BYTES,d0  
+               bsr.w   reset_title_screen_display 
 
+               ; set screen palette
+               lea.l   JOKER_PALETTE,a0
+               bsr.w   copper_palette_copy 
 
+               ; copy background gfx
+               lea.l   JOKER_GFX,a0
+               bsr.w   copy_320x256x5_to_display
+                
+               ; set display window 256 rasters
+               move.b  #DISPLAY_WINDOW_START,copper_diwstrt
+               move.b  #DISPLAY_PAL_WINDOW_STOP,copper_diwstop
+               
+               ; wait for approx 0.5 second
+               move.w  #$0014,d0
+               bsr.w   raster_wait_161
 
-                ;---------------------- display end game joker -----------------------
-                ; displays the game over screen, plays the joker laugh (song 2)
-                ; waits for ~10 seconds, returns to title screen.
-display_endgame_joker                                                   ; original address $0001d4f0
-                move.l  #$2800,d0                                       ; d0,d4 = bitplane size (bytes)
-                bsr.w   reset_title_screen_display                      ; calls $0001d2de
-        IFND     TEST_TITLEPRG
-                ;lea.l   $00040000,a0
-                lea.l   JOKER_PALETTE,a0                                ; a0 = display palette colour table
-                bsr.w   copper_copy                                     ; calls $0001d3a0
-                lea.l   JOKER_GFX+$40,a0                                ; a0 = display palette colour table
-        ELSE
-                ;lea.l   test_bitplanes,a0                              ; a0 = display palette colour table
-                lea.l   JOKER_PALETTE+4,a0                              ; a0 = display palette colour table
-                bsr.w   copper_copy                                     ; calls $0001d3a0
-                lea.l   JOKER_GFX+$44,a0                                ; a0 = display palette colour table
-        ENDC
-                bsr.w   copy_gfx_to_display                             ; calls $0001d41c
-                move.b  #$2c,copper_diwstrt                             ; $0001d6e8
-                move.b  #$2b,copper_diwstop                             ; $0001d6ec
-                move.w  #$0014,d0
-                bsr.w   raster_wait_161                                 ; calls $0001c2f8
-                moveq   #SOUND_JOKER_LAUGH,d0
-                jsr     SoundDriver_Play_Song                                       ; calls $00004010
-                move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
-                bsr.w   raster_wait_161                                 ; calls $0001c2f8
-                bra.w   return_to_title_screen                          ; jmp $0001c018
+                ; play game over
+               ; - joker laugh sound              
+               moveq   #SOUND_JOKER_LAUGH,d0
+               jsr     SoundDriver_Play_Song
 
+               ; wait for approx 10 seconds               
+               move.w  #$0200,d0    
+               bsr.w   raster_wait_161 
 
-
-
-                ;--------------------- wait 10 seconds ---------------------
-                ; waits for 512 frames to pass.
-                ; *** unused code ***
-wait_10_seconds
-                move.w  #$0200,d0                                       ; d0 = wait 512 frames (10 seconds)
-                bsr.w   raster_wait_161                                 ; calls $0001c2f8
-                bra.w   return_to_title_screen                          ; jmp $0001c018
-
-
+               ; return to the title screen               
+               bra.w   initialise_title_screen
 
 
 
@@ -1966,13 +2092,14 @@ temp_stack_top                                                          ; origin
 
 
 
-L0001D6DE dc.w $0000                            ; ***** UNUSED? *****
-L0001D6E0 dc.w $0000                            ; ***** UNUSED? *****
+;L0001D6DE dc.w $0000                            ; ***** UNUSED? *****
+;L0001D6E0 dc.w $0000                            ; ***** UNUSED? *****
 
 
 
 
-                ; ------------------- copper list -------------------
+               ; ------------------- copper list -------------------
+               even
 copper_list
                 dc.w $00FF
                 dc.w $FF00
@@ -2047,12 +2174,13 @@ copper_colors                                                   ; original addre
 
           ;*************************************************************************************
           ; DISPLAY BUFFER
+          ; 320 x 200 display buffer, 5 bitplanes,
+          ; 51200 bytes
           ;*************************************************************************************
           IFD TEST_TITLEPRG
-               even
-display_buffer    
-               dcb.w   40000,$f0f0                ; 3200 x 200 display buffer, 5 bitplanes, 40000 bytes
-
+               even    
+display_buffer  
+               dcb.b     51200,$00
           ENDC
 
 
