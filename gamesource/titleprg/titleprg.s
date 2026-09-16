@@ -78,10 +78,38 @@ SOUND_BATMAN_SPEACH           EQU       $3                  ; ID of the Game Com
                          ; the infinite lives bit is use to invert the
                          ; display when the cheat mode is active.
                          ;
-PANEL_STATUS_2_INFINITE_LIVES   EQU     $7                  ; panel status 2: bit 7 = 1 (infinite lives on)
-PANEL_STATUS_2_GAME_COMPLETED   EQU     $6                  ; game completed = 1
-PANEL_STATUS_2_GAME_OVER        EQU     $5                  ; game over/completion  - return from game
-PANEL_STATUS_2_SFX_ONLY         EQU     $0                  ; Music/SFX (0 = music, 1 = sfx)
+PANEL_STATUS_2_INFINITE_LIVES EQU       $7                  ; panel status 2: bit 7 = 1 (infinite lives on)
+PANEL_STATUS_2_GAME_COMPLETED EQU       $6                  ; game completed = 1
+PANEL_STATUS_2_GAME_OVER      EQU       $5                  ; game over/completion  - return from game
+PANEL_STATUS_2_SFX_ONLY       EQU       $0                  ; Music/SFX (0 = music, 1 = sfx)
+
+
+
+TYPERCHAR_BITPLANE_SIZE       EQU       $10                 ; character set = 16 bytes per bitplane
+TYPERCHAR_WIDTH_BYTES         EQU       $2                  ; character is 2 bytes wide (16 pixels)
+
+
+
+DISPLAY_MAX_WINDOW_START      EQU       $f4                 ; Display Window starts at bottom of line 200
+DISPLAY_MIN_WINDOW_START      EQU       $2c                 ; Display Window top, starts at PAL/NTSC line 0
+
+DISPLAY_WINDOW_START          EQU       $2c                 ; PAL/NTSC standard window start
+DISPLAY_NTSC_WINDOW_STOP      EQU       $f4                 ; NTSC standard window stop (200/400 rasters)
+DISPLAY_PAL_WINDOW_STOP       EQU       $2b                 ; almost PAL standard window stop (256/512 rasters)
+
+DISPLAY_5_BITPLANES           EQU       $5000               ; BPLCON0 setting for 5 bitplanes
+DISPLAY_4_BITPLANES           EQU       $4000               ; BPLCON0 setting for 4 bitplanes
+
+DISPLAY_200_HIGH              EQU       $c8                 ; 200 lines high
+DISPLAY_256_HIGH              EQU       $100                ; 256 lines high
+
+DISPLAY_WIDTH_BYTES           EQU       $28                 ; display width = 40 bytes per scan line
+
+BITPLANE_320x200_BYTES        EQU       $00001f40           ; Bitplane size for 320x200 display in bytes
+BITPLANE_320x256_BYTES        EQU       $00002800           ; Bitplane size for 320x256 display in bytes
+
+
+
 
 
            ;--------------------------- conditional start-up code ----------------------------
@@ -226,7 +254,7 @@ titleprg_start
                ; Original Address $0001c000
                ;
 title_screen_start                                              
-               bra.w   do_title_screen_start
+               bra.w     do_title_screen_start
 
 
 
@@ -237,12 +265,7 @@ title_screen_start
                ; Original Address $0001c004
                ;
 end_game_return_to_title_screen                                                 
-               bra.w   do_end_game_return_to_title_screen
-
-
-
-
-
+               bra.w     do_end_game_return_to_title_screen
 
 
 
@@ -259,10 +282,9 @@ end_game_return_to_title_screen
                ;
 do_title_screen_start   
                ; set Panel.HighScore to top high-score                                        
-               clr.l   PANEL_HIGHSCORE
-               move.l  highscore_table_BCD_format,PANEL_HIGHSCORE  
+               clr.l     PANEL_HIGHSCORE
+               move.l    highscore_table_BCD_format,PANEL_HIGHSCORE  
                ; continue to 'initialise_title_screen' below
-
 
 
 
@@ -271,83 +293,57 @@ do_title_screen_start
                ;
                ; Original Address $0001c018
                ;
-DISPLAY_MAX_WINDOW_START EQU  $f4            ; Display Window starts at bottom of line 200
-DISPLAY_MIN_WINDOW_START EQU  $2c            ; Display Window top, starts at PAL/NTSC line 0
-
-DISPLAY_WINDOW_START     EQU  $2c            ; PAL/NTSC standard window start
-DISPLAY_NTSC_WINDOW_STOP EQU  $f4            ; NTSC standard window stop (200/400 rasters)
-DISPLAY_PAL_WINDOW_STOP  EQU  $2b            ; almost PAL standard window stop (256/512 rasters)
-
-DISPLAY_5_BITPLANES      EQU  $5000          ; BPLCON0 setting for 5 bitplanes
-DISPLAY_4_BITPLANES      EQU  $4000          ; BPLCON0 setting for 4 bitplanes
-
-DISPLAY_BYTES_WIDE       EQU  $28            ; 40 bytes wide display screen (320 pixels)
-DISPLAY_200_HIGH         EQU  $c8            ; 200 lines high
-DISPLAY_256_HIGH         EQU  $100           ; 256 lines high
-
-BITPLANE_320x200_BYTES   EQU  $00001f40      ; Bitplane size for 320x200 display in bytes
-BITPLANE_320x256_BYTES   EQU  $00002800      ; Bitplane size for 320x256 display in bytes
 
 initialise_title_screen        
                ; initialise the stack                                  
-               lea.l   temp_stack_top,a7                       
+               lea.l     temp_stack_top,a7                       
 
                ; initialise window (ready for start transition)
-               move.b  #DISPLAY_MAX_WINDOW_START,copper_diwstrt   
-               move.b  #DISPLAY_MAX_WINDOW_START,copper_diwstop  
+               move.b    #DISPLAY_MAX_WINDOW_START,copper_diwstrt   
+               move.b    #DISPLAY_MAX_WINDOW_START,copper_diwstop  
 
                ; wait for 2 display frames
-               moveq   #$01,d0
-               bsr.w   raster_wait_161
+               moveq     #$01,d0
+               bsr.w     raster_wait_161
 
                ; initialise hardware state
-               bsr.w   initialise_hardware_state
+               bsr.w     initialise_hardware_state
 
                ; initialise display & colour palette
-               move.w  #DISPLAY_5_BITPLANES,CUSTOM+BPLCON0
-               lea.l   title_screen_palette,a0
-               bsr.w   copper_palette_copy
+               move.w    #DISPLAY_5_BITPLANES,CUSTOM+BPLCON0
+               lea.l     title_screen_palette,a0
+               bsr.w     copper_palette_copy
 
                ; clear 'timer expired', 'life lost', 'no lives' - flags from status byte 1
                ; clear 'game over', 'game complete' - flags from status byte 2
-               and.w   #$f89f,PANEL_STATUS_1
+               and.w     #$f89f,PANEL_STATUS_1
                                                       
                ; initialise music/sfx depending on status flags
-               bsr.w   init_title_music
+               bsr.w     init_title_music
 
                ; refresh display buffer
-               bsr.w   copy_batman_gfx_to_display_buffer           
+               bsr.w     copy_batman_gfx_to_display_buffer           
 
-
-               ;************ TITLE SCREEN TEXT TYPER WAIT LOOP *****************
                ; Manage hi-score entry and text typer display.
                ; The text typer controls the main title-screen wait
                ; loop, waits for joystick button press to jump
                ; to return to 'start_game' below.
                ;
                ; was originally a bsr.w, changed to bra.w to honor
-               ; return jump and the stack.
-.title_screen_loop           
-               bra.w   hi_score_and_text_typer
+               ; return jump and the stack.           
+               bra.w     hi_score_and_text_typer
+               ; the above routine jumps out to 'start_game' below
 
 
-
-
-
-               ;------------------------- START GAME - LOAD LEVEL 1 ----------------------
-               ; The Text Typer jumps to here when start button pressed, instead of
-               ; using 'rts'
-               ;
-               ; Original Address $0001c05e
-               ;
+               ;------- START GAME - LOAD LEVEL 1 ----------------
+               ; The Text Typer jumps to here when start button pressed,
 start_game                                                      
                ; set flag to start transition of end title screen
                ; i.e. scroll title screen to bottom of display.
                not.w     screen_transition_direction_flag       
 
                ; wait for screen transition out (scroll down to bottom)
-.wait_diwstrt
-               cmp.b     #DISPLAY_MAX_WINDOW_START,copper_diwstrt
+.wait_diwstrt  cmp.b     #DISPLAY_MAX_WINDOW_START,copper_diwstrt
                bne.b     .wait_diwstrt 
 
                ; wait for a 2 frames for good luck
@@ -378,8 +374,7 @@ start_game
 
           ; Fake function used to do nothing for PANEL 
           ; function calls.
-test_nop  
-               rts
+test_nop       rts
 
 
           ; Fake function used to flash the screen when
@@ -407,30 +402,29 @@ test_load_level_1
                ;
                ; flag inverted on game start to signal title screen transition. 
 screen_transition_direction_flag                                                
-               dc.w $0000   
+               dc.w      $0000   
 
 
 do_window_transition
                ; check scroll up/down flag
                tst.w     screen_transition_direction_flag 
-               bne.b     do_scroll_down 
+               bne.b     .do_scroll_down 
 
                ; title screen start transistion (scroll up from bottom)
 .do_scroll_up  
                ; check scroll up limit
                cmp.b     #DISPLAY_MIN_WINDOW_START,copper_diwstrt  
-               beq.b     .exit
+               beq.b     .exit_scroll_up
                ; scroll window top up by 1 raster line
                sub.w     #$0100,copper_diwstrt 
-.exit
+.exit_scroll_up
                rts  
 
-
                ; title screen end transition (scroll down to bottom)
-do_scroll_down 
+.do_scroll_down 
                ; check scroll down limit
                cmp.b     #DISPLAY_MAX_WINDOW_START,copper_diwstrt
-               beq.b     .exit
+               beq.b     .exit_scroll_down
                bcs.b     .scroll_down 
 .overshot_limit
                ; set to max (when combined with following add.w)
@@ -439,10 +433,8 @@ do_scroll_down
                ; scroll window top down by 4 pixels (faster then scroll in)
 .scroll_down
                add.w     #$0400,copper_diwstrt                  
-.exit
+.exit_scroll_down
                rts 
-
-
 
 
 
@@ -454,54 +446,49 @@ do_scroll_down
                ;
 initialise_hardware_state         
                ; set window start and stop to line 200                               
-                move.l  #$f481f4c1,CUSTOM+DIWSTRT
+                move.l   #$f481f4c1,CUSTOM+DIWSTRT
 
                ; disable dma & interrupts
-               move.w  #$7fff,d0       
-               move.w  d0,CUSTOM+DMACON
-               move.w  d0,CUSTOM+INTENA
-               move.w  d0,CUSTOM+INTREQ
+               move.w    #$7fff,d0       
+               move.w    d0,CUSTOM+DMACON
+               move.w    d0,CUSTOM+INTENA
+               move.w    d0,CUSTOM+INTREQ
 
                ; set interrupt handlers (added level 6 handler)
-               move.l  #level_1_interrupt_handler,$00000064    ; Level 1 Interrupt Vector
-               move.l  #level_2_interrupt_handler,$00000068    ; Level 2 Interrupt Vector           
-               move.l  #level_3_interrupt_handler,$0000006c    ; Level 3 Interrupt Vector   
-               move.l  #level_4_interrupt_handler,$00000070    ; Level 4 Interrupt Vector        
-               move.l  #level_5_interrupt_handler,$00000074    ; Level 5 Interrupt Vector
-               move.l  #level_6_interrupt_handler,$00000078    ; Level 6 Interrupt Vector
+               move.l    #level_1_interrupt_handler,$00000064              ; unused
+               move.l    #level_2_interrupt_handler,$00000068           
+               move.l    #level_3_interrupt_handler,$0000006c   
+               move.l    #level_4_interrupt_handler,$00000070              ; unused
+               move.l    #level_5_interrupt_handler,$00000074              ; unused
+               move.l    #level_6_interrupt_handler,$00000078              ; unused
 
                ; enable interrupts
-               ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
-               ; move.w  #$e028,CUSTOM+INTENA 
-
-               ; updated enable interrupts
-               ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5) !No Level 6 handler
-               move.w  #$e028,CUSTOM+INTENA 
+               ; PORTS/TIMERS(2),VERTB(3),EXTER(6),INTEN,SET/CLR (no level 1,4,5,6) !No Level 6 handler
+               move.w    #$e028,CUSTOM+INTENA 
 
                ; enable DMA
-               move.w  #$83c0,CUSTOM+DMACON 
+               ; Bitplane, Copper, Blitter
+               move.w    #$83c0,CUSTOM+DMACON 
 
                ; set copper list
-               move.l  #copper_list,CUSTOM+COP1LC
-               move.w  d0,CUSTOM+COPJMP1
+               move.l    #copper_list,CUSTOM+COP1LC
+               move.w    d0,CUSTOM+COPJMP1
 
-               ; clear interrupt control register CIAA
-               move.b  #$7f,$00bfed01
-               move.b  #$7f,$00bfed01
+               ; CIAA - ICR - Mask all interrupts (used for keyboard SP int)
+               move.b    #$7f,$00bfed01
+               move.b    #$7f,$00bfed01
 
                ; initialise music
                lea      MUSIC_MODULE_DATA,a0
                jsr      SoundDriver_Initialise
                 
                ; set display initial display parameters
-               move.l  #BITPLANE_320x200_BYTES,d0
-               bra.w   reset_title_screen_display
+               move.l    #BITPLANE_320x200_BYTES,d0
+               bra.w     reset_title_screen_display
 
-clear_keycode_and_exit                                          ; original address $0001c16a
-                clr.w   raw_key_code_store                      ;$L0001c2f0 - clear raw keycode store
-global_rts                                                      ; original address $0001c170
-                rts                                             ; called from elsewhere.
-
+clear_keycode_and_exit
+               clr.w    raw_key_code_store     
+               rts 
 
 
 
@@ -513,7 +500,7 @@ global_rts                                                      ; original addre
                ;       
                ; original routine address $0001c172
                ;
-KEY_CODE_F2    EQU  $005c
+KEY_CODE_F2    EQU       $005c
 
 do_title_screen_menu_options       
                ; check key up
@@ -522,26 +509,27 @@ do_title_screen_menu_options
  
                ; test if F2 key already pressed, then deduplicate and exit
                tst.w     deduplicate_keypress_flag
-               bne.w     global_rts
+               beq.s     .chk_f2_keycode
+               rts
 
+.chk_f2_keycode
                ; check if F2 key is pressed                                                        
                cmp.w     #KEY_CODE_F2,raw_keyboard_serial_data_word 
                beq.s     .f2_pressed
-               ;bne.b   clear_menu_flag_and_exit
 
                ; other keypressed, clear dedup flag and exit
 .clear_menu_flag_and_exit
-               clr.w deduplicate_keypress_flag
+               clr.w     deduplicate_keypress_flag
                rts
 
 .f2_pressed             
-                    ; F2 is pressed,
-                    ; set deduplicate keypress flag (prevent multiple key strokes processed)
-                    not.w   deduplicate_keypress_flag
-                    ; flip sfx/music enabled bit                              
-                    bchg.b  #PANEL_STATUS_2_SFX_ONLY,PANEL_STATUS_2 
-                    ; fall through to init_title_music (toggle on/off)
-
+               ; F2 is pressed,
+               ; set deduplicate keypress flag (prevent multiple key strokes processed)
+               not.w     deduplicate_keypress_flag
+               ; flip sfx/music enabled bit                              
+               bchg.b    #PANEL_STATUS_2_SFX_ONLY,PANEL_STATUS_2 
+               bsr       init_title_music
+               rts
 
 
 
@@ -556,56 +544,58 @@ init_title_music
 .init_song_01
                ; start playing title music
                moveq   #SOUND_TITLE_TUNE,d0 
-               jmp     SoundDriver_Play_Song
-               ; uses rts in Init_Song to return to caller.
+               jsr     SoundDriver_Play_Song
+               rts
 
 
 
+               ;----------------------- do infinite lives cheat code ----------------------
+               ; This routine handles the cheat code entry, matching and toggling.   
+               ;
+               ; Called from:
+               ;       level_2_interrupt_handler
+               ;
+               ; Original Address $0001c1c0
+               ;
+do_infinite_live_cheat_code  
 
-               ;------------------ clear menu flag and exit ----------------
-               ; used by the do_title_screen_menu_options routine above.
-               ; clears keypress flag and exit, used to detect single
-               ; keypress.
-;clear_menu_flag_and_exit
-;               clr.w deduplicate_keypress_flag
-;               rts
+               ; test key up/down bit
+               btst.b    #$0000,raw_keyboard_serial_data_byte 
+               ; if key is up, then clear & exit           
+               bne.w     clear_keycode_and_exit      
 
-
-
-
-                ;----------------------- do infinite lives cheat code ----------------------
-                ; This routine handles the cheat code entry, matching and toggling.
-                ; It's a bit heavy for an ISR.      
-                ;
-                ; Called from:
-                ;       level_2_interrupt_handler
-                ;
-do_infinite_live_cheat_code                                             ; original routine address $0001c1c0
-                btst.b  #$0000,raw_keyboard_serial_data_byte            ; test lsb of raw keyboard data - $0001c2ed
-                bne.w   clear_keycode_and_exit                          ; if lsb = 1 then clear $0001c2f0.w and exit (key up) - jmp $0001c16a
-
-                tst.w   raw_key_code_store                              ; test raw keycode store - $0001c2f0
-                bne.b   .exit                                           ; if keycode store is not empty, exit - jmp $0001c24a
+               ; else, key is down
+               tst.w     raw_key_code_store
+               bne.b     .exit    
 
                 ; check if keycode is an expected code
                 ; if so enqueue it
                 ; if not then exit
 .process_raw_key_code
-                move.w  raw_keyboard_serial_data_word,d0                ; d0 = raw keyboard key code - $0001c2ec
-                and.b   #$fe,d0                                         ; d0 = mask lsb and high byte
-                move.w  d0,raw_key_code_store                           ; $0001c2f0 ; store raw key code
-                lea.l   raw_key_code_table,a0                           ; $0001c258 ; raw keycode table (ends with $FFxx)
+               ; get raw key code and mask up/down bit and store it
+               move.w    raw_keyboard_serial_data_word,d0
+               and.b     #$fe,d0
+               move.w    d0,raw_key_code_store 
 
-.match_keycodes_loop                                                    ; original address $0001c1ea
-                cmp.b   (a0),d0
-                beq.w   .enqueue_key_code                               ; $0001c1fe ; key code is in the list, pop it in the queue
+               ; search for key code in table and
+               ; if there, queue it (for cheat code check)
+               lea.l     raw_key_code_table,a0 
+.match_keycodes_loop
+                    cmp.b     (a0),d0
+                    ; matches entry in the list, queue it.
+                    beq.w     .enqueue_key_code  
 
-.unmatched_keycode                                                      ; original address $0001c1f0
-                cmp.b   #$ff,(a0)                                       ; continue checking until the end of list ($ff value is part of code - dodgy/bug)
-                beq.w   .exit                                           ; then exit - jmp $0001c24a
+                    ; not match of entry in the list
+                    ; check for end of list or loop.
+.unmatched_keycode   
+                    cmp.b    #$ff,(a0)  
+                    beq.w    .exit  
 
-                addq.l  #$02,a0                                         ; match next value with keycode
-                bra.w   .match_keycodes_loop                            ; jmp $0001c1ea ; loop
+               ; loop check next entry in the list
+               addq.l    #$02,a0 
+               bra.w     .match_keycodes_loop 
+
+
 
 
                 ; this is a queue of entered valid keycodes
@@ -729,7 +719,7 @@ raw_key_code_table
                ; Do nothing. This should probably clear the INTREQ bits for
                ; Level 1 interrupts
                ;
-               ; *** This interrupt is not enabled in the title screen ***f
+               ; *** This interrupt is not enabled in the title screen ***
                ;
 level_1_interrupt_handler                                       ; original address $0001c26c
                rte
@@ -958,9 +948,7 @@ current_text_ptr                                        ; original address L0001
 
 
 
-DISPLAY_WIDTH_BYTES      EQU $28        ; display width = 40 bytes per scan line
-TYPERCHAR_BITPLANE_SIZE  EQU $10        ; character set = 16 bytes per bitplane
-TYPERCHAR_WIDTH_BYTES    EQU $2         ; character is 2 bytes wide (16 pixels)
+
 
                 ;----------------------- text typer ------------------------
                 ; type out screen of text, also process control codes for
@@ -1280,11 +1268,11 @@ _nop                                                            ; original addre
                ; Original Address $0001c586
                ;
 
-HISCORE_TEXT_LINE_LEN              EQU $17        ; 23 bytes per line of text for hi score table
-HISCORE_TEXT_LINE_INITIALS_OFFSET  EQU $0a        ; 10 bytes into the line is where the initials are stored
-HISCORE_ENTRIES_LIMIT              EQU $05        ; 5 entries in the hi score table
-HISCORE_TEXT_SCORE_DIGIT_OFFSET    EQU $000f      ; index to the first character of the HiScore text within the text line.
-HISCORE_TEXT_INITIALS_CHAR_OFFSET  EQU $0011      ; index to the first character of the Player Initials within the text line.
+HISCORE_TEXT_LINE_LEN              EQU $17             ; 23 bytes per line of text for hi score table
+HISCORE_TEXT_LINE_INITIALS_OFFSET  EQU $0a             ; 10 bytes into the line is where the initials are stored
+HISCORE_ENTRIES_LIMIT              EQU $05             ; 5 entries in the hi score table
+HISCORE_TEXT_SCORE_DIGIT_OFFSET    EQU $000f           ; index to the first character of the HiScore text within the text line.
+HISCORE_TEXT_INITIALS_CHAR_OFFSET  EQU $0011           ; index to the first character of the Player Initials within the text line.
 
                ; The score is stored as a long (32 bit) value in the BCD format, 
                ; Only the lowest 24bits (3 bytes) are used to store 6 digits of the score.
@@ -1292,13 +1280,13 @@ HISCORE_TEXT_INITIALS_CHAR_OFFSET  EQU $0011      ; index to the first character
                ;  - the middle 2 digits (hundreds and thousands) are stored 1 byte into the BCD score table
                ;  - the highest 2 digits (ten thousands and hundred thousands) are stored 2 bytes into the BCD score table
                ;
-BCD_SCORE_LSB_OFFSET          EQU $0003           ; 3 bytes into the BCD score table is where the lowest 2 digits of the score are stored
-BCD_SCORE_MID_OFFSET          EQU $0002           ; 2 bytes into the BCD score table is where the middle 2 digits of the score are stored
-BCD_SCORE_MSB_OFFSET          EQU $0001           ; 1 byte into the BCD score table is where the highest 2 digits of the score are stored
-                                                  ; Byte at offset 0 is unused
+BCD_SCORE_LSB_OFFSET               EQU $0003           ; 3 bytes into the BCD score table is where the lowest 2 digits of the score are stored
+BCD_SCORE_MID_OFFSET               EQU $0002           ; 2 bytes into the BCD score table is where the middle 2 digits of the score are stored
+BCD_SCORE_MSB_OFFSET               EQU $0001           ; 1 byte into the BCD score table is where the highest 2 digits of the score are stored
+                                                       ; Byte at offset 0 is unused
 
-ASCII_CHAR_0                  EQU $30             ; ASCII char '0' = #$30, used to convert BCD digit to ASCII char for display
-ASCII_CHAR_SPACE              EQU $20             ; ASCII char ' ' = #$20, used to clear initials in hi score table text display
+ASCII_CHAR_0                       EQU $30             ; ASCII char '0' = #$30, used to convert BCD digit to ASCII char for display
+ASCII_CHAR_SPACE                   EQU $20             ; ASCII char ' ' = #$20, used to clear initials in hi score table text display
 
 hi_score_and_text_typer                  
                ; a5.l = lowest highscore table entry (5th)                               
@@ -1797,7 +1785,7 @@ reset_title_screen_display
                move.w    #$ffb0,CUSTOM+BPL1MOD 
                move.w    #$ffb0,CUSTOM+BPL2MOD 
                move.l    bitplane_size,d1 
-               sub.l     #DISPLAY_BYTES_WIDE,d1
+               sub.l     #DISPLAY_WIDTH_BYTES,d1
                ; d0 = address of last line of title screen bitplane
                add.l     d1,d0                                           
 
