@@ -48,16 +48,24 @@
                
 
 
-
+                         ; -------------- Test Build Flags ---------------
+                         ;
 TEST_TITLEPRG            SET 1     ; run a test buildin VSCode, else build to absolute address
 
 ;TEST_TITLESCREEN_START   SET 1     ; When defined starts the title screen same as first load.
                                    ; comment out to test JOKER, BATMAN return screens.
 TEST_JOKER               SET 1     ; start with joker screen, comment out to start with batman screen
 
+;TEST_PLAYER_SCORE             EQU  $00000000 ; BCD Score to start the title screen with
+TEST_PLAYER_SCORE             EQU  $00130000 ; for testing player initials entry.
 
-TEST_PLAYER_SCORE   EQU  $00000000 ; BCD Score to start the title screen with
-;TEST_PLAYER_SCORE   EQU  $00130000 ; for testing player initials entry.
+
+
+                         ; -------------- CIAA - Register Addresses -------------
+CIAA_PRA                      EQU  $00bfe001                ; CIAA - PRA - GPIO PORT A 
+CIAA_SDR                      EQU  $00bfec01                ; CIAA - SDR - Serial Data Register
+CIAA_ICR                      EQU  $00bfed01                ; CIAA - ICR - Interrupt Control Register
+CIAA_CRA                      EQU  $00bfee01                ; CIAA - CRR - Control Register A
 
 
 
@@ -121,35 +129,54 @@ BITPLANE_320x256_BYTES        EQU       $00002800           ; Bitplane size for 
                ; RELATIVE ADDRESSING BUILD
                ; When testing in VSCode, set resource address consstants and
                ; include code to take over the system and start the title screen.
-DISPLAY_BUFFER_ADDRESS             EQU  display_buffer                ; address of display buffer
-ASSET_CHARSET_BASE                 EQU  character_set_gfx             ; address of charset in memory (76 bytes into charset)
-JOKER_GFX                          EQU  joker_gfx+$44                     ; address of JOKER Game Over Screen
-JOKER_PALETTE                      EQU  joker_background_palette+$4      ; address of JOKER Game Over Screen Palette
-BATMAN_GFX                         EQU  batman_gfx                    ; address of BATMAN Game Completion Screen
-TITLE_SCREEN_GFX                   EQU  titlescreen_gfx               ; address of Title Screen Background GFX 
-PANEL_STATUS_1                     EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
-PANEL_STATUS_2                     EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
-PANEL_HIGHSCORE                    EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
-PANEL_PLAYERSCORE                  EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
-PANEL_INITIALISE_PLAYER_SCORE      EQU  test_nop                      ; mock address of Panel.Initialise_Player_Score
-PANEL_INITIALISE_PLAYER_LIVES      EQU  test_nop                      ; mock address of Panel.Initialise_Player_Lives
-LOADER_LOAD_LEVEL_1                EQU  test_load_level_1             ; mock address of Loader.Load_Level_1()
+DISPLAY_BUFFER_ADDRESS        EQU  display_buffer                ; address of display buffer
+ASSET_CHARSET_BASE            EQU  character_set_gfx             ; address of charset in memory (76 bytes into charset)
+JOKER_GFX                     EQU  joker_gfx+$44                 ; address of JOKER Game Over Screen
+JOKER_PALETTE                 EQU  joker_background_palette+$4   ; address of JOKER Game Over Screen Palette
+BATMAN_GFX                    EQU  batman_gfx                    ; address of BATMAN Game Completion Screen
+TITLE_SCREEN_GFX              EQU  titlescreen_gfx               ; address of Title Screen Background GFX 
+PANEL_STATUS_1                EQU  PANEL_StatusByte_01           ; mock address of Panel.Panel_Status_1  
+PANEL_STATUS_2                EQU  PANEL_StatusByte_02           ; mock address of Panel.Panel_Status_2 
+PANEL_HIGHSCORE               EQU  PANEL_HighScore_BCD           ; mock address of Panel.High_Score 
+PANEL_PLAYERSCORE             EQU  PANEL_PlayerScore_BCD         ; mock address of Panel.Player_Score
+PANEL_INITIALISE_PLAYER_SCORE EQU  test_nop                      ; mock address of Panel.Initialise_Player_Score
+PANEL_INITIALISE_PLAYER_LIVES EQU  test_nop                      ; mock address of Panel.Initialise_Player_Lives
+LOADER_LOAD_LEVEL_1           EQU  test_load_level_1             ; mock address of Loader.Load_Level_1()
 
+
+
+
+               ;********************************************************************
+               ; TITLE SCREEN - ENTRY POINT
+               ;********************************************************************
+               ; This is a new code entry point to take over the system and
+               ; start the title screen using conditional compiliation to
+               ; decide how to start up.
+               ;
 kill_system
                lea     $dff000,a6
                move.w  #$7fff,INTENA(a6)
                move.w  #$7fff,DMACON(a6)
                move.w  #$7fff,INTREQ(a6)   
-               lea     kill_system,a7                              ; initialise stack 
+               lea     kill_system,a7                          ; initialise stack 
                bsr     init_system
 
-.start_title_screen
+
           IFD TEST_TITLESCREEN_START
-               jmp     title_screen_start                      ; Entry point $0001c000
+               ; Start as if loading the game.
+               ; Original Entry point $0001c000
+               jmp     title_screen_start                     
           ELSE
-               jmp     end_game_return_to_title_screen
+               ; Start as if returning to title screen
+               ; after game over or game completion.
+               ; Original Entry point $0001c004
+               jmp     end_game_return_to_title_screen         
           ENDC
 
+               ; init system taken from original
+               ; loader to place system in similar state
+               ; as if the original loader initialised 
+               ; the system.
                include "initsystem.s"
 
           
@@ -475,8 +502,8 @@ initialise_hardware_state
                move.w    d0,CUSTOM+COPJMP1
 
                ; CIAA - ICR - Mask all interrupts (used for keyboard SP int)
-               move.b    #$7f,$00bfed01
-               move.b    #$7f,$00bfed01
+               move.b    #$7f,CIAA_ICR
+               move.b    #$7f,CIAA_ICR
 
                ; initialise music
                lea      MUSIC_MODULE_DATA,a0
@@ -501,6 +528,13 @@ clear_keycode_and_exit
                ; original routine address $0001c172
                ;
 KEY_CODE_F2    EQU       $005c
+
+               ; flag used to prevent key repeats on F2 - music/sfx press
+               ; 0 = music, $ffff = sfx
+               ; original address $0001c2f2
+deduplicate_keypress_flag                                                      
+               dc.w $0000                                              
+
 
 do_title_screen_menu_options       
                ; check key up
@@ -550,14 +584,40 @@ init_title_music
 
 
                ;----------------------- do infinite lives cheat code ----------------------
-               ; This routine handles the cheat code entry, matching and toggling.   
+               ; This routine handles the cheat code entry, matching and toggling.
+               ; Code has been slightly re-organised from the original, I have brought in
+               ; the h/w keycode read into the routine to make it more cohesive.
+               ;
+               ; 1) Read raw keycode from CIAA - SDR (serial data register)
+               ; 2) 
+               ;   
                ;
                ; Called from:
                ;       level_2_interrupt_handler
                ;
                ; Original Address $0001c1c0
                ;
+
+
 do_infinite_live_cheat_code  
+               ; read keyboard raw key code
+               move.b  CIAA_SDR,raw_keyboard_serial_data_byte
+               
+               ; CIAA - ICR - Interrupt Control Register
+               ; mask SP serial interrupt - prevent it occurring again
+               ; this is reset every frame by the vertb handler.
+               move.b  #$08,CIAA_ICR
+               
+               ; CIAA - CRA - Control Register A
+               ; SPMODE  = 1 - output - keyboard protocol to acknowledge key read
+               ; INMODE  = 1 - Timer A counts external pulses on CNT line;
+               ; 
+               ; Sets output on SP to ack key code read above.
+               ; This is the keyboard protocol to acknowledge a key read.
+               ; It should be done within 143 milliseconds of the receive.
+               ; Should be set for at lease 83 microseconds apparently.
+               ;
+               move.b  #$60,CIAA_CRA
 
                ; test key up/down bit
                btst.b    #$0000,raw_keyboard_serial_data_byte 
@@ -597,79 +657,100 @@ do_infinite_live_cheat_code
 
 
 
+               ; This is a queue of entered valid keycodes
+               ; i.e 'JAMMMM' cheat code
+               ; valid key codes are added to the end of the queue
+               ; a0 is the key code to character translation table address
+               ;    of the currently pressed key.
+.enqueue_key_code
+               ; get character for keycode                                
+               move.b    $0001(a0),d1      
+               lea.l     keyboard_buffer_start+1,a0
 
-                ; this is a queue of entered valid keycodes
-                ; valid key codes are added to the end of the queue
-.enqueue_key_code                                                       ; original address $0001c1fe
-                move.b  $0001(a0),d1                                    ; d1 = key code table second byte match
-                lea.l   keyboard_buffer_start+1,a0                        ; $0001c24d
-                moveq   #$05,d0                                         ; d0 = loop counter (6 times)
+               ; loop to shift all entries in the character buffer
+               ; make room for the new character.
+               moveq     #$05,d0        
+.shift_chars_loop  
+                    move.b    (a0),-$0001(a0)     
+                    addq.l    #$01,a0                                         
+               dbf.w     d0,.shift_chars_loop 
+                
+               ; store the new character at the end
+               ; of the buffer
+               move.b    d1,keyboard_buffer_start+5
 
-.shift_chars_loop                                                       ; original address $0001c20a
-                move.b  (a0),-$0001(a0)                                 ; shift bytes down in memory by 1 character
-                addq.l  #$01,a0                                         
-                dbf.w   d0,.shift_chars_loop                            ; $0001c20a ; Loop for all characters
-                move.b  d1,keyboard_buffer_start+5                      ; $0001c251 ; d1 = key code table second byte match. add to end of queue
 
-
-                ; check if cheat code has been entered 
-                ; in the queue, compares against
-                ; stored values.
+               ; check if cheat code has been entered 
+               ; in the queue, compares against
+               ; a predefined list of stored values.
+               ;
+               ; NB: the cheat code has been encoded to 'IXLLLL'
+               ;     and not 'JAMMMM' as expected, maybe to
+               ;     disguise the code.
 .check_cheat_code
-                lea.l   keyboard_buffer_start,a0                        ; $0001c24c
-                lea.l   cheat_code,a1                                   ; $0001c252
-                moveq   #$05,d0                                         ; d0 = 5 + 1 (loop counter)
+               lea.l     keyboard_buffer_start,a0
+               lea.l     cheat_code,a1
+
+               ; compare cheat against entered chars
+               moveq     #$05,d0   
 .compare_loop
-                cmpm.b  (a0)+,(a1)+
-                bne.b   .exit                                           ; jmp $0001c24a
-                dbf.w   d0,.compare_loop                                ; loop 6 times, jmp $0001c228
+                    cmp.b     (a0)+,(a1)+
+                    bne.b     .exit  
+               dbf.w     d0,.compare_loop
+               
                 ; if we get here then the secret cheat code has been entered.
                 ; 'IXLLLL' - 'jammmm' - 6 char code
 .toggle_infinite_lives
-                bchg.b  #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2           ; #$0007,$0007c875 ; Enable CHEAT?
-                move.b  #$f4,copper_diwstrt                                     ; reset title screen window (closed) $0001d6e8
-                move.l  #BITPLANE_320x200_BYTES,d0                                           ; bitplane size in bytes (8000)
-                bsr.w   reset_title_screen_display                              ; calls $0001d2de ; reset title screen display
+               ; set the cheat bit
+               bchg.b    #PANEL_STATUS_2_INFINITE_LIVES,PANEL_STATUS_2
+               ; flip screen display
+               move.b    #$f4,copper_diwstrt
+               move.l    #BITPLANE_320x200_BYTES,d0
+               bsr.w     reset_title_screen_display
 .exit
-                rts 
+               rts 
 
 
 
 
-                ;------------------------ keyboard buffer --------------------------
-                ; contains values looked up from 'raw_key_code_table' when
-                ; matched with raw keycodes.
-                ; it is a queue, so new data enters at the end and old data is
-                ; shifted towards the front.
-                ; FIFO Queue structure.
-                ;
-keyboard_buffer_start                                   ; original address $0001c24c
-                dc.b $20,$20,$20,$20,$20,$20
+               ;-------------------------- keyboard buffer -------------------------------
+               ; Contains the last 5 characters looked up by 'do_infinite_live_cheat_code'
+               ; 6 byte buffer for 'IXLLLL' or decoded as 'JAMMMM'
+               ;
+               ; Original Address $0001c24c
+keyboard_buffer_start                                   
+               dc.b $20,$20,$20,$20,$20,$20
+
+               ; ------------------------- cheat code ------------------------------------
+               ; This is an obfuscated cheat code string. 'IXLLLL' which is compared
+               ; against the keyboard buffer above when a new acceptable key is
+               ; entered into the buffer. 
+               ;
+               ; 6 byte buffer for 'IXLLLL' or decoded as 'JAMMMM'
+               ;
+               ; Original Address $0001c252
+cheat_code     dc.b $49,$58,$4c,$4c,$4c,$4c      
 
 
-                ; ------------------------ cheat code----------------------------------
-                ; This is an obfuscated cheat code string. 'IXLLLL' which is compared
-                ; against the keyboard buffer above when a new acceptable key is
-                ; entered into the buffer. 
-cheat_code                                              ; original address $0001c252
-                dc.b $49,$58,$4c,$4c,$4c,$4c            ; IXLLLL 'JAMMMM'
-
-
-                ;-------------------- cheat - raw key codes ----------------------
-                ; key code table - used to match keys pressed with expected
-                ; cheat code values.
-                ; - the second byte is 
-                ;
-                ; - the cheat keycodes are mapped to other characters (i presume to obsuscate)
-                ; - J - maps to 'I'
-                ; - A - maps to 'X'
-                ; - M - maps to 'L'
-                ;
-                ; - the cheat code matched against is then 'IXLLL'
-                ;
-                ; - why bother doing this is anyones guess, does anyone really care that much 
-                ; - about hiding cheat codes?
-                ;
+               ;------------------------ keycode translation table ----------------------
+               ; Key code translation table, maps a raw keycode to an ASCII value. 
+               ;
+               ; - The keycodes are mapped to obfuscated ASCII Characters and not
+               ;   the correct ones.
+               ; 
+               ; - J - maps to 'I'
+               ; - A - maps to 'X'
+               ; - M - maps to 'L'
+               ;
+               ; - The cheat code matched against is then 'IXLLL'
+               ;
+               ; - Why bother doing this is anyones guess, does anyone really care that much 
+               ; - about hiding cheat codes?
+               ;
+               ; Format:
+               ;   0 - Keycode value
+               ;   1 - ASCII code
+               ;
 raw_key_code_table
                 dc.b $be,$58        ; X
                 dc.b $ae,$31        ; 1            
@@ -681,25 +762,32 @@ raw_key_code_table
                 dc.b $B2,$49        ; I
                 dc.b $CE,$46        ; F
                 dc.b $94,$56        ; V
-                dc.b $ff,$fe            ; inserted my own end of table loop code
-
-;L0001c26c       dc.b $4E,$73                   ; back to code (below)
-;L0001c26e       dc.b $48,$E7                   ; back to code (below)
-;L0001c270       dc.b $FF,$FE                   ; back to code (below) (ends with $FFxx)
+                dc.b $ff,$fe        ; end of table
 
 
+               ; keyboard raw keycode word (high byte always 0)
+               ; original address $0001C2EC
+               even
+raw_keyboard_serial_data_word                                           
+               dc.b      $00 
+               ; keyboard raw keycode byte 
+               ; original address $0001C2ED                                              
+raw_keyboard_serial_data_byte                                           
+               dc.b      $00                                                
+
+
+               ; Keyboard raw keycode byte with the up/down
+               ; bit masked off.
+               ; Used to translate keycode to ASCII char.
+               ; Original Address $0001c2f0
+               even
+raw_key_code_store                                                      
+               dc.w      $0000                                              
 
 
 
 
 
-
-
-
-
-
-
-                even
                ;*********************************************************************************************************************
                ;*********************************************************************************************************************
                ;*********************************************************************************************************************
@@ -714,16 +802,15 @@ raw_key_code_table
 
 
 
-
                ;---------------------- level 1 interrupt handler -------------------
                ; Do nothing. This should probably clear the INTREQ bits for
                ; Level 1 interrupts
                ;
                ; *** This interrupt is not enabled in the title screen ***
                ;
+               even
 level_1_interrupt_handler                                       ; original address $0001c26c
                rte
-
 
 
 
@@ -731,50 +818,28 @@ level_1_interrupt_handler                                       ; original addre
                ; PORTS/TIMERS - Level 2 Interrupt Handler
                ; CIA-A Timers & Ports
                ;
-               ; The ICR Register is cleared by reading the register, and the 
-               ; interrupt masked from occurring again.
+               ; I've rearranged this code to move the keyboard reading code
+               ; into the do_infinite_lives_cheat_code routine.
                ;
-               ; The Level 2 (PORTS) and Level 5 (SERIAL RECEIVE BUFFER - RBF)
-               ; bits are cleared. I believe the (RBF clear is a mistake as this is 
-               ; not releated to the keyboard serial buffer).
-               ;
-               ; Set the keyboard serial SP to output, which is required to 
-               ; acknowledge the keycode read, as per the keyboard protocol.
+               ; The keyboard read routine relies on the level_3_interrupt_handler
+               ; to re-enable the SP on CIAA-CRA for input.
                ;
                ; original routine address $0001c26e
                ;
 level_2_interrupt_handler                                                       
                movem.l d0-d7/a0-a6,-(a7)
                
-               ; read keyboard raw key code
-               move.b  $00bfec01,raw_keyboard_serial_data_byte                 ; SDR - $0001c2ed ; keyboard serial data
-                          
-               ; clear PORTS (LVL2), SERIAL RECIEVE BUFFER (LVL5 - Not required)
+               ; clear BIT 03 - PORTS - Clear CIA Ports and Timer Interrupt flags (LVL2)
+               ; clear BIT 11 - RBF - Clear External SERIAL RECIEVE BUFFER flags (LVL5 - Not required)
+               ;              - This relates to the amiga external serial not the keyboard serial
                move.w  #$0808,CUSTOM+INTREQ                 
 
-               ; CIAA - ICR - Interrupt Control Register
-               ; mask SP serial interrupt - prevent it occurring again
-               ; this is reset every frame by the vertb handler.
-               move.b  #$08,$00bfed01  
-               
-               ; CIAA - CRA - Control Register A
-               ; SPMODE  = 1 - output - keyboard protocol to acknowledge key read
-               ; INMODE  = 1 - Timer A counts external pulses on CNT line;
-               ; 
-               ; Sets output on SP to ack key code read above.
-               ; This is the keyboard protocol to acknowledge a key read.
-               ; It should be done within 143 milliseconds of the receive.
-               ; Should be set for at lease 83 microseconds apparently.
-               ;
-               move.b  #$60,$00bfee01  
-
+               ; read keyboard, queue keypress.
                ; check if cheat code has been entered.
-               ; store key presses entered.
                bsr.w   do_infinite_live_cheat_code 
 
                movem.l (a7)+,d0-d7/a0-a6
                rte
-
 
 
 
@@ -795,35 +860,21 @@ level_3_interrupt_handler
                ; (i.e scroll window up/down)
                bsr.w   do_window_transition  
                 
-
-               ; CIAA - Control Register A
-               ; BIT 7 - 0 = Unused
-               ; BIT 6 - 0 = SPMODE  - Serial Ports is input mode (keyboard)
-               ; BIT 5 - 0 = INMODE  - Timer A counts system clock pulses
-               ; BIT 4 - 0 - LOAD    - don't force load the timer A value
-               ; BIT 3 - 1 - RUNMODE - Set Timer A in single shot mode.
-               ; BIT 2 - 0 - OUTMODE - PRB pin 6 pulse when timer A underflows (depend on PRB direction bits)
-               ; BIT 1 - 0 - PBON    - PRB pin 6 works as normal GPIO master switch (depend on PRB direction bits)
-               ; BIT 0 - 0 - START   - Stop timer A
-               ;
                ; SP INMODE - required for keyboard reader.
-               ; re-enabling SP input after disabled by LVL2 handler above
-               move.b  #$08,$00bfee01
+               ; re-setting SP as input to re-enable key capture
+               ; after key catpure sets to output as part of keyboard
+               ; protocol in level 2 interrupt handler.
+               move.b  #$08,CIAA_CRA
 
-               ; CIAA - ICR - Interrupt control register
-               ; Enable - CIAA - SP (Serial port interrupt) - Keyboard
-               ; Re-enabling interrupt disabled by LVL2 handler above.
-               move.b  #$88,$00bfed01  
+               ; Re-Enable - CIAA - SP (Serial port interrupt) - Keyboard
+               ; Re-enabling interrupt previously disabled by level 2 handler.
+               move.b  #$88,CIAA_ICR
                
                ; Clear VERTB interrupt
                move.w  #$0020,CUSTOM+INTREQ                        
-               
-               ; toggle vertical blank flag,
-               not.w   vertical_blank_toggle   
 
                movem.l (a7)+,d0-d7/a0-a6
                rte  
-
 
 
 
@@ -840,7 +891,6 @@ level_4_interrupt_handler
 
 
 
-
                ;---------------------- level 5 interrupt handler -------------------
                ; Do nothing. This should probably clear the INTREQ bits for
                ; Level 5 interrupts
@@ -851,7 +901,6 @@ level_4_interrupt_handler
                ;
 level_5_interrupt_handler                                       
                rte
-
 
 
 
@@ -867,40 +916,6 @@ level_6_interrupt_handler
                rte
 
 
-
-                even
-               ; value unused by the title screen (toggled every frame by VERTB LVL3 handler)
-               ; original address $0001C2E8   
-vertical_blank_toggle                                   
-                dc.w $0000                              
-
-
-
-               even
-               ; keyboard raw key code word (high byte always 0)
-               ; original address $0001C2EC
-raw_keyboard_serial_data_word                                           
-               dc.b $00 
-               ; keyboard raw key code byte 
-               ; original address $0001c2ed                                              
-raw_keyboard_serial_data_byte                                           
-               dc.b $00                                                
-
-               ;even
-               ;dc.w $0000 
-
-               even
-               ; keyboard reading data/flags
-               ; original address $0001c2f0
-raw_key_code_store                                                      
-               dc.w $0000                                              
-
-
-               ; flag used to prevent key repeats on F2 - music/sfx press
-               ; 0 = music, $ffff = sfx
-               ; original address $0001c2f2
-deduplicate_keypress_flag                                                      
-               dc.w $0000                                              
 
 
 
@@ -935,114 +950,245 @@ raster_wait_161
 
 
 
-                even
-xy_coords
-x_coord                                                 ; original address L0001c310
-                dc.w    $0000                           ; x co-ord (byte value)
-y_coord                                                 ; original address L0001c312
-                dc.w    $0000                           ; y co-ord (line value)
-current_text_ptr                                        ; original address L0001c314
-                dc.l    $00000000                       ; $0001c784 - address of start of text being displayed (used for looping back to start)
 
 
 
 
 
-
-
-                ;----------------------- text typer ------------------------
-                ; type out screen of text, also process control codes for
-                ; special chars and inserting hi score table etc.
+                ;-------------------------------- text typer -------------------------------
+                ; Run the text typer using the data supplied in the a6 address register.
+                ;
+                ; Used to display Hi-Scores for initials entry.
+                ; Used to display the Cycling text display on the title screen.
                 ;
                 ; IN: a6 - text structure for display
-                ;          1 word - display co-ords (x,y bytes)
-                ;          x bytes - text & display codes
+                ;          1 byte = start x co-ord
+                ;          1 byte = start y co-ord
+                ;          (x) bytes - text & display codes
                 ;          1 byte  - #$ff - end text display
                 ;
-_run_text_typer                                                      ; original routine address $0001c324
-                move.l  a6,current_text_ptr                     ; $0001c314 ; store a6 address (used for looping when CODE #$00)
-                move.b  (a6)+,x_coord+1                         ; store x coord - $0001c311
-                move.b  (a6)+,y_coord+1                         ; store y coord - $0001c313
+                even
 
-resume_text_typer_start_line
-                moveq   #$00,d0
-                move.w  y_coord,d0                              ; $0001c312 ; d0 = y co-ord
-                mulu.w  #$0028,d0                               ; d0 = d0 * 40 (bytes per scan line)
-                add.w   x_coord,d0                              ; $0001c310 ; d0 = d0 + x co-ord
-                add.l   #DISPLAY_BUFFER_ADDRESS,d0              ; #$00063190,d0 ; add bitplane base address
-                exg.l   d0,a2                                   ; a2 = display destination address
-                movea.l a2,a3                                   ; a3 = display destination address
 
-resume_text_typer_current_position
-                tst.w   typer_extended_command_1                ; $0001c782 - exension command/params (for commands #$02)
-                bne.w   continue_wait_or_start_game             ; jmp $0001c50e
-                move.b  (a6)+,d0                                ; get display param
-                cmp.b   #$ff,d0
-                beq.w   .exit
-                cmp.b   #$0d,d0
-                beq.w   crlf                                    ; jmp $0001c4d0 - crlf - carriage return plus line feed
-                cmp.b   #$0e,d0
-                beq.w   lf                                      ; jmp $0001c4dc - lf, line feed
-                cmp.b   #$01,d0
-                beq.w   cls                                     ; jmp $0001c4e8 - clear screen
-                cmp.b   #$06,d0
-                beq.w   _nop                                    ; jmp $0001c580 - no operation
-                cmp.b   #$02,d0
-                beq.w   wait_or_start_game                      ; jmp $0001c4fe - check fire button/start game?
-                cmp.b   #$03,d0
-                beq.w   hi_scores                               ; jmp $0001c53e - start displaying hi score table
-                cmp.b   #$04,d0
-                beq.w   end_hi_scores                           ; jmp $0001c54e - resume typer after hi score table
-                cmp.b   #$05,d0
-                beq.w   hi_score_and_text_typer                 ; jmp $0001c586 - name up/enter initials
-                cmp.b   #$40,d0
-                beq.w   .copyright_symbol                       ; jmp $0001c3f6 '@' convert to 2nd character after 'Z' - (c) symbol 
-                cmp.b   #$26,d0
-                beq.w   .ampersand_symbol                       ; JMP $0001c3e6 '&' convert to 3rd character after 'Z' - '&' symbol
-                cmp.b   #$23,d0
-                beq.w   maybe_backspace                         ; jmp $0001c558 '#' symbol - unsure, decrements x offset
-                cmp.b   #$2e,d0
-                beq.w   .fullstop_symbol                        ; jmp $0001c3ee '.' convert to 1st character after 'Z'
-                and.w   #$003f,d0
-                beq.w   loop_text_typer                      ; jmp $0001c534 - #$00 = ***** Loop Text Typer ***** 
-                cmp.b   #$20,d0
-                beq.w   .space_symbol                           ; jmp $0001c3fe ' ' - increment x position.       
-                cmp.b   #$30,d0
-                blt.w   .plot_character                         ; jmp $0001c404 - plot raw char code from offset
-                sub.w   #$0014,d0
-                bra.w   .plot_character                         ; jmp $0001c404 - subtract ' ' char and plot raw char code
+               ; Typer working variables
+               ; current x,y  co-ords 
+               ; address of current text display structure 
 
-.ampersand_symbol
-                move.w  #$002c,d0
-                bra.w   .plot_character                         ; jmp $0001c404
+               ; text typer cursor x position
+               ; measured in bytes (1 byte = 8 pixels)
+_typer_cursor_x_coord
+               dc.w    $0000
 
-.fullstop_symbol
-                move.w  #$002a,d0
-                bra.w   .plot_character                         ; jmp $0001c404
+               ; text typer cursor y posistion
+               ; measured in raster lines
+_typer_cursor_y_coord
+               dc.w    $0000
 
-.copyright_symbol
-                move.b  #$002b,d0                               ; d0 = 43 - character offset (plus #$30)
-                bra.w   .plot_character                         ; jmp $0001c404 - 
+                ; Address of the start of the current text structure being displayed.
+                ; Can be one (i.e. hi-score entry) or many pages of text (title screen pages). 
+                ; Can be a single page of text that returns to the caller (i.e. hi-score entry),
+                ; or, a looping sequence of text pages (i.e. title screen pages)
+                ; Used when looping back to start of a sequence of pages
+_typer_text_struct_ptr 
+               dc.l    $00000000                      
 
-.space_symbol
-                addq.l  #$01,a3
-                bra.w   resume_text_typer_current_position            ; jmp $0001c352
+
+
+              ; Original Address $0001c324
+_run_text_typer    
+               ; store start of text structure.
+               ;  - used for looping to start for control code $00                                          
+               move.l    a6,_typer_text_struct_ptr     
+               move.b    (a6)+,_typer_cursor_x_coord+1
+               move.b    (a6)+,_typer_cursor_y_coord+1
+
+               ; resume typing text from the left hand side
+               ; of the current display line.
+_typer_resume_text_at_start_line
+               moveq     #$00,d0
+               ; calc display y offset in bytes
+               move.w    _typer_cursor_y_coord,d0   
+               mulu.w    #DISPLAY_WIDTH_BYTES,d0
+               ; add display x offset in bytes
+               add.w     _typer_cursor_x_coord,d0
+               ; set display address for typer text
+               add.l     #DISPLAY_BUFFER_ADDRESS,d0
+               exg.l     d0,a2
+               movea.l   a2,a3
+               ; d0, a2 & a3 contain the display address
+
+               ; resume displaying text at the current
+               ; display address
+_typer_resume_text_at_current_xy_position
+               
+               ; Process text data (which can include command bytes)
+               ; Test if currently executing 'Pause and Wait for Start' command #$02
+               ;   - this uses the extended command parameters for the pause duration.
+               tst.w     typer_extended_command_1     
+               bne.w     _typer_pause_and_wait_for_start 
+
+               ; get next typer character or command to process
+               move.b  (a6)+,d0 
+               ; process typer commands
+               cmp.b     #TEXT_TYPER_TERMINATE,d0
+               beq.w     .exit
+               cmp.b     #TEXT_TYPER_CR,d0
+               beq.w     _typer_cmd_crlf    
+               cmp.b     #TEXT_TYPER_LF,d0
+               beq.w     _typer_cmd_lf     
+               cmp.b     #TEXT_TYPER_CLEAR_SCREEN,d0
+               beq.w     _typer_cmd_cls
+               cmp.b     #TEXT_TYPER_NOP,d0
+               beq.w     _typer_cmd_nop
+               cmp.b     #TEXT_TYPER_PAUSE,d0
+               beq.w     _typer_cmd_pause
+               cmp.b     #TEXT_TYPER_HISCORES,d0
+               beq.w     _typer_cmd_display_hi_scores
+               cmp.b     #TEXT_TYPER_END_HISCORE_TABLE,d0
+               beq.w     _typer_cmd_end_display_hi_scores   
+
+               ; process special characters
+               cmp.b     #$40,d0
+               beq.w     .plot_copyright_symbol  
+               cmp.b     #$26,d0
+               beq.w     .plot_ampersand_symbol
+               cmp.b     #$23,d0
+               beq.w     .plot_backspace  
+               cmp.b     #$2e,d0
+               beq.w     .plot_fullstop_symbol 
+               
+               and.w     #$003f,d0                          ; TODO: debug this, not sure how this works
+               beq.w     _typer_cmd_loop_text_typer  
+
+               cmp.b     #$20,d0
+               beq.w     .plot_space_symbol         
+               
+               ; process digit chars
+               cmp.b     #$30,d0
+               blt.w     .plot_character 
+               ; process alpha chars
+               sub.w     #$0014,d0
+               bra.w     .plot_character
+
+.plot_ampersand_symbol
+               ; set char index & plot
+               move.w    #$002c,d0
+               bra.w     .plot_character 
+
+.plot_fullstop_symbol
+               ; set char index & plot
+               move.w    #$002a,d0
+               bra.w     .plot_character  
+
+.plot_copyright_symbol
+               ; set char index & plot
+               move.b    #$002b,d0
+               bra.w     .plot_character   
+
+.plot_space_symbol
+               ; increase x pos and resume
+               addq.l    #$01,a3
+               bra.w     _typer_resume_text_at_current_xy_position
+
+.plot_backspace  
+               ; updated code
+               move.w    #$20,d0
+               sub.w     #$0001,_typer_cursor_x_coord
+               bra.w     .plot_character
+
+               ;; unused by the game.
+               ;; write a space at current position                                               
+               ;move.w    _typer_cursor_x_coord,char_plot_x_coord 
+               ;move.w    _typer_cursor_y_coord,char_plot_y_coord 
+               ;move.b    #$20,d0
+               ;bsr.w     plot_character
+               ;; move x pos 1 step left and resume text
+               ;sub.w     #$0001,_typer_cursor_x_coord
+               ;bra.w     _typer_resume_text_at_current_xy_position
 
 .plot_character
                ; decrement character offset by 1, to match gfx data
-               subq.w   #1,d0
+               subq.w    #1,d0
 
                ; calculate the character gfx data address from the character offset
                ; 80 bytes per char (16 bytes per bitplane * 5 bitplanes)
-               mulu.w  #$0050,d0
-               add.l   #ASSET_CHARSET_BASE,d0
-               exg.l   d0,a1
+               mulu.w    #$0050,d0
+               add.l     #ASSET_CHARSET_BASE,d0
+               exg.l     d0,a1
 
                ; set up bitplane loop counter
-               moveq   #$04,d7                                 
+               moveq     #$04,d7                                 
 
                ; set gfx destination address for plotting character
-               movea.l a3,a2
+               movea.l   a3,a2
+.copy_loop
+                    ; plot the bitplane bytes
+                    move.b    TYPERCHAR_WIDTH_BYTES*0(a1),DISPLAY_WIDTH_BYTES*0(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*1(a1),DISPLAY_WIDTH_BYTES*1(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*2(a1),DISPLAY_WIDTH_BYTES*2(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*3(a1),DISPLAY_WIDTH_BYTES*3(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*4(a1),DISPLAY_WIDTH_BYTES*4(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*5(a1),DISPLAY_WIDTH_BYTES*5(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*6(a1),DISPLAY_WIDTH_BYTES*6(a2)
+                    move.b    TYPERCHAR_WIDTH_BYTES*7(a1),DISPLAY_WIDTH_BYTES*7(a2)
+
+                    ; update source and destination addresses for next bitplane
+                    adda.l    #TYPERCHAR_BITPLANE_SIZE,a1  
+                    adda.l    bitplane_size,a2  
+
+               ; draw next bitplane   
+               dbf.w   d7,.copy_loop         
+               
+               ; move cursor to next x position for next character
+               addq.l  #$01,a3
+
+               ; continue typing at the current position on the screen
+               bra.w   _typer_resume_text_at_current_xy_position
+
+
+               ; exit the typer (only when cmd $ff reached. i.e. hi-score entry table)
+.exit          rts  
+
+
+
+
+                ;--------------------- plot character x & y ----------------------
+                ; Plot character at x and y co-ords
+                ; IN: d0 = character offset to plot starts at character '0'
+                ;
+char_plot_x_coord                               ; original address $0001c45a
+                dc.w $0000                      ; x co-ord (byte value)
+char_plot_y_coord                               ; original address $0001c45c
+                dc.w $0000                      ; y co-ord (line value)
+
+plot_character
+               ; clear x,y variables
+               moveq     #$00,d3
+               moveq     #$00,d2
+
+               ; set x,y variable values
+               move.w    char_plot_y_coord,d3
+               move.w    char_plot_x_coord,d2
+
+               ; calc display address
+               mulu.w    #DISPLAY_WIDTH_BYTES,d3
+               add.w     d3,d2
+               add.l     #DISPLAY_BUFFER_ADDRESS,d2
+               exg.l     d2,a2
+
+               ; calc source gfx address
+               ; clamp d0 to 0-63 (limit char index)
+               and.l     #$0000003f,d0  
+               ; adjust character index by 1, to match gfx data                 
+               subq.w    #$0001,d0  
+               ; 80 bytes per char (16 bytes per bitplane) 8*8                     
+               mulu.w    #$0050,d0                       
+               add.l     #ASSET_CHARSET_BASE,d0
+               exg.l     d0,a1                           
+               ; d0 & a1 = character source address
+                       
+               ; set plot loop count (5 bitplanes)
+               moveq     #$04,d7
 .copy_loop
                     ; plot the bitplane bytes
                     move.b  TYPERCHAR_WIDTH_BYTES*0(a1),DISPLAY_WIDTH_BYTES*0(a2)
@@ -1055,107 +1201,66 @@ resume_text_typer_current_position
                     move.b  TYPERCHAR_WIDTH_BYTES*7(a1),DISPLAY_WIDTH_BYTES*7(a2)
 
                     ; update source and destination addresses for next bitplane
-                    adda.l  #TYPERCHAR_BITPLANE_SIZE,a1  
-                    adda.l  bitplane_size,a2  
-
-               ; draw next bitplane   
-               dbf.w   d7,.copy_loop         
+                    adda.l  #TYPERCHAR_BITPLANE_SIZE,a1
+                    adda.l  bitplane_size,a2 
                
-               ; move cursor to next x position for next character
-               addq.l  #$01,a3
+               ; draw next bitplane 
+               dbf.w   d7,.copy_loop
 
-               ; continue typing at the current position on the screen
-               bra.w   resume_text_typer_current_position
-
-
-.exit          rts  
+               rts
 
 
 
+                ;--------------- loop text typer -----------------
+                ; CODE #$00 - restart text typer from initial
+                ;             saved text prt
+_typer_cmd_loop_text_typer                                                 ; original address $0001c534
+                movea.l _typer_text_struct_ptr,a6                     ; $0001c314 [00000000],a6
+                bra.w   _run_text_typer                              ; calls $0001c324 - display text
+                ; use _run_text_typer rts to return
 
-                ;--------------------- plot character x & y ----------------------
-                ; plot character at x and y co-ords
-                ; IN: d0 = character offset to plot starts at character '0'
-                ;
-char_plot_x_coord                               ; original address $0001c45a
-                dc.w $0000                      ; x co-ord (byte value)
-char_plot_y_coord                               ; original address $0001c45c
-                dc.w $0000                      ; y co-ord (line value)
-
-plot_character
-                moveq   #$00,d3
-                moveq   #$00,d2
-                move.w  char_plot_y_coord,d3            ; L0001c45c,d3 ; y co-ordinate
-                move.w  char_plot_x_coord,d2            ; L0001c45a,d2 ; x co-ordinate
-                mulu.w  #$0028,d3                       ; d3 = d3 * 40 (raster line)
-                add.w   d3,d2                           ; d2 = x & y co-ords byte offset
-                add.l   #DISPLAY_BUFFER_ADDRESS,d2      ; #$00063190 ; add bitplane 1 base address
-                exg.l   d2,a2                           ; a2 = dest address, d1 = prev value of a2
-                and.l   #$0000003f,d0                   ; clamp d0 to 0-63
-                subq.w  #$0001,d0                       ; decrement character offset by 1, to match gfx data
-                mulu.w  #$0050,d0                       ; 80 bytes per char (16 bytes per bitplane) 8*8
-                add.l   #ASSET_CHARSET_BASE,d0          ; #$0003f1ea ; character set gfx base address
-                exg.l   d0,a1                           ; a1 = character source address
-                moveq   #$04,d7                         ; d7 = 4 + 1 - bitplane loop count
-                moveq   #$00,d1                         ; d1 = 0
-.copy_loop
-                move.b  (a1),(a2)                       ; copy character data line 1
-                move.b  $0002(a1),$0028(a2)             ; copy character data line 2
-                move.b  $0004(a1),$0050(a2)             ; copy character data line 3
-                move.b  $0006(a1),$0078(a2)             ; copy character data line 4
-                move.b  $0008(a1),$00a0(a2)             ; copy character data line 5
-                move.b  $000a(a1),$00c8(a2)             ; copy character data line 6
-                move.b  $000c(a1),$00f0(a2)             ; copy character data line 7
-                move.b  $000e(a1),$0118(a2)             ; copy character data line 8
-                adda.l  #$00000010,a1                   ; a1 = start next bitplane of char
-                adda.l  bitplane_size,a2                ; L0001ca3e,a2
-                dbf.w   d7,.copy_loop
-                rts
-
-
-
-                ;----------------- crlf ---------------------
+                ;----------------- typer command crlf ---------------------
                 ; carriage return plus line feed.
                 ; continue typing at the start of the next
                 ; line on the screen.
-crlf                                                    ; original address $0001c4d0
-                add.w   #$0008,y_coord                  ; $0001c312, add 8 scan lines to y coord
-                bra.w   resume_text_typer_start_line          ; jmp $0001c336
+_typer_cmd_crlf                                                    ; original address $0001c4d0
+                add.w   #$0008,_typer_cursor_y_coord                  ; $0001c312, add 8 scan lines to y coord
+                bra.w   _typer_resume_text_at_start_line          ; jmp $0001c336
 
 
 
-                ;---------------- line feed -----------------
+                ;----------------  typer command line feed -----------------
                 ; continue typing one line down without
                 ; returning to the start of the line.
-lf                                                      ; original address $0001c4dc
+_typer_cmd_lf                                                      ; original address $0001c4dc
                 adda.l  #$00000140,a3                   ; add 320 to raster line (next page)
                 movea.l a3,a2                           ; update dest display ptrs
-                bra.w   resume_text_typer_current_position    ; jmp $0001c352
+                bra.w   _typer_resume_text_at_current_xy_position    ; jmp $0001c352
 
 
 
-                ;--------------- clear screen --------------
+                ;--------------- typer command clear screen --------------
                 ; clear screen bitplanes and reset x,y
                 ; coords.
-cls
+_typer_cmd_cls
                 bsr.w   copy_batman_gfx_to_display_buffer     ; calls $0001ca34
-                move.w  #$0007,x_coord                  ; $0001c310
-                clr.w   y_coord                         ; $0001c312 
-                bra.w   resume_text_typer_start_line          ; $0001c336 
+                move.w  #$0007,_typer_cursor_x_coord                  ; $0001c310
+                clr.w   _typer_cursor_y_coord                         ; $0001c312 
+                bra.w   _typer_resume_text_at_start_line          ; $0001c336 
 
 
 
                 ;-------------- code #$02 -----------------
                 ; code: #$02 - 
-                ; initialise 'wait_or_start_game'
+                ; initialise '_typer_pause_and_wait_for_start'
                 ; get the number of frames to wait for
                 ; displaying the current page of text.
-wait_or_start_game                                      ; original routine address $0001c4fe
+_typer_cmd_pause                                      ; original routine address $0001c4fe
                 move.b  (a6)+,d0
                 move.b  d0,typer_extended_command_1     ; $0001c782
                 move.b  (a6)+,d0
                 move.b  d0,typer_extended_command_2     ; $0001c783
-                ; falls through to 'wait_or_start_game'
+                ; falls through to '_typer_pause_and_wait_for_start'
 
 
                 ;------------------ wait or start game ---------------
@@ -1166,14 +1271,14 @@ wait_or_start_game                                      ; original routine addre
                 ; if joystick button is pressed (port 2)
                 ; then jumps to start game code.
                 ;
-continue_wait_or_start_game
+_typer_pause_and_wait_for_start
                 moveq   #$00,d0
                 bsr.w   raster_wait_161                 ; calls $0001c2f8
                 bsr.w   do_title_screen_menu_options    ; calls $0001c172
-                btst.b  #$0007,$00bfe001                ; Port 2 Fire Button (Joystick)
+                btst.b  #$0007,CIAA_PRA                 ; Port 2 Fire Button (Joystick)
                 beq.b   .firebutton_pressed             ; $0001c52e ; if button pressed, start game?
                 sub.w   #$0001,typer_extended_command_1 ; $0001c782 - decrement fame wait time
-                bra.w   resume_text_typer_current_position    ; jmp $0001c352
+                bra.w   _typer_resume_text_at_current_xy_position    ; jmp $0001c352
 
 .firebutton_pressed
                 jmp     start_game                      ; jmp $0001c05e
@@ -1183,51 +1288,47 @@ continue_wait_or_start_game
                 ;--------------- loop text typer -----------------
                 ; CODE #$00 - restart text typer from initial
                 ;             saved text prt
-loop_text_typer                                                 ; original address $0001c534
-                movea.l current_text_ptr,a6                     ; $0001c314 [00000000],a6
-                bra.w   _run_text_typer                              ; calls $0001c324 - display text
-                ; use _run_text_typer rts to return
+;loop_text_typer                                                 ; original address $0001c534
+;                movea.l _typer_text_struct_ptr,a6                     ; $0001c314 [00000000],a6
+;                bra.w   _run_text_typer                              ; calls $0001c324 - display text
+;                ; use _run_text_typer rts to return
 
 
 
                 ;--------------------- hi scores -------------------
                 ; CODE: #$03 - start displaying Hi Score Table
                 ;
-hi_scores                                                       ; original routine address $0001c53e
+_typer_cmd_display_hi_scores                                                       ; original routine address $0001c53e
                 move.l  a6,temp_typer_text_ptr                  ; $0001c77e ; store current text typer ptr position
                 movea.l #high_score_display_text,a6             ; #$0001c974 ; resume text from this location (HI SCORE TABLE)
-                bra.w   resume_text_typer_current_position            ; jmp $0001c352
+                bra.w   _typer_resume_text_at_current_xy_position            ; jmp $0001c352
 
 
 
                 ;-------------------end hi scores ------------------
                 ; CODE: #$04 - resume typing text after hi scores
                 ;
-end_hi_scores                                                   ; original routine address $0001c54e
+_typer_cmd_end_display_hi_scores                                                   ; original routine address $0001c54e
                 movea.l temp_typer_text_ptr,a6                  ; $0001c77e ; restore text typer source ptr from saved location
-                bra.w   resume_text_typer_current_position            ; jmp $0001c352
+                bra.w   _typer_resume_text_at_current_xy_position            ; jmp $0001c352
 
 
 
-maybe_backspace                                                 ; original routine address $0001c558
-                move.w  x_coord,char_plot_x_coord               ; $0001c45a
-                move.w  y_coord,char_plot_y_coord               ; $0001c45c
-                move.b  #$20,d0
-                bsr.w   plot_character                          ; calls $0001c45e
-                sub.w   #$0001,x_coord                          ; $0001c310
-                bra.w   resume_text_typer_current_position            ; jmp $0001c352
-
+;maybe_backspace                                                 ; original routine address $0001c558
+;                move.w  _typer_cursor_x_coord,char_plot_x_coord               ; $0001c45a
+;                move.w  _typer_cursor_y_coord,char_plot_y_coord               ; $0001c45c
+;                move.b  #$20,d0
+;                bsr.w   plot_character                          ; calls $0001c45e
+;                sub.w   #$0001,_typer_cursor_x_coord                          ; $0001c310
+;                bra.w   _typer_resume_text_at_current_xy_position            ; jmp $0001c352
+;
 
 
                 ;-------------------- nop -----------------------
                 ; do nothing, just resume text typing
-_nop                                                            ; original address $0001c580
-                bra.w   resume_text_typer_current_position            ; jmp $0001c352
+_typer_cmd_nop                                                            ; original address $0001c580
+                bra.w   _typer_resume_text_at_current_xy_position            ; jmp $0001c352
 
-
-
-                ;-------- dangling rts instruction --------------
-                ;rts
 
 
 
@@ -1435,7 +1536,7 @@ hi_score_and_text_typer
                 sne.b   joystick_left                                   ; $0001c778
 
 .test_joystick_button
-                btst.b  #$0007,$00bfe001
+                btst.b  #$0007,CIAA_PRA                              ; joystick button (PORT 2)
                 beq.w   .wait_joystick_button_released                  ; L0001c71a
 
                 move.w  joystick_left,d0                                ; $0001c778,d0
@@ -1463,7 +1564,7 @@ hi_score_and_text_typer
                 bra.w   .initials_entry_loop                            ; L0001c6a8
 
 .wait_joystick_button_released
-                btst.b  #$0007,$00bfe001
+                btst.b  #$0007,CIAA_PRA                               ; joystick button (PORT 2)
                 beq.w   .wait_joystick_button_released                  ; L0001c71a
 
 .increment_next_char
@@ -1559,6 +1660,8 @@ TEXT_TYPER_END_HISCORE_TABLE       EQU  $04       ; 1 Byte Command - CODE #$04 m
 TEXT_TYPER_NOP                     EQU  $06       ; 1 Byte Command - No Operation
 TEXT_TYPER_CR                      EQU  $0d       ; 1 Byte Command - Carriage Return
 TEXT_TYPER_TERMINATE               EQU  $ff       ; 1 Byte Command - Exit Typer (Used for Displaying hi-Scores then exiting for entering player initials) 
+TEXT_TYPER_LF                      EQU  $0e       ; 1 Byte Command - Line Feed (no return to left hand of display)
+TEXT_UNUSED                        EQU  $05       ; 1 Byte Command - unused and removed, originally would have performed the high score initials entry and hi-score processing. 
 
 
 title_screen_text                                                                    
@@ -1631,7 +1734,7 @@ title_screen_text
                dc.b TEXT_TYPER_PAUSE,$00,$f0                ; wait for 2.5 seconds
 
                ; Page 6 (non page)
-               dc.w TEXT_TYPER_CLEAR_SCREEN
+               dc.b TEXT_TYPER_CLEAR_SCREEN
                dc.b TEXT_TYPER_LOOP_TO_START
                dc.b TEXT_TYPER_TERMINATE                    ; Exit Typer (never reaches here)                                                     
 
